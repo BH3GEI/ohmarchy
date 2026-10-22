@@ -1,0 +1,48 @@
+#!/usr/bin/ash
+# Runs with Omarchy's root mounted at /new_root.
+run_latehook() {
+    sh /omarchy-dump.sh 3-late
+    R=/new_root S=/new_root/etc/systemd/system KV=$(uname -r)
+    [ -d "$S" ] || return 0
+
+    # 1. Debian kernel modules for Omarchy's root (shipped as a tarball on the ESP).
+    if [ ! -e "$R/usr/lib/modules/$KV/.ohmarchy" ]; then
+        esp=$(blkid | grep 'LABEL="OMARCHY_EFI"' | cut -d: -f1)
+        mkdir -p /run/omarchy/esp
+        if mount -t vfat -o ro "${esp:-/dev/vda1}" /run/omarchy/esp; then
+            if [ -f "/run/omarchy/esp/ohmarchy/modules-$KV.tar.gz" ]; then
+                tar -xzf "/run/omarchy/esp/ohmarchy/modules-$KV.tar.gz" -C "$R" &&
+                    touch "$R/usr/lib/modules/$KV/.ohmarchy" &&
+                    echo "omarchy-late: installed modules for $KV into the root" > /dev/kmsg
+            fi
+            umount /run/omarchy/esp
+        fi
+    fi
+    # vmwgfx probing claims the framebuffer even when it then fails: never autoload it.
+    mkdir -p "$R/etc/modprobe.d"
+    printf 'blacklist vmwgfx\noptions vmwgfx hvm_mmio=1 hvm_display=2 msg_enabled=0\n' \
+        > "$R/etc/modprobe.d/ohmarchy-oseasy.conf"
+
+    # 2. Network shell for the real root (busybox picks its applet from argv[0],
+    #    so the binary keeps the name "busybox").
+    mkdir -p "$R/usr/local/lib/omarchy" "$R/usr/local/libexec" "$S/sysinit.target.wants" \
+        "$R/etc/NetworkManager/conf.d"
+    cp /usr/bin/busybox "$R/usr/local/lib/omarchy/busybox"
+    cp /omarchy-netremote.sh "$R/usr/local/libexec/omarchy-netremote.sh"
+    chmod 755 "$R/usr/local/lib/omarchy/busybox" "$R/usr/local/libexec/omarchy-netremote.sh"
+    cp /omarchy-netremote.service "$S/omarchy-netremote.service"
+    ln -sf ../omarchy-netremote.service "$S/sysinit.target.wants/omarchy-netremote.service"
+    # NetworkManager would drop the static address; ufw (deny incoming) would drop the shell.
+    printf '[keyfile]\nunmanaged-devices=driver:virtio_net\n' \
+        > "$R/etc/NetworkManager/conf.d/90-ohmarchy-oseasy.conf"
+    U=$R/etc/ufw/user.rules
+    if [ -f "$U" ] && ! grep -q ohmarchy-oseasy-bridge "$U"; then
+        sed -i 's|^### RULES ###$|### RULES ###\n\n### tuple ### allow any any 0.0.0.0/0 any 172.16.100.0/24 in\n-A ufw-user-input -s 172.16.100.0/24 -j ACCEPT -m comment --comment ohmarchy-oseasy-bridge|' "$U"
+    fi
+
+    # 3. Hand the shell over without a gap: a server chrooted into the real root
+    #    survives switch_root until the systemd unit takes over.
+    [ -f /run/omarchy/tcpsvd-initramfs.pid ] && kill "$(cat /run/omarchy/tcpsvd-initramfs.pid)" 2>/dev/null
+    sleep 0.3
+    chroot "$R" /usr/local/lib/omarchy/busybox tcpsvd -E 0 5000 /bin/sh -c 'exec /bin/bash 2>&1' >/dev/null 2>&1 &
+}

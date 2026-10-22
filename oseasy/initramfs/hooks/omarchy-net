@@ -1,0 +1,31 @@
+#!/usr/bin/ash
+# Network command channel for the Oseasy VM. The VM NIC sits on the HarmonyOS
+# bridge 172.16.100.1/24 without DHCP; the guest takes 172.16.100.2 and serves a
+# shell on tcp/5000. The Fold's hdc shell may connect out but cannot listen.
+run_earlyhook() {
+    mkdir -p /run/omarchy
+    modprobe -q virtio_pci; modprobe -q virtio_net
+    n=; i=0
+    while [ $i -lt 40 ]; do
+        for d in /sys/class/net/*; do
+            [ "$(basename "$(readlink "$d/device/driver" 2>/dev/null)")" = virtio_net ] && n=$(basename "$d")
+        done
+        [ -n "$n" ] && break
+        sleep 0.25; i=$((i + 1))
+    done
+    if [ -n "$n" ]; then
+        ip link set "$n" up
+        ip addr add 172.16.100.2/24 dev "$n"
+        ip route add default via 172.16.100.1
+        tcpsvd -E 0 5000 sh -c 'exec sh 2>&1' >/dev/null 2>&1 &
+        echo $! > /run/omarchy/tcpsvd-initramfs.pid
+        echo "omarchy-net: $n 172.16.100.2/24, shell on tcp/5000" > /dev/kmsg
+    else
+        echo "omarchy-net: no virtio_net interface" > /dev/kmsg
+    fi
+    sh /omarchy-dump.sh 1-early
+    if grep -qw 'omarchy_hold=1' /proc/cmdline; then
+        echo "omarchy: HOLD in initramfs; touch /run/omarchy/go over tcp/5000 to continue" > /dev/kmsg
+        while [ ! -e /run/omarchy/go ]; do sleep 1; done
+    fi
+}

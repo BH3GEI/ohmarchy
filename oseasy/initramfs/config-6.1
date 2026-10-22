@@ -1,0 +1,6 @@
+MODULES="virtio_pci virtio_blk virtio_net virtio_rng btrfs vfat nls_ascii nls_cp437 nls_iso8859_1 nls_utf8 xhci_pci usbhid hid_generic"
+EARLYHOOKS="omarchy-net omarchy-gpu udev"
+HOOKS="udev keymap"
+LATEHOOKS="btrfs-overlayfs omarchy-late"
+CLEANUPHOOKS="udev"
+EMERGENCYHOOKS=""

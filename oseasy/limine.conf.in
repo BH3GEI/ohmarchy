@@ -1,0 +1,26 @@
+timeout: 10
+default_entry: 1
+interface_branding: Omarchy on HarmonyOS (Oseasy VM) - shell 172.16.100.2:5000
+hash_mismatch_panic: no
+term_background: 1a1b26
+backdrop: 1a1b26
+
+/Omarchy  6.1 kernel, EFI framebuffer
+protocol: efi
+path: boot():/EFI/Linux/ohmarchy-6.1.efi
+
+/Omarchy  6.1 kernel, hold in initramfs (debug)
+protocol: efi
+path: boot():/EFI/Linux/ohmarchy-6.1-hold.efi
+
+/Omarchy  6.1 kernel, efidrm KMS (experimental)
+protocol: efi
+path: boot():/EFI/Linux/ohmarchy-6.1-efidrm.efi
+
+/Omarchy  6.1 kernel, SVGA 3D driver (experimental)
+protocol: efi
+path: boot():/EFI/Linux/ohmarchy-6.1-svga.efi
+
+/Omarchy  stock 7.x kernel (hangs in Oseasy)
+protocol: efi
+path: boot():/EFI/Linux/omarchy_linux.efi

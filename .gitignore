@@ -1,0 +1,17 @@
+# build outputs and downloads (multi-GB)
+/work/
+*.raw
+*.raw.gz
+*.iso
+*.qcow2
+*.img
+*.img.gz
+*.efi
+*.ko
+*.o
+*.mod
+*.mod.c
+.*.cmd
+modules.order
+Module.symvers
+__pycache__/

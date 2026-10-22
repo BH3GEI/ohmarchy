@@ -1,0 +1,19 @@
+#!/usr/bin/ash
+# omarchy_gpu=svga   : HVM-adapted vmwgfx on the Oseasy SVGA device (3D; output
+#                      does not reach the Oseasy window yet)
+# omarchy_gpu=efidrm : KMS device on the EFI framebuffer (software rendering)
+# (default)          : plain efifb console
+run_earlyhook() {
+    case " $(cat /proc/cmdline) " in
+    *" omarchy_gpu=svga "*)
+        echo "omarchy-gpu: vmwgfx hvm_mmio=1 hvm_display=2" > /dev/kmsg
+        modprobe vmwgfx hvm_mmio=1 hvm_display=2 msg_enabled=0
+        sh /omarchy-dump.sh 2-gpu ;;
+    *" omarchy_gpu=efidrm "*)
+        echo "omarchy-gpu: efifb -> omarchy_efidrm" > /dev/kmsg
+        [ -e /sys/bus/platform/drivers/efi-framebuffer/efi-framebuffer.0 ] &&
+            echo efi-framebuffer.0 > /sys/bus/platform/drivers/efi-framebuffer/unbind
+        modprobe omarchy_efidrm
+        sh /omarchy-dump.sh 2-gpu ;;
+    esac
+}

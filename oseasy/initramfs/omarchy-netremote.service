@@ -1,0 +1,14 @@
+[Unit]
+Description=ohmarchy network shell on the Oseasy VM bridge (tcp/5000, upload tcp/5001)
+DefaultDependencies=no
+After=systemd-udevd.service
+Before=sysinit.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/omarchy-netremote.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=sysinit.target

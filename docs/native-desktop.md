@@ -51,6 +51,8 @@ Open:
 - Read-back in RGBA plus a CPU swizzle is about 4x slower than BGRA; virpipe's
   BGRA read is the fast path.
 
+Apps and features, what works and what doesn't: [native-compat.md](native-compat.md).
+
 ## Install
 
 1. Route D's image, session and Omarchy setup (`10`..`30` in `native/`).

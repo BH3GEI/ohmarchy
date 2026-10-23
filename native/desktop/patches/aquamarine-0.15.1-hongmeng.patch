@@ -79,19 +79,21 @@ index 0000000..51ff6cf
 +    };
 +};
 diff --git a/include/aquamarine/backend/Headless.hpp b/include/aquamarine/backend/Headless.hpp
-index 5945b00..6672b65 100644
+index 5945b00..fd71592 100644
 --- a/include/aquamarine/backend/Headless.hpp
 +++ b/include/aquamarine/backend/Headless.hpp
-@@ -5,6 +5,8 @@
+@@ -5,6 +5,10 @@
  #include "../output/Output.hpp"
  #include <hyprutils/memory/WeakPtr.hpp>
  #include <hyprutils/os/FileDescriptor.hpp>
 +#include <hyprutils/math/Region.hpp>
 +#include <vector>
++#include <mutex>
++#include "../input/Input.hpp"
  
  namespace Aquamarine {
      class CBackend;
-@@ -82,6 +84,21 @@ namespace Aquamarine {
+@@ -82,6 +86,34 @@ namespace Aquamarine {
          void updateTimerFD();
          void addTimer(std::chrono::steady_clock::time_point when, std::function<void(void)> what);
  
@@ -107,6 +109,19 @@ index 5945b00..6672b65 100644
 +        Hyprutils::OS::CFileDescriptor exportListenFD;
 +        std::vector<SExportClient>     exportClients;
 +        Hyprutils::Memory::CSharedPointer<IBuffer> exportLastBuffer;
++        // Input from export clients: pointer/keyboard devices fed by a reader thread per
++        // client; events queue up and an eventfd wakes the main loop to emit them.
++        struct SExportInput {
++            uint32_t type;
++            int32_t  a, b, c;
++        };
++        Hyprutils::Memory::CSharedPointer<IPointer>  exportPointer;
++        Hyprutils::Memory::CSharedPointer<IKeyboard> exportKeyboard;
++        Hyprutils::OS::CFileDescriptor               exportInputFD;
++        Hyprutils::Memory::CSharedPointer<std::function<void()>> exportAnnounce;
++        std::mutex                                   exportInputMutex;
++        std::vector<SExportInput>                    exportInputQueue;
++        void                                         exportDispatchInput();
 +        void                           exportAccept();
 +        void                           exportFrame(Hyprutils::Memory::CSharedPointer<IBuffer> buffer, const Hyprutils::Math::CRegion& damage);
 +
@@ -287,20 +302,54 @@ index dbd7147..dff913d 100644
          log(AQ_LOG_CRITICAL, "Cannot open backend: no allocator available");
          return false;
 diff --git a/src/backend/Headless.cpp b/src/backend/Headless.cpp
-index 179b850..b3619e8 100644
+index 179b850..46cf05e 100644
 --- a/src/backend/Headless.cpp
 +++ b/src/backend/Headless.cpp
-@@ -5,6 +5,9 @@
+@@ -5,6 +5,12 @@
  #include <sys/timerfd.h>
  #include <cstring>
  #include <unistd.h>
 +#include <sys/socket.h>
 +#include <sys/un.h>
 +#include <cstdlib>
++#include <sys/eventfd.h>
++#include <poll.h>
++#include <thread>
  #include "Shared.hpp"
  
  using namespace Aquamarine;
-@@ -27,6 +30,11 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
+@@ -14,6 +20,30 @@ using namespace Hyprutils::Math;
+ 
+ #define TIMESPEC_NSEC_PER_SEC 1000000000LL
+ 
++namespace {
++    // Input devices for frame export clients (e.g. a display app forwarding its window's input).
++    class CExportPointer : public Aquamarine::IPointer {
++      public:
++        const std::string& getName() override {
++            return name;
++        }
++        const std::string name = "headless-export-pointer";
++    };
++    class CExportKeyboard : public Aquamarine::IKeyboard {
++      public:
++        const std::string& getName() override {
++            return name;
++        }
++        const std::string name = "headless-export-keyboard";
++    };
++
++    uint32_t nowMs() {
++        timespec ts;
++        clock_gettime(CLOCK_MONOTONIC, &ts);
++        return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
++    }
++}
++
+ Aquamarine::CHeadlessOutput::CHeadlessOutput(const std::string& name_, Hyprutils::Memory::CWeakPointer<CHeadlessBackend> backend_) : backend(backend_) {
+     name = name_;
+ 
+@@ -27,6 +57,11 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
  bool Aquamarine::CHeadlessOutput::commit() {
      const auto snapshot = state->snapshot();
      events.commit.emit();
@@ -312,7 +361,7 @@ index 179b850..b3619e8 100644
      state->consume(snapshot);
      needsFrame = false;
      events.present.emit(IOutput::SPresentEvent{.presented = true});
-@@ -123,11 +131,96 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
+@@ -123,11 +158,125 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
  }
  
  bool Aquamarine::CHeadlessBackend::start() {
@@ -327,8 +376,10 @@ index 179b850..b3619e8 100644
 +    if (bind(exportListenFD.get(), (sockaddr*)&addr, offsetof(sockaddr_un, sun_path) + 1 + len) < 0 || listen(exportListenFD.get(), 4) < 0) {
 +        backend->log(AQ_LOG_ERROR, std::format("headless: cannot export frames on @{}: {}", name, strerror(errno)));
 +        exportListenFD.reset();
-+    } else
++    } else {
 +        backend->log(AQ_LOG_DEBUG, std::format("headless: exporting frames on @{}", name));
++        exportInputFD = Hyprutils::OS::CFileDescriptor{eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)};
++    }
 +
      return true;
  }
@@ -338,6 +389,8 @@ index 179b850..b3619e8 100644
 +    std::vector<SP<SPollFD>> fds = {makeShared<SPollFD>(timers.timerfd.get(), [this]() { dispatchTimers(); })};
 +    if (exportListenFD.isValid())
 +        fds.emplace_back(makeShared<SPollFD>(exportListenFD.get(), [this]() { exportAccept(); }));
++    if (exportInputFD.isValid())
++        fds.emplace_back(makeShared<SPollFD>(exportInputFD.get(), [this]() { exportDispatchInput(); }));
 +    return fds;
 +}
 +
@@ -347,6 +400,31 @@ index 179b850..b3619e8 100644
 +        return;
 +    exportClients.emplace_back(SExportClient{.fd = Hyprutils::OS::CFileDescriptor{fd}});
 +    backend->log(AQ_LOG_DEBUG, std::format("headless: export client {} connected", fd));
++
++    // input arrives on the same socket; the fd stays open as long as the client entry does
++    if (exportInputFD.isValid()) {
++        const int rfd = dup(fd), efd = exportInputFD.get();
++        std::thread([this, rfd, efd]() {
++            pollfd p{.fd = rfd, .events = POLLIN};
++            SExportInput ev;
++            size_t       got = 0;
++            while (poll(&p, 1, -1) > 0) {
++                const ssize_t n = recv(rfd, (char*)&ev + got, sizeof(ev) - got, 0);
++                if (n <= 0 && !(n < 0 && (errno == EAGAIN || errno == EINTR)))
++                    break;
++                if (n > 0 && (got += n) == sizeof(ev)) {
++                    got = 0;
++                    {
++                        std::lock_guard lk(exportInputMutex);
++                        exportInputQueue.push_back(ev);
++                    }
++                    const uint64_t one = 1;
++                    write(efd, &one, sizeof(one));
++                }
++            }
++            close(rfd);
++        }).detach();
++    }
 +    // the new client needs a full frame now, not at the next damage
 +    if (exportLastBuffer)
 +        exportFrame(exportLastBuffer, CRegion{0, 0, exportLastBuffer->size.x, exportLastBuffer->size.y});
@@ -410,3 +488,64 @@ index 179b850..b3619e8 100644
  }
  
  int Aquamarine::CHeadlessBackend::drmFD() {
+@@ -151,7 +300,59 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
+ }
+ 
+ void Aquamarine::CHeadlessBackend::onReady() {
+-    ;
++    if (!exportInputFD.isValid())
++        return;
++    exportPointer  = makeShared<CExportPointer>();
++    exportKeyboard = makeShared<CExportKeyboard>();
++    // announce them from the event loop: the compositor's input handling is not up yet here
++    exportAnnounce = makeShared<std::function<void()>>([this]() {
++        backend->events.newPointer.emit(exportPointer);
++        backend->events.newKeyboard.emit(exportKeyboard);
++    });
++    backend->addIdleEvent(exportAnnounce);
++}
++
++void Aquamarine::CHeadlessBackend::exportDispatchInput() {
++    uint64_t n;
++    read(exportInputFD.get(), &n, sizeof(n));
++
++    std::vector<SExportInput> events;
++    {
++        std::lock_guard lk(exportInputMutex);
++        events.swap(exportInputQueue);
++    }
++
++    const auto t = nowMs();
++    for (const auto& ev : events) {
++        switch (ev.type) {
++            case 1: { // pointer position in output pixels
++                if (outputs.empty())
++                    break;
++                const auto  output = outputs.front();
++                const auto& mode   = output->state->state().mode ? output->state->state().mode->pixelSize :
++                                                                  (output->state->state().customMode ? output->state->state().customMode->pixelSize : Vector2D{1, 1});
++                exportPointer->events.warp.emit(IPointer::SWarpEvent{
++                    .timeMs = t, .absolute = Vector2D{(double)ev.a / std::max(1.0, mode.x), (double)ev.b / std::max(1.0, mode.y)}, .output = SP<IOutput>(output)});
++                exportPointer->events.frame.emit();
++                break;
++            }
++            case 2: // button (evdev BTN_* code), pressed
++                exportPointer->events.button.emit(IPointer::SButtonEvent{.timeMs = t, .button = (uint32_t)ev.a, .pressed = ev.b != 0});
++                exportPointer->events.frame.emit();
++                break;
++            case 3: // scroll: axis (0 vertical, 1 horizontal), discrete steps
++                exportPointer->events.axis.emit(IPointer::SAxisEvent{.timeMs   = t,
++                                                                     .axis     = ev.a ? IPointer::AQ_POINTER_AXIS_HORIZONTAL : IPointer::AQ_POINTER_AXIS_VERTICAL,
++                                                                     .delta    = 15.0 * ev.b,
++                                                                     .discrete = (double)ev.b});
++                exportPointer->events.frame.emit();
++                break;
++            case 4: // key (evdev KEY_* code), pressed
++                exportKeyboard->events.key.emit(IKeyboard::SKeyEvent{.timeMs = t, .key = (uint32_t)ev.a, .pressed = ev.b != 0});
++                break;
++            default: break;
++        }
++    }
+ }
+ 
+ std::vector<SDRMFormat> Aquamarine::CHeadlessBackend::getRenderFormats() {

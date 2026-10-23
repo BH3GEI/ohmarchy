@@ -6,10 +6,10 @@ Hyprland session, rendered by a patched Hyprland in that chroot and shown by a
 HarmonyOS app, with no VM in between.
 
 ```
-HarmonyOS app (native/app)            Arch chroot (route D)
-  XComponent window  <-- dmabuf fds --  Hyprland (patched) + Omarchy shell, apps
-  touch/mouse/keys   -- RFB input -->   wayvnc (input only)
-                                          |  GL: Mesa virpipe
+HarmonyOS app (native/app)                Arch chroot (route D)
+  XComponent window  <-- dmabuf fds -----  Hyprland (patched) + Omarchy shell, apps
+  touch/mouse/keys   -- evdev events -->   (same socket: aquamarine's export devices)
+                                             |  GL: Mesa virpipe
 HarmonyOS host                            v
   virgl_test_server (native/vtest) <-- /tmp/.virgl_test
     system libvirglrenderer (zink) --> Maleoon GPU
@@ -28,9 +28,15 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   falls back to llvmpipe on the CPU.
 - The app shows Hyprland's output buffers directly: aquamarine exports them as
   dmabufs over an abstract unix socket and the app maps them; no screen capture.
-- Animated frame rates on the GPU path (workspace switches): about 27 frames/s at
-  the panel's 2880x1920 (scale 1.5), about 46 at 1920x1280 (scale 1). The limit is
-  reading each frame back from the GPU through vtest (about 35 and 17 ms).
+  Input goes back over the same socket into a pointer and a keyboard that
+  aquamarine's headless backend registers (evdev codes; Hyprland applies the
+  keymap), so no VNC server runs.
+- Frame rates with a full-screen client redrawing every frame (es2gears, tiled):
+  about 35-40 frames/s at the default 1920x1280 (scale 1; the app scales it to the
+  window), 16-21 at the panel's 2880x1920 (scale 1.5). A frame is almost all GPU
+  read-back through vtest (about 18 and 40-50 ms); compositing itself takes under
+  1 ms. Before the export socket, wayvnc's screen capture read every frame back a
+  second time (14-16 frames/s at 1920x1280).
 - Clients (terminals, Quickshell, browsers) render on llvmpipe. The host's
   virglrenderer rejects some of Mesa 26's virgl commands from Qt Quick clients, so
   virpipe is used for Hyprland only.
@@ -42,7 +48,8 @@ Open:
   (`virgl_renderer_ohos_present`), which would remove the read-back.
 - `debug:overlay` deadlocks Hyprland here (its text rendering waits on the async
   resource gatherer); don't enable it.
-- Input still goes through wayvnc's RFB (the app asks it for no frames).
+- Read-back in RGBA plus a CPU swizzle is about 4x slower than BGRA; virpipe's
+  BGRA read is the fast path.
 
 ## Install
 
@@ -59,7 +66,7 @@ Open:
 ## Use
 
 ```sh
-omarchy desktop start      # vtest server (if present), Hyprland, Omarchy shell, wayvnc
+omarchy desktop start      # vtest server (if present), Hyprland, Omarchy shell
 omarchy desktop status
 omarchy desktop stop
 ```
@@ -69,9 +76,10 @@ Then open "Omarchy (native)" on the HarmonyOS desktop. It opens as a window
 frame arrives.
 
 Display size: `OHMARCHY_DISPLAY_MODE` and `OHMARCHY_DISPLAY_SCALE` in the desktop's
-environment (default `2880x1920@60` and `1.5`; `1920x1280@60` and `1` is faster,
-the app scales it to the window). `HYPRLAND_READBACK_TIMING=1` prints read-back
-time and frame rate to `/run/user/<uid>/ohmarchy-desktop.log`.
+environment (default `1920x1280@60` and `1`; `2880x1920@60` and `1.5` is the
+panel's resolution, sharper and about half the frame rate).
+`HYPRLAND_READBACK_TIMING=1` and `HYPRLAND_FRAME_TIMING=1` print read-back and
+frame times to `/run/user/<uid>/ohmarchy-desktop.log`.
 
 ## The app (native/app)
 
@@ -82,8 +90,9 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
   time. The app maps it and copies it into the XComponent's native window buffer.
   SELinux allows this as is: apps (`normal_hap_attr`) may connect to unix sockets of
   the root shell's `su` domain and use its fds.
-- Input: RFB to wayvnc on 127.0.0.1:5900 (pointer, wheel via axis events, keys
-  mapped to X keysyms). Without the export socket it also takes frames from RFB.
+- Input: 16-byte messages on the same socket (pointer position in output pixels,
+  evdev buttons, scroll steps, evdev key codes). Without the export socket it
+  falls back to RFB on 127.0.0.1:5900 for frames and input (X keysyms).
 - Signing: this research build accepts the OpenHarmony test keys from the SDK, so
   `sign/sign.sh` signs with them and a debug profile bound to the device's UDID
   (`bm get --udid`); no developer account is involved. A production HarmonyOS build

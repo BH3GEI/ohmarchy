@@ -159,7 +159,7 @@ index baee1ad..662e017 100644
  
          if (m_eglDevice != EGL_NO_DEVICE_EXT) {
 diff --git a/src/render/Renderer.cpp b/src/render/Renderer.cpp
-index 249f084..96f1c60 100644
+index 249f084..7149e1e 100644
 --- a/src/render/Renderer.cpp
 +++ b/src/render/Renderer.cpp
 @@ -133,6 +133,14 @@ IHyprRenderer::IHyprRenderer() {
@@ -177,8 +177,43 @@ index 249f084..96f1c60 100644
          }
  
          drmFreeVersion(DRMV);
+@@ -2019,6 +2027,21 @@ void IHyprRenderer::renderMirrored() {
+ void IHyprRenderer::renderMonitor(PHLMONITOR pMonitor, bool commit) {
+     if (!pMonitor)
+         return;
++
++    // HYPRLAND_FRAME_TIMING: average whole-frame and commit times to stderr every 30 frames
++    static const bool frameTiming = getenv("HYPRLAND_FRAME_TIMING");
++    const auto        frameT0     = std::chrono::steady_clock::now();
++    static double     frameMs = 0, commitMs = 0;
++    static int        frameN  = 0;
++    auto              frameTimer = CScopeGuard([&]() {
++        if (!frameTiming)
++            return;
++        frameMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frameT0).count();
++        if (++frameN % 30 == 0) {
++            fprintf(stderr, "frame: %.1f ms avg (commit %.1f ms)\n", frameMs / 30, commitMs / 30);
++            frameMs = commitMs = 0;
++        }
++    });
+     static std::chrono::high_resolution_clock::time_point renderStart        = std::chrono::high_resolution_clock::now();
+     static std::chrono::high_resolution_clock::time_point renderStartOverlay = std::chrono::high_resolution_clock::now();
+     static std::chrono::high_resolution_clock::time_point endRenderOverlay   = std::chrono::high_resolution_clock::now();
+@@ -2254,8 +2277,11 @@ void IHyprRenderer::renderMonitor(PHLMONITOR pMonitor, bool commit) {
+     if (pMonitor->m_output->state->state().presentationMode != presentationMode)
+         pMonitor->m_output->state->setPresentationMode(presentationMode);
+ 
+-    if (commit)
++    if (commit) {
++        const auto commitT0 = std::chrono::steady_clock::now();
+         commitPendingAndDoExplicitSync(pMonitor);
++        commitMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - commitT0).count();
++    }
+ 
+     // cleared only after the commit
+     pMonitor->m_renderingActive = false;
 diff --git a/src/render/gl/GLRenderbuffer.cpp b/src/render/gl/GLRenderbuffer.cpp
-index 794d035..19acf58 100644
+index 794d035..52d5deb 100644
 --- a/src/render/gl/GLRenderbuffer.cpp
 +++ b/src/render/gl/GLRenderbuffer.cpp
 @@ -10,6 +10,9 @@
@@ -218,7 +253,7 @@ index 794d035..19acf58 100644
      glBindRenderbuffer(GL_RENDERBUFFER, 0);
  
      m_framebuffer = makeShared<CGLFramebuffer>();
-@@ -71,5 +81,87 @@ void CGLRenderbuffer::bind() {
+@@ -71,5 +81,95 @@ void CGLRenderbuffer::bind() {
  }
  
  void CGLRenderbuffer::unbind() {
@@ -274,6 +309,10 @@ index 794d035..19acf58 100644
 +    if (boxes.empty())
 +        boxes.emplace_back(0, 0, w, h);
 +
++    double readArea = 0;
++    for (const auto& b : boxes)
++        readArea += b.width * b.height;
++
 +    glBindFramebuffer(GL_READ_FRAMEBUFFER, GLFB(m_framebuffer)->m_fb);
 +    glPixelStorei(GL_PACK_ALIGNMENT, 4);
 +    glPixelStorei(GL_PACK_ROW_LENGTH, stride / 4);
@@ -296,12 +335,16 @@ index 794d035..19acf58 100644
 +        static int    n     = 0;
 +        static double total = 0;
 +        static auto   start = t0;
++        static double area  = 0;
++        area += readArea / ((double)w * h);
 +        const auto    now   = std::chrono::steady_clock::now();
 +        total += std::chrono::duration<double, std::milli>(now - t0).count();
 +        if (++n % 30 == 0) {
 +            const double secs = std::chrono::duration<double>(now - start).count();
-+            fprintf(stderr, "readback: %.1f ms avg, %.1f frames/s over 30 frames (%dx%d, %zu rects last)\n", total / 30, 30 / secs, w, h, boxes.size());
++            fprintf(stderr, "readback: %.1f ms avg, %.1f frames/s, %.0f%% of the frame read on average over 30 frames (%dx%d)\n", total / 30, 30 / secs,
++                    100 * area / 30, w, h);
 +            total = 0;
++            area  = 0;
 +            start = now;
 +        }
 +    }

@@ -51,6 +51,8 @@ std::vector<uint8_t> g_fb;  // RGBX, fbW * fbH * 4
 std::atomic<bool> g_started{false};
 std::atomic<bool> g_frameMode{false};  // frames from the export socket; RFB for input only
 std::atomic<bool> g_shown{false};      // a frame has been shown since the source (re)connected
+std::atomic<int> g_exportSock{-1};     // export socket, also carries input to the compositor
+std::mutex g_exportSendMu;
 const char *kExportName = "ohmarchy-display";
 uint8_t g_buttons = 0;
 
@@ -116,6 +118,20 @@ void SendKey(uint32_t keysym, bool down)
     uint8_t m[8] = {4, static_cast<uint8_t>(down ? 1 : 0), 0, 0};
     Put32(m + 4, keysym);
     Send(m, sizeof(m));
+}
+
+// Input for the compositor's export devices: {type, a, b, c} in host byte order.
+//   1 pointer position (output pixels)  2 button (evdev BTN_*), pressed
+//   3 scroll axis (0 vertical, 1 horizontal), steps  4 key (evdev KEY_*), pressed
+bool SendExportInput(int32_t type, int32_t a, int32_t b, int32_t c = 0)
+{
+    int fd = g_exportSock.load();
+    if (fd < 0) {
+        return false;
+    }
+    int32_t msg[4] = {type, a, b, c};
+    std::lock_guard<std::mutex> lk(g_exportSendMu);
+    return WriteAll(fd, msg, sizeof(msg));
 }
 
 void RequestUpdate(int fd, bool incremental)
@@ -428,6 +444,7 @@ void FrameLoop()
         }
         LOGI("frame export connected");
         g_shown = false;
+        g_exportSock = fd;
         g_frameMode = true;
         std::map<uint64_t, ExportBuffer> bufs;
         for (;;) {
@@ -490,7 +507,11 @@ void FrameLoop()
                 close(b.fd);
             }
         }
-        close(fd);
+        g_exportSock = -1;
+        {
+            std::lock_guard<std::mutex> lk(g_exportSendMu);
+            close(fd);
+        }
         g_frameMode = false;
         g_shown = false;
         LOGE("frame export disconnected");
@@ -556,6 +577,13 @@ void OnTouch(OH_NativeXComponent *c, void *window)
     }
     int x, y;
     ToFb(ev.x, ev.y, &x, &y);
+    if (g_frameMode) {
+        SendExportInput(1, x, y);
+        if (ev.type == OH_NATIVEXCOMPONENT_DOWN || ev.type == OH_NATIVEXCOMPONENT_UP) {
+            SendExportInput(2, 0x110, ev.type == OH_NATIVEXCOMPONENT_DOWN);  // BTN_LEFT
+        }
+        return;
+    }
     uint8_t mask = (ev.type == OH_NATIVEXCOMPONENT_DOWN || ev.type == OH_NATIVEXCOMPONENT_MOVE) ? 1 : 0;
     SendPointer(x, y, mask);
 }
@@ -580,6 +608,14 @@ void OnMouse(OH_NativeXComponent *c, void *window)
     }
     int x, y;
     ToFb(ev.x, ev.y, &x, &y);
+    if (g_frameMode) {
+        SendExportInput(1, x, y);
+        if (bit != 0 && (ev.action == OH_NATIVEXCOMPONENT_MOUSE_PRESS || ev.action == OH_NATIVEXCOMPONENT_MOUSE_RELEASE)) {
+            const int32_t btn = bit == 1 ? 0x110 : (bit == 2 ? 0x112 : 0x111);  // BTN_LEFT/MIDDLE/RIGHT
+            SendExportInput(2, btn, ev.action == OH_NATIVEXCOMPONENT_MOUSE_PRESS);
+        }
+        return;
+    }
     SendPointer(x, y, g_buttons);
 }
 
@@ -593,6 +629,11 @@ void OnAxis(OH_NativeXComponent *, ArkUI_UIInputEvent *event, ArkUI_UIInputEvent
     int x, y;
     ToFb(OH_ArkUI_PointerEvent_GetX(event), OH_ArkUI_PointerEvent_GetY(event), &x, &y);
     if (v == 0) {
+        return;
+    }
+    if (g_frameMode) {
+        SendExportInput(1, x, y);
+        SendExportInput(3, 0, v < 0 ? -1 : 1);
         return;
     }
     uint8_t wheel = v < 0 ? 8 : 16;  // buttons 4/5: scroll up/down
@@ -661,6 +702,75 @@ uint32_t KeySym(OH_NativeXComponent_KeyCode k)
     }
 }
 
+// OpenHarmony key code -> Linux evdev KEY_* code (the compositor applies the keymap).
+uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
+{
+    static const uint8_t letters[26] = {30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38, 50,
+                                        49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44};
+    static const uint8_t numpad[10] = {82, 79, 80, 81, 75, 76, 77, 71, 72, 73};
+    if (k >= KEY_A && k <= KEY_Z) {
+        return letters[k - KEY_A];
+    }
+    if (k >= KEY_1 && k <= KEY_9) {
+        return 2 + (k - KEY_1);
+    }
+    if (k >= KEY_F1 && k <= KEY_F10) {
+        return 59 + (k - KEY_F1);
+    }
+    if (k >= KEY_NUMPAD_0 && k <= KEY_NUMPAD_9) {
+        return numpad[k - KEY_NUMPAD_0];
+    }
+    switch (k) {
+        case KEY_0: return 11;
+        case KEY_F11: return 87;
+        case KEY_F12: return 88;
+        case KEY_ENTER: return 28;
+        case KEY_NUMPAD_ENTER: return 96;
+        case KEY_ESCAPE: return 1;
+        case KEY_TAB: return 15;
+        case KEY_DEL: return 14;
+        case KEY_FORWARD_DEL: return 111;
+        case KEY_SPACE: return 57;
+        case KEY_DPAD_LEFT: return 105;
+        case KEY_DPAD_UP: return 103;
+        case KEY_DPAD_RIGHT: return 106;
+        case KEY_DPAD_DOWN: return 108;
+        case KEY_MOVE_HOME: return 102;
+        case KEY_MOVE_END: return 107;
+        case KEY_PAGE_UP: return 104;
+        case KEY_PAGE_DOWN: return 109;
+        case KEY_INSERT: return 110;
+        case KEY_SHIFT_LEFT: return 42;
+        case KEY_SHIFT_RIGHT: return 54;
+        case KEY_CTRL_LEFT: return 29;
+        case KEY_CTRL_RIGHT: return 97;
+        case KEY_CAPS_LOCK: return 58;
+        case KEY_ALT_LEFT: return 56;
+        case KEY_ALT_RIGHT: return 100;
+        case KEY_META_LEFT: return 125;
+        case KEY_META_RIGHT: return 126;
+        case KEY_MENU: return 127;
+        case KEY_MINUS: return 12;
+        case KEY_EQUALS: return 13;
+        case KEY_LEFT_BRACKET: return 26;
+        case KEY_RIGHT_BRACKET: return 27;
+        case KEY_BACKSLASH: return 43;
+        case KEY_SEMICOLON: return 39;
+        case KEY_APOSTROPHE: return 40;
+        case KEY_GRAVE: return 41;
+        case KEY_COMMA: return 51;
+        case KEY_PERIOD: return 52;
+        case KEY_SLASH: return 53;
+        case KEY_NUMPAD_DIVIDE: return 98;
+        case KEY_NUMPAD_MULTIPLY: return 55;
+        case KEY_NUMPAD_SUBTRACT: return 74;
+        case KEY_NUMPAD_ADD: return 78;
+        case KEY_NUMPAD_DOT: return 83;
+        case KEY_SYSRQ: return 99;
+        default: return 0;
+    }
+}
+
 bool OnKey(OH_NativeXComponent *c, void *)
 {
     OH_NativeXComponent_KeyEvent *ev = nullptr;
@@ -671,6 +781,15 @@ bool OnKey(OH_NativeXComponent *c, void *)
     OH_NativeXComponent_KeyCode code;
     OH_NativeXComponent_GetKeyEventAction(ev, &action);
     OH_NativeXComponent_GetKeyEventCode(ev, &code);
+    if (g_frameMode) {
+        uint32_t key = EvdevKey(code);
+        if (key == 0) {
+            LOGI("unmapped key %{public}d", static_cast<int>(code));
+            return false;
+        }
+        SendExportInput(4, static_cast<int32_t>(key), action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN);
+        return true;
+    }
     uint32_t sym = KeySym(code);
     if (sym == 0) {
         LOGI("unmapped key %{public}d", static_cast<int>(code));

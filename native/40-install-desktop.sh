@@ -67,6 +67,16 @@ grep -q url_replacements "$home/.config/mise/config.toml" 2>/dev/null || cat >> 
 "https://github.com" = "https://gh-proxy.com/https://github.com"
 "https://api.github.com" = "https://gh-proxy.com/https://api.github.com"
 T
+# HarmonyOS locks the machine; Omarchy's idle lock would need a user password the
+# chroot user does not have, and its screensaver only burns CPU here.
+su "$user" -c "python3 - ~/.config/omarchy/shell.json" <<'P'
+import json, os, sys
+p = os.path.expanduser(sys.argv[1]) if len(sys.argv) > 1 else os.path.expanduser("~/.config/omarchy/shell.json")
+d = json.load(open(p)) if os.path.exists(p) else {}
+d.setdefault("idle", {}).update({"lock": 0, "screensaver": 0})
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(d, open(p, "w"), indent=2)
+P
 chown -R "$user:" "$home/.config/chromium-flags.conf" "$home/.config/mise"
 install -m 644 -o "$user" -g "$user" "$here/desktop/ohdisplay.lua" "$home/.config/hypr/ohdisplay.lua"
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime

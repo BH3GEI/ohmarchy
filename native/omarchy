@@ -1,0 +1,64 @@
+#!/system/bin/sh
+# Enter the native Arch session from a root shell on the HarmonyOS host.
+#   omarchy                  login shell as ARCH_USER (default builder)
+#   omarchy root             login shell as root
+#   omarchy [root] -c CMD..  run CMD (remaining words joined) in a login shell
+#   omarchy -g APP [ARG..]   start a Wayland app, shown as a window in the
+#                            鸿融 VM's Hyprland (route C) through waypipe
+#   omarchy start|stop|status
+# The session is started on demand.
+B=${ARCH_BASE:-$(cd "$(dirname "$0")/.." && pwd)}
+R=$B/arch
+user=${ARCH_USER:-builder}
+
+case "$1" in
+start|stop|status) exec sh "$B/arch.sh" "$1" ;;
+root) user=root; shift ;;
+esac
+cmd= gui=
+case "$1" in
+-c) shift; cmd="$*"; [ -n "$cmd" ] || { echo "omarchy: -c needs a command" >&2; exit 2; } ;;
+-g)
+    shift; [ -n "$*" ] || { echo "omarchy: -g needs an app" >&2; exit 2; }
+    gui=1
+    # One socat bridge per session from a local waypipe socket to the VM's
+    # route-d-display listener (the host only connects out), then a detached
+    # waypipe server per app; it exits with the app. Log: $XDG_RUNTIME_DIR/route-d.log
+    vm=${ROUTE_D_VM:-172.16.100.2:7777}
+    cmd='s=$XDG_RUNTIME_DIR/route-d.sock p=$XDG_RUNTIME_DIR/route-d-bridge.pid l=$XDG_RUNTIME_DIR/route-d.log
+if ! { [ -S "$s" ] && kill -0 "$(cat "$p" 2>/dev/null)" 2>/dev/null; }; then
+    rm -f "$s"
+    setsid socat UNIX-LISTEN:"$s",fork TCP:'"$vm"' < /dev/null >> "$l" 2>&1 &
+    echo $! > "$p"
+    i=0; while [ ! -S "$s" ] && [ $i -lt 30 ]; do sleep 0.1; i=$((i+1)); done
+fi
+setsid waypipe --no-gpu --compress lz4 --socket "$s" server -- '"$*"' < /dev/null >> "$l" 2>&1 &
+echo "started $! (log: $l)"'
+    ;;
+esac
+
+sh "$B/arch.sh" start > /dev/null || { sh "$B/arch.sh" status; exit 1; }
+P=$(cat "$B/session.pid")
+pw=$(grep "^$user:" "/proc/$P/root/etc/passwd") || { echo "omarchy: no user $user" >&2; exit 1; }
+uid=$(echo "$pw" | cut -d: -f3)
+gid=$(echo "$pw" | cut -d: -f4)
+home=$(echo "$pw" | cut -d: -f6)
+
+# As root inside: runtime dir, pty owner, cwd; then switch user and groups
+# with coreutils chroot to / (setpriv fails: no PR_SET_KEEPCAPS; no PAM here).
+exec nsenter -t "$P" -m -p -- chroot "$R" /usr/bin/env -i \
+    HOME="$home" USER="$user" LOGNAME="$user" SHELL=/bin/bash \
+    TERM="${TERM:-xterm-256color}" COLORTERM="${COLORTERM:-truecolor}" \
+    LANG="${LANG:-en_US.UTF-8}" XDG_RUNTIME_DIR="/run/user/$uid" \
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/bin \
+    /usr/bin/bash -c '
+uid=$1 gid=$2 user=$3 cmd=$4 gui=$5
+install -d -m 700 -o "$uid" -g "$gid" "$XDG_RUNTIME_DIR"
+t=$(tty 2>/dev/null) && chown "$uid" "$t" 2>/dev/null
+cd "$HOME" 2>/dev/null || cd /
+set -- /usr/bin/chroot --skip-chdir --userspec="$uid:$gid" --groups="$(id -G "$user" | tr " " ,)" / /usr/bin/bash -l
+# The pty is the controlling tty of a session outside this pid namespace;
+# without a session of its own bash gets no job control.
+[ -t 0 ] && [ "$gui" != 1 ] && set -- /usr/bin/setsid -w -c "$@"
+[ -n "$cmd" ] && exec "$@" -c "$cmd"
+exec "$@"' omarchy "$uid" "$gid" "$user" "$cmd" "$gui"

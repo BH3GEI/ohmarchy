@@ -1,0 +1,10 @@
+#!/bin/bash
+# Show Route D (native Arch on the HarmonyOS host) apps in this Hyprland session.
+# Route D connects out to 172.16.100.2:7777; waypipe client draws its windows here.
+SOCK=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/route-d.sock
+pkill -u "$USER" -f "waypipe .*--socket $SOCK client" 2>/dev/null
+pkill -u "$USER" -f "socat TCP-LISTEN:7777" 2>/dev/null
+rm -f "$SOCK"
+waypipe --compress lz4 --socket "$SOCK" client &
+sleep 0.5
+exec socat TCP-LISTEN:7777,bind=172.16.100.2,reuseaddr,fork UNIX-CONNECT:"$SOCK"

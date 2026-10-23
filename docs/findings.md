@@ -101,6 +101,49 @@ Observed on a MateBook 14 (HongMeng kernel 1.11.13.0), 鸿融 1.3.1.80.
 - busybox chooses the applet from its file name, so a copy named anything other
   than `busybox` fails with "applet not found".
 
+## HongMeng kernel (route D)
+
+Observed on a Kirin X90 HarmonyOS PC, HongMeng kernel 1.11.13.0, from a root
+shell on the host. Details and workarounds: [native-chroot.md](native-chroot.md).
+
+- An unmodified Arch Linux ARM userland runs on the HongMeng kernel in a
+  chroot. Working: threads, futexes, epoll, eventfd, timerfd, signalfd,
+  inotify, memfd with sealing, io_uring, ptrace (gdb, strace), large sparse
+  mmaps, pseudo-terminals, sockets. Page size 4K. `uname` reports the HongMeng
+  kernel; glibc does not mind.
+- Namespaces: ipc, mnt, net, pid, time, uts. No user or cgroup namespaces, and
+  cgroup v1 only, so systemd cannot be pid 1. No Landlock, so pacman needs
+  `DisableSandbox`.
+- No `/dev/dri` and no `/dev/kvm`. Hyprland (aquamarine) finds no allocator;
+  sway runs on its headless backend with pixman. So route D is the native-speed
+  CLI and development environment, and route C is the desktop. Wayland apps
+  from route D reach route C's Hyprland through waypipe over the VM bridge
+  (the host connects out to the guest; CPU rendering on the host).
+- `splice()` from a drained pipe whose writers are gone into another pipe
+  fails with EPIPE instead of returning 0. coreutils 9.12 `cat` hits this on
+  every `cat > file <<EOF` and exits 1.
+- Loop devices: only `loop0` has a node under `/dev` (all are in `/dev/block`),
+  toybox `mount -o loop` fails with EFAULT, and a loop stays bound when the
+  mount namespace that mounted it is torn down.
+- `/data` is hmfs, `nosuid,nodev`, `errors=panic`. tmpfs labels its files
+  `u:object_r:tmpfs:s0`, and ext4 refuses to take that label over on `mv`.
+- Binding a device node onto a file fails; `mknod -m` is masked by umask;
+  devpts has no `ptmx` and no `newinstance`.
+- `prctl(PR_SET_KEEPCAPS)` is not permitted, so `setpriv` fails; coreutils
+  `chroot --userspec` works.
+- There is no user namespace, so uids inside are host uids. HarmonyOS uses most
+  uids below 10000 for its services (1000 `system`, 1001 `radio`, ...).
+- The built-in terminal (`com.huawei.hmos.hishell`) runs as an app uid and the
+  system has no `su`. A setuid `/system/bin/sudo` exists (sudoers under
+  `/data/service/el1/public/sudo_config/`); not tried.
+- GitHub is not reachable from the host's network here; TUNA, gitee,
+  `pkgs.omarchy.cn` and keys.openpgp.org are.
+- Possible building blocks for a native display bridge, not exercised: the
+  host has no Venus or vtest server (its virglrenderer is built without
+  Venus); `/dev/system_heap2` is a mode-666 dma-heap; root's SELinux `su`
+  domain is permissive, and `normal_hap_attr` (ordinary apps) may `connectto`
+  unix sockets of the `su` domain.
+
 ## Host link
 
 - A USB-C cable between the host laptop and the HarmonyOS machine keeps

@@ -1,15 +1,16 @@
 # ohmarchy: Omarchy on HarmonyOS
 
 Running [Omarchy](https://omarchy.org) (Arch Linux + Hyprland) on a HarmonyOS PC,
-driven from a Linux host over `hdc`. Developed on a HUAWEI MateBook Fold
-(HarmonyOS 7.0) with the AArch64 Omarchy build from
-[riverscn/omarchy-aarch64-image](https://github.com/riverscn/omarchy-aarch64-image).
+driven from a Linux host over `hdc` (route D: from a root shell on the
+machine). Developed on a HUAWEI MateBook Fold (HarmonyOS 7.0) with the
+AArch64 Omarchy build from [riverscn/omarchy-aarch64-image](https://github.com/riverscn/omarchy-aarch64-image).
 
 | Route | What runs on the HarmonyOS machine | Status |
 |---|---|---|
 | **A. Linux engine apps**: [docs/linux-engine-apps.md](docs/linux-engine-apps.md) | Omarchy's neovim setup and CLI tools inside HarmonyOS's Linux engine, each in a native HarmonyOS window | Works |
 | **B. Whole OS in the Oseasy VM**: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | The complete Omarchy AArch64 OS (its disk, systemd, NetworkManager, SDDM) on a Debian 6.1 kernel in the Oseasy VM app | Boots, with text console and a network root shell; the Hyprland desktop is not displayed yet (see status) |
 | **C. Whole OS in the 鸿融 Linux VM**: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | Omarchy 4.0.6 (Arch Linux ARM) next to a deepin 25 guest in Huawei's Linux VM app, booting deepin's 6.6 kernel | Boots to the SDDM greeter and the Hyprland desktop, GPU-accelerated through virgl (OpenGL only) after 鸿融 starts the VM from cold |
+| **D. Native on the HongMeng kernel**: [docs/native-chroot.md](docs/native-chroot.md) | Arch Linux ARM with Omarchy's packages in a chroot on the host itself (no VM), entered from a root shell | Omarchy's terminal side at native speed (shell, LazyVim, themes, btop, lazygit, mise); no GPU or DRM, so no native Hyprland, but Wayland apps show as windows in route C's desktop via waypipe |
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
@@ -41,6 +42,22 @@ In the 鸿融 VM: install deepin 25 (arm64), give it a static address on
 reboot, and in Arch `~USER/hongrong/20-install-omarchy.sh USER`. Details and
 caveats: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md#install).
 
+## Route D quick start
+
+As root on the HarmonyOS machine (a root shell that may `unshare`, `mount` and
+`chroot`; see [docs/native-chroot.md](docs/native-chroot.md#getting-a-root-shell-on-the-host)),
+in a copy of `native/`:
+
+```sh
+sh 10-make-image.sh                                  # Arch Linux ARM into /data/local/archtest/arch.img
+sh /data/local/archtest/arch.sh start
+sh /data/local/archtest/arch.sh run 20-setup-arch.sh builder
+sh /data/local/archtest/arch.sh stop; sh /data/local/archtest/arch.sh start
+sh /data/local/archtest/arch.sh run 30-install-omarchy.sh builder
+/data/local/archtest/bin/omarchy                     # Omarchy shell as builder
+/data/local/archtest/bin/omarchy -g foot             # a window in route C's Hyprland (native/vm/route-d-display in the VM)
+```
+
 ## Layout
 
 ```
@@ -56,6 +73,8 @@ tools/kbuild/      build out-of-tree arm64 modules against Debian headers with c
 tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-key typing into VMs
 hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
 linux-engine/      route A install scripts (run inside the Linux engine container)
+native/            route D: image build, session manager (arch.sh), launcher (omarchy), Arch + Omarchy setup
+  vm/              waypipe receiver for route C's desktop
 docs/
 ```
 

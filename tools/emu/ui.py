@@ -4,17 +4,25 @@
 usage: ui.py tap TEXT [--nth N] [--timeout S] [--prefix|--contains]   wait for TEXT, tap its center
        ui.py wait TEXT [--timeout S] [--prefix|--contains]            wait until TEXT is on screen
        ui.py has TEXT [--prefix|--contains]                           exit 0 if TEXT is on screen now
+       ui.py gone TEXT [--timeout S]                                   wait until TEXT is no longer shown
+       ui.py maximize TITLE                                double-click a window title unless maximized
        ui.py texts                                         list visible texts with bounds
        ui.py tapxy X Y | key CODE | type X Y STR           raw input (device pixels)
 
+TEXT may list alternatives as "A|B" (the system UI may be English or Chinese).
 Matching is on the whole text unless --prefix or --contains (buttons such as
 "🖥️ 普通启动 (VNC)" carry an emoji). --nth picks among several matches
 in screen order (top to bottom, left to right), 0-based; negative counts from
 the end. Only hdc targets 127.0.0.1:* (the emulator) are used.
+
+While waiting for a text, system dialogs that pop up at their own time are
+answered: "Never add" (add-to-home prompts after installs) and "Allow" (the
+app's file permissions). Override with UI_DISMISS="A|B", empty to disable.
 """
 import argparse, json, os, re, subprocess, sys, tempfile, time
 
 HDC = os.environ.get('HDC', 'hdc')
+DISMISS = [d for d in os.environ.get('UI_DISMISS', 'Never add|Allow').split('|') if d]
 
 
 def target():
@@ -59,13 +67,19 @@ def texts():
 
 
 def find(text, mode, timeout):
-    match = {'exact': lambda t: t == text, 'prefix': lambda t: t.startswith(text),
-             'contains': lambda t: text in t}[mode]
+    alts = text.split('|')  # "Downloads|下载": any of them (system UI language varies)
+    one = {'exact': lambda t, a: t == a, 'prefix': lambda t, a: t.startswith(a),
+           'contains': lambda t, a: a in t}[mode]
+    match = lambda t: any(one(t, a) for a in alts)
     end = time.time() + timeout
     while True:
-        hits = [f for f in texts() if match(f[0])]
+        found = texts()
+        hits = [f for f in found if match(f[0])]
         if hits or time.time() >= end:
             return hits
+        dialog = [f for f in found if f[0] in DISMISS and f[0] not in alts]
+        if dialog:
+            hdc('shell', f'uitest uiInput click {dialog[0][1]} {dialog[0][2]}')
         time.sleep(1)
 
 
@@ -93,6 +107,20 @@ def main():
         if o.cmd == 'tap':
             _, x, y = hits[o.nth]
             hdc('shell', f'uitest uiInput click {x} {y}')
+    elif o.cmd == 'gone':
+        end = time.time() + o.timeout
+        while any(t == o.args[0] for t, _, _ in texts()):
+            if time.time() >= end:
+                sys.exit(f'still on screen after {o.timeout:.0f}s: {o.args[0]!r}')
+            time.sleep(3)
+    elif o.cmd == 'maximize':  # a double-click on a maximized window would restore it
+        hits = find(o.args[0], 'exact', o.timeout)
+        if not hits:
+            sys.exit(f'no window titled {o.args[0]!r}')
+        _, x, y = hits[0]
+        if y > 80:
+            hdc('shell', f'uitest uiInput doubleClick {x} {y}')
+            time.sleep(2)
     elif o.cmd == 'tapxy':
         hdc('shell', f'uitest uiInput click {o.args[0]} {o.args[1]}')
     elif o.cmd == 'key':

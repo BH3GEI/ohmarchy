@@ -36,10 +36,10 @@ emulator 26.0.0.402, image 7.0.0.107:
   `60-desktop.sh` replaces it with tty1 autologin into the uwsm session and
   turns on Omarchy's stay-awake switch; after its reboot the guest comes up in
   an unlocked desktop, see [Start the desktop](#start-the-desktop).
-- Scripts: `10`, `20` and `60` were run as committed (`10` and `20` against
-  existing inputs, `60` end to end on a set-up guest). `30` repeats steps first
-  done by hand. `40` and `50` follow the verified manual steps but have not yet
-  been run from a fresh emulator instance.
+- Scripts: on a fresh emulator instance (Chinese system locale), `10`, `30` and
+  `40` ran as committed (`40`: about 3 minutes including the 3.4 GB import);
+  `20` ran against already downloaded inputs; `60` ran end to end on a set-up
+  guest. `50` and `60` on the fresh instance: in progress.
 - Timing on the test machine: boot to the wizard about 5 minutes; Omarchy's
   first-boot setup about 50 minutes, most of it in `mkinitcpio` rebuilding the
   Limine UKI (gzip under TCG); the desktop about 2 minutes after `uwsm start`.
@@ -98,10 +98,12 @@ firmware, clear the app data (`hdc shell bm clean -n com.caidingding233.qemuhmos
 ## Create the VM
 
 `40-create-vm.sh` does this by visible text (`tools/emu/ui.py`, built on
-`uitest dumpLayout`), so window size and position do not matter. It expects the
-app freshly installed by `30-install.sh` and an English system UI (the file
-picker's Downloads/Open). The manual steps it follows are below. Two app bugs
-shape the order:
+`uitest dumpLayout`): it maximizes the window (VM settings are below the fold
+otherwise), answers the add-to-home and permission dialogs whenever they pop
+up, matches the file picker in English or Chinese, waits for the picker to
+settle before navigating, and does not rely on the start-mode sheet, which
+only sometimes opens after 创建并启动. The manual steps it follows are below.
+Two app bugs shape the order:
 
 - After a data reset, importing a disk fails with "导入磁盘镜像失败: No such file
   or directory": the import creates `files/vms/NAME` but not `files/vms`.

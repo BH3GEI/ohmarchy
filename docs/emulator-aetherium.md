@@ -22,18 +22,24 @@ emulator 26.0.0.402, image 7.0.0.107:
 
 - The Omarchy disk boots through UEFI and Limine on Omarchy's own 7.2.3 kernel
   (no kernel swap, unlike route B).
-- Firmware, Limine, the tty1 first-boot wizard and the setup screen show on
-  `virtio-gpu-pci`, in RemoteDesk's HarmonyOS window and over VNC on the host.
+- Firmware, Limine, the tty1 first-boot wizard, the setup screen and the
+  desktop show on `virtio-gpu-pci`, in RemoteDesk's HarmonyOS window and over
+  VNC on the host.
 - The first-boot wizard completes (keys sent over VNC, so no HarmonyOS IME is
   involved).
-- Not verified yet: the Hyprland desktop. After the wizard, Omarchy's
-  "Setting up your machine" screen reached about 97% within roughly 15 minutes
-  and was still there 30+ minutes later; SDDM/Hyprland had not appeared when
-  this was written.
-- Everything is software emulation inside an emulator: QEMU TCG on top of the
-  emulator's own virtualization. Boot to the wizard takes about 5 minutes; the
-  QEMU process used about one host core. Usable as a proof that the stack
-  works, not as a daily desktop.
+- The Hyprland desktop runs: Omarchy 4.0.3, Hyprland 0.56.1 (Wayland) on
+  llvmpipe, Quickshell bar, notifications, terminal, hyprlock, fastfetch;
+  shown full-screen in RemoteDesk inside HarmonyOS (screenshot below).
+- SDDM never gets there on its own: its Wayland greeter is killed about 21 s
+  after it starts (`Auth: sddm-helper exited with 2`, then a new greeter), and
+  under TCG the greeter's Hyprland plus the Qt greeter need longer. The session
+  is started from a text console instead, see
+  [Start the desktop](#start-the-desktop).
+- Timing on the test machine: boot to the wizard about 5 minutes; Omarchy's
+  first-boot setup about 50 minutes, most of it in `mkinitcpio` rebuilding the
+  Limine UKI (gzip under TCG); the desktop about 2 minutes after `uwsm start`.
+  Everything is software emulation inside an emulator, so it is a proof that
+  the stack works, not a daily desktop.
 
 Not available in the emulator: hardware virtualization (no `/dev/kvm`, no
 hypervisor nodes, no `vm_manager` access), so routes B and C (Oseasy, 鸿融,
@@ -145,6 +151,25 @@ VM through HarmonyOS apps instead needs the emulator's only IME (Celia
 Keyboard), which asks for its own agreement on first use; its Basic mode is
 enough.
 
+### Start the desktop
+
+When the setup screen is gone, SDDM loops on the greeter (dark empty screen).
+Start the Omarchy session on tty2 instead; type slowly, the guest drops fast
+keys:
+
+```sh
+tools/vnc/vnckey.py 127.0.0.1 15901 '{C-A-F2}'
+VNCKEY_DELAY=0.8 tools/vnc/vnckey.py 127.0.0.1 15901 USER '{Return}' '{sleep:25}' PASSWORD '{Return}'
+VNCKEY_DELAY=0.8 tools/vnc/vnckey.py 127.0.0.1 15901 'uwsm start -g -1 -e -D Hyprland hyprland.desktop' '{Return}'
+```
+
+That is the `Exec` of Omarchy's `omarchy.desktop` session. Hyprland falls back
+from `card0` (no 3D on virtio-gpu here: "DRI2: failed to create screen") to
+llvmpipe on `renderD128`. After about 10 minutes idle, hypridle starts the
+screensaver, locks with hyprlock and turns the output off; any key wakes it,
+and the password unlocks it (type it slowly, too). To skip SDDM permanently,
+`sudo systemctl disable sddm` and start the session from a console login.
+
 ### Show it inside HarmonyOS
 
 RemoteDesk → 离线模式进入 → VNC 主机 → + → VNC → TCP 直连, server `127.0.0.1`,
@@ -187,3 +212,9 @@ How this was found, in order:
 5. Omarchy booted to `omarchy login:` on serial with a black screen. Root is
    locked, so a debug shell via Limine showed virtio-gpu probe failure on the
    legacy MMIO transport → `virtio-gpu-pci` in the freed TPM slot.
+6. After the wizard the setup screen sat near 97% for a long time; logged in
+   on the serial console as the new user, `ps` showed `mkinitcpio` building the
+   UKI (not a hang). It finished after about 50 minutes in total.
+7. SDDM then looped: greeter started, `sddm-helper exited with 2` about 21 s
+   later, repeat. Hyprland itself rendered (llvmpipe) in the greeter's log, so
+   the session was started with `uwsm` from tty2 and came up.

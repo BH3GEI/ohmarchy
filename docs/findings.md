@@ -190,3 +190,11 @@ Apple Silicon Mac.
   field is focused, and its pinyin mode turns `uitest inputText` letters into a
   candidate; Enter commits the raw letters. VNC key events into the guest avoid
   the IME entirely.
+- Under TCG, Omarchy's first-boot setup spends most of its ~50 minutes in
+  `mkinitcpio` rebuilding the Limine UKI (gzip). SDDM's Wayland greeter is then
+  killed about 21 s after each start (`sddm-helper exited with 2`), so SDDM
+  loops; `uwsm start -g -1 -e -D Hyprland hyprland.desktop` from a console login
+  brings up the desktop. Hyprland uses llvmpipe: `card0` (virtio-gpu without
+  virgl) fails EGL with "DRI2: failed to create screen".
+- Omarchy's Hyprland uses the Lua config: `hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`,
+  not `dispatch dpms on`.

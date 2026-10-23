@@ -5,6 +5,7 @@
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <arkui/ui_input_event.h>
 #include <hilog/log.h>
+#include <inputmethod/inputmethod_controller_capi.h>
 #include <napi/native_api.h>
 #include <native_buffer/buffer_common.h>
 #include <native_buffer/native_buffer.h>
@@ -702,6 +703,179 @@ uint32_t KeySym(OH_NativeXComponent_KeyCode k)
     }
 }
 
+// ---- Input method: Ctrl+Space attaches the HarmonyOS IME; its text goes to ohime in the
+// chroot (@ohmarchy-ime: {uint32 type, uint32 len} + UTF-8; 1 commit, 2 preedit), which
+// commits it to the focused Linux app. Detached, keys go to the compositor as evdev codes.
+const char *kImeName = "ohmarchy-ime";
+InputMethod_TextEditorProxy *g_imeEditor = nullptr;
+InputMethod_InputMethodProxy *g_imeProxy = nullptr;
+std::mutex g_imeMu;
+int g_imeSock = -1;
+
+std::string Utf8(const char16_t *text, size_t length)
+{
+    std::string out;
+    for (size_t i = 0; i < length; i++) {
+        uint32_t c = text[i];
+        if (c >= 0xD800 && c <= 0xDBFF && i + 1 < length && text[i + 1] >= 0xDC00 && text[i + 1] <= 0xDFFF) {
+            c = 0x10000 + ((c - 0xD800) << 10) + (text[++i] - 0xDC00);
+        }
+        if (c < 0x80) {
+            out += static_cast<char>(c);
+        } else if (c < 0x800) {
+            out += static_cast<char>(0xC0 | (c >> 6));
+            out += static_cast<char>(0x80 | (c & 0x3F));
+        } else if (c < 0x10000) {
+            out += static_cast<char>(0xE0 | (c >> 12));
+            out += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (c & 0x3F));
+        } else {
+            out += static_cast<char>(0xF0 | (c >> 18));
+            out += static_cast<char>(0x80 | ((c >> 12) & 0x3F));
+            out += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+            out += static_cast<char>(0x80 | (c & 0x3F));
+        }
+    }
+    return out;
+}
+
+bool SendIme(uint32_t type, const std::string &text)
+{
+    std::lock_guard<std::mutex> lk(g_imeMu);
+    for (int attempt = 0; attempt < 2; attempt++) {
+        if (g_imeSock < 0) {
+            g_imeSock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+            sockaddr_un a{};
+            a.sun_family = AF_UNIX;
+            size_t len = strlen(kImeName);
+            memcpy(a.sun_path + 1, kImeName, len);
+            if (connect(g_imeSock, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + len) != 0) {
+                close(g_imeSock);
+                g_imeSock = -1;
+                return false;
+            }
+        }
+        uint32_t hdr[2] = {type, static_cast<uint32_t>(text.size())};
+        if (WriteAll(g_imeSock, hdr, sizeof(hdr)) && WriteAll(g_imeSock, text.data(), text.size())) {
+            return true;
+        }
+        close(g_imeSock);  // ohime restarted: reconnect once
+        g_imeSock = -1;
+    }
+    return false;
+}
+
+void TapKey(int32_t key)
+{
+    SendExportInput(4, key, 1);
+    SendExportInput(4, key, 0);
+}
+
+void ImeGetTextConfig(InputMethod_TextEditorProxy *, InputMethod_TextConfig *config)
+{
+    OH_TextConfig_SetInputType(config, IME_TEXT_INPUT_TYPE_TEXT);
+    OH_TextConfig_SetEnterKeyType(config, IME_ENTER_KEY_NEWLINE);
+    OH_TextConfig_SetPreviewTextSupport(config, true);
+}
+void ImeInsertText(InputMethod_TextEditorProxy *, const char16_t *text, size_t length)
+{
+    SendIme(1, Utf8(text, length));
+}
+void ImeDeleteForward(InputMethod_TextEditorProxy *, int32_t length)
+{
+    for (int32_t i = 0; i < length; i++) {
+        TapKey(111);  // KEY_DELETE
+    }
+}
+void ImeDeleteBackward(InputMethod_TextEditorProxy *, int32_t length)
+{
+    for (int32_t i = 0; i < length; i++) {
+        TapKey(14);  // KEY_BACKSPACE
+    }
+}
+void ImeKeyboardStatus(InputMethod_TextEditorProxy *, InputMethod_KeyboardStatus) {}
+void ImeEnter(InputMethod_TextEditorProxy *, InputMethod_EnterKeyType)
+{
+    TapKey(28);  // KEY_ENTER
+}
+void ImeMoveCursor(InputMethod_TextEditorProxy *, InputMethod_Direction direction)
+{
+    switch (direction) {
+        case IME_DIRECTION_UP: TapKey(103); break;
+        case IME_DIRECTION_DOWN: TapKey(108); break;
+        case IME_DIRECTION_LEFT: TapKey(105); break;
+        case IME_DIRECTION_RIGHT: TapKey(106); break;
+        default: break;
+    }
+}
+void ImeSetSelection(InputMethod_TextEditorProxy *, int32_t, int32_t) {}
+void ImeExtendAction(InputMethod_TextEditorProxy *, InputMethod_ExtendAction) {}
+void ImeLeftText(InputMethod_TextEditorProxy *, int32_t, char16_t[], size_t *length)
+{
+    *length = 0;  // the Linux app's text is not visible from here
+}
+void ImeRightText(InputMethod_TextEditorProxy *, int32_t, char16_t[], size_t *length)
+{
+    *length = 0;
+}
+int32_t ImeIndexAtCursor(InputMethod_TextEditorProxy *)
+{
+    return 0;
+}
+int32_t ImePrivateCommand(InputMethod_TextEditorProxy *, InputMethod_PrivateCommand *[], size_t)
+{
+    return 0;
+}
+int32_t ImeSetPreview(InputMethod_TextEditorProxy *, const char16_t text[], size_t length, int32_t, int32_t)
+{
+    SendIme(2, Utf8(text, length));
+    return 0;
+}
+void ImeFinishPreview(InputMethod_TextEditorProxy *)
+{
+    SendIme(2, "");
+}
+
+void ImeToggle()
+{
+    if (g_imeProxy != nullptr) {
+        OH_InputMethodController_Detach(g_imeProxy);
+        g_imeProxy = nullptr;
+        SendIme(2, "");
+        LOGI("ime: detached, keys go to the desktop");
+        return;
+    }
+    if (g_imeEditor == nullptr) {
+        g_imeEditor = OH_TextEditorProxy_Create();
+        OH_TextEditorProxy_SetGetTextConfigFunc(g_imeEditor, ImeGetTextConfig);
+        OH_TextEditorProxy_SetInsertTextFunc(g_imeEditor, ImeInsertText);
+        OH_TextEditorProxy_SetDeleteForwardFunc(g_imeEditor, ImeDeleteForward);
+        OH_TextEditorProxy_SetDeleteBackwardFunc(g_imeEditor, ImeDeleteBackward);
+        OH_TextEditorProxy_SetSendKeyboardStatusFunc(g_imeEditor, ImeKeyboardStatus);
+        OH_TextEditorProxy_SetSendEnterKeyFunc(g_imeEditor, ImeEnter);
+        OH_TextEditorProxy_SetMoveCursorFunc(g_imeEditor, ImeMoveCursor);
+        OH_TextEditorProxy_SetHandleSetSelectionFunc(g_imeEditor, ImeSetSelection);
+        OH_TextEditorProxy_SetHandleExtendActionFunc(g_imeEditor, ImeExtendAction);
+        OH_TextEditorProxy_SetGetLeftTextOfCursorFunc(g_imeEditor, ImeLeftText);
+        OH_TextEditorProxy_SetGetRightTextOfCursorFunc(g_imeEditor, ImeRightText);
+        OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(g_imeEditor, ImeIndexAtCursor);
+        OH_TextEditorProxy_SetReceivePrivateCommandFunc(g_imeEditor, ImePrivateCommand);
+        OH_TextEditorProxy_SetSetPreviewTextFunc(g_imeEditor, ImeSetPreview);
+        OH_TextEditorProxy_SetFinishTextPreviewFunc(g_imeEditor, ImeFinishPreview);
+    }
+    InputMethod_AttachOptions *options = OH_AttachOptions_Create(false);
+    InputMethod_ErrorCode rc = OH_InputMethodController_Attach(g_imeEditor, options, &g_imeProxy);
+    OH_AttachOptions_Destroy(options);
+    if (rc != IME_ERR_OK) {
+        LOGE("ime: attach failed %{public}d", static_cast<int>(rc));
+        g_imeProxy = nullptr;
+        return;
+    }
+    LOGI("ime: attached, text goes to the focused Linux app");
+}
+
+bool g_ctrlDown = false;
+
 // OpenHarmony key code -> Linux evdev KEY_* code (the compositor applies the keymap).
 uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
 {
@@ -781,7 +955,23 @@ bool OnKey(OH_NativeXComponent *c, void *)
     OH_NativeXComponent_KeyCode code;
     OH_NativeXComponent_GetKeyEventAction(ev, &action);
     OH_NativeXComponent_GetKeyEventCode(ev, &code);
+    const bool down = action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN;
+    if (code == KEY_CTRL_LEFT || code == KEY_CTRL_RIGHT) {
+        g_ctrlDown = down;
+    }
+    // Ctrl+Space toggles the HarmonyOS IME only when ohime runs in the desktop (an empty
+    // preedit probes it); otherwise the chord goes on to fcitx5, which uses it too.
+    static bool chordTaken = false;
+    if (g_frameMode && down && g_ctrlDown && code == KEY_SPACE && (g_imeProxy != nullptr || SendIme(2, ""))) {
+        chordTaken = true;
+        ImeToggle();
+        return true;
+    }
     if (g_frameMode) {
+        if (code == KEY_SPACE && !down && chordTaken) {
+            chordTaken = false;
+            return true;  // release of the toggle chord
+        }
         uint32_t key = EvdevKey(code);
         if (key == 0) {
             LOGI("unmapped key %{public}d", static_cast<int>(code));

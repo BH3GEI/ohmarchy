@@ -83,6 +83,18 @@ panel's resolution, sharper and about half the frame rate).
 `HYPRLAND_READBACK_TIMING=1` and `HYPRLAND_FRAME_TIMING=1` print read-back and
 frame times to `/run/user/<uid>/ohmarchy-desktop.log`.
 
+## Input methods
+
+fcitx5 with pinyin (Omarchy's input method; its systemd unit does not run here, so
+`ohdisplay.lua` starts it and applies Omarchy's `environment.d`). Ctrl+Space switches
+between US and pinyin; typed keys reach it as evdev codes from the app, and the
+candidates show inside the Linux desktop. Verified: "nihao" + space gives 你好 in foot.
+
+Alternative, `OHMARCHY_IME=harmony`: `ohime` (native/desktop/ohime.c) runs instead of
+fcitx5 as the compositor's input method (`zwp_input_method_v2`), and Ctrl+Space in the
+app attaches the HarmonyOS IME, whose text the app sends to ohime over `@ohmarchy-ime`
+for the focused text-input-v3 client. Built and running; not yet verified on screen.
+
 ## The app (native/app)
 
 ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
@@ -114,3 +126,5 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 | Omarchy's first run fails its systemd step and repeats its notifications at every login | `ohmarchy-desktop` marks it done once it has run |
 | vtest server lives in the session's mount namespace, outside its pid namespace, and would keep the image mounted | `arch.sh stop` stops it first |
 | `start-hyprland` restarts Hyprland when it is killed | stop the watchdog first |
+| `/etc/machine-id` empty: libdbus aborts, which took the Omarchy shell down once Qt loaded its fcitx plugin | write one with `dbus-uuidgen` |
+| Omarchy's Lua config: `hyprctl dispatch`/`keyword` do not parse | `hyprctl eval 'hl.exec_cmd("...")'` |

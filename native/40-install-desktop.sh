@@ -18,7 +18,7 @@ prefix=/opt/ohmarchy
 [ -d "$src/aquamarine" ] && [ -d "$src/Hyprland" ] || { echo "run desktop/fetch-sources.sh first" >&2; exit 1; }
 
 # The ALARM root ships libglvnd without its GL headers; reinstalling restores them.
-pacman -S --noconfirm --needed clang cmake ninja meson hyprwayland-scanner glaze hyprland-protocols \
+pacman -S --noconfirm --needed fcitx5 fcitx5-chinese-addons clang cmake ninja meson hyprwayland-scanner glaze hyprland-protocols \
     wayland-protocols xorgproto hwdata libdisplay-info libinput libdrm seatd pixman libxkbcommon pango \
     cairo libxcursor xcb-util-errors xcb-util-wm libliftoff re2 muparser tomlplusplus lua mesa-utils wayvnc
 pacman -S --noconfirm libglvnd
@@ -67,6 +67,40 @@ grep -q url_replacements "$home/.config/mise/config.toml" 2>/dev/null || cat >> 
 "https://github.com" = "https://gh-proxy.com/https://github.com"
 "https://api.github.com" = "https://gh-proxy.com/https://api.github.com"
 T
+# libdbus aborts without a machine id (Qt's fcitx plugin took the Omarchy shell down);
+# systemd would have written one.
+[ -s /etc/machine-id ] || dbus-uuidgen > /etc/machine-id
+mkdir -p /var/lib/dbus && ln -sf /etc/machine-id /var/lib/dbus/machine-id
+
+# Input methods: fcitx5 with pinyin next to the US layout (Ctrl+Space switches), started
+# by ohdisplay.lua; ohime is the alternative that takes text from the HarmonyOS IME
+# through the display app (OHMARCHY_IME=harmony).
+xml=$build/Hyprland/protocols/input-method-unstable-v2.xml
+wayland-scanner client-header "$xml" "$build/input-method-unstable-v2-client-protocol.h"
+wayland-scanner private-code "$xml" "$build/input-method-unstable-v2-protocol.c"
+gcc -O2 -o "$prefix/bin/ohime" "$here/desktop/ohime.c" "$build/input-method-unstable-v2-protocol.c" -I"$build" -lwayland-client
+if ! grep -q '^Name=pinyin' "$home/.config/fcitx5/profile" 2>/dev/null; then
+    mkdir -p "$home/.config/fcitx5"
+    cat > "$home/.config/fcitx5/profile" <<'T'
+[Groups/0]
+Name=Default
+Default Layout=us
+DefaultIM=pinyin
+
+[Groups/0/Items/0]
+Name=keyboard-us
+Layout=
+
+[Groups/0/Items/1]
+Name=pinyin
+Layout=
+
+[GroupOrder]
+0=Default
+T
+    chown -R "$user:" "$home/.config/fcitx5"
+fi
+
 # HarmonyOS locks the machine; Omarchy's idle lock would need a user password the
 # chroot user does not have, and its screensaver only burns CPU here.
 su "$user" -c "python3 - ~/.config/omarchy/shell.json" <<'P'

@@ -89,7 +89,7 @@ hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpi
 emulator/          route E: emulator setup, input fetch, Aetherium patch (lib/), install
 tools/emu/         hdc UI helper for the emulator (taps, text, screenshots)
 tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)
-tools/serial/      serial console: Limine menu renderer/driver, root shell runner
+tools/serial/      serial console: Limine menu renderer/driver, debug root shell, logged-in shell runner
 linux-engine/      route A install scripts (run inside the Linux engine container)
 native/            route D: image build, session manager (arch.sh), launcher (omarchy), Arch + Omarchy setup
   vm/              waypipe receiver for route C's desktop

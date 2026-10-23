@@ -190,6 +190,15 @@ tools/serial/limine.py '@3:\x18'                   # Ctrl-X: boot
 tools/serial/rootsh.py 'cat /sys/bus/virtio/devices/*/status; ls /sys/class/drm'
 ```
 
+After the wizard the user exists, so the serial getty works too: log in there
+once (prompts take 20 to 40 s each under TCG), then run commands in that shell
+with `tools/serial/run.py`, which waits for the output however slow it is:
+
+```sh
+tools/serial/run.py "systemctl list-jobs --no-pager; ps -eo pid,etime,pcpu,args --sort=-pcpu | head"
+tools/serial/run.py "echo PASSWORD | sudo -S journalctl -b -u sddm --no-pager -n 30" 400
+```
+
 Restart the VM by stopping the app (`hdc shell aa force-stop
 com.caidingding233.qemuhmos`) or, cleaner, `systemctl poweroff` in the guest,
 then start it again from Aetherium. The serial port only exists while QEMU runs;

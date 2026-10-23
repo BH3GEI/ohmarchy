@@ -84,7 +84,7 @@ emulator/20-fetch-inputs.sh          # Aetherium HAP (patched by emulator/lib/pa
 emulator/30-install.sh               # install the HAPs, copy the disk to 下载, forward VNC 15901 and serial 14321
 emulator/40-create-vm.sh             # create and start the VM in Aetherium (UI driven by text)
 emulator/50-first-boot.sh USER PASS  # answer Omarchy's first-boot wizard over VNC
-emulator/60-desktop.sh USER PASS     # wait for the ~50 min setup, boot straight into Hyprland
+emulator/60-desktop.sh USER PASS     # wait for the first-boot setup (15-50 min), boot straight into Hyprland
 ```
 
 Details and the manual equivalents: [docs/emulator-aetherium.md](docs/emulator-aetherium.md).

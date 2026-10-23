@@ -36,13 +36,16 @@ emulator 26.0.0.402, image 7.0.0.107:
   `60-desktop.sh` replaces it with tty1 autologin into the uwsm session and
   turns on Omarchy's stay-awake switch; after its reboot the guest comes up in
   an unlocked desktop, see [Start the desktop](#start-the-desktop).
-- Scripts: on a fresh emulator instance (Chinese system locale), `10`, `30` and
-  `40` ran as committed (`40`: about 3 minutes including the 3.4 GB import);
-  `20` ran against already downloaded inputs; `60` ran end to end on a set-up
-  guest. `50` and `60` on the fresh instance: in progress.
-- Timing on the test machine: boot to the wizard about 5 minutes; Omarchy's
-  first-boot setup about 50 minutes, most of it in `mkinitcpio` rebuilding the
-  Limine UKI (gzip under TCG); the desktop about 2 minutes after `uwsm start`.
+- Scripts: on a fresh emulator instance (Chinese system locale), `10`, `30`,
+  `40`, `50` and `60` ran as committed, one after another, ending in an
+  unlocked Hyprland desktop that stays unlocked; `20` ran against already
+  downloaded inputs. Times there: `40` about 3 minutes (with the 3.4 GB
+  import), `50` about 5 minutes (boot to the wizard), `60` about 17 minutes
+  (first-boot setup about 14 minutes, then the reboot into Hyprland).
+- Omarchy's first-boot setup took about 14 minutes in the scripted run and
+  about 50 minutes in the first manual one, where most of it went into
+  `mkinitcpio` rebuilding the Limine UKI (gzip under TCG); the desktop is up
+  about 2 minutes after `uwsm start`.
   Everything is software emulation inside an emulator, so it is a proof that
   the stack works, not a daily desktop.
 

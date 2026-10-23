@@ -420,7 +420,7 @@ index 4e60431..9267fe7 100644
      };
  }
 diff --git a/src/render/gl/GLTexture.cpp b/src/render/gl/GLTexture.cpp
-index 9483af9..bb420dd 100644
+index 9483af9..ccee02a 100644
 --- a/src/render/gl/GLTexture.cpp
 +++ b/src/render/gl/GLTexture.cpp
 @@ -120,6 +120,19 @@ CGLTexture::CGLTexture(std::span<const float> lut3D, size_t N) : ITexture(lut3D,
@@ -443,15 +443,33 @@ index 9483af9..bb420dd 100644
  void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, const CRegion& damage) {
      if (damage.empty())
          return;
-@@ -143,7 +156,14 @@ void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, co
+@@ -131,8 +144,18 @@ void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, co
+ 
+     bind();
+ 
+-    if (format->swizzle.has_value())
+-        swizzle(format->swizzle.value());
++    // ohmarchy's GPU server tags frames of GPU clients it keeps on the GPU ("OHCZ" in the
++    // first or last row): uploading the tag row is enough, it copies the rest itself.
++    // Its copy keeps the client's RGBA order where wl_shm data would be BGRA: swap red
++    // and blue when sampling.
++    const int tagRow = zeroCopyTagRow(pixels, stride, m_size.y);
++    if (tagRow >= 0 || format->swizzle.has_value() || m_zeroCopySwizzle) {
++        auto colors = format->swizzle.value_or(std::array<GLint, 4>{GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
++        if (tagRow >= 0)
++            std::swap(colors[0], colors[2]);
++        swizzle(colors);
++        m_zeroCopySwizzle = tagRow >= 0;
++    }
+ 
+     bool alignmentChanged = false;
+     if (format->bytesPerBlock != 4) {
+@@ -143,7 +166,11 @@ void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, co
  
      GLCALL(glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, stride / format->bytesPerBlock));
  
 -    damage.copy().intersect(CBox{{}, m_size}).forEachRect([&format, &pixels](const auto& rect) {
-+    // ohmarchy's GPU server tags frames of GPU clients it keeps on the GPU ("OHCZ" in the
-+    // first or last row): uploading the tag row is enough, it copies the rest itself.
-+    CRegion   uploadDamage = damage;
-+    const int tagRow = zeroCopyTagRow(pixels, stride, m_size.y);
++    CRegion uploadDamage = damage;
 +    if (tagRow >= 0)
 +        uploadDamage = CRegion(CBox{0, (double)tagRow, 4, 1});
 +
@@ -459,3 +477,15 @@ index 9483af9..bb420dd 100644
          GLCALL(glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, rect.x1));
          GLCALL(glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, rect.y1));
  
+diff --git a/src/render/gl/GLTexture.hpp b/src/render/gl/GLTexture.hpp
+index e29966a..2cf8cd7 100644
+--- a/src/render/gl/GLTexture.hpp
++++ b/src/render/gl/GLTexture.hpp
+@@ -47,6 +47,7 @@ namespace Render::GL {
+         GLenum                                             m_target = GL_TEXTURE_2D;
+ 
+         void                                               swizzle(const std::array<GLint, 4>& colors);
++        bool                                               m_zeroCopySwizzle = false; // red/blue swapped for an ohmarchy GPU copy
+         constexpr std::optional<size_t>                    getCacheStateIndex(GLenum pname);
+ 
+         std::array<std::optional<GLint>, TEXTURE_PAR_LAST> m_cachedStates;

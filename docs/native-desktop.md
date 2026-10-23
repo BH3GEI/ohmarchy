@@ -36,7 +36,8 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
 - GPU apps: `ohmarchy-gpu APP` runs an app on virpipe. When it reads its frame back
   for wl_shm, the app's renderer copies it on the GPU into a snapshot and writes only
   a tag into the buffer; when Hyprland uploads tagged data, the renderer copies the
-  snapshot into Hyprland's texture instead. `libohzc.so` (preloaded by the wrapper)
+  snapshot into Hyprland's texture instead (Hyprland swaps red and blue when
+  sampling such a texture: the copy keeps the client's RGBA order, wl_shm data is BGRA). `libohzc.so` (preloaded by the wrapper)
   keeps Mesa from copying the untouched rest of the frame on the CPU.
 - Input goes back over the abstract socket `@ohmarchy-display` into a pointer and a
   keyboard that aquamarine's headless backend registers (evdev codes; Hyprland
@@ -65,9 +66,6 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
 
 Open:
 
-- `ohmarchy-gpu` frames: shape and orientation are verified on screen; the color
-  order of the last change (snapshot kept as RGBA) is not yet (red and blue were
-  swapped before it).
 - GPU apps need `ohmarchy-gpu`; by default clients stay on llvmpipe. Read-backs of
   a whole window by a GPU app (screenshots of itself) get the tag, not pixels.
 - Hyprland's GPU connection lives in the app: closing the app ends it, Hyprland

@@ -272,7 +272,7 @@ v6.9 rewrote arm64's early boot (Ard Biesheuvel's series moving the early page
 table and kernel mapping code from `head.S` into C under `arch/arm64/kernel/pi`,
 plus LPA2). 41 commits between v6.8 and v6.9 touch those files; a path-limited
 `git bisect` over them is running. The same 7.2 kernel boots under QEMU TCG
-(route E), so the trigger is something HarmonyOS's hypervisor does differently.
+(route F), so the trigger is something HarmonyOS's hypervisor does differently.
 
 ### Patches for `linux-aarch64` so far
 

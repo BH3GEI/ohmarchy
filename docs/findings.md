@@ -208,7 +208,7 @@ Details and fixes in [native-desktop.md](native-desktop.md#hongmeng-notes).
   HarmonyOS window. Terminal apps work well; a nested Hyprland session does
   not fit this model.
 
-## Route E (DevEco emulator + Aetherium)
+## Route F (DevEco emulator + Aetherium)
 
 Observed in DevEco Studio 26.0's emulator (HarmonyOS 7.0.0.107, 2in1) on an
 Apple Silicon Mac.

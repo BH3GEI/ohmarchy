@@ -2,7 +2,7 @@
 
 Running [Omarchy](https://omarchy.org) (Arch Linux + Hyprland) on a HarmonyOS PC,
 driven from a Linux host over `hdc` (route D: from a root shell on the
-machine). Developed on a HUAWEI MateBook Fold (HarmonyOS 7.0) with the
+machine; route F: on a Mac, with no HarmonyOS hardware). Developed on a HUAWEI MateBook Fold (HarmonyOS 7.0) with the
 AArch64 Omarchy build from [riverscn/omarchy-aarch64-image](https://github.com/riverscn/omarchy-aarch64-image).
 
 | Route | What runs on the HarmonyOS machine | Status |
@@ -11,7 +11,8 @@ AArch64 Omarchy build from [riverscn/omarchy-aarch64-image](https://github.com/r
 | **B. Whole OS in the Oseasy VM**: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | The complete Omarchy AArch64 OS (its disk, systemd, NetworkManager, SDDM) on a Debian 6.1 kernel in the Oseasy VM app | Boots, with text console and a network root shell; the Hyprland desktop is not displayed yet (see status) |
 | **C. Whole OS in the 鸿融 Linux VM**: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | Omarchy 4.0.6 (Arch Linux ARM) next to a deepin 25 guest in Huawei's Linux VM app, booting deepin's 6.6 kernel | Boots to the SDDM greeter and the Hyprland desktop, GPU-accelerated through virgl (OpenGL only) after 鸿融 starts the VM from cold |
 | **D. Native on the HongMeng kernel**: [docs/native-chroot.md](docs/native-chroot.md) | Arch Linux ARM with Omarchy's packages in a chroot on the host itself (no VM), entered from a root shell | Omarchy's terminal side at native speed (shell, LazyVim, themes, btop, lazygit, mise), and Omarchy's Hyprland desktop in a HarmonyOS app ([docs/native-desktop.md](docs/native-desktop.md)): patched Hyprland rendering on the Maleoon GPU through the system's virglrenderer, presented into the app's window without a copy (workspace animations at up to the panel's 120 Hz); Wayland apps also show in route C's desktop via waypipe |
-| **E. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
+| **E. Bare metal**: (no doc yet) | Linux directly on the HarmonyOS PC's hardware, with no HarmonyOS underneath | Not started; nothing in this repo yet |
+| **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
@@ -73,7 +74,7 @@ and install the app with `native/app/build.sh` (DevEco Studio's tools); open
 
 Which apps and features work there: [docs/native-compat.md](docs/native-compat.md).
 
-## Route E quick start
+## Route F quick start
 
 On a Mac (or any DevEco host) with DevEco Studio, `hdc`, `gh` and `python3`:
 
@@ -103,7 +104,7 @@ tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-ke
 hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
   kernel/patches/  patches for Omarchy's linux-aarch64 in 鸿融
 tools/hongrong/    hrvm: remote power cycle of the 鸿融 VM and one-shot kernel boot tests
-emulator/          route E: emulator setup, input fetch, Aetherium patch (lib/), install
+emulator/          route F: emulator setup, input fetch, Aetherium patch (lib/), install
 tools/emu/         hdc UI helper for the emulator (taps, text, screenshots)
 tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)
 tools/serial/      serial console: Limine menu renderer/driver, debug root shell, logged-in shell runner

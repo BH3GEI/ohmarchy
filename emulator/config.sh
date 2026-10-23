@@ -1,4 +1,4 @@
-# Route E settings (sourced by emulator/*.sh). Override any of them in the environment.
+# Route F settings (sourced by emulator/*.sh). Override any of them in the environment.
 
 # DevEco Studio's emulator CLI (macOS path; on Windows/Linux point it at tools/emulator/Emulator)
 : "${EMULATOR:=/Applications/DevEco-Studio.app/Contents/tools/emulator/Emulator}"

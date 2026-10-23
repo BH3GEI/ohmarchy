@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Grab one frame from a VNC server (RFB 3.8, no auth, raw encoding) and save it as PNG.
-# usage: vncshot.py HOST PORT OUT.png   (route E: hdc fport tcp:15901 tcp:5901, then 127.0.0.1 15901)
+# usage: vncshot.py HOST PORT OUT.png   (route F: hdc fport tcp:15901 tcp:5901, then 127.0.0.1 15901)
 import socket, struct, sys, zlib
 host, port, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 s = socket.create_connection((host, port), timeout=20)

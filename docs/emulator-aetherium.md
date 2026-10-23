@@ -1,4 +1,4 @@
-# Route E: Omarchy in Aetherium on the DevEco HarmonyOS PC emulator
+# Route F: Omarchy in Aetherium on the DevEco HarmonyOS PC emulator
 
 No HarmonyOS hardware needed. DevEco Studio's emulator runs a HarmonyOS 7.0
 "2in1" (PC) image on the development machine; inside it, the open-source
@@ -45,7 +45,7 @@ Not available in the emulator: hardware virtualization (no `/dev/kvm`, no
 hypervisor nodes, no `vm_manager` access), so routes B and C (Oseasy, 鸿融,
 Linux engine) do not apply here; AppGallery apps are not installable either.
 
-![Omarchy in RemoteDesk on the emulator](img/route-e-remotedesk.jpeg)
+![Omarchy in RemoteDesk on the emulator](img/route-f-remotedesk.jpeg)
 
 ## Requirements
 

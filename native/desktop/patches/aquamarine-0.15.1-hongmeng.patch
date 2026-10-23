@@ -1,0 +1,412 @@
+diff --git a/include/aquamarine/allocator/Allocator.hpp b/include/aquamarine/allocator/Allocator.hpp
+index 2dc1ee5..48e9b81 100644
+--- a/include/aquamarine/allocator/Allocator.hpp
++++ b/include/aquamarine/allocator/Allocator.hpp
+@@ -17,6 +17,7 @@ namespace Aquamarine {
+     enum eAllocatorType {
+         AQ_ALLOCATOR_TYPE_GBM = 0,
+         AQ_ALLOCATOR_TYPE_DRM_DUMB,
++        AQ_ALLOCATOR_TYPE_DMA_HEAP,
+     };
+ 
+     class IAllocator {
+diff --git a/include/aquamarine/allocator/DMAHeap.hpp b/include/aquamarine/allocator/DMAHeap.hpp
+new file mode 100644
+index 0000000..51ff6cf
+--- /dev/null
++++ b/include/aquamarine/allocator/DMAHeap.hpp
+@@ -0,0 +1,62 @@
++#pragma once
++
++#include "Allocator.hpp"
++
++namespace Aquamarine {
++    class CDMAHeapAllocator;
++    class CBackend;
++    class CSwapchain;
++
++    // A linear dmabuf from a Linux dma-heap. For systems without a DRM device
++    // (e.g. HarmonyOS' HongMeng kernel), rendered by a software EGL (llvmpipe).
++    class CDMAHeapBuffer : public IBuffer {
++      public:
++        virtual ~CDMAHeapBuffer();
++
++        virtual eBufferCapability                      caps();
++        virtual eBufferType                            type();
++        virtual void                                   update(const Hyprutils::Math::CRegion& damage);
++        virtual bool                                   isSynchronous();
++        virtual bool                                   good();
++        virtual SDMABUFAttrs                           dmabuf();
++        virtual std::tuple<uint8_t*, uint32_t, size_t> beginDataPtr(uint32_t flags);
++        virtual void                                   endDataPtr();
++
++      private:
++        CDMAHeapBuffer(const SAllocatorBufferParams& params, Hyprutils::Memory::CWeakPointer<CDMAHeapAllocator> allocator_,
++                       Hyprutils::Memory::CSharedPointer<CSwapchain> swapchain);
++
++        Hyprutils::Memory::CWeakPointer<CDMAHeapAllocator> allocator;
++
++        size_t                                             bufferLen = 0;
++        uint8_t*                                           data      = nullptr;
++        int                                                fd        = -1;
++
++        SDMABUFAttrs                                       attrs{.success = false};
++
++        friend class CDMAHeapAllocator;
++    };
++
++    class CDMAHeapAllocator : public IAllocator {
++      public:
++        ~CDMAHeapAllocator();
++        // heapPath empty: $AQ_DMA_HEAP, then /dev/dma_heap/system
++        static Hyprutils::Memory::CSharedPointer<CDMAHeapAllocator> create(Hyprutils::Memory::CWeakPointer<CBackend> backend_, const std::string& heapPath = "");
++
++        virtual Hyprutils::Memory::CSharedPointer<IBuffer>          acquire(const SAllocatorBufferParams& params, Hyprutils::Memory::CSharedPointer<CSwapchain> swapchain_);
++        virtual Hyprutils::Memory::CSharedPointer<CBackend>         getBackend();
++        virtual int                                                 drmFD();
++        virtual eAllocatorType                                      type();
++
++        //
++        Hyprutils::Memory::CWeakPointer<CDMAHeapAllocator> self;
++
++      private:
++        CDMAHeapAllocator(int heapFD_, Hyprutils::Memory::CWeakPointer<CBackend> backend_);
++
++        Hyprutils::Memory::CWeakPointer<CBackend> backend;
++        int                                       heapFD = -1;
++
++        friend class CDMAHeapBuffer;
++    };
++};
+diff --git a/include/aquamarine/backend/Headless.hpp b/include/aquamarine/backend/Headless.hpp
+index 5945b00..6672b65 100644
+--- a/include/aquamarine/backend/Headless.hpp
++++ b/include/aquamarine/backend/Headless.hpp
+@@ -5,6 +5,8 @@
+ #include "../output/Output.hpp"
+ #include <hyprutils/memory/WeakPtr.hpp>
+ #include <hyprutils/os/FileDescriptor.hpp>
++#include <hyprutils/math/Region.hpp>
++#include <vector>
+ 
+ namespace Aquamarine {
+     class CBackend;
+@@ -82,6 +84,21 @@ namespace Aquamarine {
+         void updateTimerFD();
+         void addTimer(std::chrono::steady_clock::time_point when, std::function<void(void)> what);
+ 
++        // Frame export ($AQ_HEADLESS_EXPORT names an abstract unix socket): every commit
++        // sends the buffer id, geometry and damage to connected clients, with the dmabuf
++        // fd the first time a client sees a buffer. Lets a display outside the compositor
++        // (e.g. a HarmonyOS app) show the output without screen capture.
++        struct SExportClient {
++            Hyprutils::OS::CFileDescriptor fd;
++            std::vector<uint64_t>          sentBuffers;
++            bool                           needFull = true;
++        };
++        Hyprutils::OS::CFileDescriptor exportListenFD;
++        std::vector<SExportClient>     exportClients;
++        Hyprutils::Memory::CSharedPointer<IBuffer> exportLastBuffer;
++        void                           exportAccept();
++        void                           exportFrame(Hyprutils::Memory::CSharedPointer<IBuffer> buffer, const Hyprutils::Math::CRegion& damage);
++
+         friend class CBackend;
+         friend class CHeadlessOutput;
+     };
+diff --git a/src/allocator/DMAHeap.cpp b/src/allocator/DMAHeap.cpp
+new file mode 100644
+index 0000000..07ccdf4
+--- /dev/null
++++ b/src/allocator/DMAHeap.cpp
+@@ -0,0 +1,144 @@
++#include <aquamarine/allocator/DMAHeap.hpp>
++#include <aquamarine/backend/Backend.hpp>
++#include <aquamarine/allocator/Swapchain.hpp>
++#include "FormatUtils.hpp"
++#include "Shared.hpp"
++#include <fcntl.h>
++#include <unistd.h>
++#include <cstring>
++#include <cstdlib>
++#include <sys/ioctl.h>
++#include <sys/mman.h>
++#include <linux/dma-buf.h>
++#include <linux/dma-heap.h>
++
++using namespace Aquamarine;
++using namespace Hyprutils::Memory;
++#define SP CSharedPointer
++#define WP CWeakPointer
++
++Aquamarine::CDMAHeapBuffer::CDMAHeapBuffer(const SAllocatorBufferParams& params, Hyprutils::Memory::CWeakPointer<CDMAHeapAllocator> allocator_,
++                                           Hyprutils::Memory::CSharedPointer<CSwapchain> swapchain) : allocator(allocator_) {
++    attrs.format = params.format;
++
++    // every format the headless backend offers is 32 bits per pixel
++    const uint32_t stride = ((uint32_t)params.size.x * 4 + 63) & ~63u;
++    bufferLen             = (size_t)stride * (size_t)params.size.y;
++
++    struct dma_heap_allocation_data alloc = {.len = bufferLen, .fd = 0, .fd_flags = O_RDWR | O_CLOEXEC, .heap_flags = 0};
++    if (ioctl(allocator->heapFD, DMA_HEAP_IOCTL_ALLOC, &alloc) < 0) {
++        allocator->backend->log(AQ_LOG_ERROR, std::format("dma-heap: failed to allocate {} bytes: {}", bufferLen, strerror(errno)));
++        return;
++    }
++    fd = (int)alloc.fd;
++
++    data = (uint8_t*)mmap(nullptr, bufferLen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++    if (data == MAP_FAILED) {
++        data = nullptr;
++        allocator->backend->log(AQ_LOG_ERROR, std::format("dma-heap: failed to mmap a buffer: {}", strerror(errno)));
++        return;
++    }
++
++    size                = params.size;
++    attrs.size          = params.size;
++    attrs.modifier      = DRM_FORMAT_MOD_LINEAR;
++    attrs.planes        = 1;
++    attrs.strides.at(0) = stride;
++    attrs.fds.at(0)     = fd;
++    attrs.success       = true;
++
++    allocator->backend->log(AQ_LOG_DEBUG, std::format("dma-heap: allocated a buffer with fd {}, size {}, stride {} and format {}", fd, attrs.size, stride, fourccToName(attrs.format)));
++}
++
++Aquamarine::CDMAHeapBuffer::~CDMAHeapBuffer() {
++    events.destroy.emit();
++
++    if (data)
++        munmap(data, bufferLen);
++    if (fd >= 0)
++        close(fd);
++}
++
++eBufferCapability Aquamarine::CDMAHeapBuffer::caps() {
++    return eBufferCapability::BUFFER_CAPABILITY_DATAPTR;
++}
++
++eBufferType Aquamarine::CDMAHeapBuffer::type() {
++    return eBufferType::BUFFER_TYPE_DMABUF;
++}
++
++void Aquamarine::CDMAHeapBuffer::update(const Hyprutils::Math::CRegion& damage) {
++    ; // nothing to do
++}
++
++bool Aquamarine::CDMAHeapBuffer::isSynchronous() {
++    return true;
++}
++
++bool Aquamarine::CDMAHeapBuffer::good() {
++    return attrs.success && data;
++}
++
++SDMABUFAttrs Aquamarine::CDMAHeapBuffer::dmabuf() {
++    return attrs;
++}
++
++std::tuple<uint8_t*, uint32_t, size_t> Aquamarine::CDMAHeapBuffer::beginDataPtr(uint32_t flags) {
++    struct dma_buf_sync sync = {.flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_RW};
++    ioctl(fd, DMA_BUF_IOCTL_SYNC, &sync);
++    return {data, attrs.format, bufferLen};
++}
++
++void Aquamarine::CDMAHeapBuffer::endDataPtr() {
++    struct dma_buf_sync sync = {.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW};
++    ioctl(fd, DMA_BUF_IOCTL_SYNC, &sync);
++}
++
++Aquamarine::CDMAHeapAllocator::~CDMAHeapAllocator() {
++    if (heapFD >= 0)
++        close(heapFD);
++}
++
++SP<CDMAHeapAllocator> Aquamarine::CDMAHeapAllocator::create(Hyprutils::Memory::CWeakPointer<CBackend> backend_, const std::string& heapPath) {
++    std::string path = heapPath;
++    if (path.empty()) {
++        const char* env = getenv("AQ_DMA_HEAP");
++        path            = env && *env ? env : "/dev/dma_heap/system";
++    }
++
++    int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
++    if (fd < 0) {
++        backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: cannot open {}: {}", path, strerror(errno)));
++        return nullptr;
++    }
++
++    auto a  = SP<CDMAHeapAllocator>(new CDMAHeapAllocator(fd, backend_));
++    a->self = a;
++
++    backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: created an allocator on {}", path));
++
++    return a;
++}
++
++SP<IBuffer> Aquamarine::CDMAHeapAllocator::acquire(const SAllocatorBufferParams& params, SP<CSwapchain> swapchain_) {
++    auto buf = SP<IBuffer>(new CDMAHeapBuffer(params, self, swapchain_));
++    if (!buf->good())
++        return nullptr;
++    return buf;
++}
++
++SP<CBackend> Aquamarine::CDMAHeapAllocator::getBackend() {
++    return backend.lock();
++}
++
++int Aquamarine::CDMAHeapAllocator::drmFD() {
++    return -1;
++}
++
++eAllocatorType Aquamarine::CDMAHeapAllocator::type() {
++    return eAllocatorType::AQ_ALLOCATOR_TYPE_DMA_HEAP;
++}
++
++Aquamarine::CDMAHeapAllocator::CDMAHeapAllocator(int heapFD_, Hyprutils::Memory::CWeakPointer<CBackend> backend_) : backend(backend_), heapFD(heapFD_) {
++    ; // nothing to do
++}
+diff --git a/src/backend/Backend.cpp b/src/backend/Backend.cpp
+index dbd7147..dff913d 100644
+--- a/src/backend/Backend.cpp
++++ b/src/backend/Backend.cpp
+@@ -4,6 +4,7 @@
+ #include <aquamarine/backend/DRM.hpp>
+ #include <aquamarine/backend/Null.hpp>
+ #include <aquamarine/allocator/GBM.hpp>
++#include <aquamarine/allocator/DMAHeap.hpp>
+ #include <hyprutils/os/FileDescriptor.hpp>
+ #include <ranges>
+ #include <sys/timerfd.h>
+@@ -173,6 +174,10 @@ bool Aquamarine::CBackend::start() {
+         }
+     }
+ 
++    // no DRM device (e.g. a headless-only setup without a GPU): allocate linear dmabufs from a dma-heap
++    if (!primaryAllocator && !implementations.empty() && implementations.at(0)->type() == AQ_BACKEND_HEADLESS)
++        primaryAllocator = CDMAHeapAllocator::create(self);
++
+     if (!primaryAllocator && (implementations.empty() || implementations.at(0)->type() != AQ_BACKEND_NULL)) {
+         log(AQ_LOG_CRITICAL, "Cannot open backend: no allocator available");
+         return false;
+diff --git a/src/backend/Headless.cpp b/src/backend/Headless.cpp
+index 179b850..b3619e8 100644
+--- a/src/backend/Headless.cpp
++++ b/src/backend/Headless.cpp
+@@ -5,6 +5,9 @@
+ #include <sys/timerfd.h>
+ #include <cstring>
+ #include <unistd.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <cstdlib>
+ #include "Shared.hpp"
+ 
+ using namespace Aquamarine;
+@@ -27,6 +30,11 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
+ bool Aquamarine::CHeadlessOutput::commit() {
+     const auto snapshot = state->snapshot();
+     events.commit.emit();
++    if (backend->exportListenFD.isValid() && state->state().buffer) {
++        backend->exportLastBuffer = state->state().buffer;
++        if (!backend->exportClients.empty())
++            backend->exportFrame(state->state().buffer, state->state().damage);
++    }
+     state->consume(snapshot);
+     needsFrame = false;
+     events.present.emit(IOutput::SPresentEvent{.presented = true});
+@@ -123,11 +131,96 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
+ }
+ 
+ bool Aquamarine::CHeadlessBackend::start() {
++    const char* name = getenv("AQ_HEADLESS_EXPORT");
++    if (!name || !*name)
++        return true;
++
++    exportListenFD = Hyprutils::OS::CFileDescriptor{socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)};
++    sockaddr_un addr{.sun_family = AF_UNIX};
++    const size_t len = std::min(strlen(name), sizeof(addr.sun_path) - 2);
++    memcpy(addr.sun_path + 1, name, len); // abstract namespace: leading NUL
++    if (bind(exportListenFD.get(), (sockaddr*)&addr, offsetof(sockaddr_un, sun_path) + 1 + len) < 0 || listen(exportListenFD.get(), 4) < 0) {
++        backend->log(AQ_LOG_ERROR, std::format("headless: cannot export frames on @{}: {}", name, strerror(errno)));
++        exportListenFD.reset();
++    } else
++        backend->log(AQ_LOG_DEBUG, std::format("headless: exporting frames on @{}", name));
++
+     return true;
+ }
+ 
+ std::vector<SP<SPollFD>> Aquamarine::CHeadlessBackend::pollFDs() {
+-    return {makeShared<SPollFD>(timers.timerfd.get(), [this]() { dispatchTimers(); })};
++    std::vector<SP<SPollFD>> fds = {makeShared<SPollFD>(timers.timerfd.get(), [this]() { dispatchTimers(); })};
++    if (exportListenFD.isValid())
++        fds.emplace_back(makeShared<SPollFD>(exportListenFD.get(), [this]() { exportAccept(); }));
++    return fds;
++}
++
++void Aquamarine::CHeadlessBackend::exportAccept() {
++    int fd = accept4(exportListenFD.get(), nullptr, nullptr, SOCK_CLOEXEC | SOCK_NONBLOCK);
++    if (fd < 0)
++        return;
++    exportClients.emplace_back(SExportClient{.fd = Hyprutils::OS::CFileDescriptor{fd}});
++    backend->log(AQ_LOG_DEBUG, std::format("headless: export client {} connected", fd));
++    // the new client needs a full frame now, not at the next damage
++    if (exportLastBuffer)
++        exportFrame(exportLastBuffer, CRegion{0, 0, exportLastBuffer->size.x, exportLastBuffer->size.y});
++}
++
++void Aquamarine::CHeadlessBackend::exportFrame(SP<IBuffer> buffer, const CRegion& damage) {
++    const auto attrs = buffer->dmabuf();
++    if (!attrs.success || attrs.fds.at(0) < 0)
++        return;
++
++    struct __attribute__((packed)) {
++        uint32_t magic = 0x4644484f; // "OHDF"
++        uint32_t version = 1;
++        uint64_t bufferId;
++        uint32_t width, height, stride, format, nrects;
++    } hdr;
++    hdr.bufferId = (uint64_t)(uintptr_t)buffer.get();
++    hdr.width    = attrs.size.x;
++    hdr.height   = attrs.size.y;
++    hdr.stride   = attrs.strides.at(0);
++    hdr.format   = attrs.format;
++
++    std::vector<int32_t> rects;
++    damage.copy().intersect(CBox{0, 0, attrs.size.x, attrs.size.y}).forEachRect([&rects](const auto& r) {
++        rects.insert(rects.end(), {r.x1, r.y1, r.x2 - r.x1, r.y2 - r.y1});
++    });
++    const std::vector<int32_t> full = {0, 0, (int32_t)attrs.size.x, (int32_t)attrs.size.y};
++
++    std::erase_if(exportClients, [&](SExportClient& c) {
++        const bool  known   = std::ranges::find(c.sentBuffers, hdr.bufferId) != c.sentBuffers.end();
++        const auto& r       = c.needFull ? full : rects;
++        hdr.nrects          = r.size() / 4;
++
++        iovec iov[2]        = {{&hdr, sizeof(hdr)}, {(void*)r.data(), r.size() * sizeof(int32_t)}};
++        char  cmsgbuf[CMSG_SPACE(sizeof(int))] = {};
++        msghdr msg{.msg_iov = iov, .msg_iovlen = r.empty() ? 1u : 2u};
++        if (!known) {
++            msg.msg_control    = cmsgbuf;
++            msg.msg_controllen = sizeof(cmsgbuf);
++            auto* cmsg         = CMSG_FIRSTHDR(&msg);
++            cmsg->cmsg_level   = SOL_SOCKET;
++            cmsg->cmsg_type    = SCM_RIGHTS;
++            cmsg->cmsg_len     = CMSG_LEN(sizeof(int));
++            memcpy(CMSG_DATA(cmsg), &attrs.fds.at(0), sizeof(int));
++        }
++
++        const ssize_t sent = sendmsg(c.fd.get(), &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
++        if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++            c.needFull = true; // client is behind: drop this frame, resend everything next time
++            return false;
++        }
++        if (sent < (ssize_t)(sizeof(hdr) + r.size() * sizeof(int32_t))) {
++            backend->log(AQ_LOG_DEBUG, "headless: export client gone");
++            return true;
++        }
++        if (!known)
++            c.sentBuffers.emplace_back(hdr.bufferId);
++        c.needFull = false;
++        return false;
++    });
+ }
+ 
+ int Aquamarine::CHeadlessBackend::drmFD() {

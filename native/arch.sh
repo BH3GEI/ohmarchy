@@ -63,6 +63,11 @@ _session)
         || mount -o bind /dev/pts "$R/dev/pts"
     # HongMeng's devpts has no pts/ptmx; use the classic node.
     mknod "$R/dev/ptmx" c 5 2 && chmod 666 "$R/dev/ptmx"
+    # dma-heap for the native desktop's buffers: the host's world-accessible system heap.
+    if [ -c /dev/system_heap2 ]; then
+        mkdir -p "$R/dev/dma_heap"
+        mknod "$R/dev/dma_heap/system" c 505 9 && chmod 666 "$R/dev/dma_heap/system"
+    fi
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/dev/shm"
     ln -sf /proc/self/fd "$R/dev/fd"
     ln -sf /proc/self/fd/0 "$R/dev/stdin"
@@ -103,6 +108,12 @@ status)
     ;;
 stop)
     alive || { echo "not running"; exit 0; }
+    # The GPU server lives in the session's mount namespace but not its pid namespace;
+    # it would keep the image mounted, so stop it first.
+    if pkill -f "$B/bin/virgl_test_server" 2>/dev/null; then
+        i=0; while [ $i -lt 50 ] && pgrep -f "$B/bin/virgl_test_server" > /dev/null; do sleep 0.1; i=$((i+1)); done
+        pkill -9 -f "$B/bin/virgl_test_server" 2>/dev/null
+    fi
     nsenter -t "$P" -m sync
     # pid-namespace init ignores SIGTERM from outside; SIGKILL tears the namespace down.
     kill -9 "$P"
@@ -111,9 +122,12 @@ stop)
     sleep 1
     # The namespace teardown unmounts the image but leaves the loop bound.
     L=$(cat "$B/session.loop" 2>/dev/null)
-    if [ -n "$L" ] && losetup "$L" 2>/dev/null | grep -qF "($IMG)"; then
-        losetup -d "$L" 2>/dev/null
-    fi
+    # The last mount reference can outlive the processes briefly; retry the detach.
+    i=0
+    while [ -n "$L" ] && [ $i -lt 20 ] && losetup "$L" 2>/dev/null | grep -qF "($IMG)"; do
+        losetup -d "$L" 2>/dev/null || sleep 0.5
+        i=$((i+1))
+    done
     rm -f "$B/session.loop"
     attached && echo "warning: $IMG still attached" || echo "stopped"
     ;;

@@ -5,6 +5,9 @@
 #   omarchy [root] -c CMD..  run CMD (remaining words joined) in a login shell
 #   omarchy -g APP [ARG..]   start a Wayland app, shown as a window in the
 #                            鸿融 VM's Hyprland (route C) through waypipe
+#   omarchy desktop [start|stop|status]
+#                            Omarchy's Hyprland desktop rendered natively for the
+#                            HarmonyOS display app (com.ohmarchy.display)
 #   omarchy start|stop|status
 # The session is started on demand.
 B=${ARCH_BASE:-$(cd "$(dirname "$0")/.." && pwd)}
@@ -18,6 +21,24 @@ esac
 cmd= gui=
 case "$1" in
 -c) shift; cmd="$*"; [ -n "$cmd" ] || { echo "omarchy: -c needs a command" >&2; exit 2; } ;;
+desktop)
+    gui=1
+    cmd="/opt/ohmarchy/bin/ohmarchy-desktop ${2:-start}"
+    vtest=$B/bin/virgl_test_server
+    if [ "${2:-start}" = start ] && [ -x "$vtest" ]; then
+        # GPU for Hyprland: a vtest server on the host's virglrenderer (zink on the
+        # Maleoon GPU), reached by Mesa's virpipe at /tmp/.virgl_test inside Arch.
+        sh "$B/arch.sh" start > /dev/null || exit 1
+        P=$(cat "$B/session.pid")
+        sock=$R/tmp/.virgl_test
+        if ! pgrep -f "$vtest" > /dev/null; then
+            nsenter -t "$P" -m -- "$vtest" --use-egl-surfaceless --socket-path "$sock" < /dev/null > "$B/vtest.log" 2>&1 &
+            i=0; while [ $i -lt 30 ] && ! nsenter -t "$P" -m -- test -S "$sock"; do sleep 0.1; i=$((i+1)); done
+        fi
+        nsenter -t "$P" -m -- chmod 666 "$sock"
+        cmd="HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe $cmd"
+    fi
+    ;;
 -g)
     shift; [ -n "$*" ] || { echo "omarchy: -g needs an app" >&2; exit 2; }
     gui=1

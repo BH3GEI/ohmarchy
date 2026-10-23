@@ -8,11 +8,12 @@ Omarchy's packages install from its signed AArch64 repository, so the terminal
 side of Omarchy (bash setup, starship prompt, LazyVim, themes, btop, lazygit,
 mise) runs at native speed on the host's CPU.
 
-The kernel has no GPU or DRM device, so there is no Omarchy desktop on this
-route. Route D is the native-speed CLI and development environment; the
-desktop is route C, where the 鸿融 VM renders Hyprland through virgl
-([hongrong-whole-os.md](hongrong-whole-os.md)). Wayland apps from route D can
-open windows on that desktop through waypipe (`omarchy -g APP`).
+The kernel has no GPU or DRM device. Omarchy's Hyprland desktop still runs
+here with a patched Hyprland and aquamarine, rendering on the GPU through the
+host's virglrenderer and shown by a HarmonyOS app: see
+[native-desktop.md](native-desktop.md). Route C's 鸿融 VM is the other desktop
+([hongrong-whole-os.md](hongrong-whole-os.md)); Wayland apps from route D can
+open windows there through waypipe (`omarchy -g APP`).
 
 ## Status
 
@@ -33,19 +34,18 @@ Verified on a Kirin X90 HarmonyOS PC, HongMeng kernel 1.11.13.0:
 - Toolchains: gcc, gdb, strace, go, node, python (asyncio, multiprocessing),
   git over https.
 - Graphics: Wayland apps (foot verified) show as ordinary tiled windows in the
-  鸿融 VM's Hyprland desktop through waypipe: `omarchy -g foot`. sway on its
-  headless backend with the pixman renderer also runs. Hyprland does not start
-  natively (see below).
+  鸿融 VM's Hyprland desktop through waypipe: `omarchy -g foot`. The native
+  desktop is in [native-desktop.md](native-desktop.md).
 
 Not working:
 
-- **No native Omarchy desktop.** Hyprland needs a DRM/GBM render node; the
-  kernel has no DRM. Nothing shows on the HarmonyOS screen directly: only
-  HarmonyOS apps own windows. Windows go to route C's desktop instead.
+- Stock Hyprland does not start: aquamarine needs a DRM/GBM render node and
+  the kernel has no DRM. The patched build in
+  [native-desktop.md](native-desktop.md) works around it.
 - No systemd: cgroup v1 only and no user/cgroup namespaces, so systemd cannot
   be pid 1. Services do not run; `systemctl enable` only writes links.
 - `omarchy-menu` and other desktop commands fail ("omarchy-shell is not
-  running"). `omarchy-update-available` times out (GitHub); `omarchy-update`
+  running") outside the native desktop. `omarchy-update-available` times out (GitHub); `omarchy-update`
   was not run. `omarchy-apply-system` must not be run (see Install).
 - GitHub is not reachable from the host's network here; package lists come
   through a proxy, plugins and themes that fetch from GitHub fail.
@@ -201,29 +201,19 @@ X11-only apps need Xwayland in the chain (not tried).
 
 ## Desktop status
 
-- sway with `WLR_BACKENDS=headless WLR_RENDERER=pixman` starts and renders
-  into memory; `grim` takes screenshots; wayvnc could serve it to a VNC client.
-- Hyprland 0.56 fails with aquamarine's "no allocator available": it needs a
-  DRM/GBM render node even headless, and the kernel has no `/dev/dri`. Nested
-  in the headless sway it also fails, because pixman sway offers no
-  linux-dmabuf.
-- Showing anything on the HarmonyOS screen needs a HarmonyOS app (UIAbility)
-  that owns a window, for example a VNC or Wayland viewer app.
-- For comparison, the 鸿融 VM (route C) gets OpenGL through virgl (no Vulkan,
-  no blob resources); the host renders it with Mesa zink on the Maleoon GPU.
-  Nothing of that reaches a process on the host: there is no Venus or vtest
-  server to connect to.
+Stock Hyprland 0.56 fails here with aquamarine's "no allocator available" (it
+needs a DRM/GBM render node even headless), and anything on the HarmonyOS
+screen needs a HarmonyOS app that owns a window. Both are solved in
+[native-desktop.md](native-desktop.md): a dma-heap allocator and surfaceless EGL
+in patched aquamarine/Hyprland, a frame export socket, a display app, and a
+vtest server on the host's virglrenderer for the GPU (the same zink-on-Maleoon
+renderer route C's VM uses).
 
 ## Next steps
 
 - Launch route D apps from the VM's menu (desktop entries that call into the
   host), and clipboard sharing.
-- A HarmonyOS VNC viewer app pointed at wayvnc on a headless sway, as a
-  software-rendered desktop without the VM.
-- A native display bridge: a HarmonyOS app that owns a window and takes frames
-  from the session. Candidates seen on the host, not exercised: the mode-666
-  dma-heap `/dev/system_heap2`, and the SELinux policy letting ordinary apps
-  (`normal_hap_attr`) connect to unix sockets of root's permissive `su` domain.
+- The native desktop's own next steps are in [native-desktop.md](native-desktop.md#status).
 - Hyprland with a dumb buffer allocator (aquamarine has no non-DRM allocator
   today).
 - A launcher entry reachable from the built-in terminal, if its `sudo` gives a

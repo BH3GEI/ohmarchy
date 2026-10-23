@@ -15,3 +15,8 @@
 modules.order
 Module.symvers
 __pycache__/
+native/desktop/src/
+native/vtest/build/
+native/app/entry/build/
+native/app/.hvigor/
+native/app/*.hap

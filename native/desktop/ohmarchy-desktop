@@ -1,0 +1,41 @@
+#!/bin/bash
+# Omarchy's Hyprland desktop on the HongMeng kernel, for the HarmonyOS display app.
+# Patched Hyprland renders headless into dma-heap buffers and exports them to the app
+# over the abstract socket @ohmarchy-display; wayvnc on 127.0.0.1:5900 carries input
+# (and frames, for older app builds).
+#   ohmarchy-desktop start|stop|status
+R=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+LOG=$R/ohmarchy-desktop.log
+export PATH=/opt/ohmarchy/bin:$PATH OMARCHY_PATH=/usr/share/omarchy \
+    XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_DESKTOP=Hyprland \
+    DBUS_SESSION_BUS_ADDRESS=unix:path=$R/bus \
+    AQ_HEADLESS_EXPORT=ohmarchy-display
+
+running() { pgrep -u "$(id -u)" -x Hyprland > /dev/null; }
+
+case "${1:-start}" in
+start)
+    running && { echo "running"; exit 0; }
+    # Omarchy's first-run retries every login while any step fails, and its
+    # "enable user systemd units" step cannot succeed without systemd. Once it
+    # has run, count it as done so its notifications are not repeated.
+    [ -s ~/.local/state/omarchy/first-run.log ] && omarchy-done mark first-run-user > /dev/null 2>&1
+    [ -S "$R/bus" ] || dbus-daemon --session --fork --address="$DBUS_SESSION_BUS_ADDRESS" > /dev/null
+    setsid start-hyprland --path /opt/ohmarchy/bin/Hyprland -- -c ~/.config/hypr/ohdisplay.lua < /dev/null > "$LOG" 2>&1 &
+    for _ in $(seq 50); do ss -ltn 2>/dev/null | grep -q '127.0.0.1:5900 ' && break; sleep 0.2; done
+    running && echo "started (log: $LOG)" || { echo "failed:"; tail -5 "$LOG"; exit 1; }
+    ;;
+stop)
+    # start-hyprland restarts Hyprland when it dies, so stop the watchdog first.
+    pkill -u "$(id -u)" -f '^start-hyprland'
+    pkill -u "$(id -u)" -x wayvnc
+    pkill -u "$(id -u)" -x Hyprland
+    for _ in $(seq 50); do running || break; sleep 0.1; done
+    running && pkill -9 -u "$(id -u)" -x Hyprland
+    ;;
+status)
+    running && echo running || echo stopped
+    ;;
+*)
+    echo "usage: ohmarchy-desktop start|stop|status" >&2; exit 2 ;;
+esac

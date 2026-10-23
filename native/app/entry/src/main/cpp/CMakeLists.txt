@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.5.0)
+project(ohdisp)
+set(CMAKE_CXX_STANDARD 17)
+add_library(ohdisp SHARED ohdisp.cpp)
+target_compile_options(ohdisp PRIVATE -O2)
+target_link_libraries(ohdisp PUBLIC libace_napi.z.so libace_ndk.z.so libnative_window.so libhilog_ndk.z.so)

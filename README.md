@@ -10,7 +10,7 @@ AArch64 Omarchy build from [riverscn/omarchy-aarch64-image](https://github.com/r
 | **A. Linux engine apps**: [docs/linux-engine-apps.md](docs/linux-engine-apps.md) | Omarchy's neovim setup and CLI tools inside HarmonyOS's Linux engine, each in a native HarmonyOS window | Works |
 | **B. Whole OS in the Oseasy VM**: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | The complete Omarchy AArch64 OS (its disk, systemd, NetworkManager, SDDM) on a Debian 6.1 kernel in the Oseasy VM app | Boots, with text console and a network root shell; the Hyprland desktop is not displayed yet (see status) |
 | **C. Whole OS in the 鸿融 Linux VM**: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | Omarchy 4.0.6 (Arch Linux ARM) next to a deepin 25 guest in Huawei's Linux VM app, booting deepin's 6.6 kernel | Boots to the SDDM greeter and the Hyprland desktop, GPU-accelerated through virgl (OpenGL only) after 鸿融 starts the VM from cold |
-| **D. Native on the HongMeng kernel**: [docs/native-chroot.md](docs/native-chroot.md) | Arch Linux ARM with Omarchy's packages in a chroot on the host itself (no VM), entered from a root shell | Omarchy's terminal side at native speed (shell, LazyVim, themes, btop, lazygit, mise); no GPU or DRM, so no native Hyprland, but Wayland apps show as windows in route C's desktop via waypipe |
+| **D. Native on the HongMeng kernel**: [docs/native-chroot.md](docs/native-chroot.md) | Arch Linux ARM with Omarchy's packages in a chroot on the host itself (no VM), entered from a root shell | Omarchy's terminal side at native speed (shell, LazyVim, themes, btop, lazygit, mise), and Omarchy's Hyprland desktop in a HarmonyOS app ([docs/native-desktop.md](docs/native-desktop.md)): patched Hyprland rendering on the Maleoon GPU through the host's virglrenderer, about 27 frames/s animated at 2880x1920; Wayland apps also show in route C's desktop via waypipe |
 | **E. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
@@ -59,6 +59,18 @@ sh /data/local/archtest/arch.sh run 30-install-omarchy.sh builder
 /data/local/archtest/bin/omarchy -g foot             # a window in route C's Hyprland (native/vm/route-d-display in the VM)
 ```
 
+The native desktop ([docs/native-desktop.md](docs/native-desktop.md)): run
+`native/desktop/fetch-sources.sh` on a machine with GitHub access before copying
+`native/`, then
+
+```sh
+sh /data/local/archtest/arch.sh run 40-install-desktop.sh builder   # patched aquamarine + Hyprland in /opt/ohmarchy
+/data/local/archtest/bin/omarchy desktop start       # GPU via bin/virgl_test_server (native/vtest) if present
+```
+
+and install the app with `native/app/build.sh` (DevEco Studio's tools); open
+"Omarchy (native)" on the HarmonyOS desktop.
+
 ## Route E quick start
 
 On a Mac (or any DevEco host) with DevEco Studio, `hdc`, `gh` and `python3`:
@@ -95,6 +107,9 @@ tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)
 tools/serial/      serial console: Limine menu renderer/driver, debug root shell, logged-in shell runner
 linux-engine/      route A install scripts (run inside the Linux engine container)
 native/            route D: image build, session manager (arch.sh), launcher (omarchy), Arch + Omarchy setup
+  desktop/         native Hyprland desktop: aquamarine/Hyprland patches, launcher, shims
+  app/             HarmonyOS app showing it (ArkTS + C++, XComponent); sign.sh uses the SDK's test keys
+  vtest/           virgl_test_server for the host, on the system virglrenderer (GPU for the desktop)
   vm/              waypipe receiver for route C's desktop
 docs/
 ```

@@ -1,0 +1,13 @@
+#!/bin/sh
+# No journald in the chroot: drop systemd-cat's options and run the command,
+# so Omarchy's launchers (omarchy-launch-shell, ...) work unchanged.
+while [ $# -gt 0 ]; do
+    case "$1" in
+    --) shift; break ;;
+    -t|-p|--identifier|--priority|--stderr-priority) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+    esac
+done
+[ $# -gt 0 ] || exec cat > /dev/null
+exec "$@"

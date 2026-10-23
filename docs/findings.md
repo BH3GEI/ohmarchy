@@ -174,6 +174,25 @@ shell on the host. Details and workarounds: [native-chroot.md](native-chroot.md)
   domain is permissive, and `normal_hap_attr` (ordinary apps) may `connectto`
   unix sockets of the `su` domain.
 
+## Native desktop (route D)
+
+Details and fixes in [native-desktop.md](native-desktop.md#hongmeng-notes).
+
+- A glibc process in the chroot can allocate dmabufs from the host's
+  `/dev/system_heap2` (dma-heap, 505:9, mode 666) and mmap them; Mesa llvmpipe
+  on `EGL_PLATFORM_SURFACELESS_MESA` imports them (`EGL_EXT_image_dma_buf_import`).
+- The system `libvirglrenderer.so.1` exports the full public API (plus
+  `virgl_renderer_ohos_set_scanout/present`), so upstream's vtest server (1.1.1)
+  links against it unchanged. Mesa 26's virpipe in the chroot then reports
+  `virgl (zink Vulkan 1.2(Maleoon 916))`. virpipe has no dmabuf import, and the
+  host renderer rejects some commands from Qt Quick clients ("Illegal resource").
+- An app (`normal_hap_attr`) connects to an abstract unix socket served by a
+  root process in the `su` domain and receives dmabuf fds over it; mmap works.
+- A research build accepts HAPs signed with the SDK's OpenHarmony test keys and a
+  debug profile bound to the UDID; `bm install` as root installs them.
+- g++ 16.1.1 in the chroot crashes (internal compiler error, even at -O0) on
+  aquamarine's DRM.cpp and on Hyprland; clang 23 builds both.
+
 ## Host link
 
 - A USB-C cable between the host laptop and the HarmonyOS machine keeps

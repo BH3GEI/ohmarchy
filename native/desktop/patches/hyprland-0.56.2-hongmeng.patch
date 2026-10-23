@@ -1,0 +1,341 @@
+diff --git a/src/protocols/ImageCopyCapture.cpp b/src/protocols/ImageCopyCapture.cpp
+index 20d990b..8aa7eb4 100644
+--- a/src/protocols/ImageCopyCapture.cpp
++++ b/src/protocols/ImageCopyCapture.cpp
+@@ -71,6 +71,10 @@ void CImageCopyCaptureSession::sendConstraints() {
+     for (DRMFormat format : formats) {
+         m_resource->sendShmFormat(NFormatUtils::drmToShm(format));
+ 
++        // no linux-dmabuf without dmabuf import (e.g. a virpipe renderer): offer shm only
++        if (!PROTO::linuxDma)
++            continue;
++
+         auto     modifiers = g_pHyprRenderer->getDRMFormatModifiers(format);
+ 
+         wl_array modsArr;
+@@ -81,12 +85,14 @@ void CImageCopyCaptureSession::sendConstraints() {
+         wl_array_release(&modsArr);
+     }
+ 
+-    dev_t           device    = PROTO::linuxDma->getMainDevice();
+-    struct wl_array deviceArr = {
+-        .size = sizeof(device),
+-        .data = sc<void*>(&device),
+-    };
+-    m_resource->sendDmabufDevice(&deviceArr);
++    if (PROTO::linuxDma) {
++        dev_t           device    = PROTO::linuxDma->getMainDevice();
++        struct wl_array deviceArr = {
++            .size = sizeof(device),
++            .data = sc<void*>(&device),
++        };
++        m_resource->sendDmabufDevice(&deviceArr);
++    }
+ 
+     m_bufferSize = m_session->bufferSize();
+     m_resource->sendBufferSize(m_bufferSize.x, m_bufferSize.y);
+@@ -282,21 +288,23 @@ void CImageCopyCaptureCursorSession::sendConstraints() {
+ 
+     m_sessionResource->sendShmFormat(NFormatUtils::drmToShm(format));
+ 
+-    auto     modifiers = g_pHyprRenderer->getDRMFormatModifiers(format);
+-
+-    wl_array modsArr;
+-    wl_array_init(&modsArr);
+-    if (const auto PMODIFIERS = sc<uint64_t*>(wl_array_add(&modsArr, modifiers.size() * sizeof(uint64_t))))
+-        std::ranges::copy(modifiers, PMODIFIERS);
+-    m_sessionResource->sendDmabufFormat(format, &modsArr);
+-    wl_array_release(&modsArr);
+-
+-    dev_t           device    = PROTO::linuxDma->getMainDevice();
+-    struct wl_array deviceArr = {
+-        .size = sizeof(device),
+-        .data = sc<void*>(&device),
+-    };
+-    m_sessionResource->sendDmabufDevice(&deviceArr);
++    if (PROTO::linuxDma) {
++        auto     modifiers = g_pHyprRenderer->getDRMFormatModifiers(format);
++
++        wl_array modsArr;
++        wl_array_init(&modsArr);
++        if (const auto PMODIFIERS = sc<uint64_t*>(wl_array_add(&modsArr, modifiers.size() * sizeof(uint64_t))))
++            std::ranges::copy(modifiers, PMODIFIERS);
++        m_sessionResource->sendDmabufFormat(format, &modsArr);
++        wl_array_release(&modsArr);
++
++        dev_t           device    = PROTO::linuxDma->getMainDevice();
++        struct wl_array deviceArr = {
++            .size = sizeof(device),
++            .data = sc<void*>(&device),
++        };
++        m_sessionResource->sendDmabufDevice(&deviceArr);
++    }
+ 
+     m_bufferSize = m_session->bufferSize();
+     m_sessionResource->sendBufferSize(m_bufferSize.x, m_bufferSize.y);
+diff --git a/src/render/GLRenderer.cpp b/src/render/GLRenderer.cpp
+index 1dab5a0..486c33d 100644
+--- a/src/render/GLRenderer.cpp
++++ b/src/render/GLRenderer.cpp
+@@ -1,4 +1,5 @@
+ #include "GLRenderer.hpp"
++#include "gl/GLRenderbuffer.hpp"
+ #include "decorations/CHyprInnerGlowDecoration.hpp"
+ #include <aquamarine/output/Output.hpp>
+ #include "../config/ConfigValue.hpp"
+@@ -87,6 +88,10 @@ void CHyprGLRenderer::endRender(const std::function<void()>& renderingDoneCallba
+ 
+     g_pHyprRenderer->m_renderData.damage = m_renderPass.render(g_pHyprRenderer->m_renderData.damage);
+ 
++    // read-back renderbuffers copy only the region repainted this frame
++    if (m_currentRenderbuffer && m_renderMode == RENDER_MODE_NORMAL)
++        dc<GL::CGLRenderbuffer*>(m_currentRenderbuffer.get())->setDamage(g_pHyprRenderer->m_renderData.damage);
++
+     auto cleanup = CScopeGuard([this]() {
+         if (m_currentRenderbuffer)
+             m_currentRenderbuffer->unbind();
+diff --git a/src/render/OpenGL.cpp b/src/render/OpenGL.cpp
+index baee1ad..662e017 100644
+--- a/src/render/OpenGL.cpp
++++ b/src/render/OpenGL.cpp
+@@ -9,6 +9,7 @@
+ #include <random>
+ #include <pango/pangocairo.h>
+ #include "OpenGL.hpp"
++#include <optional>
+ #include "Renderer.hpp"
+ #include "../Compositor.hpp"
+ #include "../helpers/MiscFunctions.hpp"
+@@ -158,7 +159,23 @@ void CHyprOpenGLImpl::initEGL(bool gbm) {
+ 
+     attrs.push_back(EGL_NONE);
+ 
+-    m_eglDisplay = m_proc.eglGetPlatformDisplayEXT(gbm ? EGL_PLATFORM_GBM_KHR : EGL_PLATFORM_DEVICE_EXT, gbm ? m_gbmDevice : m_eglDevice, attrs.data());
++    // Without a DRM node (headless on a kernel with no DRM), render on a Mesa gallium driver
++    // through the surfaceless platform: llvmpipe by default, or the one named by
++    // HYPRLAND_SURFACELESS_GALLIUM_DRIVER (e.g. virpipe, a GPU behind a vtest server). That
++    // choice applies to Hyprland only; clients keep their own GALLIUM_DRIVER.
++    std::optional<std::string> prevGalliumDriver;
++    const char*                surfacelessDriver = m_drmFD < 0 ? getenv("HYPRLAND_SURFACELESS_GALLIUM_DRIVER") : nullptr;
++    if (surfacelessDriver && *surfacelessDriver) {
++        if (const char* prev = getenv("GALLIUM_DRIVER"))
++            prevGalliumDriver = prev;
++        setenv("GALLIUM_DRIVER", surfacelessDriver, 1);
++        Log::logger->log(Log::DEBUG, "EGL: surfaceless gallium driver {}", surfacelessDriver);
++    }
++
++    if (m_drmFD < 0)
++        m_eglDisplay = m_proc.eglGetPlatformDisplayEXT(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, attrs.data());
++    else
++        m_eglDisplay = m_proc.eglGetPlatformDisplayEXT(gbm ? EGL_PLATFORM_GBM_KHR : EGL_PLATFORM_DEVICE_EXT, gbm ? m_gbmDevice : m_eglDevice, attrs.data());
+     if (m_eglDisplay == EGL_NO_DISPLAY)
+         RASSERT(false, "EGL: failed to create a platform display");
+ 
+@@ -168,6 +185,13 @@ void CHyprOpenGLImpl::initEGL(bool gbm) {
+     if (eglInitialize(m_eglDisplay, &major, &minor) == EGL_FALSE)
+         RASSERT(false, "EGL: failed to initialize a platform display");
+ 
++    if (surfacelessDriver && *surfacelessDriver) {
++        if (prevGalliumDriver)
++            setenv("GALLIUM_DRIVER", prevGalliumDriver->c_str(), 1);
++        else
++            unsetenv("GALLIUM_DRIVER");
++    }
++
+     const std::string EGLEXTENSIONS = eglQueryString(m_eglDisplay, EGL_EXTENSIONS);
+ 
+     m_exts.IMG_context_priority               = EGLEXTENSIONS.contains("IMG_context_priority");
+@@ -330,7 +354,11 @@ CHyprOpenGLImpl::CHyprOpenGLImpl() : m_drmFD(g_pCompositor->m_drmRenderNode.fd >
+     RASSERT(eglBindAPI(EGL_OPENGL_ES_API) != EGL_FALSE, "Couldn't bind to EGL's opengl ES API. This means your gpu driver f'd up. This is not a hyprland issue.");
+ 
+     bool success = false;
+-    if (EGLEXTENSIONS.contains("EXT_platform_device") || !m_proc.eglQueryDevicesEXT || !m_proc.eglQueryDeviceStringEXT) {
++    if (m_drmFD < 0 && EGLEXTENSIONS.contains("EGL_MESA_platform_surfaceless")) {
++        Log::logger->log(Log::WARN, "EGL: no DRM node, using the surfaceless platform (software rendering)");
++        success = true;
++        initEGL(false);
++    } else if (EGLEXTENSIONS.contains("EXT_platform_device") || !m_proc.eglQueryDevicesEXT || !m_proc.eglQueryDeviceStringEXT) {
+         m_eglDevice = eglDeviceFromDRMFD(m_drmFD);
+ 
+         if (m_eglDevice != EGL_NO_DEVICE_EXT) {
+diff --git a/src/render/Renderer.cpp b/src/render/Renderer.cpp
+index 249f084..96f1c60 100644
+--- a/src/render/Renderer.cpp
++++ b/src/render/Renderer.cpp
+@@ -133,6 +133,14 @@ IHyprRenderer::IHyprRenderer() {
+                              DRMV->version_patchlevel, std::string{DRMV->date, DRMV->date_len}, std::string{DRMV->desc, DRMV->desc_len});
+         } else {
+             Log::logger->log(Log::DEBUG, "No primary DRM driver information found");
++
++            // no DRM node at all (surfaceless rendering): tell software rasterizers apart by GL renderer
++            if (g_pCompositor->m_drm.fd < 0 && GL::g_pHyprOpenGL) {
++                GL::g_pHyprOpenGL->makeEGLCurrent();
++                const std::string renderer = rc<const char*>(glGetString(GL_RENDERER));
++                if (renderer.contains("llvmpipe") || renderer.contains("softpipe"))
++                    m_software = true;
++            }
+         }
+ 
+         drmFreeVersion(DRMV);
+diff --git a/src/render/gl/GLRenderbuffer.cpp b/src/render/gl/GLRenderbuffer.cpp
+index 794d035..19acf58 100644
+--- a/src/render/gl/GLRenderbuffer.cpp
++++ b/src/render/gl/GLRenderbuffer.cpp
+@@ -10,6 +10,9 @@
+ #include <hyprutils/signal/Signal.hpp>
+ 
+ #include <dlfcn.h>
++#include <chrono>
++#include <vector>
++#include <cstdio>
+ 
+ using namespace Render::GL;
+ 
+@@ -34,15 +37,22 @@ CGLRenderbuffer::~CGLRenderbuffer() {
+ CGLRenderbuffer::CGLRenderbuffer(SP<Aquamarine::IBuffer> buffer, uint32_t format) : IRenderbuffer(buffer, format) {
+     auto dma = buffer->dmabuf();
+ 
+-    m_image = g_pHyprOpenGL->createEGLImage(dma);
++    m_image = g_pHyprOpenGL->m_exts.EXT_image_dma_buf_import ? g_pHyprOpenGL->createEGLImage(dma) : EGL_NO_IMAGE_KHR;
+     if (m_image == EGL_NO_IMAGE_KHR) {
+-        Log::logger->log(Log::ERR, "rb: createEGLImage failed");
+-        return;
++        if (!(buffer->caps() & Aquamarine::BUFFER_CAPABILITY_DATAPTR)) {
++            Log::logger->log(Log::ERR, "rb: createEGLImage failed");
++            return;
++        }
++        Log::logger->log(Log::DEBUG, "rb: no dmabuf import, rendering to GL storage with CPU read-back");
++        m_readBack = true;
+     }
+ 
+     glGenRenderbuffers(1, &m_rbo);
+     glBindRenderbuffer(GL_RENDERBUFFER, m_rbo);
+-    g_pHyprOpenGL->m_proc.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER, m_image);
++    if (m_readBack)
++        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, buffer->size.x, buffer->size.y);
++    else
++        g_pHyprOpenGL->m_proc.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER, m_image);
+     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+ 
+     m_framebuffer = makeShared<CGLFramebuffer>();
+@@ -71,5 +81,87 @@ void CGLRenderbuffer::bind() {
+ }
+ 
+ void CGLRenderbuffer::unbind() {
++    if (m_readBack)
++        readBack();
+     GLFB(m_framebuffer)->unbind();
+ }
++
++void CGLRenderbuffer::setDamage(const Hyprutils::Math::CRegion& damage) {
++    m_damage = damage;
++}
++
++void CGLRenderbuffer::readBack() {
++    auto buf = m_hlBuffer.lock();
++    if (!buf)
++        return;
++
++    const auto dma               = buf->dmabuf();
++    const auto [data, fmt, size] = buf->beginDataPtr(0);
++    if (!data) {
++        buf->endDataPtr();
++        return;
++    }
++
++    const int  w      = buf->size.x;
++    const int  h      = buf->size.y;
++    const int  stride = dma.strides.at(0) ? dma.strides.at(0) : w * 4;
++    // memory order R,G,B,A matches GL_RGBA; B,G,R,A (XRGB8888/ARGB8888) needs BGRA or a swap
++    const bool rgba = fmt == DRM_FORMAT_XBGR8888 || fmt == DRM_FORMAT_ABGR8888;
++    const bool bgra = !rgba && g_pHyprOpenGL->m_exts.EXT_read_format_bgra;
++
++    static const bool timing = getenv("HYPRLAND_READBACK_TIMING");
++    const auto        t0     = std::chrono::steady_clock::now();
++
++    // Only what was repainted this frame; many small reads cost more than one big one,
++    // so fall back to the whole buffer when the damage covers most of it.
++    std::vector<CBox> boxes;
++    if (m_damage) {
++        CRegion damage = m_damage->copy().intersect(CBox{0, 0, w, h});
++        m_damage.reset();
++        if (damage.empty()) {
++            buf->endDataPtr();
++            return;
++        }
++        double area = 0;
++        damage.forEachRect([&](const auto& r) {
++            boxes.emplace_back(r.x1, r.y1, r.x2 - r.x1, r.y2 - r.y1);
++            area += (double)(r.x2 - r.x1) * (r.y2 - r.y1);
++        });
++        if (area > 0.5 * w * h || boxes.size() > 32)
++            boxes.clear();
++    }
++    if (boxes.empty())
++        boxes.emplace_back(0, 0, w, h);
++
++    glBindFramebuffer(GL_READ_FRAMEBUFFER, GLFB(m_framebuffer)->m_fb);
++    glPixelStorei(GL_PACK_ALIGNMENT, 4);
++    glPixelStorei(GL_PACK_ROW_LENGTH, stride / 4);
++    for (const auto& b : boxes) {
++        const int bx = b.x, by = b.y, bw = b.width, bh = b.height;
++        glReadPixels(bx, by, bw, bh, bgra ? GL_BGRA_EXT : GL_RGBA, GL_UNSIGNED_BYTE, data + (size_t)by * stride + (size_t)bx * 4);
++        if (!rgba && !bgra) {
++            for (int y = by; y < by + bh; y++) {
++                auto* px = rc<uint32_t*>(data + (size_t)y * stride) + bx;
++                for (int x = 0; x < bw; x++)
++                    px[x] = (px[x] & 0xFF00FF00u) | ((px[x] & 0xFFu) << 16) | ((px[x] >> 16) & 0xFFu);
++            }
++        }
++    }
++    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
++
++    buf->endDataPtr();
++
++    if (timing) {
++        static int    n     = 0;
++        static double total = 0;
++        static auto   start = t0;
++        const auto    now   = std::chrono::steady_clock::now();
++        total += std::chrono::duration<double, std::milli>(now - t0).count();
++        if (++n % 30 == 0) {
++            const double secs = std::chrono::duration<double>(now - start).count();
++            fprintf(stderr, "readback: %.1f ms avg, %.1f frames/s over 30 frames (%dx%d, %zu rects last)\n", total / 30, 30 / secs, w, h, boxes.size());
++            total = 0;
++            start = now;
++        }
++    }
++}
+diff --git a/src/render/gl/GLRenderbuffer.hpp b/src/render/gl/GLRenderbuffer.hpp
+index 4e60431..9267fe7 100644
+--- a/src/render/gl/GLRenderbuffer.hpp
++++ b/src/render/gl/GLRenderbuffer.hpp
+@@ -3,6 +3,8 @@
+ #include "../../helpers/memory/Memory.hpp"
+ #include "../Renderbuffer.hpp"
+ #include <aquamarine/buffer/Buffer.hpp>
++#include <hyprutils/math/Region.hpp>
++#include <optional>
+ 
+ namespace Render::GL {
+     class CGLRenderbuffer : public IRenderbuffer {
+@@ -13,8 +15,17 @@ namespace Render::GL {
+         void bind() override;
+         void unbind() override;
+ 
++        // Region repainted this frame; read-back copies only it. Unset means the whole buffer.
++        void setDamage(const Hyprutils::Math::CRegion& damage);
++
+       private:
+-        void*  m_image = nullptr;
+-        GLuint m_rbo   = 0;
++        // Without dmabuf import (e.g. Mesa virpipe), render into plain GL storage and
++        // read each frame back into the buffer's CPU mapping on unbind().
++        void readBack();
++
++        void*  m_image    = nullptr;
++        GLuint m_rbo      = 0;
++        bool   m_readBack = false;
++        std::optional<Hyprutils::Math::CRegion> m_damage;
+     };
+ }

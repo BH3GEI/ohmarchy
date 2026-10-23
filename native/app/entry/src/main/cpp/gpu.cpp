@@ -9,6 +9,7 @@
 #include <native_buffer/native_buffer.h>
 #include <native_window/external_window.h>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <string.h>
@@ -20,6 +21,9 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <ctime>
+#include <map>
+#include <string>
 #include <cstdint>
 
 #include "gpu.h"
@@ -60,6 +64,42 @@ const char *kLog = "/data/storage/el2/base/files/vtest.log";
 void OnWindowUse()
 {
     LOGI("renderer took the window");
+}
+
+// The library presents with eglSwapBuffers at swap interval 1, which waits for the
+// display: Hyprland's frame then blocks on vsync and clients fall a frame behind.
+// libepoxy's dispatch entries are plain pointers: point eglSwapBuffers at a wrapper
+// that sets swap interval 0 on each surface it presents (the system shows the
+// latest buffer). The real functions come from the system EGL, as in epoxy.
+using SwapBuffersFn = unsigned (*)(void *dpy, void *surface);
+using SwapIntervalFn = unsigned (*)(void *dpy, int interval);
+SwapBuffersFn g_realSwap = nullptr;
+SwapIntervalFn g_swapInterval = nullptr;
+
+unsigned SwapNoWait(void *dpy, void *surface)
+{
+    static void *intervalSet = nullptr;
+    if (surface != intervalSet) {
+        g_swapInterval(dpy, 0);
+        intervalSet = surface;
+    }
+    return g_realSwap(dpy, surface);
+}
+
+void WrapSwapBuffers()
+{
+    void *epoxy = dlopen("libepoxy.so", RTLD_NOW | RTLD_NOLOAD);
+    void *egl = dlopen("libEGL.so", RTLD_NOW);
+    if (epoxy == nullptr || egl == nullptr || getenv("OHMARCHY_PRESENT_VSYNC") != nullptr) {
+        return;
+    }
+    auto *entry = static_cast<SwapBuffersFn *>(dlsym(epoxy, "epoxy_eglSwapBuffers"));
+    g_realSwap = reinterpret_cast<SwapBuffersFn>(dlsym(egl, "eglSwapBuffers"));
+    g_swapInterval = reinterpret_cast<SwapIntervalFn>(dlsym(egl, "eglSwapInterval"));
+    if (entry != nullptr && g_realSwap != nullptr && g_swapInterval != nullptr) {
+        *entry = SwapNoWait;
+        LOGI("presents do not wait for vsync");
+    }
 }
 
 void *VtestThread(void *)
@@ -129,6 +169,51 @@ extern "C" bool vtest_present_hook(const char *client, uint32_t res_id, const vi
     return true;
 }
 
+// Command tracing for development: while the file "trace" exists in the app's files
+// directory, print per-client counts of transfers and command types every second.
+extern "C" void vtest_trace_hook(const char *client, int op, uint32_t res_id, const virgl_box *box,
+                                 const uint32_t *cmd, uint32_t length_dw)
+{
+    static time_t checked = 0, last = 0;
+    static bool on = false;
+    struct Stats {
+        std::map<std::string, uint64_t> n;
+    };
+    static std::map<std::string, Stats> stats;
+    time_t now = time(nullptr);
+    if (now != checked) {
+        checked = now;
+        on = access("/data/storage/el2/base/files/trace", F_OK) == 0;
+    }
+    if (!on) {
+        return;
+    }
+    Stats &st = stats[client ? client : "?"];
+    char key[64];
+    if (op < 2) {
+        snprintf(key, sizeof(key), "%s %ux%u res%u", op ? "put" : "get", box->w, box->h, res_id);
+        st.n[key]++;
+    } else {
+        for (uint32_t i = 0; i < length_dw;) {
+            uint32_t hdr = cmd[i];
+            snprintf(key, sizeof(key), "cmd%u/%u", hdr & 0xff, (hdr >> 8) & 0xff);
+            st.n[key]++;
+            i += 1 + (hdr >> 16);
+        }
+    }
+    if (now != last) {
+        last = now;
+        for (auto &[c, cs] : stats) {
+            std::string line = c + ":";
+            for (auto &[k, v] : cs.n) {
+                line += " " + k + "=" + std::to_string(v);
+            }
+            fprintf(stderr, "trace %s\n", line.c_str());
+        }
+        stats.clear();
+    }
+}
+
 bool GpuActive() { return g_gpuActive; }
 uint64_t GpuPresents() { return g_presents; }
 
@@ -162,6 +247,8 @@ bool GpuStart(OHNativeWindow *window)
     // Before anything in the process initialises EGL: the system EGL picks Mesa
     // (zink on the Maleoon GPU's Vulkan) only with this set.
     setenv("NEED_OPENGL", "1", 1);
+    // GPU clients' frames reach Hyprland as GPU copies (vtest-inapp.patch).
+    setenv("VTEST_ZERO_COPY_CLIENTS", "1", 0);
     if (getenv("VIRGL_LOG_LEVEL") == nullptr) {
         setenv("VIRGL_LOG_LEVEL", "info", 1);
     }
@@ -173,6 +260,7 @@ bool GpuStart(OHNativeWindow *window)
         setvbuf(stdout, nullptr, _IOLBF, 0);
         setvbuf(stderr, nullptr, _IONBF, 0);
     }
+    WrapSwapBuffers();
     pthread_t t;
     pthread_create(&t, nullptr, Supervisor, nullptr);
     pthread_detach(t);

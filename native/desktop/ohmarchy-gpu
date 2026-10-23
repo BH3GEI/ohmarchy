@@ -1,0 +1,9 @@
+#!/bin/bash
+# Run a Wayland app on the GPU (Mesa virpipe through the display app's renderer)
+# instead of llvmpipe. Its frames reach Hyprland as GPU copies; libohzc.so keeps
+# Mesa from copying them through the CPU as well (native/desktop/ohzc-memcpy.c).
+# Apps whose GL the system virglrenderer rejects (some Qt Quick) stay on llvmpipe.
+#   ohmarchy-gpu APP [ARG..]
+export GALLIUM_DRIVER=virpipe
+export LD_PRELOAD=/opt/ohmarchy/lib/libohzc.so${LD_PRELOAD:+:$LD_PRELOAD}
+exec "$@"

@@ -213,7 +213,7 @@ index 249f084..7149e1e 100644
      // cleared only after the commit
      pMonitor->m_renderingActive = false;
 diff --git a/src/render/gl/GLRenderbuffer.cpp b/src/render/gl/GLRenderbuffer.cpp
-index 794d035..b24208b 100644
+index 794d035..11c1d9f 100644
 --- a/src/render/gl/GLRenderbuffer.cpp
 +++ b/src/render/gl/GLRenderbuffer.cpp
 @@ -10,6 +10,9 @@
@@ -253,7 +253,7 @@ index 794d035..b24208b 100644
      glBindRenderbuffer(GL_RENDERBUFFER, 0);
  
      m_framebuffer = makeShared<CGLFramebuffer>();
-@@ -71,5 +81,100 @@ void CGLRenderbuffer::bind() {
+@@ -71,5 +81,132 @@ void CGLRenderbuffer::bind() {
  }
  
  void CGLRenderbuffer::unbind() {
@@ -266,10 +266,47 @@ index 794d035..b24208b 100644
 +    m_damage = damage;
 +}
 +
++// HYPRLAND_READBACK_PRESENT: the GPU server (ohmarchy's display app) presents the
++// frame itself. Instead of reading it back, blit one pixel into a 7x3 marker texture
++// and flush: the server sees that blit in the command stream and presents its source.
++// Nothing here waits for the GPU.
++static void signalPresent(GLuint frameFb) {
++    static GLuint markerTex = 0, markerFb = 0;
++    if (!markerFb) {
++        glGenTextures(1, &markerTex);
++        glBindTexture(GL_TEXTURE_2D, markerTex);
++        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 7, 3, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
++        glBindTexture(GL_TEXTURE_2D, 0);
++        glGenFramebuffers(1, &markerFb);
++        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, markerFb);
++        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, markerTex, 0);
++    }
++    glBindFramebuffer(GL_READ_FRAMEBUFFER, frameFb);
++    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, markerFb);
++    glBlitFramebuffer(0, 0, 1, 1, 0, 0, 1, 1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
++    glFlush();
++}
++
 +void CGLRenderbuffer::readBack() {
 +    auto buf = m_hlBuffer.lock();
 +    if (!buf)
 +        return;
++
++    static const bool presentByServer = getenv("HYPRLAND_READBACK_PRESENT");
++    if (presentByServer) {
++        static const bool timing = getenv("HYPRLAND_READBACK_TIMING");
++        static int        n      = 0;
++        static auto       start  = std::chrono::steady_clock::now();
++        m_damage.reset();
++        signalPresent(GLFB(m_framebuffer)->m_fb);
++        if (timing && ++n % 30 == 0) {
++            const auto now = std::chrono::steady_clock::now();
++            fprintf(stderr, "present: %.1f frames/s over 30 frames (%dx%d)\n", 30 / std::chrono::duration<double>(now - start).count(),
++                    (int)buf->size.x, (int)buf->size.y);
++            start = now;
++        }
++        return;
++    }
 +
 +    const auto dma               = buf->dmabuf();
 +    const auto [data, fmt, size] = buf->beginDataPtr(0);
@@ -286,10 +323,7 @@ index 794d035..b24208b 100644
 +    const bool bgra = !rgba && g_pHyprOpenGL->m_exts.EXT_read_format_bgra;
 +
 +    static const bool timing = getenv("HYPRLAND_READBACK_TIMING");
-+    // HYPRLAND_READBACK_PRESENT: the GPU server shows the frame itself when it is read
-+    // back (ohmarchy's display app), so one pixel is enough to hand it over.
-+    static const bool present = getenv("HYPRLAND_READBACK_PRESENT");
-+    const auto        t0      = std::chrono::steady_clock::now();
++    const auto        t0     = std::chrono::steady_clock::now();
 +
 +    // Only what was repainted this frame; many small reads cost more than one big one,
 +    // so fall back to the whole buffer when the damage covers most of it.
@@ -309,8 +343,6 @@ index 794d035..b24208b 100644
 +        if (area > 0.5 * w * h || boxes.size() > 32)
 +            boxes.clear();
 +    }
-+    if (present)
-+        boxes.assign(1, CBox{0, 0, 1, 1});
 +    if (boxes.empty())
 +        boxes.emplace_back(0, 0, w, h);
 +
@@ -387,3 +419,43 @@ index 4e60431..9267fe7 100644
 +        std::optional<Hyprutils::Math::CRegion> m_damage;
      };
  }
+diff --git a/src/render/gl/GLTexture.cpp b/src/render/gl/GLTexture.cpp
+index 9483af9..bb420dd 100644
+--- a/src/render/gl/GLTexture.cpp
++++ b/src/render/gl/GLTexture.cpp
+@@ -120,6 +120,19 @@ CGLTexture::CGLTexture(std::span<const float> lut3D, size_t N) : ITexture(lut3D,
+     unbind();
+ }
+ 
++// Row (0 or last) holding the GPU server's zero-copy tag, or -1.
++static int zeroCopyTagRow(const uint8_t* pixels, uint32_t stride, int height) {
++    static const bool enabled = getenv("HYPRLAND_READBACK_PRESENT");
++    if (!enabled || !pixels || height < 1)
++        return -1;
++    constexpr uint32_t MAGIC = 0x5a43484f;
++    if (*rc<const uint32_t*>(pixels) == MAGIC)
++        return 0;
++    if (*rc<const uint32_t*>(pixels + (size_t)stride * (height - 1)) == MAGIC)
++        return height - 1;
++    return -1;
++}
++
+ void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, const CRegion& damage) {
+     if (damage.empty())
+         return;
+@@ -143,7 +156,14 @@ void CGLTexture::update(uint32_t drmFormat, uint8_t* pixels, uint32_t stride, co
+ 
+     GLCALL(glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, stride / format->bytesPerBlock));
+ 
+-    damage.copy().intersect(CBox{{}, m_size}).forEachRect([&format, &pixels](const auto& rect) {
++    // ohmarchy's GPU server tags frames of GPU clients it keeps on the GPU ("OHCZ" in the
++    // first or last row): uploading the tag row is enough, it copies the rest itself.
++    CRegion   uploadDamage = damage;
++    const int tagRow = zeroCopyTagRow(pixels, stride, m_size.y);
++    if (tagRow >= 0)
++        uploadDamage = CRegion(CBox{0, (double)tagRow, 4, 1});
++
++    uploadDamage.intersect(CBox{{}, m_size}).forEachRect([&format, &pixels](const auto& rect) {
+         GLCALL(glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, rect.x1));
+         GLCALL(glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, rect.y1));
+ 

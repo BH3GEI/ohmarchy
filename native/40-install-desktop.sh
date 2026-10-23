@@ -88,6 +88,10 @@ xml=$build/Hyprland/protocols/input-method-unstable-v2.xml
 wayland-scanner client-header "$xml" "$build/input-method-unstable-v2-client-protocol.h"
 wayland-scanner private-code "$xml" "$build/input-method-unstable-v2-protocol.c"
 gcc -O2 -o "$prefix/bin/ohime" "$here/desktop/ohime.c" "$build/input-method-unstable-v2-protocol.c" -I"$build" -lwayland-client
+# GPU clients: ohmarchy-gpu APP (virpipe, frames as GPU copies; see ohzc-memcpy.c)
+mkdir -p "$prefix/lib"
+clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
+install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
 if ! grep -q '^Name=pinyin' "$home/.config/fcitx5/profile" 2>/dev/null; then
     mkdir -p "$home/.config/fcitx5"
     cat > "$home/.config/fcitx5/profile" <<'T'

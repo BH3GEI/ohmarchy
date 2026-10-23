@@ -1,31 +1,359 @@
 diff --git a/vtest/vtest_renderer.c b/vtest/vtest_renderer.c
-index a4450f6..929e8a6 100644
+index a4450f6..33c11c8 100644
 --- a/vtest/vtest_renderer.c
 +++ b/vtest/vtest_renderer.c
-@@ -1357,6 +1357,10 @@ static int vtest_transfer_decode_args2(struct vtest_context *ctx,
-    return 0;
- }
+@@ -36,6 +36,7 @@
+ 
+ #include "virgl_hw.h"
+ #include "virglrenderer.h"
++#include "virgl_protocol.h"
+ 
+ #include <sys/uio.h>
+ #include <sys/socket.h>
+@@ -108,6 +109,14 @@ struct vtest_sync_wait {
+    uint32_t signaled_count;
+ };
  
 +#ifdef VTEST_BROKER
 +bool vtest_present_hook(const char *client, uint32_t res_id, const struct virgl_box *box) __attribute__((weak));
++/* op: 0 transfer get, 1 transfer put, 2 command buffer (cmd, length in dwords) */
++void vtest_trace_hook(const char *client, int op, uint32_t res_id, const struct virgl_box *box,
++                      const uint32_t *cmd, uint32_t length_dw) __attribute__((weak));
++static void zc_forget(int ctx_id);
 +#endif
 +
- static int vtest_transfer_get_internal(struct vtest_context *ctx,
-                                        struct vtest_transfer_args *args,
-                                        uint32_t data_size,
-@@ -1384,6 +1388,12 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+ struct vtest_context {
+    struct list_head head;
+ 
+@@ -470,6 +479,9 @@ static void vtest_free_context(struct vtest_context *ctx, bool cleanup);
+ 
+ void vtest_cleanup_renderer(void)
+ {
++#ifdef VTEST_BROKER
++   zc_forget(-1); /* the renderer frees every resource */
++#endif
+    if (renderer.next_context_id > 1) {
+       struct vtest_context *ctx, *tmp;
+ 
+@@ -649,6 +661,9 @@ void vtest_destroy_context(struct vtest_context *ctx)
+    struct vtest_sync_wait *wait, *wait_tmp;
+    uint32_t i;
+ 
++#ifdef VTEST_BROKER
++   zc_forget(ctx->ctx_id);
++#endif
+    if (renderer.current_context == ctx) {
+       renderer.current_context = NULL;
+    }
+@@ -1258,6 +1273,221 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
+    return 0;
+ }
+ 
++
++struct vtest_transfer_args {
++   uint32_t handle;
++   uint32_t level;
++   uint32_t stride;
++   uint32_t layer_stride;
++   struct virgl_box box;
++   uint32_t offset;
++};
++
++#ifdef VTEST_BROKER
++/* Zero-copy frames for GPU clients (VTEST_ZERO_COPY_CLIENTS). A Wayland client on
++ * Mesa virpipe reads each frame back and hands it to the compositor as wl_shm, which
++ * uploads it again: two copies of the whole frame through the CPU. All contexts live
++ * in this one renderer, so instead: when a client reads back a whole resource, copy
++ * it on the GPU into a snapshot resource and write only a tag (magic, snapshot id,
++ * size) into the client's buffer; when the compositor uploads data that starts with
++ * the tag, blit from the snapshot instead. Anything else is left alone. */
++#define ZC_MAGIC 0x5a43484fu /* "OHCZ" */
++#define ZC_MAX 64
++struct zc_snap {
++   int ctx_id;
++   uint32_t src, snap, w, h, format;
++   int compositor_ctx; /* compositor context it is attached to, or 0 */
++};
++static struct zc_snap zc_snaps[ZC_MAX];
++static int zc_count;
++static uint32_t zc_next_handle = 0x7f000000;
++
++static bool zc_enabled(void)
++{
++   static int enabled = -1;
++   if (enabled < 0)
++      enabled = getenv("VTEST_ZERO_COPY_CLIENTS") != NULL;
++   return enabled;
++}
++
++static bool zc_is_compositor(const struct vtest_context *ctx)
++{
++   return ctx->debug_name && !strcmp(ctx->debug_name, "Hyprland");
++}
++
++static void zc_blit(int ctx_id, uint32_t dst, uint32_t dst_format, const struct virgl_box *d,
++                    uint32_t src, uint32_t src_format, const struct virgl_box *s)
++{
++   uint32_t cmd[VIRGL_CMD_BLIT_SIZE + 1] = {
++      VIRGL_CMD0(VIRGL_CCMD_BLIT, 0, VIRGL_CMD_BLIT_SIZE),
++      VIRGL_CMD_BLIT_S0_MASK(0xf), 0, 0,
++      dst, 0, dst_format, d->x, d->y, 0, d->w, d->h, 1,
++      src, 0, src_format, s->x, s->y, 0, s->w, s->h, 1,
++   };
++   virgl_renderer_submit_cmd(cmd, ctx_id, VIRGL_CMD_BLIT_SIZE + 1);
++}
++
++/* What the snapshot holds: the frame in the byte order the compositor's wl_shm
++ * texture stores (it copies those bytes raw). That is RGBA storage here: zink keeps
++ * BGRA resources as RGBA with a swizzle, so "B8G8R8A8" would land swapped. */
++static uint32_t zc_shm_format(uint32_t format)
++{
++   switch (format) {
++   case VIRGL_FORMAT_B8G8R8X8_UNORM:
++   case VIRGL_FORMAT_R8G8B8X8_UNORM:
++      return VIRGL_FORMAT_R8G8B8X8_UNORM;
++   default:
++      return VIRGL_FORMAT_R8G8B8A8_UNORM;
++   }
++}
++
++/* A client went away (ctx_id) or the renderer was reset (-1): drop its snapshots. */
++static void zc_forget(int ctx_id)
++{
++   for (int i = 0; i < zc_count;) {
++      if (ctx_id < 0 || zc_snaps[i].ctx_id == ctx_id) {
++         if (ctx_id >= 0)
++            virgl_renderer_resource_unref(zc_snaps[i].snap);
++         zc_snaps[i] = zc_snaps[--zc_count];
++      } else {
++         i++;
++      }
++   }
++}
++
++/* Client read-back of a whole resource: snapshot on the GPU, tag the buffer. */
++static bool zc_client_readback(struct vtest_context *ctx, struct vtest_resource *res,
++                               const struct vtest_transfer_args *args)
++{
++   struct virgl_renderer_resource_info info;
++   struct zc_snap *zs = NULL;
++   uint32_t stride, *tag;
++   int i;
++
++   if (!zc_enabled() || zc_is_compositor(ctx) || args->level != 0 || args->box.x || args->box.y ||
++       virgl_renderer_resource_get_info(res->res_id, &info) || info.width != args->box.w ||
++       info.height != args->box.h || info.width < 256 || info.height < 256 || !res->iov.iov_base)
++      return false;
++   stride = args->stride ? args->stride : info.width * 4;
++   if (args->offset + (size_t)stride * (info.height - 1) + 16 > res->iov.iov_len)
++      return false;
++
++   for (i = 0; i < zc_count; i++) {
++      if (zc_snaps[i].src == res->res_id && zc_snaps[i].ctx_id == ctx->ctx_id)
++         zs = &zc_snaps[i];
++   }
++   if (zs && (zs->w != info.width || zs->h != info.height || zs->format != zc_shm_format(info.virgl_format))) {
++      virgl_renderer_resource_unref(zs->snap);
++      *zs = zc_snaps[--zc_count];
++      zs = NULL;
++   }
++   if (!zs) {
++      struct virgl_renderer_resource_create_args a = {
++         .handle = zc_next_handle++, .target = 2 /* PIPE_TEXTURE_2D */, .format = zc_shm_format(info.virgl_format),
++         .bind = VIRGL_BIND_SAMPLER_VIEW | VIRGL_BIND_RENDER_TARGET, .width = info.width,
++         .height = info.height, .depth = 1, .array_size = 1,
++      };
++      if (zc_count == ZC_MAX) {
++         virgl_renderer_resource_unref(zc_snaps[0].snap);
++         zc_snaps[0] = zc_snaps[--zc_count];
++      }
++      if (virgl_renderer_resource_create(&a, NULL, 0))
++         return false;
++      zs = &zc_snaps[zc_count++];
++      *zs = (struct zc_snap){ ctx->ctx_id, res->res_id, a.handle, info.width, info.height, a.format, 0 };
++      virgl_renderer_ctx_attach_resource(ctx->ctx_id, zs->snap);
++   }
++   /* converts to wl_shm's byte order, as Mesa's read-back for wl_shm would */
++   zc_blit(ctx->ctx_id, zs->snap, zs->format, &args->box, res->res_id, info.virgl_format, &args->box);
++
++   /* first and last row, whichever way the client copies its rows */
++   tag = (uint32_t *)((char *)res->iov.iov_base + args->offset);
++   tag[0] = ZC_MAGIC; tag[1] = zs->snap; tag[2] = zs->w; tag[3] = zs->h;
++   tag = (uint32_t *)((char *)res->iov.iov_base + args->offset + (size_t)stride * (info.height - 1));
++   tag[0] = ZC_MAGIC; tag[1] = zs->snap; tag[2] = zs->w; tag[3] = zs->h | 0x80000000u;
++   return true;
++}
++
++/* Compositor command buffer: uploads of tagged data become blits from the snapshot.
++ * Returns a new buffer (caller frees) or NULL when nothing changed. */
++static uint32_t *zc_compositor_cmds(struct vtest_context *ctx, const uint32_t *cbuf, uint32_t *len_dw)
++{
++   uint32_t *out = NULL, n = 0, i = 0;
++
++   if (!zc_enabled() || !zc_is_compositor(ctx) || !zc_count)
++      return NULL;
++   while (i < *len_dw) {
++      const uint32_t hdr = cbuf[i], len = hdr >> 16;
++      const uint32_t *c = cbuf + i;
++      struct zc_snap *zs = NULL;
++
++      if ((hdr & 0xff) == VIRGL_CCMD_TRANSFER3D && len == VIRGL_TRANSFER3D_SIZE &&
++          c[VIRGL_TRANSFER3D_DIRECTION] == VIRGL_TRANSFER_TO_HOST) {
++         struct vtest_resource *res = util_hash_table_get(ctx->resource_table, intptr_to_pointer(c[1]));
++         const uint32_t off = c[VIRGL_TRANSFER3D_DATA_OFFSET];
++         if (res && res->iov.iov_base && off + 16 <= res->iov.iov_len) {
++            const uint32_t *tag = (const uint32_t *)((const char *)res->iov.iov_base + off);
++            for (int k = 0; tag[0] == ZC_MAGIC && k < zc_count; k++) {
++               if (zc_snaps[k].snap == tag[1])
++                  zs = &zc_snaps[k];
++            }
++         }
++      }
++      if (zs) {
++         struct virgl_renderer_resource_info sinfo;
++         if (virgl_renderer_resource_get_info(zs->snap, &sinfo))
++            zs = NULL; /* gone: upload the data as sent */
++      }
++      if (zs) {
++         struct virgl_renderer_resource_info dinfo;
++         /* the whole frame (the compositor may upload only the tag row), as raw
++          * bytes: the texture holds wl_shm data as sent and swizzles when sampled */
++         uint32_t copy[VIRGL_CMD_RESOURCE_COPY_REGION_SIZE + 1] = {
++            VIRGL_CMD0(VIRGL_CCMD_RESOURCE_COPY_REGION, 0, VIRGL_CMD_RESOURCE_COPY_REGION_SIZE),
++            c[1], c[2], 0, 0, 0,
++            zs->snap, 0, 0, 0, 0, zs->w, zs->h, 1,
++         };
++         if (!out) {
++            out = malloc((*len_dw + 64) * 4 * 2);
++            memcpy(out, cbuf, i * 4);
++            n = i;
++         }
++         if (zs->compositor_ctx != ctx->ctx_id) {
++            virgl_renderer_ctx_attach_resource(ctx->ctx_id, zs->snap);
++            zs->compositor_ctx = ctx->ctx_id;
++         }
++         memcpy(out + n, copy, sizeof(copy));
++         n += VIRGL_CMD_RESOURCE_COPY_REGION_SIZE + 1;
++      } else if (out) {
++         memcpy(out + n, c, (len + 1) * 4);
++         n += len + 1;
++      }
++      i += len + 1;
++   }
++   if (out)
++      *len_dw = n;
++   return out;
++}
++#endif
++
++#ifdef VTEST_BROKER
++/* The compositor's present signal: a blit from its frame into a 7x3 texture (see
++ * Hyprland's signalPresent). Returns the frame's resource, or 0. */
++static uint32_t vtest_present_marker(const struct vtest_context *ctx, const uint32_t *cbuf, uint32_t len_dw)
++{
++   uint32_t frame = 0;
++   if (!ctx->debug_name || strcmp(ctx->debug_name, "Hyprland"))
++      return 0;
++   for (uint32_t i = 0; i < len_dw; i += 1 + (cbuf[i] >> 16)) {
++      struct virgl_renderer_resource_info info;
++      if ((cbuf[i] & 0xff) == VIRGL_CCMD_BLIT && (cbuf[i] >> 16) == VIRGL_CMD_BLIT_SIZE && i + VIRGL_CMD_BLIT_SIZE < len_dw &&
++          !virgl_renderer_resource_get_info(cbuf[i + VIRGL_CMD_BLIT_DST_RES_HANDLE], &info) && info.width == 7 && info.height == 3)
++         frame = cbuf[i + VIRGL_CMD_BLIT_SRC_RES_HANDLE];
++   }
++   return frame;
++}
++#endif
++
+ int vtest_submit_cmd(uint32_t length_dw)
+ {
+    struct vtest_context *ctx = vtest_get_current_context();
+@@ -1279,7 +1509,27 @@ int vtest_submit_cmd(uint32_t length_dw)
+       return -1;
+    }
+ 
++#ifdef VTEST_BROKER
++   if (vtest_trace_hook)
++      vtest_trace_hook(ctx->debug_name, 2, 0, NULL, cbuf, length_dw);
++   {
++      uint32_t *zc = zc_compositor_cmds(ctx, cbuf, &length_dw);
++      if (zc) {
++         free(cbuf);
++         cbuf = zc;
++      }
++   }
++#endif
+    ret = virgl_renderer_submit_cmd(cbuf, ctx->ctx_id, length_dw);
++#ifdef VTEST_BROKER
++   if (!ret && vtest_present_hook) {
++      uint32_t frame = vtest_present_marker(ctx, cbuf, length_dw);
++      if (frame) {
++         struct virgl_box all = { 0, 0, 0, 1, 1, 1 };
++         vtest_present_hook(ctx->debug_name, frame, &all);
++      }
++   }
++#endif
+ 
+    free(cbuf);
+    if (ret)
+@@ -1289,14 +1539,6 @@ int vtest_submit_cmd(uint32_t length_dw)
+    return 0;
+ }
+ 
+-struct vtest_transfer_args {
+-   uint32_t handle;
+-   uint32_t level;
+-   uint32_t stride;
+-   uint32_t layer_stride;
+-   struct virgl_box box;
+-   uint32_t offset;
+-};
+ 
+ static int vtest_transfer_decode_args(struct vtest_context *ctx,
+                                       struct vtest_transfer_args *args,
+@@ -1384,6 +1626,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
        }
     }
  
 +#ifdef VTEST_BROKER
++   if (vtest_trace_hook)
++      vtest_trace_hook(ctx->debug_name, 0, res->res_id, &args->box, NULL, 0);
 +   /* A read-back by the compositor is it taking its frame: the hook may show the
 +    * resource in the window instead (no copy). */
 +   if (do_transfer && vtest_present_hook && vtest_present_hook(ctx->debug_name, res->res_id, &args->box))
++      do_transfer = false;
++   if (do_transfer && !data_size && zc_client_readback(ctx, res, args))
 +      do_transfer = false;
 +#endif
     if (do_transfer) {
        ret = virgl_renderer_transfer_read_iov(res->res_id,
                                               ctx->ctx_id,
+@@ -1440,6 +1692,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
+       }
+    }
+ 
++#ifdef VTEST_BROKER
++   if (vtest_trace_hook)
++      vtest_trace_hook(ctx->debug_name, 1, res->res_id, &args->box, NULL, 0);
++#endif
+    if (do_transfer) {
+       ret = virgl_renderer_transfer_write_iov(res->res_id,
+                                               ctx->ctx_id,
+@@ -1604,6 +1860,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
+    /*  handle = bw_buf[VCMD_BUSY_WAIT_HANDLE]; unused as of now */
+    flags = bw_buf[VCMD_BUSY_WAIT_FLAGS];
+ 
++#ifdef VTEST_BROKER
++   /* A client's frame that goes to the compositor as a GPU copy: the copy is queued
++    * after the client's rendering, so the read-back need not wait for the GPU (the
++    * fence here covers every context, the compositor's too). */
++   for (int i = 0; zc_enabled() && i < zc_count; i++) {
++      if (zc_snaps[i].src == bw_buf[VCMD_BUSY_WAIT_HANDLE] && zc_snaps[i].ctx_id == ctx->ctx_id)
++         flags &= ~VCMD_BUSY_WAIT_FLAG_WAIT;
++   }
++#endif
+    do {
+       busy = renderer.implicit_fence_completed !=
+              renderer.implicit_fence_submitted;
 diff --git a/vtest/vtest_server.c b/vtest/vtest_server.c
 index 3173323..9e42a2b 100644
 --- a/vtest/vtest_server.c

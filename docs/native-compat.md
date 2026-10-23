@@ -21,7 +21,7 @@ The root causes behind most ❌ rows:
   containers or flatpak.
 - **No hardware devices.** The chroot has no DRM, sound, video, backlight or
   input devices. The HarmonyOS app is the only screen, keyboard and pointer.
-- **Clients render on the CPU** (llvmpipe). Only Hyprland uses the GPU.
+- **Clients render on the CPU** (llvmpipe) unless started with `ohmarchy-gpu`. Hyprland uses the GPU.
 
 ## Launch paths and Omarchy's own apps
 
@@ -130,7 +130,7 @@ The root causes behind most ❌ rows:
 | systemd services | ❌ | No systemd. Shims: `uwsm-app`, `systemd-run --user`, `systemd-cat`, `checkupdates`. |
 | mise | ✅ | Downloads through gh-proxy (`url_replacements` in `~/.config/mise/config.toml`); node and codex installed. |
 | Sandboxes in apps | ⚠️ | Chromium/Electron need `--no-sandbox`. glycin (GTK image loading) runs its loaders unsandboxed and warns. |
-| GPU for clients | ❌ | llvmpipe only (GL 4.5, ES 3.2 on the CPU). Apps log zink/DRI errors, which are harmless. Hyprland itself uses the GPU (virpipe). |
+| GPU for clients | ⚠️ | llvmpipe by default (GL 4.5, ES 3.2 on the CPU; apps log zink/DRI errors, which are harmless). `ohmarchy-gpu APP` runs an app on the Maleoon GPU (virpipe; es2gears 99-115 frames/s at 1920x1280); some Qt Quick GL is rejected by the system virglrenderer. Hyprland itself always uses the GPU. |
 
 ## Performance
 

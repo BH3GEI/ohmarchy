@@ -27,28 +27,35 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   the 鸿融 VM's GPU runs on: zink over the Maleoon Vulkan driver), bundled in the
   HAP. Mesa's virpipe driver in the chroot connects to `/tmp/.virgl_test`, where
   `native/vtest/vtest-broker` (root, on the host) accepts and passes the connection
-  to the app. When Hyprland reads a frame back (one pixel, `HYPRLAND_READBACK_PRESENT`),
-  the app presents that GPU resource into its window with the library's own
-  `virgl_renderer_ohos_present`, the call the VM uses for its scanout.
+  to the app. After each frame Hyprland blits one pixel of it into a 7x3 marker
+  texture and flushes (`HYPRLAND_READBACK_PRESENT`); the app sees that blit in the
+  command stream and presents the frame with the library's own
+  `virgl_renderer_ohos_present`, the call the VM uses for its scanout. Hyprland
+  never waits for the GPU (0.3-0.6 ms per frame), and presents do not wait for
+  vsync (swap interval 0).
+- GPU apps: `ohmarchy-gpu APP` runs an app on virpipe. When it reads its frame back
+  for wl_shm, the app's renderer copies it on the GPU into a snapshot and writes only
+  a tag into the buffer; when Hyprland uploads tagged data, the renderer copies the
+  snapshot into Hyprland's texture instead. `libohzc.so` (preloaded by the wrapper)
+  keeps Mesa from copying the untouched rest of the frame on the CPU.
 - Input goes back over the abstract socket `@ohmarchy-display` into a pointer and a
   keyboard that aquamarine's headless backend registers (evdev codes; Hyprland
   applies the keymap), so no VNC server runs.
 - Frame rates, panel at 120 Hz (the app asks for it), output `@120`:
 
-  | Output (scale) | Workspace animations | es2gears full screen (llvmpipe client) |
-  |---|---|---|
-  | 1920x1280 (1) | 92-120 frames/s | 70-75 |
-  | 2160x1440 (1), the 鸿融 VM's size | 81-118 | 62-65 |
-  | 2880x1920 (1.5), the panel | 73-107 | 39 |
+  | Output (scale) | Workspace animations | es2gears, GPU (`ohmarchy-gpu`) | es2gears, llvmpipe |
+  |---|---|---|---|
+  | 1920x1280 (1) | 92-120 frames/s | 99-115 | 71-80 |
+  | 2160x1440 (1), the 鸿融 VM's size | 81-118 | | 62-65 |
+  | 2880x1920 (1.5), the panel | 73-107 | | 39 |
 
   The animation figures are averages over 30 frames that include pauses between
-  switches. Hyprland's frame takes 4-5 ms at 1920x1280 and 7-8 ms at 2880x1920,
-  almost all GPU time. Before (frames read back to the CPU through vtest and
-  copied into the window): 46 and 27 frames/s for animations, 35-40 and 16-21 for
-  es2gears. The 鸿融 VM runs es2gears at 112-120 frames/s, with the client on the
-  GPU and zero-copy buffers; here clients render on llvmpipe and hand Hyprland shm
-  buffers, which it uploads every frame (a GPU client on virpipe: about 33, as it
-  reads its frames back).
+  switches (measured before the marker present; Hyprland's frame then took 4-8 ms,
+  now under 1 ms). The 鸿融 VM runs es2gears (on its GPU) at 112-120 frames/s.
+  Before this path (frames read back to the CPU through vtest and copied into the
+  window): 46 and 27 frames/s for animations at 1920x1280 and 2880x1920, 35-40 and
+  16-21 for es2gears. llvmpipe clients are bound by their own CPU rendering and by
+  Hyprland uploading their shm buffers.
 - With `OHMARCHY_GPU=host` (or no `bin/vtest-broker`), `bin/virgl_test_server`
   renders on the host and Hyprland reads every frame back for the app (the earlier
   path). Without either it falls back to llvmpipe on the CPU.
@@ -58,15 +65,19 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
 
 Open:
 
-- Zero-copy buffers for clients: GPU apps (games, video) are slower than in the VM.
+- `ohmarchy-gpu` frames: shape and orientation are verified on screen; the color
+  order of the last change (snapshot kept as RGBA) is not yet (red and blue were
+  swapped before it).
+- GPU apps need `ohmarchy-gpu`; by default clients stay on llvmpipe. Read-backs of
+  a whole window by a GPU app (screenshots of itself) get the tag, not pixels.
 - Hyprland's GPU connection lives in the app: closing the app ends it, Hyprland
   aborts and `start-hyprland` brings it back in safe mode (waiting for the app).
   Restart the desktop after reopening the app (`omarchy desktop stop; omarchy
   desktop start`) until a launcher does this.
 - `debug:overlay` deadlocks Hyprland here (its text rendering waits on the async
   resource gatherer); don't enable it.
-- Screen capture (grim, screenshots) of Hyprland's output reads a single pixel
-  while the app presents: it is not useful in that mode.
+- Screen capture (grim, screenshots) of Hyprland's output reads the CPU copy of
+  the frame, which the app no longer needs and Hyprland no longer fills.
 
 Apps and features, what works and what doesn't: [native-compat.md](native-compat.md).
 
@@ -122,7 +133,7 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 - Frames, GPU path: when `vtest-broker` answers on `@ohmarchy-vtest`, the app owns
   no pixels itself. `gpu.cpp` sets `NEED_OPENGL=1` (the system EGL then loads Mesa,
   zink on the Maleoon Vulkan driver, instead of the vendor GLES), runs vtest on a
-  thread with clients from the broker, and presents Hyprland's read-back resource.
+  thread with clients from the broker, and presents the frame Hyprland marks.
   The library asks `libhwf_kits.z.so` for the window (in the VM, the 鸿融 app sends
   it over IPC); the app's own `hwf_kits.c` of that name returns the XComponent's.
   Two quirks of the library: binding the scanout to a new resource of another size

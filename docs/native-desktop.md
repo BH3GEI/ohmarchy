@@ -34,7 +34,7 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   never waits for the GPU (0.3-0.6 ms per frame), and presents do not wait for
   vsync (swap interval 0).
 - GPU apps: `ohmarchy-gpu APP` runs an app on virpipe. When it reads its frame back
-  for wl_shm, the app's renderer copies it on the GPU into a snapshot and writes only
+  for wl_shm, the app's renderer copies it on the GPU (raw copy) into a snapshot and writes only
   a tag into the buffer; when Hyprland uploads tagged data, the renderer copies the
   snapshot into Hyprland's texture instead (Hyprland swaps red and blue when
   sampling such a texture: the copy keeps the client's RGBA order, wl_shm data is BGRA). `libohzc.so` (preloaded by the wrapper)
@@ -47,7 +47,7 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   | Output (scale) | Workspace animations | es2gears, GPU (`ohmarchy-gpu`) | es2gears, llvmpipe |
   |---|---|---|---|
   | 1920x1280 (1) | 92-120 frames/s | 99-115 | 71-80 |
-  | 2160x1440 (1), the 鸿融 VM's size | 81-118 | | 62-65 |
+  | 2160x1440 (1), the 鸿融 VM's size | 81-118 (shown on screen: 112 fps) | 88-112, about 99 | 62-65 |
   | 2880x1920 (1.5), the panel | 73-107 | | 39 |
 
   The animation figures are averages over 30 frames that include pauses between

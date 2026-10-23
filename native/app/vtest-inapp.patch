@@ -1,5 +1,5 @@
 diff --git a/vtest/vtest_renderer.c b/vtest/vtest_renderer.c
-index a4450f6..33c11c8 100644
+index a4450f6..ac5b42b 100644
 --- a/vtest/vtest_renderer.c
 +++ b/vtest/vtest_renderer.c
 @@ -36,6 +36,7 @@
@@ -45,7 +45,7 @@ index a4450f6..33c11c8 100644
     if (renderer.current_context == ctx) {
        renderer.current_context = NULL;
     }
-@@ -1258,6 +1273,221 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
+@@ -1258,6 +1273,229 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
     return 0;
  }
  
@@ -152,14 +152,14 @@ index a4450f6..33c11c8 100644
 +      if (zc_snaps[i].src == res->res_id && zc_snaps[i].ctx_id == ctx->ctx_id)
 +         zs = &zc_snaps[i];
 +   }
-+   if (zs && (zs->w != info.width || zs->h != info.height || zs->format != zc_shm_format(info.virgl_format))) {
++   if (zs && (zs->w != info.width || zs->h != info.height || zs->format != info.virgl_format)) {
 +      virgl_renderer_resource_unref(zs->snap);
 +      *zs = zc_snaps[--zc_count];
 +      zs = NULL;
 +   }
 +   if (!zs) {
 +      struct virgl_renderer_resource_create_args a = {
-+         .handle = zc_next_handle++, .target = 2 /* PIPE_TEXTURE_2D */, .format = zc_shm_format(info.virgl_format),
++         .handle = zc_next_handle++, .target = 2 /* PIPE_TEXTURE_2D */, .format = info.virgl_format,
 +         .bind = VIRGL_BIND_SAMPLER_VIEW | VIRGL_BIND_RENDER_TARGET, .width = info.width,
 +         .height = info.height, .depth = 1, .array_size = 1,
 +      };
@@ -173,8 +173,16 @@ index a4450f6..33c11c8 100644
 +      *zs = (struct zc_snap){ ctx->ctx_id, res->res_id, a.handle, info.width, info.height, a.format, 0 };
 +      virgl_renderer_ctx_attach_resource(ctx->ctx_id, zs->snap);
 +   }
-+   /* converts to wl_shm's byte order, as Mesa's read-back for wl_shm would */
-+   zc_blit(ctx->ctx_id, zs->snap, zs->format, &args->box, res->res_id, info.virgl_format, &args->box);
++   /* a raw copy (cheaper than a blit's draw); colors are the client's order,
++    * Hyprland swaps red and blue when sampling */
++   {
++      uint32_t copy[VIRGL_CMD_RESOURCE_COPY_REGION_SIZE + 1] = {
++         VIRGL_CMD0(VIRGL_CCMD_RESOURCE_COPY_REGION, 0, VIRGL_CMD_RESOURCE_COPY_REGION_SIZE),
++         zs->snap, 0, 0, 0, 0,
++         res->res_id, 0, 0, 0, 0, info.width, info.height, 1,
++      };
++      virgl_renderer_submit_cmd(copy, ctx->ctx_id, VIRGL_CMD_RESOURCE_COPY_REGION_SIZE + 1);
++   }
 +
 +   /* first and last row, whichever way the client copies its rows */
 +   tag = (uint32_t *)((char *)res->iov.iov_base + args->offset);
@@ -267,7 +275,7 @@ index a4450f6..33c11c8 100644
  int vtest_submit_cmd(uint32_t length_dw)
  {
     struct vtest_context *ctx = vtest_get_current_context();
-@@ -1279,7 +1509,27 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1279,7 +1517,27 @@ int vtest_submit_cmd(uint32_t length_dw)
        return -1;
     }
  
@@ -295,7 +303,7 @@ index a4450f6..33c11c8 100644
  
     free(cbuf);
     if (ret)
-@@ -1289,14 +1539,6 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1289,14 +1547,6 @@ int vtest_submit_cmd(uint32_t length_dw)
     return 0;
  }
  
@@ -310,7 +318,7 @@ index a4450f6..33c11c8 100644
  
  static int vtest_transfer_decode_args(struct vtest_context *ctx,
                                        struct vtest_transfer_args *args,
-@@ -1384,6 +1626,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+@@ -1384,6 +1634,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
        }
     }
  
@@ -327,7 +335,7 @@ index a4450f6..33c11c8 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_read_iov(res->res_id,
                                               ctx->ctx_id,
-@@ -1440,6 +1692,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
+@@ -1440,6 +1700,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
        }
     }
  
@@ -338,7 +346,7 @@ index a4450f6..33c11c8 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_write_iov(res->res_id,
                                                ctx->ctx_id,
-@@ -1604,6 +1860,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
+@@ -1604,6 +1868,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
     /*  handle = bw_buf[VCMD_BUSY_WAIT_HANDLE]; unused as of now */
     flags = bw_buf[VCMD_BUSY_WAIT_FLAGS];
  

@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# ohui: drive a HarmonyOS device's UI over ssh (snapshot_display + uitest input).
+#
+# Coordinates for tap/swipe/... are in the scaled screenshot from `ohui shot`
+# (width 1440 by default); the scale of the last shot converts them to device
+# pixels. -r takes raw device pixels.
+#
+# Usage:
+#   ohui shot [name]              screenshot; prints the scaled local image path
+#   ohui tap X Y                  click
+#   ohui dtap X Y                 double click
+#   ohui long X Y                 long press
+#   ohui swipe X1 Y1 X2 Y2 [v]    swipe (v in px/s, default 600)
+#   ohui drag X1 Y1 X2 Y2 [v]     drag
+#   ohui text X Y "TEXT"          click the field at (X,Y) and input text (IME)
+#   ohui key KEY [KEY2]           key: Back / Home / Power or a keycode (two for a combo)
+#   ohui type "TEXT"              type ASCII key by key (for VM windows; newline = Enter)
+#   ohui dump [name]              dump the UI tree JSON locally
+#   ohui raw ARGS...              run uitest ARGS...
+#   ohui sh 'CMD'                 run a command on the device
+#
+# Environment: OHUI_HOST (default ohdev), OHUI_WIDTH (scaled width, 1440),
+#              OHUI_DIR (local output dir, /tmp/ohui), OHUI_KEY_DELAY (0.05 s)
+# The host's IME may start in Chinese mode: send `ohui key 2047` (Shift) first.
+
+set -euo pipefail
+
+HOST=${OHUI_HOST:-ohdev}
+WIDTH=${OHUI_WIDTH:-1440}
+DIR=${OHUI_DIR:-/tmp/ohui}
+STATE=$DIR/.scale
+REMOTE_TMP=/data/local/tmp
+mkdir -p "$DIR"
+
+raw_coords=0
+if [[ ${1:-} == -r ]]; then raw_coords=1; shift; fi
+
+die() { echo "ohui: $*" >&2; exit 1; }
+
+# The device's sh mangles quoting in ssh arguments; send scripts on stdin.
+rsh() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" sh -s <<<"$1"; }
+
+# Single-quote one argument for the device's sh.
+q() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
+
+scale() {
+  if (( raw_coords )); then echo 1; elif [[ -f $STATE ]]; then cat "$STATE"; else echo 2; fi
+}
+
+# Scaled screenshot coordinate -> device pixels.
+c() { awk -v v="$1" -v s="$(scale)" 'BEGIN { printf "%d", v * s + 0.5 }'; }
+
+# Screenshots and uitest need hdcd's access token, and sshd's own token depends
+# on how it was started, so every UI command runs through ohtoken with hdcd's
+# token (directly if ohtoken or the token is missing). nativetoken.json is one
+# line: a greedy sed would pick the last process's tokenId.
+TOK='T=$(grep -o '\''"processName":"hdcd"[^}]*'\'' /data/service/el0/access_token/nativetoken.json 2>/dev/null | grep -o '\''"tokenId":[0-9]*'\'' | head -1 | cut -d: -f2)
+[ -x /data/oh-ssh/ohtoken ] && [ -n "$T" ] && OT="/data/oh-ssh/ohtoken run $T" || OT=
+'
+
+uitest() { rsh "$TOK\$OT uitest $*"; }
+
+# Character -> OpenHarmony keyEvent arguments ("2047 code" when it needs Shift).
+SHIFT=2047
+keycode() {
+  local c=$1 plain='abcdefghijklmnopqrstuvwxyz' upper='ABCDEFGHIJKLMNOPQRSTUVWXYZ' i
+  if [[ $c == [a-z] ]]; then i=${plain%%"$c"*}; echo $((2017 + ${#i})); return; fi
+  if [[ $c == [A-Z] ]]; then i=${upper%%"$c"*}; echo "$SHIFT $((2017 + ${#i}))"; return; fi
+  if [[ $c == [0-9] ]]; then echo $((2000 + c)); return; fi
+  case $c in
+    ' ') echo 2050 ;; $'\n'|'') echo 2054 ;; $'\t') echo 2049 ;;
+    ,) echo 2043 ;; .) echo 2044 ;; '`') echo 2056 ;; -) echo 2057 ;; =) echo 2058 ;;
+    '[') echo 2059 ;; ']') echo 2060 ;; '\') echo 2061 ;; ';') echo 2062 ;; "'") echo 2063 ;; /) echo 2064 ;;
+    '!') echo "$SHIFT 2001" ;; @) echo "$SHIFT 2002" ;; '#') echo "$SHIFT 2003" ;; '$') echo "$SHIFT 2004" ;;
+    %) echo "$SHIFT 2005" ;; ^) echo "$SHIFT 2006" ;; '&') echo "$SHIFT 2007" ;; '*') echo "$SHIFT 2008" ;;
+    '(') echo "$SHIFT 2009" ;; ')') echo "$SHIFT 2000" ;; _) echo "$SHIFT 2057" ;; +) echo "$SHIFT 2058" ;;
+    '{') echo "$SHIFT 2059" ;; '}') echo "$SHIFT 2060" ;; '|') echo "$SHIFT 2061" ;; :) echo "$SHIFT 2062" ;;
+    '"') echo "$SHIFT 2063" ;; '?') echo "$SHIFT 2064" ;; '<') echo "$SHIFT 2043" ;; '>') echo "$SHIFT 2044" ;;
+    '~') echo "$SHIFT 2056" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Image helpers: sips on macOS, ImageMagick elsewhere.
+img_width() {
+  if command -v sips >/dev/null; then sips -g pixelWidth "$1" | awk '/pixelWidth/ {print $2}'
+  else identify -format %w "$1"; fi
+}
+img_scale() {
+  if command -v sips >/dev/null; then cp "$1" "$2"; sips -Z "$WIDTH" "$2" >/dev/null
+  else convert "$1" -resize "${WIDTH}x${WIDTH}>" "$2"; fi
+}
+
+cmd=${1:-}; shift || true
+case $cmd in
+  shot)
+    name=${1:-shot-$(date +%H%M%S)}
+    full=$DIR/$name.full.jpeg out=$DIR/$name.jpeg
+    rsh "$TOK\$OT snapshot_display -f $REMOTE_TMP/ohui.jpeg >/dev/null && cat $REMOTE_TMP/ohui.jpeg" >"$full"
+    [[ -s $full ]] || die "screenshot failed"
+    w=$(img_width "$full")
+    img_scale "$full" "$out"
+    sw=$(img_width "$out")
+    awk -v a="$w" -v b="$sw" 'BEGIN { printf "%.6f\n", a / b }' >"$STATE"
+    echo "$out"
+    ;;
+  tap)   [[ $# -eq 2 ]] || die "tap X Y";  uitest uiInput click "$(c "$1")" "$(c "$2")" ;;
+  dtap)  [[ $# -eq 2 ]] || die "dtap X Y"; uitest uiInput doubleClick "$(c "$1")" "$(c "$2")" ;;
+  long)  [[ $# -eq 2 ]] || die "long X Y"; uitest uiInput longClick "$(c "$1")" "$(c "$2")" ;;
+  swipe|drag)
+    [[ $# -ge 4 ]] || die "$cmd X1 Y1 X2 Y2 [v]"
+    uitest uiInput "$cmd" "$(c "$1")" "$(c "$2")" "$(c "$3")" "$(c "$4")" "${5:-600}"
+    ;;
+  text)  [[ $# -eq 3 ]] || die 'text X Y "TEXT"'; uitest uiInput inputText "$(c "$1")" "$(c "$2")" "$(q "$3")" ;;
+  key)   [[ $# -ge 1 ]] || die "key KEY [KEY2]"; uitest uiInput keyEvent "$@" ;;
+  type)
+    # One key event per character, for windows (VMs) that ignore IME text.
+    [[ $# -eq 1 ]] || die 'type "TEXT"'
+    script=$TOK
+    while IFS= read -r -n1 ch; do
+      k=$(keycode "$ch") || die "unsupported character: $ch"
+      # The VM drops keys sent back to back.
+      script+="\$OT uitest uiInput keyEvent $k >/dev/null; sleep ${OHUI_KEY_DELAY:-0.05}"$'\n'
+    done < <(printf '%s' "$1")
+    rsh "$script"
+    ;;
+  dump)
+    name=${1:-layout-$(date +%H%M%S)}
+    rsh "$TOK\$OT uitest dumpLayout -p $REMOTE_TMP/ohui.json >/dev/null && cat $REMOTE_TMP/ohui.json" >"$DIR/$name.json"
+    echo "$DIR/$name.json"
+    ;;
+  raw)   uitest "$@" ;;
+  sh)    rsh "$*" ;;
+  ''|-h|--help|help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "unknown command: $cmd (see ohui help)" ;;
+esac

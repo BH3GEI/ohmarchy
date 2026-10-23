@@ -1,0 +1,3 @@
+#!/bin/bash
+build() { add_runscript; }
+help() { echo "Mount the subdirectory given by subroot= (default: arch) of the root device as /"; }

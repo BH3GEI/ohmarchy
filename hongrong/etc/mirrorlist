@@ -1,0 +1,3 @@
+# Arch Linux ARM: a fast mainland mirror first, Omarchy's ARM mirror as fallback.
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/$arch/$repo
+Server = https://arm-stable-mirror.omarchy.org/$arch/$repo

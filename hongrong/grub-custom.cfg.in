@@ -1,0 +1,13 @@
+# Arch Linux ARM lives in /arch on deepin's data partition and boots deepin's
+# kernel with an initramfs built by Arch's mkinitcpio and the subroot hook.
+menuentry "Arch Linux ARM (deepin kernel)" --id arch-deepinkernel {
+    search --no-floppy --fs-uuid --set=root @BOOT_UUID@
+    linux /boot/vmlinuz-@KVER@ root=UUID=@DATA_UUID@ subroot=arch rw console=tty0 loglevel=4
+    initrd /boot/initramfs-deepinkernel.img
+}
+
+# Boot Arch by default. deepin's 00_header sets default to next_entry when
+# grub-editenv set one, so a one-time choice still wins.
+if [ "${default}" = "0" ]; then
+    set default="arch-deepinkernel"
+fi

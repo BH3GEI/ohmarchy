@@ -9,6 +9,7 @@ driven from a Linux host over `hdc`. Developed on a HUAWEI MateBook Fold
 |---|---|---|
 | **A. Linux engine apps**: [docs/linux-engine-apps.md](docs/linux-engine-apps.md) | Omarchy's neovim setup and CLI tools inside HarmonyOS's Linux engine, each in a native HarmonyOS window | Works |
 | **B. Whole OS in the Oseasy VM**: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | The complete Omarchy AArch64 OS (its disk, systemd, NetworkManager, SDDM) on a Debian 6.1 kernel in the Oseasy VM app | Boots, with text console and a network root shell; the Hyprland desktop is not displayed yet (see status) |
+| **C. Whole OS in the 鸿融 Linux VM**: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | Omarchy 4.0.6 (Arch Linux ARM) next to a deepin 25 guest in Huawei's Linux VM app, booting deepin's 6.6 kernel | Boots to the SDDM greeter and the Hyprland desktop, software-rendered (llvmpipe) |
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
@@ -33,6 +34,13 @@ Host tools: bash, python3, curl, unzip, bsdtar (libarchive), cpio, gzip,
 qemu-img, sfdisk/blkid (util-linux), mtools, xorriso, kmod (depmod), make,
 clang (with the `aarch64` target, any recent version), hdc.
 
+## Route C quick start
+
+In the 鸿融 VM: install deepin 25 (arm64), give it a static address on
+`172.16.100.0/24`, then as root in deepin `hongrong/10-bootstrap-arch.sh USER PASSWORD`,
+reboot, and in Arch `~USER/hongrong/20-install-omarchy.sh USER`. Details and
+caveats: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md#install).
+
 ## Layout
 
 ```
@@ -45,6 +53,8 @@ driver/
   efidrm/          omarchy_efidrm: simpledrm on the EFI framebuffer for the Debian 6.1 kernel
 tools/fold/        hdc helpers: screenshots, taps, keys, typing into the VM, guest shell, file copy
 tools/kbuild/      build out-of-tree arm64 modules against Debian headers with clang
+tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-key typing into VMs
+hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
 linux-engine/      route A install scripts (run inside the Linux engine container)
 docs/
 ```

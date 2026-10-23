@@ -1,0 +1,13 @@
+[connection]
+id=lan
+type=ethernet
+interface-name=enp0s6
+autoconnect=true
+
+[ipv4]
+method=manual
+address1=172.16.100.2/24,172.16.100.1
+dns=223.5.5.5;114.114.114.114;
+
+[ipv6]
+method=disabled

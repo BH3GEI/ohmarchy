@@ -41,9 +41,44 @@ HarmonyOS 7.0). Each was observed on the device unless marked otherwise.
   安装过程出现异常, and the VM keeps running. Closing the VM leads to
   安装失败 → 再次安装, which recreates the disk.
 
+## 鸿融 Linux VM
+
+Observed on a MateBook 14 (HongMeng kernel 1.11.13.0), 鸿融 1.3.1.80.
+
+- Machine: StratoVirt `virt`, GICv3, `accel=hmv`, 6 vCPUs, UEFI from
+  `/system/opt/virt_service/virtualized_hwf/stratovirt-uefi-linux`. Devices:
+  virtio-blk (qcow2), the install ISO as USB storage on xHCI, a second ISO with
+  the guest tools, USB keyboard and tablet, `virtio-gpu-pci` (2D, EDID),
+  virtio-net, virtio-sound, vhost-vsock, vhost-user-fs (the host's Documents
+  folder), virtio-serial ports for the agent, balloon. The serial console goes
+  to `/dev/null`.
+- The NIC is on a bridge at `172.16.100.1/24` with NAT (`MASQUERADE`) to the
+  host's network and no DHCP. A static address in the guest works.
+- deepin 25 (6.6.143) boots and runs its desktop; Fedora 44 aarch64 hangs after
+  the firmware hands over (details in [hongrong-whole-os.md](hongrong-whole-os.md)).
+- Guest display: `virtio_gpu` reports `-virgl +edid -resource_blob -host_visible`,
+  `+context_init`, 0 capsets. Mesa falls back to llvmpipe.
+- The host does carry a virgl path for Linux guests:
+  `/system/bin/virt_service/vm_engine/stratovirt/vhost-device-gpu` (rust-vmm
+  vhost-device-gpu 0.2.0, `--gpu-mode virglrenderer`, capsets virgl/virgl2) and
+  an OpenHarmony port of virglrenderer that renders through the host's GLES
+  (no Venus, so no Vulkan). In `libvm_manager.z.so`, `GetOHDisplayVmCmd` builds
+  `vhost-user-gpu-pci,...,virgl=true` when a VM's `accelerationEnabled` is set
+  and its guest type is Linux (the same flag gives Windows guests `svga-pci`
+  with DXVK). `VmManager::SetDisplay2dForUos`, called from `CreateVm`, clears
+  that flag for Linux guests, so they always get the 2D device. Found by
+  disassembly; not exercised.
+- Guest tools (`vm-agent` 1.3.1.80, on the second ISO): agent services, a Mesa
+  19.2.6 build, and dkms sources for virtio input/sound/fs and a logging
+  device. The Kylin tree's `virtio_gpu` is upstream Linux 5.4 plus one stable
+  fix; nothing hypervisor-specific, and it does not build on 6.6. The postinst
+  recognizes only UOS and Kylin.
+- Input: `uitest uiInput keyEvent` and clicks reach the guest; `inputText` does
+  not.
+
 ## Kernel
 
-- Kernels >= 6.5 hang early in this VM (Omarchy's 7.2.3, a community report
+- Kernels >= 6.5 hang early in the Oseasy VM (Omarchy's 7.2.3, a community report
   covering 6.5 and 6.12). Debian's 6.1.0-50 boots.
 - Debian 6.1 arm64 has neither `CONFIG_SYSFB_SIMPLEFB` nor simpledrm, so the
   only KMS options are the SVGA driver or `driver/efidrm`.

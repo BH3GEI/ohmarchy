@@ -1,0 +1,9 @@
+#!/usr/bin/ash
+# Mount a subdirectory of the root device as /. Arch shares deepin's data
+# partition and lives in its /arch directory.
+run_hook() { mount_handler=subroot_mount_handler; }
+subroot_mount_handler() {
+    mkdir -p /subroot_dev
+    mount -t ext4 -o rw "$root" /subroot_dev || { err "subroot: cannot mount $root"; return 1; }
+    mount --bind "/subroot_dev/${subroot:-arch}" "$1"
+}

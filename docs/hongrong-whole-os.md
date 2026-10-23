@@ -64,48 +64,130 @@ initcpio hook (`hongrong/initcpio/`) mounts the partition and bind-mounts
 
 ## Install
 
-On the HarmonyOS PC:
+### 1. Get the deepin ISO onto the HarmonyOS PC
 
-1. Install deepin 25 in 鸿融: put the ISO in 下载 (Downloads), then 鸿融 → 本地文件
-   → the ISO → 开始安装, and allow access to 下载. The installer takes the whole
-   virtual disk.
-2. In deepin, give the NIC an address. The bridge (`172.16.100.1/24`, NAT to
-   the host's network) has no DHCP:
+deepin 25.2.0 community, arm64, 5,509,810,176 bytes, from the TUNA mirror:
 
-   ```sh
-   sudo nmcli con add type ethernet ifname enp0s6 con-name lan ipv4.method manual \
-     ipv4.addresses 172.16.100.2/24 ipv4.gateway 172.16.100.1 ipv4.dns 223.5.5.5
-   sudo nmcli con up lan
-   sudo apt update && sudo apt install -y openssh-server
-   ```
+```
+https://mirrors.tuna.tsinghua.edu.cn/deepin-cd/25.2.0/arm64/deepin-desktop-community-25.2.0-arm64.iso
+SHA256 7c5cb76cec53532313f2b1f435d477a651f9b5f7ca2435dfc12eb7be8d3340fe
+```
 
-   The connection name of deepin's default profile is Chinese, which the VM's
-   key injection cannot type, hence a new profile.
-3. Don't install 鸿融's guest tools (虚拟机增强服务, `vm-agent`) on deepin. Its
-   postinst only handles UOS and Kylin, fails halfway and leaves dpkg wanting a
-   reinstall, which blocks apt. If that happened:
+鸿融's file picker shows the user's 下载 (Downloads) folder. From a root shell on
+the HarmonyOS host that folder is
+`/data/service/el2/100/hmdfs/account/files/Docs/Download/`, so the ISO can be
+fetched in place (about 5 MB/s here):
+
+```sh
+cd /data/service/el2/100/hmdfs/account/files/Docs/Download
+curl -L -C - -o deepin-desktop-community-25.2.0-arm64.iso \
+  https://mirrors.tuna.tsinghua.edu.cn/deepin-cd/25.2.0/arm64/deepin-desktop-community-25.2.0-arm64.iso
+sha256sum deepin-desktop-community-25.2.0-arm64.iso
+```
+
+`-C -` resumes after an interruption (the host rebooted once mid-download).
+
+### 2. Create the VM in 鸿融
+
+1. Open 鸿融. The first screen is 请选择虚拟机镜像来源: choose 本地文件 (从本地安装iso或导入qcow2镜像文件).
+2. In the file picker (选择文件) open 下载, select the deepin ISO, 打开.
+3. The 镜像文件 page shows the ISO and the warning that only UOS V20 and KOS
+   V10 ARM are tested. Press 开始安装. There is no CPU, memory or disk choice
+   here; the VM got 6 cores, 8 GB (3.8 GiB visible to the guest) and a 256 GB
+   disk, adjustable later under 硬件设置.
+4. In one run a window titled 铠大师 (a Windows-install wizard: 选择镜像 →
+   配置环境 → 安装系统) opened instead. Close it and press 开始安装 again.
+5. Allow 允许“鸿融”访问你的“下载”文件夹? → 允许. The VM window opens and boots
+   the ISO; the first screen is a cursor on black for a few seconds, then the
+   kernel and initramfs messages, then the installer.
+
+### 3. Install deepin
+
+1. The installer (欢迎安装deepin系统) opened at 准备安装 with a full-disk layout
+   on `/dev/vda`: EFI, `/boot`, swap, root (`Roota`) and `_dde_data`
+   (`/persistent`). That disk is the VM's own new qcow2. Press 开始安装; it
+   unpacks the system and reboots by itself.
+2. First boot: 创建用户 (user name, computer name, password twice), 下一步, then
+   正在配置您的电脑, then the login screen.
+3. 鸿融 shows a notification 增强服务安装引导 (系统检测到该服务尚未部署) offering
+   its guest tools (虚拟机增强服务 on the 鸿融 CD in 计算机). Don't install them on
+   deepin: the postinst only handles UOS and Kylin, fails halfway and leaves
+   dpkg wanting a reinstall, which blocks apt. If that happened:
    `sudo dpkg --remove --force-remove-reinstreq vm-agent`.
-4. Copy `hongrong/` into deepin and run, as root:
 
-   ```sh
-   hongrong/10-bootstrap-arch.sh <user> <password>
-   reboot
-   ```
+The deepin dialogs can look greyed out while they load; clicks still work.
 
-   It extracts Arch Linux ARM into `/persistent/arch`, copies deepin's modules
-   in, builds the initramfs, sets up the user, sshd and the network, and adds
-   the default GRUB entry.
-5. In Arch, as root:
+### 4. Network and ssh in deepin
 
-   ```sh
-   ~<user>/hongrong/20-install-omarchy.sh <user>
-   reboot
-   ```
+Open the terminal (taskbar) in deepin. The bridge (`172.16.100.1/24`, NAT to
+the host's network) has no DHCP, so give the NIC an address:
 
-6. Log in at the SDDM greeter.
+```sh
+sudo nmcli con add type ethernet ifname enp0s6 con-name lan ipv4.method manual \
+  ipv4.addresses 172.16.100.2/24 ipv4.gateway 172.16.100.1 ipv4.dns 223.5.5.5
+sudo nmcli con up lan
+sudo apt update && sudo apt install -y openssh-server git
+sudo systemctl enable --now ssh
+```
 
-To boot deepin once: `grub-editenv /boot/grub/grubenv set next_entry=0` from
-deepin, or mount vda2 from Arch and set it there.
+deepin's default profile has a Chinese name, which the VM's key injection
+cannot type, hence a new profile. `apt update` comes first: the offline install
+has no package lists.
+
+On the machine you work from, reach the guest through the HarmonyOS host
+(`ohdev` here). The host's sshd does not forward ports, so `ssh -J` fails;
+`toybox nc` on the host does the job. deepin and Arch answer on the same
+address with different host keys, so each gets its own `HostKeyAlias`:
+
+```
+Host ohvm
+    HostName 172.16.100.2
+    HostKeyAlias ohvm-deepin
+    User <user>
+    ProxyCommand ssh -o BatchMode=yes ohdev toybox nc %h %p
+
+Host ohvm-arch
+    HostName 172.16.100.2
+    HostKeyAlias ohvm-arch
+    User <user>
+    ProxyCommand ssh -o BatchMode=yes ohdev toybox nc %h %p
+```
+
+Then log in once with the password and install a key:
+
+```sh
+ssh-copy-id -o PreferredAuthentications=password ohvm
+ssh ohvm 'echo ok'
+```
+
+`10-bootstrap-arch.sh` copies `~/.ssh/authorized_keys` into Arch, so `ohvm-arch`
+works with the same key after the reboot.
+
+### 5. Arch Linux ARM next to deepin
+
+```sh
+ssh ohvm
+git clone https://github.com/BH3GEI/ohmarchy && cd ohmarchy
+sudo hongrong/10-bootstrap-arch.sh <user> <password>
+sudo reboot
+```
+
+It extracts Arch Linux ARM into `/persistent/arch`, copies deepin's modules in,
+builds the initramfs, sets up the user, sshd and the network, and adds the
+default GRUB entry. After the reboot `ssh ohvm-arch` reaches Arch.
+
+### 6. Omarchy
+
+```sh
+ssh ohvm-arch
+sudo ~/hongrong/20-install-omarchy.sh <user>
+sudo reboot
+```
+
+Then log in at the SDDM greeter in the 鸿融 window (password only).
+
+To boot deepin once: `sudo grub-editenv /boot/grub/grubenv set next_entry=0`
+from deepin, or mount vda2 from Arch and set it there.
 
 ## What differs from an ISO install
 

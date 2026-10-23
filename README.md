@@ -70,6 +70,7 @@ sh /data/local/archtest/arch.sh run 40-install-desktop.sh builder   # patched aq
 
 and install the app with `native/app/build.sh` (DevEco Studio's tools); open
 "Omarchy (native)" on the HarmonyOS desktop.
+
 Which apps and features work there: [docs/native-compat.md](docs/native-compat.md).
 
 ## Route E quick start

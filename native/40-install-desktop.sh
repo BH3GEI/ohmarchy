@@ -26,6 +26,10 @@ pacman -S --noconfirm libglvnd
 # cmake does not know a "HarmonyOS" system; report Linux to the tools.
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-uname.so "$here/desktop/hongmeng-uname.c" -ldl
 grep -q libhongmeng-uname /etc/ld.so.preload 2>/dev/null || echo /usr/local/lib/libhongmeng-uname.so >> /etc/ld.so.preload
+# statx(fd, "", AT_EMPTY_PATH) fails with EFAULT here; glycin (GTK's image loading) needs it.
+# Global, because glycin starts its loaders with an empty environment.
+gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-statx.so "$here/desktop/hongmeng-statx.c"
+grep -q libhongmeng-statx /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-statx.so >> /etc/ld.so.preload
 
 build=/var/tmp/ohmarchy-build
 rm -rf "$build" && mkdir -p "$build" "$prefix"
@@ -58,6 +62,11 @@ home=$(getent passwd "$user" | cut -d: -f6)
 # Chromium's sandbox needs user namespaces or a setuid helper; neither exists here.
 grep -qx -- --no-sandbox "$home/.config/chromium-flags.conf" 2>/dev/null ||
     echo --no-sandbox >> "$home/.config/chromium-flags.conf"
+# Electron apps need --no-sandbox too; mpv's GPU probe asserts in x11 unless told Wayland.
+[ -x /opt/obsidian/obsidian ] && printf '#!/bin/sh\nexec /opt/obsidian/obsidian --no-sandbox "$@"\n' > /usr/local/bin/obsidian && chmod 755 /usr/local/bin/obsidian
+mkdir -p "$home/.config/mpv"
+grep -q '^gpu-context' "$home/.config/mpv/mpv.conf" 2>/dev/null || echo gpu-context=wayland >> "$home/.config/mpv/mpv.conf"
+chown -R "$user:" "$home/.config/mpv"
 # GitHub is not reachable from the host: mise (Omarchy's tool installs) goes through a proxy.
 mkdir -p "$home/.config/mise"
 grep -q url_replacements "$home/.config/mise/config.toml" 2>/dev/null || cat >> "$home/.config/mise/config.toml" <<'T'

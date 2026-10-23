@@ -119,7 +119,7 @@ The root causes behind most ❌ rows:
 | Polkit / pkexec | ❌ | No polkitd. Use `sudo` (no password). |
 | Portals | ⚠️ | xdg-desktop-portal with the gtk and hyprland backends; FileChooser, Screenshot, OpenURI, Settings, etc. are on the bus. Not exercised from an app. ScreenCast needs PipeWire. |
 | Xwayland | ✅ | X11 client (`QT_QPA_PLATFORM=xcb cmake-gui`) maps in 0.4 s. |
-| Chinese input | ⚠️ | fcitx5 with chinese-addons (Pinyin, Shuangpin) installed, but not started (XDG autostart needs systemd --user). Run `fcitx5 -d`. The app sends key codes, so the HarmonyOS IME is not used. |
+| Chinese input | ✅ | fcitx5 pinyin, started by the desktop with Omarchy's environment; Ctrl+Space switches. "nihao" + space gives 你好 in foot. The HarmonyOS IME through `ohime` is an option (`OHMARCHY_IME=harmony`), not verified on screen. |
 | Multi-monitor | ❌ | One headless output shown in one app window. |
 | Clipboard to/from HarmonyOS | ❌ | Not bridged. Wayland clipboard inside works. |
 | HarmonyOS files | ⚠️ | Not mounted. A bind mount from the host (e.g. `/storage/media/100/local/files/Docs` into the session's mount namespace) works, but only root can read it (uid 60000 gets EACCES). |
@@ -151,11 +151,12 @@ Compositing and the frame path to the app are in
 
 ## Fixes made during this check
 
-The installer doesn't apply these yet.
+`native/40-install-desktop.sh` applies the first three (the shim's source is
+`native/desktop/hongmeng-statx.c`); the PAM file is not applied.
 
 | Fix | For |
 |---|---|
-| `statx` preload: `/usr/local/lib/ohmarchy-statx.so` in `/etc/ld.so.preload` | HongMeng returns EFAULT for `statx(fd, "", AT_EMPTY_PATH)`. Rust's `File::metadata` uses it, so glycin's image loaders fail ("Bad address (os error 14)") and GTK 3 apps abort on their first icon (LibreOffice, Evince, Print Settings). The shim falls back to `fstat`. It must be global: glycin starts its loaders with an empty environment. |
+| `statx` preload (native/desktop/hongmeng-statx.c, built and preloaded by 40-install-desktop.sh) | HongMeng returns EFAULT for `statx(fd, "", AT_EMPTY_PATH)`. Rust's `File::metadata` uses it, so glycin's image loaders fail ("Bad address (os error 14)") and GTK 3 apps abort on their first icon (LibreOffice, Evince, Print Settings). The shim falls back to `fstat`. It must be global: glycin starts its loaders with an empty environment. |
 | `/usr/local/bin/obsidian`: `exec /opt/obsidian/obsidian --no-sandbox "$@"` | Electron's setuid sandbox. |
 | `~/.config/mpv/mpv.conf`: `gpu-context=wayland` | mpv's x11 assertion. |
 | `/etc/pam.d/omarchy-lock-password` (`auth`/`account include system-auth`) | Only matters if the lock is turned back on (it also needs a user password). Unverified. |

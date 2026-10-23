@@ -38,7 +38,7 @@ if [[ ${1:-} == -r ]]; then raw_coords=1; shift; fi
 die() { echo "ohui: $*" >&2; exit 1; }
 
 # The device's sh mangles quoting in ssh arguments; send scripts on stdin.
-rsh() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" sh -s <<<"$1"; }
+rsh() { perl -e 'alarm shift; exec @ARGV or die' "${OHUI_SSH_DEADLINE:-120}" /usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" sh -s <<<"$1"; }
 
 # Single-quote one argument for the device's sh.
 q() { printf "'%s'" "${1//\'/\'\\\'\'}"; }

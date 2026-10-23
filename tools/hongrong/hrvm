@@ -21,6 +21,10 @@ HOST=${HRVM_HOST:-ohdev}
 GUEST=${HRVM_GUEST:-ohvm-arch}
 PW=${HRVM_SUDO_PW:?set HRVM_SUDO_PW to the guest sudo password}
 
+# Every ssh gets a hard deadline: the link to the host sometimes stalls in the
+# banner exchange, where neither ConnectTimeout nor ServerAlive applies.
+ssh() { perl -e 'alarm shift; exec @ARGV or die' "${HRVM_SSH_DEADLINE:-90}" /usr/bin/ssh "$@"; }
+
 vm_running() { [ "$(ssh -o BatchMode=yes $HOST 'ps -ef | grep -v grep | grep -c stratovirt.-machine' 2>/dev/null)" != 0 ]; }
 
 stop() {

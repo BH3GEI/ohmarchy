@@ -19,7 +19,7 @@ menuentry "Arch Linux ARM (linux-aarch64)" --id arch-linux {
 # without an initramfs; the result is read from the host's VM log.
 menuentry "Kernel test (${ktest})" --id arch-ktest {
     search --no-floppy --fs-uuid --set=root @DATA_UUID@
-    linux /arch/boot/ktest/${ktest}.Image console=tty0 earlycon=efifb keep_bootcon ignore_loglevel loglevel=8
+    linux /arch/boot/ktest/${ktest}.Image console=tty0 earlycon=efifb keep_bootcon ignore_loglevel loglevel=8 ${ktestargs}
 }
 
 # Boot Arch by default. deepin's 00_header sets default to next_entry when

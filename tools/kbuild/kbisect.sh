@@ -3,6 +3,7 @@
 # build the commit, copy it into the 鸿融 VM, `hrvm ktest`, mark it, repeat
 # until git names the first bad commit. Progress goes to $LOG.
 set -uo pipefail
+export DOCKER_CONTEXT=${DOCKER_CONTEXT:-colima}
 HRVM=${HRVM:-$(cd "$(dirname "$0")" && pwd)/../hongrong/hrvm}
 GUEST=${HRVM_GUEST:-ohvm-arch}
 LOG=${LOG:-/tmp/kbisect.log}

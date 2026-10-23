@@ -11,6 +11,7 @@ AArch64 Omarchy build from [riverscn/omarchy-aarch64-image](https://github.com/r
 | **B. Whole OS in the Oseasy VM**: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | The complete Omarchy AArch64 OS (its disk, systemd, NetworkManager, SDDM) on a Debian 6.1 kernel in the Oseasy VM app | Boots, with text console and a network root shell; the Hyprland desktop is not displayed yet (see status) |
 | **C. Whole OS in the 鸿融 Linux VM**: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | Omarchy 4.0.6 (Arch Linux ARM) next to a deepin 25 guest in Huawei's Linux VM app, booting deepin's 6.6 kernel | Boots to the SDDM greeter and the Hyprland desktop, GPU-accelerated through virgl (OpenGL only) after 鸿融 starts the VM from cold |
 | **D. Native on the HongMeng kernel**: [docs/native-chroot.md](docs/native-chroot.md) | Arch Linux ARM with Omarchy's packages in a chroot on the host itself (no VM), entered from a root shell | Omarchy's terminal side at native speed (shell, LazyVim, themes, btop, lazygit, mise); no GPU or DRM, so no native Hyprland, but Wayland apps show as windows in route C's desktop via waypipe |
+| **E. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Boots Omarchy's own kernel through Limine to the first-boot wizard and setup on virtio-gpu, all in software emulation; the Hyprland desktop is not verified yet (setup stalls near the end) |
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
@@ -58,6 +59,19 @@ sh /data/local/archtest/arch.sh run 30-install-omarchy.sh builder
 /data/local/archtest/bin/omarchy -g foot             # a window in route C's Hyprland (native/vm/route-d-display in the VM)
 ```
 
+## Route E quick start
+
+On a Mac (or any DevEco host) with DevEco Studio, `hdc`, `gh` and `python3`:
+
+```sh
+emulator/10-create-emulator.sh   # HarmonyOS 7.0 2in1 emulator image + instance, boot
+emulator/20-fetch-inputs.sh      # Aetherium HAP (patched by emulator/lib/patch_aetherium.py), Omarchy qcow2, RemoteDesk
+emulator/30-install.sh           # install the HAPs, copy the disk to 下载, forward VNC 15901 and serial 14321
+```
+
+Then create the VM in Aetherium as described in
+[docs/emulator-aetherium.md](docs/emulator-aetherium.md#create-the-vm).
+
 ## Layout
 
 ```
@@ -72,6 +86,10 @@ tools/fold/        hdc helpers: screenshots, taps, keys, typing into the VM, gue
 tools/kbuild/      build out-of-tree arm64 modules against Debian headers with clang
 tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-key typing into VMs
 hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
+emulator/          route E: emulator setup, input fetch, Aetherium patch (lib/), install
+tools/emu/         hdc UI helper for the emulator (taps, text, screenshots)
+tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)
+tools/serial/      serial console: Limine menu renderer/driver, root shell runner
 linux-engine/      route A install scripts (run inside the Linux engine container)
 native/            route D: image build, session manager (arch.sh), launcher (omarchy), Arch + Omarchy setup
   vm/              waypipe receiver for route C's desktop

@@ -158,3 +158,35 @@ shell on the host. Details and workarounds: [native-chroot.md](native-chroot.md)
   The third-party launcher's X11 bridge composites each app into its own
   HarmonyOS window. Terminal apps work well; a nested Hyprland session does
   not fit this model.
+
+## Route E (DevEco emulator + Aetherium)
+
+Observed in DevEco Studio 26.0's emulator (HarmonyOS 7.0.0.107, 2in1) on an
+Apple Silicon Mac.
+
+- The emulator CLI (`Emulator -install`) refuses image downloads with
+  "Currently, this capability is available only in the Chinese mainland." It
+  decides from DevEco's local `options/country.region.xml` before making any
+  request; with `CN` there, the download itself goes to
+  `devecostudio-drcn.deveco.dbankcloud.com` and needs a CN egress
+  (`-http_proxy` works).
+- Inside the emulator: `hdc shell` is uid `shell`, `hdc smode` fails
+  ("undebuggable version"), no `/dev/kvm` or hypervisor nodes. The emulator does
+  not expose EL2, so only TCG VMs run. Unsigned HAPs install.
+- Aetherium's test HAP (`test-14456eb6…`) needs three fixes before QEMU starts
+  and shows a screen: the unconditional `-tpmdev emulator` (its QEMU lacks the
+  built-in TPM), a 2 MiB firmware for a 64 MiB pflash, and the virtio-gpu MMIO
+  mapping. See docs/emulator-aetherium.md.
+- QEMU's `virt` machine creates legacy virtio-mmio transports by default.
+  virtio-blk, -net and -rng work on them, virtio-gpu does not: the guest leaves
+  the device at status `0x83` (ACK|DRIVER|FAILED) with `virtio_gpu` loaded and no
+  `/dev/dri/card0`. `virtio-gpu-pci` works.
+- With `virtio-gpu-pci`, Omarchy's own 7.2.3 kernel, Limine and Plymouth run
+  unmodified; the first-boot wizard appears on tty1.
+- Omarchy's root account is locked and the owner is created by the tty1
+  wizard. Before that, `systemd.debug_shell=ttyAMA0`, appended in Limine's
+  editor over the serial console, is the way in.
+- The emulator's only IME (Celia Keyboard) asks for an agreement whenever a text
+  field is focused, and its pinyin mode turns `uitest inputText` letters into a
+  candidate; Enter commits the raw letters. VNC key events into the guest avoid
+  the IME entirely.

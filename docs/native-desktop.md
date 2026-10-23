@@ -67,7 +67,12 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   The VM's display path runs at 60 Hz (its virtual monitor offers only 60 Hz modes,
   e.g. `1920x1280@60.00Hz 2160x1440@60.00Hz`): half of what its GPU renders never
   reaches the screen. Natively the per-window count (`ohdispSurface fps`) agrees
-  with the compositor's (118 and 112 fps). Natively the app asks the panel for 120 Hz and presents directly.
+  with the compositor's (118 and 112 fps).
+  A third, independent source, an 8 s `hitrace -t 8 graphic` capture during es2gears
+  at 1920x1280: natively RSMainThread composes the screen 117.6 times a second
+  (`DoComposition`) and hands 120.8 frames a second to the display hardware
+  (`HwcPresentDisplay`); with the VM, its window receives 123 buffers a second
+  (`NativeWindowFlushBuffer`) but the screen is composed only 41 times a second. Natively the app asks the panel for 120 Hz and presents directly.
 
   "Shown on screen" is HarmonyOS's own count for the app's window
   (`hidumper -s RenderService -a "ohdispSurface fps"`). Without vsync

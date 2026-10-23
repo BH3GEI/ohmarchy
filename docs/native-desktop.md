@@ -51,15 +51,18 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   | 2160x1440 (1), the 鸿融 VM's size | 112 shown on screen (95% of frames on consecutive vsyncs) | 114-118, average 116; 118 shown on screen | 62-65 |
   | 2880x1920 (1.5), the panel | 73-107 | | 39 |
 
-  Side by side with the 鸿融 VM (鸿融 1.1.1.103, the Omarchy VM disk imported), both
-  at 1920x1280, both counted by HarmonyOS's own compositor
-  (`hidumper -s RenderService -a "composer fps"`, the frames that reach the screen):
+  Side by side with the 鸿融 VM (鸿融 1.1.1.103, the Omarchy VM disk imported), same
+  outputs, three runs each, all counted by HarmonyOS's own compositor
+  (`hidumper -s RenderService -a "composer fps"`: the frames that reach the screen):
 
-  | 1920x1280 | Native | 鸿融 VM |
+  | | Native | 鸿融 VM |
   |---|---|---|
-  | es2gears, frame rate it reports | 106-118 | 110-120 |
-  | es2gears, frames shown on screen | 117 fps | 60 fps |
-  | Workspace animations, frames shown on screen | 112 fps | 59 fps |
+  | 1920x1280, es2gears, rate it reports | 114-120 | 114-120 |
+  | 1920x1280, es2gears, shown on screen | 117-120 fps | 60 fps |
+  | 1920x1280, workspace animations, shown | 115-116 fps | 60 fps |
+  | 2160x1440, es2gears, rate it reports | 112-117 | 111-120 |
+  | 2160x1440, es2gears, shown on screen | 117-118 fps | 60 fps |
+  | 2160x1440, workspace animations, shown | 109-115 fps | 59-60 fps |
 
   The VM's display path runs at 60 Hz: half of what its GPU renders never reaches
   the screen. Natively the app asks the panel for 120 Hz and presents directly.

@@ -57,6 +57,7 @@ std::atomic<bool> g_gpuActive{false};
 OHNativeWindow *g_window = nullptr;
 std::atomic<uint64_t> g_presents{0};
 uint32_t g_scanoutRes = 0;
+uint32_t g_pendingPresent = 0;  // frame to present when the renderer is idle
 pthread_t g_vtestThread;
 const char *kBroker = "@ohmarchy-vtest";
 const char *kLog = "/data/storage/el2/base/files/vtest.log";
@@ -120,6 +121,7 @@ void *Supervisor(void *)
         }
         LOGI("vtest stopped; retrying");
         g_scanoutRes = 0;
+        g_pendingPresent = 0;
         sleep(2);
     }
     return nullptr;
@@ -132,6 +134,32 @@ extern "C" __attribute__((noreturn)) void vtest_exit(int code)
 {
     fprintf(stderr, "vtest exit %d\n", code);
     pthread_exit(nullptr);
+}
+
+void PresentNow(uint32_t res_id)
+{
+    // Bit 31 on the scanout id is the library's "resize debounce over" flag (the VM
+    // sends it from a timer a second after a resolution change); without it every
+    // present after a size change keeps showing black.
+    static const bool timing = getenv("VTEST_ZC_TIMING") != nullptr;
+    static double presentMs = 0;
+    static int presentN = 0;
+    timespec t0{}, t1{};
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    int r = virgl_renderer_ohos_present(res_id, 0x80000000u);
+    if (timing) {
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        presentMs += (t1.tv_sec - t0.tv_sec) * 1e3 + (t1.tv_nsec - t0.tv_nsec) / 1e6;
+        if (++presentN == 120) {
+            fprintf(stderr, "present call: %.2f ms avg\n", presentMs / presentN);
+            presentMs = 0;
+            presentN = 0;
+        }
+    }
+    if (r != 0 || g_presents < 8 || g_presents % 120 == 0) {
+        fprintf(stderr, "present #%llu res %u -> %d\n", static_cast<unsigned long long>(g_presents.load()), res_id, r);
+    }
+    g_presents++;
 }
 
 extern "C" bool vtest_present_hook(const char *client, uint32_t res_id, const virgl_box *box)
@@ -157,16 +185,27 @@ extern "C" bool vtest_present_hook(const char *client, uint32_t res_id, const vi
         boundW = info.width;
         boundH = info.height;
     }
-    // Bit 31 on the scanout id is the library's "resize debounce over" flag (the VM
-    // sends it from a timer a second after a resolution change); without it every
-    // present after a size change keeps showing black.
-    int r = virgl_renderer_ohos_present(res_id, 0x80000000u);
-    if (r != 0 || g_presents < 8 || g_presents % 120 == 0) {
-        fprintf(stderr, "present #%llu res %u box %u,%u %ux%u -> %d\n", static_cast<unsigned long long>(g_presents.load()), res_id,
-                box->x, box->y, box->w, box->h, r);
+    // Present when the renderer has nothing else to do (vtest_idle_hook): a present
+    // blocks this thread for about a millisecond, and clients waiting for a reply
+    // meanwhile would fall behind. A newer frame shows the pending one first.
+    static const bool immediate = getenv("OHMARCHY_PRESENT_IMMEDIATE") != nullptr;
+    if (g_pendingPresent != 0) {
+        PresentNow(g_pendingPresent);
     }
-    g_presents++;
+    g_pendingPresent = res_id;
+    if (immediate) {
+        PresentNow(res_id);
+        g_pendingPresent = 0;
+    }
     return true;
+}
+
+extern "C" void vtest_idle_hook(void)
+{
+    if (g_pendingPresent != 0) {
+        PresentNow(g_pendingPresent);
+        g_pendingPresent = 0;
+    }
 }
 
 // Command tracing for development: while the file "trace" exists in the app's files
@@ -249,6 +288,9 @@ bool GpuStart(OHNativeWindow *window)
     setenv("NEED_OPENGL", "1", 1);
     // GPU clients' frames reach Hyprland as GPU copies (vtest-inapp.patch).
     setenv("VTEST_ZERO_COPY_CLIENTS", "1", 0);
+    if (access("/data/storage/el2/base/files/zc-timing", F_OK) == 0) {
+        setenv("VTEST_ZC_TIMING", "1", 1);  // per-frame stage times in vtest.log
+    }
     if (getenv("VIRGL_LOG_LEVEL") == nullptr) {
         setenv("VIRGL_LOG_LEVEL", "info", 1);
     }

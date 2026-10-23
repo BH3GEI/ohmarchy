@@ -1,0 +1,23 @@
+#!/bin/sh
+# ohmarchy shim: no systemd --user / wayland-wm-app-daemon in this chroot.
+# Drop-in for /usr/bin/uwsm-app: parse "uwsm app" options and exec the command directly.
+term=false
+case "${0##*/}" in uwsm-terminal*) term=true ;; esac
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--) shift; break ;;
+	-T) term=true; shift ;;
+	-s | -t | -a | -u | -d) shift 2 ;;
+	-h | --help) exec /usr/bin/uwsm-app "$@" ;;
+	ping) echo pong; exit 0 ;;
+	stop) exit 0 ;;
+	-*) shift ;;
+	*) break ;;
+	esac
+done
+[ $# -gt 0 ] || { echo "No args given!" >&2; exit 1; }
+case "$1" in
+*.desktop | *.desktop:*) set -- gtk-launch "$@" ;;
+esac
+$term && set -- xdg-terminal-exec "$@"
+exec "$@"

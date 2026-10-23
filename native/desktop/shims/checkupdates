@@ -1,0 +1,10 @@
+#!/bin/sh
+# ohmarchy shim: fakeroot's SysV IPC is broken on the HongMeng kernel
+# ("libfakeroot internal error: payload not recognized"), so the real
+# checkupdates (fakeroot -- pacman -Sy) hangs forever for non-root users.
+# Non-root: report pending updates from the system sync DBs (refreshed whenever
+# root runs pacman -Sy/-Syu). Same output format; exit 2 = no updates.
+[ "$(id -u)" = 0 ] && exec /usr/bin/checkupdates "$@"
+out=$(timeout 30 pacman -Qu --color never 2>/dev/null | grep -v '\[ignored\]')
+[ -n "$out" ] || exit 2
+printf '%s\n' "$out"

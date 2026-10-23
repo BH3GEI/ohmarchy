@@ -1,0 +1,36 @@
+#!/bin/sh
+# ohmarchy shim: no systemd --user here. For "systemd-run --user ..." run the
+# command directly (detached unless --scope/--wait/--pipe/--pty). Timers
+# (--on-*) are emulated with sleep. Everything else goes to the real binary.
+case " $* " in *" --user "*) ;; *) exec /usr/bin/systemd-run "$@" ;; esac
+fg=false; delay=; quiet_out=false
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--) shift; break ;;
+	--scope | --wait | -W | --pipe | -P | --pty | -t | -G) fg=true; shift ;;
+	--on-active=*) delay=${1#*=}; shift ;;
+	--on-active) delay=$2; shift 2 ;;
+	--on-*=*) echo "systemd-run shim: unsupported $1" >&2; exit 1 ;;
+	-E | --setenv) export "$2"; shift 2 ;;
+	--setenv=*) export "${1#*=}"; shift ;;
+	--property=StandardOutput=null | --property=StandardError=null) quiet_out=true; shift ;;
+	-p | --property | -u | --unit | --description | --slice | --working-directory | -M | --machine | --uid | --gid | --nice | --timer-property | --path-property | --socket-property | --service-type) shift 2 ;;
+	-*) shift ;;
+	*) break ;;
+	esac
+done
+[ $# -gt 0 ] || { echo "systemd-run shim: no command" >&2; exit 1; }
+$fg && exec "$@"
+case "$delay" in
+'') ;;
+*ms) delay=0.$(printf '%03d' "${delay%ms}") ;;
+*min | *m) delay=$((${delay%%m*} * 60)) ;;
+*h) delay=$((${delay%h} * 3600)) ;;
+*s) delay=${delay%s} ;;
+esac
+if $quiet_out; then
+	setsid sh -c '[ -n "$1" ] && sleep "$1"; shift; exec "$@"' sh "$delay" "$@" </dev/null >/dev/null 2>&1 &
+else
+	setsid sh -c '[ -n "$1" ] && sleep "$1"; shift; exec "$@"' sh "$delay" "$@" </dev/null &
+fi
+exit 0

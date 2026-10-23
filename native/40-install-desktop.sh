@@ -50,7 +50,25 @@ ninja -C build install
 "
 
 install -m 755 "$here/desktop/ohmarchy-desktop" "$here/desktop/systemd-cat" "$prefix/bin/"
-install -m 644 -o "$user" -g "$user" "$here/desktop/ohdisplay.lua" "$(getent passwd "$user" | cut -d: -f6)/.config/hypr/ohdisplay.lua"
+# Omarchy launches apps through systemd --user (uwsm-app, systemd-run --user), and its
+# update check needs fakeroot, which fails on HongMeng (SysV IPC); /usr/local/bin
+# precedes /usr/bin on the session's PATH.
+install -m 755 "$here/desktop/shims/uwsm-app" "$here/desktop/shims/systemd-run" "$here/desktop/shims/checkupdates" /usr/local/bin/
+home=$(getent passwd "$user" | cut -d: -f6)
+# Chromium's sandbox needs user namespaces or a setuid helper; neither exists here.
+grep -qx -- --no-sandbox "$home/.config/chromium-flags.conf" 2>/dev/null ||
+    echo --no-sandbox >> "$home/.config/chromium-flags.conf"
+# GitHub is not reachable from the host: mise (Omarchy's tool installs) goes through a proxy.
+mkdir -p "$home/.config/mise"
+grep -q url_replacements "$home/.config/mise/config.toml" 2>/dev/null || cat >> "$home/.config/mise/config.toml" <<'T'
+
+# GitHub is not reachable from the HarmonyOS host; fetch through a proxy.
+[settings.url_replacements]
+"https://github.com" = "https://gh-proxy.com/https://github.com"
+"https://api.github.com" = "https://gh-proxy.com/https://api.github.com"
+T
+chown -R "$user:" "$home/.config/chromium-flags.conf" "$home/.config/mise"
+install -m 644 -o "$user" -g "$user" "$here/desktop/ohdisplay.lua" "$home/.config/hypr/ohdisplay.lua"
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 rm -rf "$build"
 echo "Done. Start it from the host with: omarchy desktop start"

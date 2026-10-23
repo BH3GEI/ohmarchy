@@ -64,8 +64,10 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   | 2160x1440, es2gears, shown on screen | 117-118 fps | 60 fps |
   | 2160x1440, workspace animations, shown | 109-115 fps | 59-60 fps |
 
-  The VM's display path runs at 60 Hz: half of what its GPU renders never reaches
-  the screen. Natively the app asks the panel for 120 Hz and presents directly.
+  The VM's display path runs at 60 Hz (its virtual monitor offers only 60 Hz modes,
+  e.g. `1920x1280@60.00Hz 2160x1440@60.00Hz`): half of what its GPU renders never
+  reaches the screen. Natively the per-window count (`ohdispSurface fps`) agrees
+  with the compositor's (118 and 112 fps). Natively the app asks the panel for 120 Hz and presents directly.
 
   "Shown on screen" is HarmonyOS's own count for the app's window
   (`hidumper -s RenderService -a "ohdispSurface fps"`). Without vsync

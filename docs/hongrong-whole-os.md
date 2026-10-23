@@ -22,12 +22,29 @@ Verified on a MateBook 14 (HongMeng kernel 1.11.13.0), 鸿融 1.3.1.80:
   partition (ext4), mounted by an mkinitcpio hook.
 - GRUB (deepin's) boots Arch by default; deepin stays one menu entry away.
 - Network and ssh work from the HarmonyOS host.
+- **GPU acceleration (OpenGL) through virgl.** After 鸿融 stops and starts the
+  VM (the StratoVirt process is relaunched), the guest gets
+  `vhost-user-gpu-pci,virgl=true`: the kernel reports
+  `[drm] features: +virgl +edid -resource_blob -host_visible` and 2 capsets,
+  and Hyprland's renderer is `virgl (zink Vulkan 1.2(Maleoon 916))`. The host
+  renders with Mesa's zink on the machine's GPU. Reboots inside the guest keep
+  whatever device the VM was started with. Check from ssh, without touching
+  the screen:
+
+  ```sh
+  journalctl -k -b | grep -e virgl -e 'cap sets'
+  grep -h 'Renderer:' /run/user/$(id -u)/hypr/*/hyprland.log
+  ```
 
 Open:
 
-- **No GPU acceleration.** Rendering is llvmpipe, so animations are slow. The
-  host has a virgl path but turns it off for Linux guests (see
-  [findings](findings.md#鸿融-linux-vm)).
+- **GPU limits.** OpenGL only: the host's virglrenderer has no Venus, so no
+  Vulkan in the guest. No `resource_blob`/`host_visible`, so frames are copied.
+  GLES 3.2 contexts fail and Hyprland falls back to GLES 3.0.
+- The first boots after installing got the 2D `virtio-gpu-pci` and llvmpipe
+  instead. What makes 鸿融 pick virgl is not pinned down yet (see
+  [findings](findings.md#鸿融-linux-vm)). If the desktop turns slow again, run
+  the check above and stop and start the VM from 鸿融.
 - No Snapper/Limine snapshots (ext4 root, deepin's GRUB), and ufw is off: it
   fails to load its rules on deepin's kernel and would block sshd.
 - The install scripts in `hongrong/` reassemble steps that were run by hand.

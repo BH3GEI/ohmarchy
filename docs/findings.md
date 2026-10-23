@@ -56,18 +56,31 @@ Observed on a MateBook 14 (HongMeng kernel 1.11.13.0), 鸿融 1.3.1.80.
   host's network and no DHCP. A static address in the guest works.
 - deepin 25 (6.6.143) boots and runs its desktop; Fedora 44 aarch64 hangs after
   the firmware hands over (details in [hongrong-whole-os.md](hongrong-whole-os.md)).
-- Guest display: `virtio_gpu` reports `-virgl +edid -resource_blob -host_visible`,
-  `+context_init`, 0 capsets. Mesa falls back to llvmpipe.
-- The host does carry a virgl path for Linux guests:
-  `/system/bin/virt_service/vm_engine/stratovirt/vhost-device-gpu` (rust-vmm
-  vhost-device-gpu 0.2.0, `--gpu-mode virglrenderer`, capsets virgl/virgl2) and
-  an OpenHarmony port of virglrenderer that renders through the host's GLES
-  (no Venus, so no Vulkan). In `libvm_manager.z.so`, `GetOHDisplayVmCmd` builds
+- Guest display, first boots: `virtio-gpu-pci` (2D); `virtio_gpu` reports
+  `-virgl +edid -resource_blob -host_visible`, `+context_init`, 0 capsets, and
+  Mesa falls back to llvmpipe.
+- Guest display after 鸿融 restarted the VM (new StratoVirt process):
+  `-device vhost-user-gpu-pci,...,xres=2160,yres=1440,virgl=true` on a
+  `com.huawei.medivh/uds/gpu.sock` chardev, plus `-display ohui`. The guest
+  reports `+virgl`, 2 capsets, and Hyprland renders on
+  `virgl (zink Vulkan 1.2(Maleoon 916))`. It stayed that way across a forced
+  stop and start. The VM's `config/*.json` were not modified, and the host's
+  `libvm_manager.z.so`, `vhost-device-gpu` and `libvirglrenderer.so.1` are the
+  stock images, so 鸿融 itself chose virgl; what decides between 2D and virgl
+  is still open.
+- The virgl backend: `/system/bin/virt_service/vm_engine/stratovirt/vhost-device-gpu`
+  (rust-vmm vhost-device-gpu 0.2.0, `--gpu-mode virglrenderer --use-gles false`,
+  user hwf_service, capsets virgl/virgl2). It maps an OpenHarmony port of
+  virglrenderer, libepoxy, Mesa 25.0.1's EGL and gallium (zink) and the
+  Maleoon Vulkan driver (`vulkan.hvgr_v210.so`, `/dev/hvgr0`), and presents
+  through a native window from `libhwf_kits.z.so`. No Venus, so no Vulkan for
+  the guest; StratoVirt logs `dmabuf not support now`, so no blob resources.
+- In `libvm_manager.z.so`, `GetOHDisplayVmCmd` builds
   `vhost-user-gpu-pci,...,virgl=true` when a VM's `accelerationEnabled` is set
   and its guest type is Linux (the same flag gives Windows guests `svga-pci`
-  with DXVK). `VmManager::SetDisplay2dForUos`, called from `CreateVm`, clears
-  that flag for Linux guests, so they always get the 2D device. Found by
-  disassembly; not exercised.
+  with DXVK), and `VmManager::SetDisplay2dForUos`, called from `CreateVm`,
+  clears that flag for Linux guests. Found by disassembly. The VM above runs
+  with virgl anyway, so that path does not apply on every start.
 - Guest tools (`vm-agent` 1.3.1.80, on the second ISO): agent services, a Mesa
   19.2.6 build, and dkms sources for virtio input/sound/fs and a logging
   device. The Kylin tree's `virtio_gpu` is upstream Linux 5.4 plus one stable

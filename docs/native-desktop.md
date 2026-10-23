@@ -72,7 +72,8 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   at 1920x1280: natively RSMainThread composes the screen 117.6 times a second
   (`DoComposition`) and hands 120.8 frames a second to the display hardware
   (`HwcPresentDisplay`); with the VM, its window receives 123 buffers a second
-  (`NativeWindowFlushBuffer`) but the screen is composed only 41 times a second. Natively the app asks the panel for 120 Hz and presents directly.
+  (`NativeWindowFlushBuffer`) but the screen is composed only 41 times a second
+  (a second capture: 40.6 compositions and 120 window buffers a second). Natively the app asks the panel for 120 Hz and presents directly.
 
   "Shown on screen" is HarmonyOS's own count for the app's window
   (`hidumper -s RenderService -a "ohdispSurface fps"`). Without vsync

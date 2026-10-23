@@ -64,16 +64,20 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
   | 2160x1440, es2gears, shown on screen | 117-118 fps | 60 fps |
   | 2160x1440, workspace animations, shown | 109-115 fps | 59-60 fps |
 
-  The VM's display path runs at 60 Hz (its virtual monitor offers only 60 Hz modes,
-  e.g. `1920x1280@60.00Hz 2160x1440@60.00Hz`): half of what its GPU renders never
+  The VM's virtual display advertises only 60 Hz: its EDID (read in the guest from
+  `/sys/class/drm/card0-Virtual-1/edid`) lists 1920x1280 at 59.998 Hz, 2160x1440 at
+  59.9999 Hz and so on, nothing faster. Its GPU renders twice that; half never
   reaches the screen. Natively the per-window count (`ohdispSurface fps`) agrees
   with the compositor's (118 and 112 fps).
-  A third, independent source, an 8 s `hitrace -t 8 graphic` capture during es2gears
-  at 1920x1280: natively RSMainThread composes the screen 117.6 times a second
-  (`DoComposition`) and hands 120.8 frames a second to the display hardware
-  (`HwcPresentDisplay`); with the VM, its window receives 123 buffers a second
-  (`NativeWindowFlushBuffer`) but the screen is composed only 41 times a second
-  (a second capture: 40.6 compositions and 120 window buffers a second). Natively the app asks the panel for 120 Hz and presents directly.
+
+  A third, independent source, three 8 s `hitrace -t 8 graphic` captures per side
+  during es2gears at 1920x1280 (window in front):
+
+  | Per second | Native | 鸿融 VM |
+  |---|---|---|
+  | Screen compositions (`RSMainThread::DoComposition`) | 117.6, 116.4, 117.8 | 41.1, 40.6, 37.6 |
+  | Frames to the display hardware (`HwcPresentDisplay`) | 120.8, 119.3, 120.9 | 40.1, 37.3 |
+  | Buffers the window received (`NativeWindowFlushBuffer`) | 117.8, 116.3, 117.8 | 123, 120, 112 | Natively the app asks the panel for 120 Hz and presents directly.
 
   "Shown on screen" is HarmonyOS's own count for the app's window
   (`hidumper -s RenderService -a "ohdispSurface fps"`). Without vsync

@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# hrvm: power the 鸿融 Linux VM on and off remotely and try kernels in it.
+#   hrvm start                  press 开机 on 鸿融's main page (found in the UI tree)
+#   hrvm stop                   SIGTERM StratoVirt on the host (a forced power-off)
+#   hrvm wait-ssh [SECS]        wait until the guest answers on ssh, print uname -r
+#   hrvm settest "ARGS"         from the running default system: set the arch-linux
+#                               entry's kernel arguments and boot it once (next_entry)
+#   hrvm trial "ARGS" [SECS]    settest, power off, start, wait, screenshot, report
+#   hrvm ktest NAME...          boot /arch/boot/ktest/NAME.Image once without an
+#                               initramfs; PASS when PSCI brings up vCPU 1 (host log)
+#
+# Environment: HRVM_HOST (HarmonyOS host, default ohdev), HRVM_GUEST (guest ssh
+# alias, default ohvm-arch), HRVM_SUDO_PW (guest sudo password, required),
+# OHUI (path to tools/ohdev/ohui), OHUI_DIR (screenshots, default /tmp/ohui).
+set -euo pipefail
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+export OHUI_DIR=${OHUI_DIR:-/tmp/ohui}
+OHUI=${OHUI:-$HERE/../ohdev/ohui}
+HOST=${HRVM_HOST:-ohdev}
+GUEST=${HRVM_GUEST:-ohvm-arch}
+PW=${HRVM_SUDO_PW:?set HRVM_SUDO_PW to the guest sudo password}
+
+vm_running() { [ "$(ssh -o BatchMode=yes $HOST 'ps -ef | grep -v grep | grep -c stratovirt.-machine' 2>/dev/null)" != 0 ]; }
+
+stop() {
+  ssh -o BatchMode=yes $HOST sh -s <<'EOF'
+p=$(ps -ef | grep -v grep | grep "stratovirt -machine" | awk '{print $2}')
+[ -n "$p" ] && kill -TERM $p
+EOF
+  for _ in $(seq 1 20); do vm_running || { echo stopped; return 0; }; sleep 2; done
+  echo "still running" >&2; return 1
+}
+
+start() {
+  vm_running && { echo "already running"; return 0; }
+  # Other windows can cover 鸿融 and get moved around, so nothing is clicked at a
+  # fixed position: raise 鸿融 by its sidebar corner if that point is uncovered,
+  # then press the 开机 button found in the UI tree, only if no window above
+  # covers its centre. Taps use device pixels.
+  "$OHUI" dump hrvm-raise >/dev/null
+  local rxy
+  if rxy=$(python3 -I - "$OHUI_DIR/hrvm-raise.json" <<'P'
+import json, re, sys
+wins = json.load(open(sys.argv[1]))["children"]
+box = lambda n: tuple(map(int, re.findall(r"\d+", n["attributes"].get("bounds", "[0,0][0,0]"))))
+for i, w in enumerate(wins):
+    if w["attributes"].get("bundleName") == "com.huawei.medivh":
+        x1, y1, _, _ = box(w); cx, cy = x1 + 120, y1 + 60
+        if any(a <= cx <= c and b <= cy <= d for a, b, c, d in (box(o) for o in wins[:i])): sys.exit(2)
+        print(cx, cy); sys.exit(0)
+sys.exit(1)
+P
+); then "$OHUI" -r tap $rxy >/dev/null; sleep 1; fi
+  "$OHUI" shot hrvm-pre >/dev/null
+  "$OHUI" dump hrvm-pre >/dev/null
+  local xy
+  if ! xy=$(python3 -I - "$OHUI_DIR/hrvm-pre.json" <<'P'
+import json, re, sys
+wins = json.load(open(sys.argv[1]))["children"]
+box = lambda n: tuple(map(int, re.findall(r"\d+", n["attributes"].get("bounds", "[0,0][0,0]"))))
+def find(n):
+    if n["attributes"].get("text") == "开机":
+        return n
+    for c in n.get("children", []):
+        r = find(c)
+        if r: return r
+for i, w in enumerate(wins):
+    if w["attributes"].get("bundleName") != "com.huawei.medivh": continue
+    b = find(w)
+    if not b: continue
+    x1, y1, x2, y2 = box(b); cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+    covered = any(a <= cx <= c and bb <= cy <= d for a, bb, c, d in (box(o) for o in wins[:i]))
+    if covered: sys.exit(2)
+    print(cx, cy); sys.exit(0)
+sys.exit(1)
+P
+); then echo "鸿融's 开机 button not found or covered; not clicking" >&2; return 1; fi
+  "$OHUI" -r tap $xy >/dev/null
+  for _ in $(seq 1 15); do vm_running && { echo started; return 0; }; sleep 2; done
+  echo "did not start (is 鸿融's main page in front?)" >&2; return 1
+}
+
+wait_ssh() {
+  local t=${1:-240} n=0
+  while (( n < t )); do
+    r=$(ssh -o BatchMode=yes -o ConnectTimeout=6 $GUEST 'uname -r' 2>/dev/null) && { echo "up: $r"; return 0; }
+    sleep 6; n=$((n + 12))
+  done
+  echo "no ssh after ${t}s" >&2; return 1
+}
+
+settest() {
+  local args=$1
+  ssh -o BatchMode=yes $GUEST "cat > /tmp/settest.sh" <<EOF
+set -e
+mkdir -p /mnt/deepinboot; mountpoint -q /mnt/deepinboot || mount /dev/vda2 /mnt/deepinboot
+cfg=/mnt/deepinboot/grub/custom.cfg
+sed -i '/--id arch-linux/,/^}/ s#^\(    linux /arch/boot/Image root=UUID=[^ ]* subroot=arch rw\).*#\1 $args#' \$cfg
+sed -n '/--id arch-linux/,/^}/p' \$cfg | grep linux
+grub-editenv /mnt/deepinboot/grub/grubenv set next_entry=arch-linux
+umount /mnt/deepinboot
+EOF
+  ssh -o BatchMode=yes $GUEST "echo $PW | sudo -S -p '' bash /tmp/settest.sh"
+}
+
+trial() {
+  local args=$1 wait=${2:-90}
+  vm_running || { start; wait_ssh; }
+  settest "$args"
+  ssh -o BatchMode=yes $GUEST "(sleep 1; echo $PW | sudo -S -p '' systemctl poweroff) >/dev/null 2>&1 &" || true
+  for _ in $(seq 1 30); do vm_running || break; sleep 2; done
+  vm_running && stop
+  start
+  sleep "$wait"
+  "$OHUI" shot "trial-$(date +%H%M%S)"
+  if r=$(ssh -o BatchMode=yes -o ConnectTimeout=8 $GUEST 'uname -r' 2>/dev/null); then
+    echo "BOOTED: $r"
+  else
+    echo "NO SSH (hung?)"
+  fi
+}
+
+# PID of the VM's StratoVirt process on the host
+vm_pid() { ssh -o BatchMode=yes $HOST sh -s <<'EOF'
+ps -ef | grep -v grep | grep "stratovirt -machine" | awk '{print $2}' | head -1
+EOF
+}
+
+# Try a kernel without an initramfs: PASS if the host log shows PSCI starting vCPU 1
+ktest() {
+  local name=$1 wait=${2:-30}
+  # Start from the reachable default system (a previous test may still hang)
+  if ! ssh -o BatchMode=yes -o ConnectTimeout=8 $GUEST true 2>/dev/null; then
+    vm_running && stop >/dev/null
+    start >/dev/null; wait_ssh >/dev/null
+  fi
+  ssh -o BatchMode=yes -o ConnectTimeout=10 $GUEST "cat > /tmp/kt.sh" <<EOF
+set -e
+mkdir -p /mnt/deepinboot; mountpoint -q /mnt/deepinboot || mount /dev/vda2 /mnt/deepinboot
+test -f /boot/ktest/$name.Image
+grub-editenv /mnt/deepinboot/grub/grubenv set ktest=$name next_entry=arch-ktest
+umount /mnt/deepinboot
+EOF
+  ssh -o BatchMode=yes $GUEST "echo $PW | sudo -S -p '' bash /tmp/kt.sh && (sleep 1; echo $PW | sudo -S -p '' systemctl poweroff) >/dev/null 2>&1 &" || true
+  for _ in $(seq 1 30); do vm_running || break; sleep 2; done
+  vm_running && stop
+  start >/dev/null
+  sleep "$wait"
+  local p; p=$(vm_pid)
+  local res
+  res=$(ssh -o BatchMode=yes $HOST sh -s <<EOF
+grep "\[$p\]" /data/log/hwf_service/vmlog | grep -c "psci.rs.*vCPU 1 is running" || true
+EOF
+)
+  "$OHUI" shot "kt-$name" >/dev/null
+  if [ "$res" -gt 0 ]; then echo "$name: PASS (secondary CPUs started)"; else echo "$name: FAIL (no PSCI CPU_ON)"; fi
+  # Back to the default system
+  stop >/dev/null; start >/dev/null; wait_ssh >/dev/null
+}
+
+cmd=${1:-}; shift || true
+case $cmd in
+  start) start ;; stop) stop ;; wait-ssh) wait_ssh "${1:-240}" ;;
+  settest) settest "$1" ;; trial) trial "$1" "${2:-90}" ;;
+  ktest) for n in "$@"; do ktest "$n"; done ;;
+  *) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

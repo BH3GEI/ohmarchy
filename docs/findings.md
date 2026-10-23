@@ -89,6 +89,36 @@ Observed on a MateBook 14 (HongMeng kernel 1.11.13.0), 鸿融 1.3.1.80.
 - Input: `uitest uiInput keyEvent` and clicks reach the guest; `inputText` does
   not.
 
+- Guest tools handshake: the host connects to the guest, not the other way
+  round. `GuestManager::Init` in `libvm_manager` opens vsock CID 2000 port 3300
+  (plus the `additions_vioser0` serial port); `agent_service` waits in
+  `accept()` and does nothing until then. Without that connection 鸿融 keeps
+  showing 增强服务安装引导 (系统检测到该服务尚未部署). The clipboard service
+  listens on vsock 3333 and the file-share server on 5000.
+- The host's GIC ITS reports 32 event ID bits (`GITS_TYPER` `0x603ff71`). In
+  Linux 6.6.130 to 6.6.159, and still in 7.2.11, `its_create_device()` clamps
+  the vector count with `min_t(unsigned int, nvecs, BIT(id_bits))`, which is 0
+  for 32 bits, so every MSI allocation fails with -ENOMEM and all PCI devices
+  fall back to INTx. vsock then never receives an interrupt and the handshake
+  above never happens. Fixed upstream by `5a9d62555e71`; with the cached
+  IDBITS lowered to 16 at runtime the agent connected and the app logged
+  "Agent is installed".
+- The first time the agent connects, 鸿融 sends it a shutdown
+  (`<HandleShutdown>` → `poweroff` in the guest) and starts the VM again
+  about 12 s later. Once connected, the agent also rewrites `logind.conf`, masks
+  the sleep targets and adds a DHCP NetworkManager profile for `enp0s6`
+  (useless here: the bridge has no DHCP).
+- Warm reboots from inside the guest can hang: after the reset the firmware
+  re-activates the virgl GPU device, and vCPU 0 logs "Trap ... reached time
+  limit" on an MMIO write to the virtio device-status register (`0x6000020014`)
+  until 鸿融 is stopped. It is intermittent (three of four reboots passed).
+  Power off and start from 鸿融 instead.
+- Kernels from v6.9 on hang on vCPU 0 right after the EFI stub exits boot
+  services, before PSCI starts the secondary vCPUs; v6.8 boots. This holds for
+  upstream `defconfig` builds and for Debian, Ubuntu and Arch kernels, while
+  the same 7.2 kernel boots under QEMU TCG. See
+  [hongrong-whole-os.md](hongrong-whole-os.md#toward-omarchys-own-kernel).
+
 ## Kernel
 
 - Kernels >= 6.5 hang early in the Oseasy VM (Omarchy's 7.2.3, a community report

@@ -83,9 +83,12 @@ driver/
   vmwgfx-oseasy/   vmwgfx for the HarmonyOS SVGA device (indexed MMIO, display-unit selection)
   efidrm/          omarchy_efidrm: simpledrm on the EFI framebuffer for the Debian 6.1 kernel
 tools/fold/        hdc helpers: screenshots, taps, keys, typing into the VM, guest shell, file copy
-tools/kbuild/      build out-of-tree arm64 modules against Debian headers with clang
+tools/kbuild/      build out-of-tree arm64 modules against Debian headers with clang;
+                   upstream kernel builds and an automated bisect for the 鸿融 VM
 tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-key typing into VMs
 hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
+  kernel/patches/  patches for Omarchy's linux-aarch64 in 鸿融
+tools/hongrong/    hrvm: remote power cycle of the 鸿融 VM and one-shot kernel boot tests
 emulator/          route E: emulator setup, input fetch, Aetherium patch (lib/), install
 tools/emu/         hdc UI helper for the emulator (taps, text, screenshots)
 tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)

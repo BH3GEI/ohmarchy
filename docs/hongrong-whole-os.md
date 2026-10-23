@@ -238,6 +238,68 @@ The scripts follow the ISO's order: repositories and keys, packages,
   `OMARCHY_SETUP_CONTEXT=provision-owner` it falls back to `mise` over the
   network (npmmirror).
 
+## Toward Omarchy's own kernel
+
+Goal: boot Omarchy's `linux-aarch64` with a small, documented patch set on top,
+instead of deepin's kernel, and hand the hypervisor-side problems to Huawei.
+In progress.
+
+### What fails, and where
+
+`linux-aarch64` 7.2.11 does not boot in 鸿融. GRUB loads it, the EFI stub exits
+boot services (the host log shows the firmware deactivating the virtio
+devices), and then nothing: no earlycon output even with `earlycon=efifb`, and
+the host never sees PSCI `CPU_ON` for vCPU 1. A working kernel brings up the
+other five vCPUs within 0.4 s of the hand-off, so the hang is on vCPU 0 in early
+boot, before SMP. `arm64.nosme arm64.nogcs arm64.nopoe nokaslr` do not help.
+
+Booting each kernel once without an initramfs and reading the host log
+(`hrvm ktest`) gives:
+
+| Kernel | Source | Secondary CPUs start |
+|---|---|---|
+| 6.1.176 | Debian | yes |
+| 6.6.143 | deepin | yes |
+| 6.8.0 | Ubuntu | yes |
+| **v6.8** | upstream, `defconfig` | **yes** |
+| **v6.9** | upstream, `defconfig` | **no** |
+| 6.11.0 | Ubuntu, upstream `defconfig` | no |
+| 6.12.111 | Debian | no |
+| 7.2.11 | Arch Linux ARM | no |
+
+So the regression is in v6.9 and does not depend on distribution configs.
+v6.9 rewrote arm64's early boot (Ard Biesheuvel's series moving the early page
+table and kernel mapping code from `head.S` into C under `arch/arm64/kernel/pi`,
+plus LPA2). 41 commits between v6.8 and v6.9 touch those files; a path-limited
+`git bisect` over them is running. The same 7.2 kernel boots under QEMU TCG
+(route E), so the trigger is something HarmonyOS's hypervisor does differently.
+
+### Patches for `linux-aarch64` so far
+
+- `hongrong/kernel/patches/0001-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch`:
+  upstream `5a9d62555e71` (mainline, Cc stable, not yet in 7.2.11). The
+  host's ITS reports 32 event ID bits; without the fix MSI allocation fails,
+  every device falls back to INTx, vsock is dead and the guest tools never
+  connect. Drop it once Arch's kernel carries it.
+
+### Method and tools
+
+- `tools/hongrong/hrvm`: `start` presses 开机 in 鸿融 (found in the UI tree, and
+  only if no other window covers it), `stop` sends SIGTERM to the VM's
+  StratoVirt process on the host, which 鸿融 shows as 已关机. The QMP socket
+  cannot be connected to from a root shell, and a fully hung VM window keeps
+  the keyboard (Home does nothing), so this is the remote power cycle.
+  `ktest NAME` sets `ktest=NAME next_entry=arch-ktest` in deepin's grubenv from
+  the running system, powers off, starts, and greps the host's
+  `/data/log/hwf_service/vmlog` for `vCPU 1 is running`. A failed test lands
+  back on the default entry at the next start.
+- `tools/kbuild/kernel-build.sh`: upstream `defconfig` `Image` builds in a
+  Debian arm64 container (an M3 Max builds one in about 8 to 12 minutes; the
+  Image is gzipped for the trip through the host). The source is a blobless
+  clone of the TUNA linux mirror on a case-sensitive Docker volume.
+- `tools/kbuild/kbisect.sh`: build, upload, `hrvm ktest`, `git bisect good|bad`
+  until git names the first bad commit.
+
 ## Driving it
 
 - Host: an ssh server on the HarmonyOS host (`ohdev`). For screenshots and

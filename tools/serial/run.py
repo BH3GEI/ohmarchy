@@ -2,6 +2,7 @@
 # Run a command in a shell that is already logged in on the guest's first serial console
 # (getty login as the Omarchy user, or the systemd.debug_shell root shell) and print its output.
 # The command's output goes to /tmp in the guest first, so slow echo does not mix with it.
+# Input is sent in small chunks: a busy guest drops serial input sent in one burst.
 # usage: run.py 'COMMAND' [MAX_WAIT_SECS]   SERIAL_PORT defaults to 14321
 import os,socket,sys,time,re,random
 cmd=sys.argv[1]; maxw=float(sys.argv[2]) if len(sys.argv)>2 else 180
@@ -11,7 +12,9 @@ s.sendall(b'\x03'); time.sleep(3)
 try:
     while s.recv(65536): pass
 except socket.timeout: pass
-s.sendall(('{ %s ; } > /tmp/%s.out 2>&1; echo; echo %s; cat /tmp/%s.out; echo %s\r'%(cmd,tag,tag+'B',tag,tag+'E')).encode())
+line=('{ %s ; } > /tmp/%s.out 2>&1; echo; echo %s; cat /tmp/%s.out; echo %s\r'%(cmd,tag,tag+'B',tag,tag+'E')).encode()
+for i in range(0,len(line),32):  # a busy guest drops serial input sent in one burst
+    s.sendall(line[i:i+32]); time.sleep(0.05)
 out=b''; end=time.time()+maxw
 while time.time()<end:
     try:

@@ -79,13 +79,15 @@ Which apps and features work there: [docs/native-compat.md](docs/native-compat.m
 On a Mac (or any DevEco host) with DevEco Studio, `hdc`, `gh` and `python3`:
 
 ```sh
-emulator/10-create-emulator.sh   # HarmonyOS 7.0 2in1 emulator image + instance, boot
-emulator/20-fetch-inputs.sh      # Aetherium HAP (patched by emulator/lib/patch_aetherium.py), Omarchy qcow2, RemoteDesk
-emulator/30-install.sh           # install the HAPs, copy the disk to 下载, forward VNC 15901 and serial 14321
+emulator/10-create-emulator.sh       # HarmonyOS 7.0 2in1 emulator image + instance, boot
+emulator/20-fetch-inputs.sh          # Aetherium HAP (patched by emulator/lib/patch_aetherium.py), Omarchy qcow2, RemoteDesk
+emulator/30-install.sh               # install the HAPs, copy the disk to 下载, forward VNC 15901 and serial 14321
+emulator/40-create-vm.sh             # create and start the VM in Aetherium (UI driven by text)
+emulator/50-first-boot.sh USER PASS  # answer Omarchy's first-boot wizard over VNC
+emulator/60-desktop.sh USER PASS     # wait for the ~50 min setup, boot straight into Hyprland
 ```
 
-Then create the VM in Aetherium as described in
-[docs/emulator-aetherium.md](docs/emulator-aetherium.md#create-the-vm).
+Details and the manual equivalents: [docs/emulator-aetherium.md](docs/emulator-aetherium.md).
 
 ## Layout
 
@@ -104,10 +106,11 @@ tools/ohdev/       ssh helper for a HarmonyOS host: screenshots, taps, key-by-ke
 hongrong/          route C: Arch bootstrap from deepin, Omarchy install, initcpio hook, configs
   kernel/patches/  patches for Omarchy's linux-aarch64 in 鸿融
 tools/hongrong/    hrvm: remote power cycle of the 鸿融 VM and one-shot kernel boot tests
-emulator/          route F: emulator setup, input fetch, Aetherium patch (lib/), install
-tools/emu/         hdc UI helper for the emulator (taps, text, screenshots)
+emulator/          route F: emulator, inputs, Aetherium patch (lib/), install, VM creation, first boot, desktop
+  guest/           runs inside Omarchy: tty1 autologin into Hyprland, no SDDM, stay awake
+tools/emu/         emulator UI over hdc: ui.py (tap/wait by visible text), ui.sh (taps, screenshots)
 tools/vnc/         VNC frame grab and key injection (RFB, stdlib only)
-tools/serial/      serial console: Limine menu renderer/driver, debug root shell, logged-in shell runner
+tools/serial/      serial console: Limine menu, debug root shell, login.py, run.py (commands in a logged-in shell)
 linux-engine/      route A install scripts (run inside the Linux engine container)
 native/            route D: image build, session manager (arch.sh), launcher (omarchy), Arch + Omarchy setup
   desktop/         native Hyprland desktop: aquamarine/Hyprland patches, launcher, shims

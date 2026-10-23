@@ -28,13 +28,18 @@ emulator 26.0.0.402, image 7.0.0.107:
 - The first-boot wizard completes (keys sent over VNC, so no HarmonyOS IME is
   involved).
 - The Hyprland desktop runs: Omarchy 4.0.3, Hyprland 0.56.1 (Wayland) on
-  llvmpipe, Quickshell bar, notifications, terminal, hyprlock, fastfetch;
+  llvmpipe, Quickshell bar, notifications, terminal, lock screen, fastfetch;
   shown full-screen in RemoteDesk inside HarmonyOS (screenshot below).
 - SDDM never gets there on its own: its Wayland greeter is killed about 21 s
   after it starts (`Auth: sddm-helper exited with 2`, then a new greeter), and
-  under TCG the greeter's Hyprland plus the Qt greeter need longer. The session
-  is started from a text console instead, see
-  [Start the desktop](#start-the-desktop).
+  under TCG the greeter's Hyprland plus the Qt greeter need longer.
+  `60-desktop.sh` replaces it with tty1 autologin into the uwsm session and
+  turns on Omarchy's stay-awake switch; after its reboot the guest comes up in
+  an unlocked desktop, see [Start the desktop](#start-the-desktop).
+- Scripts: `10`, `20` and `60` were run as committed (`10` and `20` against
+  existing inputs, `60` end to end on a set-up guest). `30` repeats steps first
+  done by hand. `40` and `50` follow the verified manual steps but have not yet
+  been run from a fresh emulator instance.
 - Timing on the test machine: boot to the wizard about 5 minutes; Omarchy's
   first-boot setup about 50 minutes, most of it in `mkinitcpio` rebuilding the
   Limine UKI (gzip under TCG); the desktop about 2 minutes after `uwsm start`.
@@ -64,9 +69,12 @@ Linux engine) do not apply here; AppGallery apps are not installable either.
 ## Build and install
 
 ```sh
-emulator/10-create-emulator.sh   # 2in1 image (2.7 GB), instance ohm2in1 (8 vCPU, 16 GB, 64 GB), boot
-emulator/20-fetch-inputs.sh      # Aetherium test HAP -> patched HAP, Omarchy qcow2 (3.4 GB), RemoteDesk
-emulator/30-install.sh           # install both HAPs, copy the qcow2 to 下载, forward VNC/serial ports
+emulator/10-create-emulator.sh       # 2in1 image (2.7 GB), instance ohm2in1 (8 vCPU, 16 GB, 64 GB), boot
+emulator/20-fetch-inputs.sh          # Aetherium test HAP -> patched HAP, Omarchy qcow2 (3.4 GB), RemoteDesk
+emulator/30-install.sh               # install both HAPs, copy the qcow2 to 下载, forward VNC/serial ports
+emulator/40-create-vm.sh             # drive Aetherium's UI: throw-away VM, Omarchy VM, 普通启动 (VNC)
+emulator/50-first-boot.sh USER PASS  # answer Omarchy's tty1 wizard over VNC
+emulator/60-desktop.sh USER PASS     # wait for setup, boot straight into Hyprland (no SDDM, no idle lock)
 ```
 
 Settings live in `emulator/config.sh`; outputs go to `work/emulator/`. The
@@ -89,8 +97,11 @@ firmware, clear the app data (`hdc shell bm clean -n com.caidingding233.qemuhmos
 
 ## Create the VM
 
-Aetherium's UI, in the emulator window (maximize it first). Two app bugs shape
-the order:
+`40-create-vm.sh` does this by visible text (`tools/emu/ui.py`, built on
+`uitest dumpLayout`), so window size and position do not matter. It expects the
+app freshly installed by `30-install.sh` and an English system UI (the file
+picker's Downloads/Open). The manual steps it follows are below. Two app bugs
+shape the order:
 
 - After a data reset, importing a disk fails with "导入磁盘镜像失败: No such file
   or directory": the import creates `files/vms/NAME` but not `files/vms`.
@@ -107,11 +118,12 @@ Steps:
 2. 创建第一个虚拟机 → 高级设置 → aarch64 → `virt` → any display → `virtio-net-pci`
    → no sound → 8 GB → any disk size → Linux → no ISO → any name → 创建并启动 →
    取消 (the start-mode sheet). This throw-away VM exists only to create the
-   directories: open its 虚拟机设置 → ISO 镜像 → 选择 and pick any file in 下载.
+   directories: open its 虚拟机设置 → ISO 镜像 → 选择 and pick any file in 下载
+   (`30-install.sh` puts `aetherium-init.txt` there for this).
 3. 添加列表 → the same choices, but on the disk page use 导入现有 QEMU 磁盘 → 选择 →
    下载 → `omarchy-aarch64-virt.qcow2`, and an ASCII name (non-ASCII names are
    reduced to `_`). 创建并启动 copies the 3.4 GB disk.
-4. In the start-mode sheet choose 普通启动 (VNC). (安装模式 forces `ramfb`.)
+4. In the start-mode sheet choose 🖥️ 普通启动 (VNC). (安装模式 forces `ramfb`.)
 
 The resulting command line, for reference:
 
@@ -143,8 +155,10 @@ tools/vnc/vncshot.py 127.0.0.1 15901 /tmp/shot.png      # one frame
 tools/vnc/vnckey.py 127.0.0.1 15901 '{Return}'          # keys
 ```
 
-The tty1 wizard (keyboard, user, password, git name/email, hostname,
-timezone, confirm) can be answered with `vnckey.py`, e.g.
+`50-first-boot.sh USER PASSWORD` waits for the serial login prompt and answers
+the tty1 wizard (keyboard, user, password, git name/email, hostname, timezone,
+confirm) with timed `vnckey.py` calls, saving the summary screen to
+`work/emulator/wizard-summary.png`. By hand: `vnckey.py` again, e.g.
 `vnckey.py 127.0.0.1 15901 '{Return}'` for the defaults and
 `vnckey.py 127.0.0.1 15901 USER '{sleep:2}' '{Return}'` for text. Typing in the
 VM through HarmonyOS apps instead needs the emulator's only IME (Celia
@@ -153,22 +167,37 @@ enough.
 
 ### Start the desktop
 
-When the setup screen is gone, SDDM loops on the greeter (dark empty screen).
-Start the Omarchy session on tty2 instead; type slowly, the guest drops fast
-keys:
+When the setup screen is gone, SDDM loops on the greeter (dark empty screen):
+it kills its Wayland greeter about 21 s after each start, which under TCG is
+before the greeter's Hyprland is up. `60-desktop.sh USER PASSWORD`:
+
+1. logs in on the serial console (`tools/serial/login.py`) and waits until
+   `omarchy-provision-owner` is gone (the first-boot setup);
+2. copies `emulator/guest/desktop-autostart.sh` into the guest (short base64
+   lines, checksum-verified: a busy guest drops serial input) and runs it as root:
+   SDDM disabled; getty autologin on tty1; the user's `~/.bash_profile` on tty1
+   execs `uwsm start -g -1 -e -D Hyprland hyprland.desktop`, the `Exec` of
+   Omarchy's `omarchy.desktop`; Omarchy's "stay awake" switch on
+   (`~/.local/state/omarchy/indicators/stay-awake`, as `omarchy-toggle-idle
+   stay-awake` sets it);
+3. reboots and waits for Hyprland, saving `work/emulator/desktop.png`.
+
+Why the stay-awake switch: Omarchy 4 idles from its Quickshell shell
+(screensaver after 150 s, lock after 300 s, then the output goes off). Under TCG
+the session takes longer than that to settle, so without it the desktop comes
+up locked and dark (`dpmsStatus: 0`). Omarchy 4 has no `hypridle.service`.
+
+Hyprland falls back from `card0` (no 3D on virtio-gpu here: "DRI2: failed to
+create screen") to llvmpipe on `renderD128`.
+
+By hand instead: switch to tty2 and start the session there; type slowly, the
+guest drops fast keys:
 
 ```sh
 tools/vnc/vnckey.py 127.0.0.1 15901 '{C-A-F2}'
 VNCKEY_DELAY=0.8 tools/vnc/vnckey.py 127.0.0.1 15901 USER '{Return}' '{sleep:25}' PASSWORD '{Return}'
 VNCKEY_DELAY=0.8 tools/vnc/vnckey.py 127.0.0.1 15901 'uwsm start -g -1 -e -D Hyprland hyprland.desktop' '{Return}'
 ```
-
-That is the `Exec` of Omarchy's `omarchy.desktop` session. Hyprland falls back
-from `card0` (no 3D on virtio-gpu here: "DRI2: failed to create screen") to
-llvmpipe on `renderD128`. After about 10 minutes idle, hypridle starts the
-screensaver, locks with hyprlock and turns the output off; any key wakes it,
-and the password unlocks it (type it slowly, too). To skip SDDM permanently,
-`sudo systemctl disable sddm` and start the session from a console login.
 
 ### Show it inside HarmonyOS
 

@@ -9,6 +9,8 @@ set -e
 cd "$(dirname "$0")"
 HOST=${OHOS_HOST:-ohdev}
 C=${DEVECO_HOME:-/Applications/DevEco-Studio.app/Contents}
+# The in-process GPU renderer's inputs (device libraries, vtest source): once.
+[ -s entry/libs/arm64-v8a/libvirglrenderer.so ] && [ -f entry/src/main/cpp/gpu/config.h ] || ./gpu-prep.sh
 DEVECO_SDK_HOME=$C/sdk PATH=$C/tools/node/bin:$C/tools/ohpm/bin:/usr/bin:/bin \
   "$C/tools/node/bin/node" "$C/tools/hvigor/bin/hvigorw.js" --mode module -p module=entry@default \
   -p product=default -p buildMode=debug assembleHap --no-daemon 2>&1 | grep -E 'ERROR|error:|BUILD' || true

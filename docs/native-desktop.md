@@ -6,13 +6,12 @@ Hyprland session, rendered by a patched Hyprland in that chroot and shown by a
 HarmonyOS app, with no VM in between.
 
 ```
-HarmonyOS app (native/app)                Arch chroot (route D)
-  XComponent window  <-- dmabuf fds -----  Hyprland (patched) + Omarchy shell, apps
-  touch/mouse/keys   -- evdev events -->   (same socket: aquamarine's export devices)
-                                             |  GL: Mesa virpipe
-HarmonyOS host                            v
-  virgl_test_server (native/vtest) <-- /tmp/.virgl_test
-    system libvirglrenderer (zink) --> Maleoon GPU
+HarmonyOS app (native/app)                      Arch chroot (route D)
+  XComponent window <- presents GPU frames --+   Hyprland (patched) + Omarchy shell, apps
+  in-process GPU renderer: vtest +            |    |  GL: Mesa virpipe -> /tmp/.virgl_test
+    the system's libvirglrenderer (zink)  <---+----+  (vtest-broker passes the connection)
+    -> Maleoon GPU                            |
+  touch/mouse/keys -- evdev events -->  @ohmarchy-display (aquamarine's export devices)
 ```
 
 ## Status
@@ -22,34 +21,52 @@ Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):
 - Omarchy 4.0.6's Hyprland session runs: Quickshell bar and notifications,
   wallpaper, keybindings, the Omarchy menu, Xwayland. Input from the app's window
   (mouse, touch, keyboard) reaches Hyprland.
-- Hyprland renders on the Maleoon GPU: Mesa's virpipe driver talks to a vtest
-  server on the host, which uses the system's own virglrenderer (the one the 鸿融
-  VM's GPU runs on: zink over the Maleoon Vulkan driver). Without the server it
-  falls back to llvmpipe on the CPU.
-- The app shows Hyprland's output buffers directly: aquamarine exports them as
-  dmabufs over an abstract unix socket and the app maps them; no screen capture.
-  Input goes back over the same socket into a pointer and a keyboard that
-  aquamarine's headless backend registers (evdev codes; Hyprland applies the
-  keymap), so no VNC server runs.
-- Frame rates with a full-screen client redrawing every frame (es2gears, tiled):
-  about 35-40 frames/s at the default 1920x1280 (scale 1; the app scales it to the
-  window), 16-21 at the panel's 2880x1920 (scale 1.5). A frame is almost all GPU
-  read-back through vtest (about 18 and 40-50 ms); compositing itself takes under
-  1 ms. Before the export socket, wayvnc's screen capture read every frame back a
-  second time (14-16 frames/s at 1920x1280).
-- Clients (terminals, Quickshell, browsers) render on llvmpipe. The host's
+- Hyprland renders on the Maleoon GPU and its frames go into the app's window
+  without a copy. The renderer runs inside the app: upstream vtest
+  (`native/app/vtest-inapp.patch`) on the system's own `libvirglrenderer` (the one
+  the 鸿融 VM's GPU runs on: zink over the Maleoon Vulkan driver), bundled in the
+  HAP. Mesa's virpipe driver in the chroot connects to `/tmp/.virgl_test`, where
+  `native/vtest/vtest-broker` (root, on the host) accepts and passes the connection
+  to the app. When Hyprland reads a frame back (one pixel, `HYPRLAND_READBACK_PRESENT`),
+  the app presents that GPU resource into its window with the library's own
+  `virgl_renderer_ohos_present`, the call the VM uses for its scanout.
+- Input goes back over the abstract socket `@ohmarchy-display` into a pointer and a
+  keyboard that aquamarine's headless backend registers (evdev codes; Hyprland
+  applies the keymap), so no VNC server runs.
+- Frame rates, panel at 120 Hz (the app asks for it), output `@120`:
+
+  | Output (scale) | Workspace animations | es2gears full screen (llvmpipe client) |
+  |---|---|---|
+  | 1920x1280 (1) | 92-120 frames/s | 70-75 |
+  | 2160x1440 (1), the 鸿融 VM's size | 81-118 | 62-65 |
+  | 2880x1920 (1.5), the panel | 73-107 | 39 |
+
+  The animation figures are averages over 30 frames that include pauses between
+  switches. Hyprland's frame takes 4-5 ms at 1920x1280 and 7-8 ms at 2880x1920,
+  almost all GPU time. Before (frames read back to the CPU through vtest and
+  copied into the window): 46 and 27 frames/s for animations, 35-40 and 16-21 for
+  es2gears. The 鸿融 VM runs es2gears at 112-120 frames/s, with the client on the
+  GPU and zero-copy buffers; here clients render on llvmpipe and hand Hyprland shm
+  buffers, which it uploads every frame (a GPU client on virpipe: about 33, as it
+  reads its frames back).
+- With `OHMARCHY_GPU=host` (or no `bin/vtest-broker`), `bin/virgl_test_server`
+  renders on the host and Hyprland reads every frame back for the app (the earlier
+  path). Without either it falls back to llvmpipe on the CPU.
+- Clients (terminals, Quickshell, browsers) render on llvmpipe. The system
   virglrenderer rejects some of Mesa 26's virgl commands from Qt Quick clients, so
   virpipe is used for Hyprland only.
 
 Open:
 
-- No zero-copy present yet: the frame goes GPU -> vtest -> CPU buffer -> app ->
-  HarmonyOS window. The system virglrenderer can present to a native window
-  (`virgl_renderer_ohos_present`), which would remove the read-back.
+- Zero-copy buffers for clients: GPU apps (games, video) are slower than in the VM.
+- Hyprland's GPU connection lives in the app: closing the app ends it, Hyprland
+  aborts and `start-hyprland` brings it back in safe mode (waiting for the app).
+  Restart the desktop after reopening the app (`omarchy desktop stop; omarchy
+  desktop start`) until a launcher does this.
 - `debug:overlay` deadlocks Hyprland here (its text rendering waits on the async
   resource gatherer); don't enable it.
-- Read-back in RGBA plus a CPU swizzle is about 4x slower than BGRA; virpipe's
-  BGRA read is the fast path.
+- Screen capture (grim, screenshots) of Hyprland's output reads a single pixel
+  while the app presents: it is not useful in that mode.
 
 Apps and features, what works and what doesn't: [native-compat.md](native-compat.md).
 
@@ -61,25 +78,28 @@ Apps and features, what works and what doesn't: [native-compat.md](native-compat
 3. In the session: `sh arch.sh run 40-install-desktop.sh builder` (builds the
    patched aquamarine and Hyprland with clang into `/opt/ohmarchy`, about 10
    minutes on the X90).
-4. GPU (optional): on the machine with DevEco Studio, `native/vtest/build-vtest.sh`;
-   copy `build/virgl_test_server` to `<base>/bin/` on the host.
+4. GPU: on the machine with DevEco Studio, `native/vtest/build-vtest.sh`; copy
+   `build/vtest-broker` (and `build/virgl_test_server` for the host path) to
+   `<base>/bin/` on the host.
 5. The app: `native/app/build.sh` (DevEco Studio's command-line tools; see below).
+   The first build runs `gpu-prep.sh`, which copies the device's
+   `libvirglrenderer.so.1` and `libepoxy.so.0` into the HAP and fetches vtest.
 
 ## Use
 
 ```sh
-omarchy desktop start      # vtest server (if present), Hyprland, Omarchy shell
+omarchy desktop start      # vtest-broker (or server), Hyprland, Omarchy shell
 omarchy desktop status
 omarchy desktop stop
 ```
 
-Then open "Omarchy (native)" on the HarmonyOS desktop. It opens as a window
-(maximize it from the title bar) and says what it is waiting for until the first
-frame arrives.
+Then open "Omarchy (native)" on the HarmonyOS desktop (with the broker, Hyprland
+waits for it). It opens as a window (maximize it from the title bar) and says what
+it is waiting for until the first frame arrives.
 
 Display size: `OHMARCHY_DISPLAY_MODE` and `OHMARCHY_DISPLAY_SCALE` in the desktop's
-environment (default `1920x1280@60` and `1`; `2880x1920@60` and `1.5` is the
-panel's resolution, sharper and about half the frame rate).
+environment (default `1920x1280@120` and `1`; `2880x1920@120` and `1.5` is the
+panel's resolution, sharper and slower).
 `HYPRLAND_READBACK_TIMING=1` and `HYPRLAND_FRAME_TIMING=1` print read-back and
 frame times to `/run/user/<uid>/ohmarchy-desktop.log`.
 
@@ -99,11 +119,22 @@ for the focused text-input-v3 client. Built and running; not yet verified on scr
 
 ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 
-- Frames: connects to the abstract socket `@ohmarchy-display`; each message names
-  an output buffer, its geometry, format and damage, with the dmabuf fd the first
-  time. The app maps it and copies it into the XComponent's native window buffer.
-  SELinux allows this as is: apps (`normal_hap_attr`) may connect to unix sockets of
-  the root shell's `su` domain and use its fds.
+- Frames, GPU path: when `vtest-broker` answers on `@ohmarchy-vtest`, the app owns
+  no pixels itself. `gpu.cpp` sets `NEED_OPENGL=1` (the system EGL then loads Mesa,
+  zink on the Maleoon Vulkan driver, instead of the vendor GLES), runs vtest on a
+  thread with clients from the broker, and presents Hyprland's read-back resource.
+  The library asks `libhwf_kits.z.so` for the window (in the VM, the 鸿融 app sends
+  it over IPC); the app's own `hwf_kits.c` of that name returns the XComponent's.
+  Two quirks of the library: binding the scanout to a new resource of another size
+  starts a 1 s black "resize debounce" that only a timer-driven call ends (scanout
+  id with bit 31 set, which the app passes on every present), and the window must
+  not have had a CPU-written buffer (format and Vulkan swapchain clash). Its log:
+  `/data/app/el2/100/base/com.ohmarchy.display/files/vtest.log`.
+- Frames, CPU path: otherwise it connects to `@ohmarchy-display`; each message
+  names an output buffer, its geometry, format and damage, with the dmabuf fd the
+  first time. The app maps it and copies it into the XComponent's window buffer.
+  SELinux allows this as is: apps (`normal_hap_attr`) may connect to unix sockets
+  of the root shell's `su` domain and use its fds.
 - Input: 16-byte messages on the same socket (pointer position in output pixels,
   evdev buttons, scroll steps, evdev key codes). Without the export socket it
   falls back to RFB on 127.0.0.1:5900 for frames and input (X keysyms).
@@ -124,7 +155,9 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 | ALARM's root ships libglvnd without GL headers | reinstall libglvnd |
 | `omarchy-launch-shell` logs through `systemd-cat` | `systemd-cat` shim that runs the command |
 | Omarchy's first run fails its systemd step and repeats its notifications at every login | `ohmarchy-desktop` marks it done once it has run |
-| vtest server lives in the session's mount namespace, outside its pid namespace, and would keep the image mounted | `arch.sh stop` stops it first |
+| The panel idles at 60 Hz | the app votes 120 Hz for its XComponent (`OH_NativeXComponent_SetExpectedFrameRateRange`) |
+| Custom modes on non-DRM outputs get refresh 0 unless given exactly (`@60` stays 60 Hz) | output mode `@120` |
+| vtest server or broker lives in the session's mount namespace, outside its pid namespace, and would keep the image mounted | `arch.sh stop` stops it first |
 | `start-hyprland` restarts Hyprland when it is killed | stop the watchdog first |
 | `/etc/machine-id` empty: libdbus aborts, which took the Omarchy shell down once Qt loaded its fcitx plugin | write one with `dbus-uuidgen` |
 | Omarchy's Lua config: `hyprctl dispatch`/`keyword` do not parse | `hyprctl eval 'hl.exec_cmd("...")'` |

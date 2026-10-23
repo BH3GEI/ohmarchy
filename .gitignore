@@ -20,3 +20,11 @@ native/vtest/build/
 native/app/entry/build/
 native/app/.hvigor/
 native/app/*.hap
+# fetched by native/app/gpu-prep.sh (device libraries, virglrenderer source)
+native/app/entry/libs/
+native/app/entry/src/main/cpp/gpu/
+native/app/entry/.cxx/
+# device-bound signing outputs of native/app/sign/sign.sh
+native/app/sign/app-chain.pem
+native/app/sign/app.p7b
+native/app/sign/profile.json

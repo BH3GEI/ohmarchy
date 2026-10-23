@@ -213,7 +213,7 @@ index 249f084..7149e1e 100644
      // cleared only after the commit
      pMonitor->m_renderingActive = false;
 diff --git a/src/render/gl/GLRenderbuffer.cpp b/src/render/gl/GLRenderbuffer.cpp
-index 794d035..52d5deb 100644
+index 794d035..b24208b 100644
 --- a/src/render/gl/GLRenderbuffer.cpp
 +++ b/src/render/gl/GLRenderbuffer.cpp
 @@ -10,6 +10,9 @@
@@ -253,7 +253,7 @@ index 794d035..52d5deb 100644
      glBindRenderbuffer(GL_RENDERBUFFER, 0);
  
      m_framebuffer = makeShared<CGLFramebuffer>();
-@@ -71,5 +81,95 @@ void CGLRenderbuffer::bind() {
+@@ -71,5 +81,100 @@ void CGLRenderbuffer::bind() {
  }
  
  void CGLRenderbuffer::unbind() {
@@ -286,7 +286,10 @@ index 794d035..52d5deb 100644
 +    const bool bgra = !rgba && g_pHyprOpenGL->m_exts.EXT_read_format_bgra;
 +
 +    static const bool timing = getenv("HYPRLAND_READBACK_TIMING");
-+    const auto        t0     = std::chrono::steady_clock::now();
++    // HYPRLAND_READBACK_PRESENT: the GPU server shows the frame itself when it is read
++    // back (ohmarchy's display app), so one pixel is enough to hand it over.
++    static const bool present = getenv("HYPRLAND_READBACK_PRESENT");
++    const auto        t0      = std::chrono::steady_clock::now();
 +
 +    // Only what was repainted this frame; many small reads cost more than one big one,
 +    // so fall back to the whole buffer when the damage covers most of it.
@@ -306,6 +309,8 @@ index 794d035..52d5deb 100644
 +        if (area > 0.5 * w * h || boxes.size() > 32)
 +            boxes.clear();
 +    }
++    if (present)
++        boxes.assign(1, CBox{0, 0, 1, 1});
 +    if (boxes.empty())
 +        boxes.emplace_back(0, 0, w, h);
 +

@@ -1,12 +1,16 @@
 #!/bin/bash
-# Build virgl_test_server for HarmonyOS (musl, OpenHarmony NDK) against the system's
-# own libvirglrenderer.so.1 (an OpenHarmony port: zink on the Maleoon GPU's Vulkan).
-# Mesa's virpipe driver inside the Arch chroot reaches it over /tmp/.virgl_test.
+# Build the host side of Hyprland's GPU path for HarmonyOS (musl, OpenHarmony NDK):
+#  - vtest-broker: passes Mesa virpipe's connections (/tmp/.virgl_test in the Arch
+#    chroot) to the display app, which renders and presents them itself (default);
+#  - virgl_test_server: renders on the host instead, against the system's own
+#    libvirglrenderer.so.1 (an OpenHarmony port: zink on the Maleoon GPU's Vulkan);
+#    frames are then read back to the CPU (OHMARCHY_GPU=host, or no app).
 # Runs on the machine with DevEco Studio; needs network for the virglrenderer source.
 #   OHOS_HOST  ssh host with a root shell on the HarmonyOS PC (default: ohdev)
 #   OUT        output directory (default: ./build)
 set -e
 cd "$(dirname "$0")"
+SRC=$PWD
 HOST=${OHOS_HOST:-ohdev}
 OUT=${OUT:-$PWD/build}
 NDK=${OHOS_NDK:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native}
@@ -52,5 +56,7 @@ V=virglrenderer
     $V/vtest/util.c $V/vtest/vtest_shm.c $V/vtest/vtest_server.c $V/vtest/vtest_renderer.c $V/vtest/vtest_main.c \
     $V/src/mesa/util/ralloc.c $V/src/mesa/util/hash_table.c $V/src/gallium/auxiliary/util/u_hash_table.c \
     -L. -l:libvirglrenderer.so.1 -lm -o virgl_test_server
-ls -l "$OUT/virgl_test_server"
-echo "copy it to the host as <native base>/bin/virgl_test_server; 'omarchy desktop start' runs it"
+"$NDK/llvm/bin/clang" --target=aarch64-linux-ohos --sysroot="$NDK/sysroot" -O2 -Wall \
+    "$SRC/vtest-broker.c" -o vtest-broker
+ls -l "$OUT/vtest-broker" "$OUT/virgl_test_server"
+echo "copy both to the host as <native base>/bin/; 'omarchy desktop start' runs one"

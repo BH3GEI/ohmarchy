@@ -1,0 +1,114 @@
+diff --git a/vtest/vtest_renderer.c b/vtest/vtest_renderer.c
+index a4450f6..929e8a6 100644
+--- a/vtest/vtest_renderer.c
++++ b/vtest/vtest_renderer.c
+@@ -1357,6 +1357,10 @@ static int vtest_transfer_decode_args2(struct vtest_context *ctx,
+    return 0;
+ }
+ 
++#ifdef VTEST_BROKER
++bool vtest_present_hook(const char *client, uint32_t res_id, const struct virgl_box *box) __attribute__((weak));
++#endif
++
+ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+                                        struct vtest_transfer_args *args,
+                                        uint32_t data_size,
+@@ -1384,6 +1388,12 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+       }
+    }
+ 
++#ifdef VTEST_BROKER
++   /* A read-back by the compositor is it taking its frame: the hook may show the
++    * resource in the window instead (no copy). */
++   if (do_transfer && vtest_present_hook && vtest_present_hook(ctx->debug_name, res->res_id, &args->box))
++      do_transfer = false;
++#endif
+    if (do_transfer) {
+       ret = virgl_renderer_transfer_read_iov(res->res_id,
+                                              ctx->ctx_id,
+diff --git a/vtest/vtest_server.c b/vtest/vtest_server.c
+index 3173323..9e42a2b 100644
+--- a/vtest/vtest_server.c
++++ b/vtest/vtest_server.c
+@@ -145,11 +145,13 @@ while (__AFL_LOOP(1000)) {
+    list_inithead(&server.active_clients);
+    list_inithead(&server.inactive_clients);
+ 
++#ifndef VTEST_BROKER /* the app keeps its own signal handlers */
+    if (server.do_fork) {
+       vtest_server_set_signal_child();
+    } else {
+       vtest_server_set_signal_segv();
+    }
++#endif
+ 
+    vtest_server_run();
+ 
+@@ -393,6 +395,50 @@ static void vtest_server_open_read_file(void)
+    }
+ }
+ 
++#ifdef VTEST_BROKER
++/* In-process server (HarmonyOS app): a root broker owns the listening socket and
++ * passes each accepted client fd over the abstract socket named by
++ * server.socket_name ("@name"). */
++static int vtest_server_accept(int sock)
++{
++   char byte;
++   char cbuf[CMSG_SPACE(sizeof(int))];
++   struct iovec iov = { &byte, 1 };
++   struct msghdr msg = { 0 };
++   struct cmsghdr *c;
++   int fd = -1;
++
++   msg.msg_iov = &iov;
++   msg.msg_iovlen = 1;
++   msg.msg_control = cbuf;
++   msg.msg_controllen = sizeof(cbuf);
++   if (recvmsg(sock, &msg, MSG_CMSG_CLOEXEC) <= 0)
++      return -1;
++   for (c = CMSG_FIRSTHDR(&msg); c; c = CMSG_NXTHDR(&msg, c)) {
++      if (c->cmsg_level == SOL_SOCKET && c->cmsg_type == SCM_RIGHTS)
++         memcpy(&fd, CMSG_DATA(c), sizeof(int));
++   }
++   return fd;
++}
++
++static void vtest_server_open_socket(void)
++{
++   struct sockaddr_un un;
++   size_t len = strlen(server.socket_name + 1);
++
++   server.socket = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
++   memset(&un, 0, sizeof(un));
++   un.sun_family = AF_UNIX;
++   memcpy(un.sun_path + 1, server.socket_name + 1, len);
++   if (server.socket < 0 ||
++       connect(server.socket, (struct sockaddr *)&un, offsetof(struct sockaddr_un, sun_path) + 1 + len) < 0) {
++      perror("Failed to connect to the broker.");
++      exit(1);
++   }
++}
++#else
++#define vtest_server_accept(sock) accept(sock, NULL, NULL)
++
+ static void vtest_server_open_socket(void)
+ {
+    struct sockaddr_un un;
+@@ -423,6 +469,7 @@ err:
+    perror("Failed to setup socket.");
+    exit(1);
+ }
++#endif
+ 
+ static void vtest_server_wait_clients(void)
+ {
+@@ -479,7 +526,7 @@ static void vtest_server_wait_clients(void)
+    }
+ 
+    if (server.socket >= 0 && FD_ISSET(server.socket, &read_fds)) {
+-      int new_fd = accept(server.socket, NULL, NULL);
++      int new_fd = vtest_server_accept(server.socket);
+       if (new_fd < 0) {
+          perror("Failed to accept socket.");
+          exit(1);

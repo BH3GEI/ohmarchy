@@ -7,7 +7,7 @@ dofile(os.getenv("HOME") .. "/.config/hypr/hyprland.lua")
 
 hl.monitor({
   output = "HEADLESS-2",
-  mode = os.getenv("OHMARCHY_DISPLAY_MODE") or "1920x1280@60",
+  mode = os.getenv("OHMARCHY_DISPLAY_MODE") or "1920x1280@120",
   position = "0x0",
   scale = tonumber(os.getenv("OHMARCHY_DISPLAY_SCALE") or "1"),
 })

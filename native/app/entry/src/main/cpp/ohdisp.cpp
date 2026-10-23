@@ -29,6 +29,8 @@
 #include <thread>
 #include <vector>
 
+#include "gpu.h"
+
 #undef LOG_DOMAIN
 #undef LOG_TAG
 #define LOG_DOMAIN 0x0D0D
@@ -149,7 +151,7 @@ void RequestUpdate(int fd, bool incremental)
 void Blit(const uint8_t *src, int w, int h, int srcStride, int32_t format, bool rgbaFix)
 {
     std::lock_guard<std::mutex> lk(g_winMu);
-    if (g_win == nullptr || w <= 0 || h <= 0) {
+    if (g_win == nullptr || w <= 0 || h <= 0 || GpuActive()) {
         return;
     }
     static int frames = 0;
@@ -543,10 +545,12 @@ void OnSurfaceCreated(OH_NativeXComponent *c, void *window)
     std::lock_guard<std::mutex> lk(g_winMu);
     g_win = static_cast<OHNativeWindow *>(window);
     OH_NativeXComponent_GetXComponentSize(c, window, &g_surfW, &g_surfH);
-    OH_NativeWindow_NativeWindowHandleOpt(g_win, SET_FORMAT, NATIVEBUFFER_PIXEL_FMT_RGBA_8888);
-    OH_NativeWindow_NativeWindowHandleOpt(g_win, SET_USAGE,
-        static_cast<uint64_t>(NATIVEBUFFER_USAGE_CPU_READ | NATIVEBUFFER_USAGE_CPU_WRITE | NATIVEBUFFER_USAGE_MEM_DMA));
     OH_NativeWindow_NativeWindowSetScalingModeV2(g_win, OH_SCALING_MODE_SCALE_TO_WINDOW_V2);
+    if (!GpuStart(g_win)) {
+        OH_NativeWindow_NativeWindowHandleOpt(g_win, SET_FORMAT, NATIVEBUFFER_PIXEL_FMT_RGBA_8888);
+        OH_NativeWindow_NativeWindowHandleOpt(g_win, SET_USAGE,
+            static_cast<uint64_t>(NATIVEBUFFER_USAGE_CPU_READ | NATIVEBUFFER_USAGE_CPU_WRITE | NATIVEBUFFER_USAGE_MEM_DMA));
+    }
     LOGI("surface %{public}llux%{public}llu", static_cast<unsigned long long>(g_surfW),
          static_cast<unsigned long long>(g_surfH));
     StartOnce();
@@ -996,7 +1000,7 @@ OH_NativeXComponent_MouseEvent_Callback g_mouseCb;
 napi_value GetStatus(napi_env env, napi_callback_info)
 {
     const char *msg = "";
-    if (!g_shown) {
+    if (!g_shown && GpuPresents() == 0) {
         if (g_frameMode) {
             msg = "Connected to Omarchy, waiting for the first frame…";
         } else if (g_sock.load() >= 0) {
@@ -1033,6 +1037,11 @@ napi_value Init(napi_env env, napi_value exports)
     OH_NativeXComponent_RegisterMouseEventCallback(nc, &g_mouseCb);
     OH_NativeXComponent_RegisterKeyEventCallbackWithResult(nc, OnKey);
     OH_NativeXComponent_RegisterUIInputEventCallback(nc, OnAxis, ARKUI_UIINPUTEVENT_TYPE_AXIS);
+    // Ask for the panel's top refresh rate (it idles at 60 Hz otherwise): frames are
+    // presented as fast as the display takes them. The vote needs a frame callback.
+    OH_NativeXComponent_ExpectedRateRange rate{60, 120, 120};
+    OH_NativeXComponent_RegisterOnFrameCallback(nc, [](OH_NativeXComponent *, uint64_t, uint64_t) {});
+    OH_NativeXComponent_SetExpectedFrameRateRange(nc, &rate);
     return exports;
 }
 

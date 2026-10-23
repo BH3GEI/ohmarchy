@@ -110,9 +110,9 @@ stop)
     alive || { echo "not running"; exit 0; }
     # The GPU server lives in the session's mount namespace but not its pid namespace;
     # it would keep the image mounted, so stop it first.
-    if pkill -f "$B/bin/virgl_test_server" 2>/dev/null; then
-        i=0; while [ $i -lt 50 ] && pgrep -f "$B/bin/virgl_test_server" > /dev/null; do sleep 0.1; i=$((i+1)); done
-        pkill -9 -f "$B/bin/virgl_test_server" 2>/dev/null
+    if pkill -f "$B/bin/v[it][re]" 2>/dev/null; then
+        i=0; while [ $i -lt 50 ] && pgrep -f "$B/bin/v[it][re]" > /dev/null; do sleep 0.1; i=$((i+1)); done
+        pkill -9 -f "$B/bin/v[it][re]" 2>/dev/null
     fi
     nsenter -t "$P" -m sync
     # pid-namespace init ignores SIGTERM from outside; SIGKILL tears the namespace down.

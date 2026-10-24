@@ -107,6 +107,11 @@ mkdir -p "$prefix/lib"
 clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
 runuser -u "$user" -- xdg-settings set default-web-browser firefox.desktop || true
+# Docker: no container runtime on HongMeng; the docker CLI (Omarchy installs it)
+# talks to dockerd in route I's VM over ssh (docs/vm-own.md). The VM adds the key.
+runuser -u "$user" -- sh -c '[ -f ~/.ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N "" -C "$(id -un)@ohmarchy-route-d" -f ~/.ssh/id_ed25519
+docker context inspect ohmarchy > /dev/null 2>&1 || docker context create ohmarchy --description "route I VM dockerd over ssh" --docker host=ssh://yao@172.16.100.2 > /dev/null
+docker context use ohmarchy > /dev/null' || true
 # Sound to the display app over an abstract socket, to its uid only
 cc -O2 -o "$prefix/bin/ohmarchy-audio-relay" "$here/desktop/ohmarchy-audio-relay.c"
 # System D-Bus, started and stopped with the desktop (ohmarchy-sysbus): only these

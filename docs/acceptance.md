@@ -16,7 +16,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 |---|---|---|---|
 | A1 every app opens in 3 s | pass | 73 of 78 pass, 0 failed, 4 unsupported (no camera, no systemd, no container runtime), 1 skip (foot-server); P95 1.22 s | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712), [3735447](https://github.com/BH3GEI/ohmarchy/commit/3735447) |
 | A2 core operations | pass | files (LibreOffice, Neovim), clipboard, Chinese input, sound, file chooser: 6 of 6 | [83432cf](https://github.com/BH3GEI/ohmarchy/commit/83432cf), [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5) |
-| A3 sound | pass, plus on site | 75-113 ms to the speaker, A/V within 100 ms (measured before sound moved to the app-only socket at 20:00; re-measurement waits for the screen); not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
+| A3 sound | pass, plus on site | over the app-only socket (23:45): first sound median 101 ms (max 133), during playback median 72 ms (max 77); A/V within 100 ms; not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
 | B cold start <= 10 s | pass | about 8 s (session 2.0 s + desktop 5.7-6.1 s) | [68e71a7](https://github.com/BH3GEI/ohmarchy/commit/68e71a7) |
 | B app launch P95 <= 3 s | pass | 1.22 s | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712) |
 | B workspace switch >= 110 fps | pass | 119.4 fps | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
@@ -159,7 +159,11 @@ GPU path:
 | mpv: sound minus picture | -37 ms (sound first) | -87 .. +24 ms | within 100 ms |
 
 The same latency held after `omarchy desktop restart` (the app reconnects by
-itself). A/V: the picture is the slow side here (mpv on the CPU, the host GPU path,
+itself). After sound moved to the app-only socket (`ohmarchy-audio-relay`, 20:00) it got
+slower (warm median 137 ms, one cold beep 222 ms): `pw-record` writes through
+stdio, which buffers when stdout is not a terminal. Run unbuffered (`stdbuf -o0`)
+the session side takes 17-37 ms; on screen at 23:45: first sound median 101 ms
+(max 133), during playback median 72 ms (max 77). A/V: the picture is the slow side here (mpv on the CPU, the host GPU path,
 load 21; 8 of 10 flashes made it, the rest were dropped frames); one more
 HarmonyOS vsync (about 8 ms) is not counted on the picture side. To re-measure on
 the in-app GPU path when the machine is idle.

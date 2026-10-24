@@ -210,3 +210,40 @@ first, and the active CRTC (`debugfs dri/0/state`, SDDM's Hyprland) is
 `output 0: WxH+0+0` (the host size) and `del mode:` are in the DRIVER
 category, so they need `drm.debug` with 0x2 (0x7 on route I's disk); `/sys/class/drm/card0-Virtual-1/modes` lists names only, so
 the refresh is read with `modetest -c` or `hyprctl monitors`.
+
+### Remote virgl: what the trials showed (2026-10-24 23:20-23:47)
+
+1. Transport works. 鸿融's guest (agent-2a's Omarchy image, Mesa 26.2.5) reached
+   the broker over TCP (`TCP client 172.16.100.2 queued`), and the broker handed the
+   connection on. In the guest, virpipe needs `LIBGL_ALWAYS_SOFTWARE=1
+   GALLIUM_DRIVER=virpipe VTEST_SOCKET_NAME=...`: with a DRM device Mesa picks the
+   hardware driver and ignores `GALLIUM_DRIVER`. From the host or route D's
+   session, a connection to 172.16.100.1 leaves with the Wi-Fi address as source
+   (policy routing), so the allow-list refuses it; local tests use
+   `OHMARCHY_VTEST_TCP=127.0.0.1:PORT OHMARCHY_VTEST_TCP_ALLOW=127.0.0.0/8`.
+2. The app cannot use a TCP socket the root broker accepted: its vtest failed on the
+   first read and the connection was reset. Fixed (`47696d6`): the broker bridges
+   each TCP client to a socketpair through a forked pump and passes the Unix end,
+   marked; the app only ever sees Unix sockets.
+3. Then the real limit: `virgl_renderer_resource_create failed (-22)`. With protocol
+   version 0 the client picks its own resource ids; the app's renderer is shared
+   with Hyprland (multi-client mode) and those ids collide with Hyprland's. That
+   is why multi-client mode wants version 3 (ids allocated by the server), and
+   version 3 sends resources as shm fds, which cannot cross TCP.
+
+So a VM's GL client cannot simply join the app's renderer. Ways on, none done:
+
+- a vtest-aware proxy pair: in the guest, a proxy speaking version 3 to Mesa and
+  making the shm itself; on the host, the broker's pump receiving the server's
+  shm fds (it is a Unix socket there) and keeping both copies in step on
+  transfers. Version 3 throughout, ids from the server. Most work, keeps one
+  renderer and the 120 Hz present path;
+- a second renderer for remote clients: a separate process cannot draw into the
+  app's window (route I option A showed that), so only inside the app, and
+  virglrenderer is one per process.
+
+Reference, same session: the guest's own virtio-gpu (virgl, zink on the Maleoon)
+gives glmark2 933 at 640x480 and es2gears at its display's 60 Hz.
+
+Not the main route yet: the transport and security parts are in place, the
+protocol limit needs the proxy pair.

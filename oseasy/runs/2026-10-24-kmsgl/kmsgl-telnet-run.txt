@@ -1,0 +1,43 @@
+kmsgl: 2100x1511 2100x1511@120 crtc 46
+kmsgl: EGL 1.5, GL_RENDERER SVGA3D; build: RELEASE;  LLVM;, GL_VERSION OpenGL ES 3.0 Mesa 26.2.5-arch1.1
+kmsgl: first frame centre pixel 255 217 51
+kmsgl: 119.5 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 120.0 fps
+kmsgl: 4800 frames in 40.0 s

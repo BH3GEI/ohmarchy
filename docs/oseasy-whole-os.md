@@ -368,3 +368,39 @@ ISO now carries it with Mesa's `vmwgfx_dri.so`, `libgallium` and `libLLVM`
 (ISO 394 MB). The probe ISO in 下载 is replaced in place between runs (it is only
 referenced by Oseasy's VM): `6d13d26f…bce4f30` (run 1) →
 `46e1044a3f44d8735c6b45e8c3992b51f38255e7f1003ef8b7666e6b5e8c376d` (kmsgl).
+
+### Second run: the window shows the guest's KMS output, GPU-accelerated (18:12-18:27)
+
+Same Oseasy VM (再次安装 after its "安装失败" dialog boots the replaced probe ISO),
+vmwgfx-oseasy with the whole-surface upload before screen-object blits, options
+from the kernel command line:
+
+- **`kmsgl` renders on the host GPU and the window shows it.** `GL_RENDERER
+  SVGA3D; build: RELEASE; LLVM;`, `OpenGL ES 3.0 Mesa 26.2.5`: Mesa's SVGA
+  hardware driver, not llvmpipe. First frame's centre pixel read back as
+  `255 217 51` (the triangle's colour). The rotating triangle on its changing
+  background is in the window.
+- **`modetest`'s colour bars show** too (a dumb buffer written by the CPU, page
+  flipped): with the upload before the blit, CPU-written scanout buffers reach
+  the window. (The fbdev console stayed black in the first run; to recheck.)
+- **Guest frame rate 120:** `kmsgl` runs at 120.0 frames/s (4800 frames in 40 s),
+  `modetest -v` flips at 120.00 Hz, both paced by vmwgfx's timer vblank at the
+  `hvm_refresh=120` mode `2100x1511@120`.
+- **The host takes 120 but shows 60:** during `kmsgl` the VM window receives 120
+  buffers/s (`NativeWindowFlushBuffer`), while the panel stays in its 60 Hz mode
+  and composes 60 frames/s (`composer fps`, `DoComposition`). Oseasy does not
+  raise the panel to 120 Hz for its window (the Windows guest's saved modes are
+  60 Hz as well). For comparison: 鸿融 shows 60 frames/s on screen with a 60 Hz
+  EDID; native shows 117.
+
+![modetest colour bars in the Oseasy window](img/oseasy-mb14-modetest.jpeg)
+![kmsgl, GPU-rendered, frame 1](img/oseasy-mb14-kmsgl-1.jpeg)
+![kmsgl, a few seconds later](img/oseasy-mb14-kmsgl-2.jpeg)
+
+Raw data: [`oseasy/runs/2026-10-24-kmsgl/`](../oseasy/runs/2026-10-24-kmsgl/).
+
+So the display blocker from the Fold is gone: KMS clients, and so Hyprland
+(aquamarine on GBM with Mesa's SVGA driver), can show in Oseasy, with host 3D
+acceleration through SVGA3D → D3D11 (DXVK) → Vulkan. Next: the Omarchy disk with
+`linux-aarch64` 7.2.12 + `vmwgfx-oseasy`, booted to Hyprland; then the comparison
+measurements.

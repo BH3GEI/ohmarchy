@@ -1,0 +1,14 @@
+# Guest serial lines of 铠大师 VM pid 35521 (2026-10-24 21:16, kds-installer.iso md5 08b2afe5),
+# copied from /data/log/hwf_service/vmlog chardev.rs:207 before the log rotated.
+KDSINST begin 7.2.12-1.1-aarch64-ARCH BOOT_IMAGE=/k72/Image rdinit=/write-disk.sh kds_src=virtiofs arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200 loglevel=6
+KDSINST insmod failover
+KDSINST insmod net_failover
+KDSINST insmod virtio_net
+KDSINST insmod fuse
+KDSINST insmod virtiofs
+KDSINST mounted shared_dir
+ls: can't open '/mnt': No such device
+KDSINST error no ohmarchy-kds-disk.img[.gz] in the share
+[    1.186127] virtio-fs: response too short (0)
+# host: virtiofsd 35564 started as `virtiofsd --socket-path …/uds/vhost-fs … --cmd-socket-path …/uds/virtiofs-cmd`
+# with no shared directory (shares are added later over the cmd socket).

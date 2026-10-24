@@ -1,0 +1,66 @@
+10-24 21:13:41.611 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STOPPED
+10-24 21:13:41.612 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1292)]install memory size is 8192, retry times is 0
+10-24 21:13:41.612 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 0. 
+10-24 21:13:41.616 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:13:41.618 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVmVpn:895)][VM_NET] DestroyVmVpn, VM VPN not exists, skip
+10-24 21:13:41.623 43859 23306 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 0. end
+10-24 21:13:41.872 43859 32614 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVmVpn:895)][VM_NET] DestroyVmVpn, VM VPN not exists, skip
+10-24 21:16:48.400 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(PrintVmOptions:582)]install VM !  cpuNum: 6, memorySize: 8192, diskSize: 262144, enable2D: 0
+10-24 21:16:49.114 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(InstallVm:276)]install vm begin
+10-24 21:16:49.173 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STARTING
+10-24 21:16:49.173 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 3. 
+10-24 21:16:49.173 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:16:49.173 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 3. end
+10-24 21:16:49.220 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STARTING
+10-24 21:16:49.220 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1282)]handle vmState is already STARTING
+10-24 21:16:49.966 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState VIEWING
+10-24 21:16:49.966 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 9. 
+10-24 21:16:49.966 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:16:49.966 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 9. end
+10-24 21:18:31.536 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onBackground
+10-24 21:18:31.552 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onWindowStageDestroy
+10-24 21:18:31.552 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onDestroy
+10-24 21:18:31.674 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, remove vm file destroy vm
+10-24 21:18:31.675 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: VMFunctionHelper, destroyVM start
+10-24 21:18:31.676 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:432)]destroy vm
+10-24 21:18:32.770 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STOPPED
+10-24 21:18:32.771 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1292)]install memory size is 8192, retry times is 0
+10-24 21:18:32.771 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 0. 
+10-24 21:18:32.779 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:18:32.784 43859 35517 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 0. end
+10-24 21:18:32.799 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STOPPED
+10-24 21:18:32.799 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1282)]handle vmState is already STOPPED
+10-24 21:18:32.802 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:444)]vm state is deleted
+10-24 21:18:32.805 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:452)]Destroy vm, clear data recovery residue
+10-24 21:18:32.817 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:613)]destroy vm bundle info from datashare success.
+10-24 21:18:32.820 31537 31537 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: VMFunctionHelper, destroyVM end; callback
+10-24 21:18:33.058 43859 36842 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVmVpn:895)][VM_NET] DestroyVmVpn, VM VPN not exists, skip
+==== reboot test 21:20:28
+10-24 21:21:29.626 43859 43859 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(PrintVmOptions:582)]install VM !  cpuNum: 6, memorySize: 8192, diskSize: 262144, enable2D: 0
+10-24 21:21:30.429 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(InstallVm:276)]install vm begin
+10-24 21:21:30.484 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STARTING
+10-24 21:21:30.484 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 3. 
+10-24 21:21:30.484 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:21:30.484 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 3. end
+10-24 21:21:30.531 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STARTING
+10-24 21:21:30.531 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1282)]handle vmState is already STARTING
+10-24 21:21:31.262 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState VIEWING
+10-24 21:21:31.262 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 9. 
+10-24 21:21:31.263 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:21:31.263 43859 43890 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 9. end
+10-24 21:23:11.990 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onBackground
+10-24 21:23:12.002 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onWindowStageDestroy
+10-24 21:23:12.002 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, Ability onDestroy
+10-24 21:23:12.003 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: InstallVmability, remove vm file destroy vm
+10-24 21:23:12.003 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: VMFunctionHelper, destroyVM start
+10-24 21:23:12.004 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:432)]destroy vm
+10-24 21:23:13.392 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:444)]vm state is deleted
+10-24 21:23:13.400 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:452)]Destroy vm, clear data recovery residue
+10-24 21:23:13.411 43859 43860 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVm:613)]destroy vm bundle info from datashare success.
+10-24 21:23:13.415 37794 37794 I A0FF00/com.sanway.ecoengine/[sanway_ecoengine]: VMFunctionHelper, destroyVM end; callback
+10-24 21:23:13.519 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1280)]handle vmState STOPPED
+10-24 21:23:13.519 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleSetVmState:1292)]install memory size is 8192, retry times is 0
+10-24 21:23:13.519 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:503)]handleVmStateCallback code: 0. 
+10-24 21:23:13.529 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(AutoPauseHandleVmStateCallback:825)][AutoPause] Is vm in background 1, is vm installing 1
+10-24 21:23:13.540 43859 40013 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(HandleVmStateCallback:561)]handleVmStateCallback code: 0. end
+10-24 21:23:13.987 43859 42085 I C05931/vm_manager/[OHSW].[VmManager]: [nodict][(DestroyVmVpn:895)][VM_NET] DestroyVmVpn, VM VPN not exists, skip

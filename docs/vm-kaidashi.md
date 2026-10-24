@@ -9,6 +9,46 @@ quirk) in it, and to compare it with 鸿融 (route C) and the native desktop
 
 ## Status
 
+**Concluded (2026-10-24): same `svga-pci` path as route B, 60 Hz; tools kept.**
+Outcome (B) of the goal: 铠大师 cannot host Omarchy beyond an install session,
+and where it does run Linux it offers nothing over 鸿融 or route B.
+
+What works, on ohdev (MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`, HongMeng
+kernel 1.11.13.0):
+
+- Its Windows-11-24H2-ARM64-only ISO check reads only the WIM XML; a 2.5 KB
+  fake `sources/install.wim` gets any UEFI ISO accepted
+  (`tools/kaidashi/make-fake-wim.sh`, `wrap-iso.sh`). No login or payment is
+  needed to create and boot a VM; Secure Boot is off.
+- Linux boots in its VM: Debian 6.1 and Omarchy's linux-aarch64 7.2.12 with
+  `arm64.hmv_idreg_quirk` (6 vCPUs, simplefb console, virtio-blk).
+
+Where it stops, with the layer and the evidence:
+
+| Layer | What happens | Evidence |
+|---|---|---|
+| App (铠大师) | Every VM the wizard starts is an *install session*. Closing its window **or a guest power-off** ends it as 安装过程异常终止 and the app deletes the VM (`InstallVmability, remove vm file destroy vm` → `DestroyVm`, `img/` gone). A guest reboot keeps it running but changes nothing | [`runs/2026-10-24-final/hilog.txt`](../kaidashi/runs/2026-10-24-final/hilog.txt): state codes 3 STARTING, 9 VIEWING, 0 STOPPED; screenshots of the three slots |
+| System VM service (`libvm_manager.z.so`) | An install session ends successfully only in `HandleVmStateCallback` when the VM is RUNNING (code 1) with the installing flag set *and* two values the guest agent reports (`this+0x4a8/0x4ac`) pass a check; they come from 铠大师's Windows guest service (`setup.exe /oobe` from its `server.iso`, autounattend), over its virtio-serial protocol | disassembly below ("Ending an install session") |
+| Install-session devices | NIC without MAC or iothreads (fixed string in the install builder): the guest sends but never receives. virtiofsd runs without a shared directory: `virtio-fs: response too short`. So a disk can only come in on the install ISO itself | [`runs/2026-10-24-k72`](../kaidashi/runs/2026-10-24-k72/), [`runs/2026-10-24-final/serial-35521.txt`](../kaidashi/runs/2026-10-24-final/serial-35521.txt) |
+| Display (all sessions) | `svga-pci`, the same device and DXVK backend as Oseasy; no EDID; 60 Hz on the panel. Route B made vmwgfx present GPU frames (Mesa SVGA3D, GLES 3.0) with the guest at 120 Hz while the panel stays at 60 Hz; Oseasy's own Windows stack also runs this device at 60 Hz only | route B ([oseasy-whole-os.md](oseasy-whole-os.md)), "OSEasy's Windows guest" below |
+| Concurrency | One VM system-wide | `Not support vm multi-instance` |
+
+Decision rule of the goal (step 2): continue only if 铠大师 beats 鸿融 on 120 Hz
+or 3D. 120 Hz: no (60 Hz panel, same as 鸿融's 60 Hz EDID). 3D: route B's
+SVGA3D/DXVK path is GPU rendering like 鸿融's virgl, not shown to be better, and
+in 铠大师 it could only be used inside an install session that cannot persist.
+Getting a persistent Omarchy VM would need impersonating 铠大师's Windows guest
+service (its protocol is in the protected `modules.abc` and `server.iso`), which
+is out of scope; route B (Oseasy) already covers the `svga-pci` display path.
+
+Kept for reuse: the fake WIM and ISO wrapper, the probe and installer ISOs
+(7.2.12 + virtiofs/network/ISO writers, `sparsecp`), `kds-run.sh`,
+`stage-disk.sh`, the Windows-guest inspection method, and the comparison table
+below.
+
+### Timeline
+
+
 On ohdev (MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`, HongMeng kernel
 1.11.13.0), 2026-10-24:
 
@@ -144,9 +184,12 @@ run with. So the NIC is only crippled during the install session.
 installing flag (`this+0xf8`) is set, then stops the VM and records the result.
 Closing 铠大师's window instead aborts (安装过程异常终止) and the app deletes
 `img/` (seen after both test slots). The installer therefore powers the guest
-off itself after a successful write (`poweroff -f`, PSCI SYSTEM_OFF); whether
-state 1 is that power-off is the next slot's test. If it is, the VM survives
-and later starts through `GetOHStartVmCmd` with a working NIC and no ISO.
+off itself after a successful write (`poweroff -f`, PSCI SYSTEM_OFF). Tested in
+the last slot: it is not. A guest power-off reaches vm_manager as code 0
+(STOPPED) and the app destroys the VM (`InstallVmability, remove vm file
+destroy vm`); a guest reboot raises no state change at all. Codes seen: 3
+STARTING, 9 VIEWING, 0 STOPPED, so 1 is RUNNING, and "install finished" also
+needs the two values the guest agent reports.
 
 Same PCI address, so the same ITS device ID; the "Devices Table too large,
 reduce ids 32->19" line is not the difference. Untested idea: with a two-queue
@@ -224,11 +267,11 @@ is known so far, with the reason where a number is missing.
 | Refresh rate the guest is offered | no EDID on the device; the Windows driver makes its own, and Windows' saved modes are all 60 Hz. Route B's vmwgfx can offer 120 Hz, but the panel stays at 60 Hz | 60 Hz (EDID: 1920×1280 @ 59.998, 2160×1440 @ 59.9999) | 120 Hz (the app asks the panel for it) |
 | Frames on screen, es2gears / workspace switch | not measurable yet: no Linux display path (EFI framebuffer 800×600 only; route B's vmwgfx presents black frames at ~54/s) | 60 / 59-60 fps (`composer fps`); 38-41/s compositions in `hitrace` | 117-120 / 109-116 fps |
 | GPU | Windows: D3D11 on DXVK on the Maleoon (`/dev/hvgr0`). Linux: none yet (route B) | virgl, OpenGL only (zink on Maleoon) | Maleoon through the host's virglrenderer |
-| App start times | pending (needs a desktop) | route C | route D |
+| App start times | not measurable: no persistent desktop | route C | route D |
 | Next to another VM | no: one VM system-wide (`Not support vm multi-instance`, 已有虚拟机在运行中); also true for 鸿融 and Oseasy | no (same rule) | yes: no VM |
 | Login / payment to create and boot a VM | none needed (2026-10-24) | none | n/a |
 | Disk in | no foreign-disk import; written from inside the guest (installer ISO, virtiofs share of 文档) | qcow2 import | image file on `/data` |
-| Warm reboot ×3, 1 h soak | pending (needs the Omarchy disk installed) | route C: warm reboot can hang (virgl MMIO trap) | route D |
+| Warm reboot ×3, 1 h soak | not possible: the VM is deleted on power-off (install session); warm reboots inside the session work (Debian/7.2.12 initramfs) | route C: warm reboot can hang (virgl MMIO trap) | route D |
 
 ## OSEasy's Windows guest
 
@@ -311,9 +354,15 @@ host surface size, (2) provide its own EDID/modes (the device has none),
 | 18:06 | second VM (pid 34450), same result; a GRUB command-line retry with `pci=nomsi` missed the menu |
 | 18:10 | 铠大师 VM closed, 鸿融 started; its SDDM greeter at 18:11 |
 | 18:12 | lock removed |
+| 21:14 | last slot, vm.lock + screen.lock (鸿融 was off); hilog captured with `timeout` |
+| 21:16 | install session from `kds-installer.iso`: 7.2.12 boots, virtiofs share is dead (no shared dir), so the staged disk cannot be read; staged copy removed at 21:19 |
+| 21:18 | guest `poweroff -f`: 安装过程异常终止, VM destroyed (code 0) |
+| 21:21 | second session, guest `reboot -f`: VM keeps running, no state callback |
+| 21:23 | session closed (destroyed), 鸿融 started; greeter at 21:28; locks removed 21:29 |
 
 ![鸿融 back on its Omarchy greeter](img/kaidashi/hongrong-restored.jpeg)
 ![鸿融 after the second slot](img/kaidashi/hongrong-restored-2.jpeg)
+![鸿融 after the last slot](img/kaidashi/hongrong-restored-3.jpeg)
 
 ## Sources
 

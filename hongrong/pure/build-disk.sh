@@ -29,12 +29,13 @@ chroot_up() {
   mountpoint -q "$R" || mount --bind "$R" "$R"
   mkdir -p "$R"/{proc,sys,dev,run,tmp,etc}
   mountpoint -q "$R/proc" || mount -t proc proc "$R/proc"
-  # /sys is a tmpfs with only the VM's DMI identity: Omarchy's install steps
+  # /sys is a tmpfs with only the VM's DMI identity and no devices: Omarchy's install steps
   # probe hardware there (under bash -e, a missing /sys/class/dmi aborts them),
   # and they should see the 鸿融 VM, not the machine building the image.
   if ! mountpoint -q "$R/sys"; then
     mount -t tmpfs sys "$R/sys"
-    mkdir -p "$R/sys/class/dmi/id"
+    # an empty PCI bus: lspci (used by the hardware steps) needs one to exist
+    mkdir -p "$R/sys/class/dmi/id" "$R/sys/bus/pci/devices" "$R/sys/bus/pci/slots"
     echo "KVM Virtual Machine" > "$R/sys/class/dmi/id/product_name"
     : > "$R/sys/class/dmi/id/sys_vendor"; : > "$R/sys/class/dmi/id/product_family"; : > "$R/sys/class/dmi/id/board_name"
   fi

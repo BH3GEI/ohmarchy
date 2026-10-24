@@ -14,9 +14,9 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Soak, screen and network: pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
-| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user: pass. Open: passwordless sudo (session root is host root), Chromium without sandbox, host GPU server as root |
+| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
 | F. Regression | `tests/run-all.sh`, one table | | pending |
 | G. Other devices | | | to do: only one machine so far |
 
@@ -171,6 +171,22 @@ Found while measuring, fixed:
 Open: the display app's own idle CPU (about 14 % of a core with nothing changing on
 screen; likely its 120 Hz frame callback running with no new frames).
 
+## C. Stability
+
+### C1. Open and close 100 times
+
+`tests/lib/session-py.sh openclose tests/stability/openclose.py 1800 100` opens 7
+installed apps in turn (foot, Nautilus, Evince, Disks, imv, Pinta, LocalSend:
+foot, GTK 3/4 and Flutter) through Hyprland, closes each with Hyprland's close (as
+SUPER+W does), then checks what it left. Memory is the PSS of the desktop's
+long-lived processes (Hyprland, Omarchy shell, Xwayland, buses, sound, input
+method, portals).
+
+Result 2026-10-24 17:30-17:48 (load around 20): 100 of 100 opened (slowest 1.28 s);
+memory 714.3 MB before, 715.2 MB after (+0.1 %; every 10 rounds within 712-715 MB);
+nothing had to be killed. 15 rounds left a process after the window closed: all
+Nautilus, which stays resident by design and exits on SIGTERM.
+
 ## E. Security
 
 `tests/security/check.sh`, 2026-10-24 17:50:
@@ -179,10 +195,10 @@ screen; likely its 120 Hz frame callback running with no new frames).
 |---|---|
 | Desktop processes (Hyprland, Omarchy shell, Xwayland, sound, input method) run as the ordinary desktop user | pass |
 | Root in the session | only udisksd and upowerd (system bus services, as on any Linux), plus whatever someone runs as root (a package build's pacman during the check) |
-| Desktop user gets root without a password | fail: `builder` is in `wheel`, which has `NOPASSWD: ALL`. That matters more here than on a normal Linux: there are no user namespaces, so root in the session is root on the HarmonyOS host, in the `u:r:su:s0` context |
+| Desktop user gets root without a password | pass since 17:50 (was: fail). `builder` was in `wheel` with `NOPASSWD: ALL`, which matters more here than on a normal Linux: without user namespaces root in the session is root on the HarmonyOS host (`u:r:su:s0`). Now `/etc/sudoers.d/10-wheel` asks for the password (set per internal convention); Omarchy's own narrow NOPASSWD rules (DNS, timezone, browser theme policy) sort after it and still work without one (checked with `sudo -l`). `native/40-install-desktop.sh` does this as its last step (the install itself still runs passwordless); the old sudoers are backed up in the session's `/root/sudoers-backup-*` |
 | Host side | the session's init and the host GPU server (`OHMARCHY_GPU=host`) run as root in `u:r:su:s0`; with the in-app GPU path the renderer runs inside the display app (an ordinary app sandbox) and only the broker is root |
 | Listeners | pass: only 127.0.0.1:4714 (sound, below) |
-| Browser sandbox | fail: Chromium runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Ruled out: PID and network namespaces work as root, seccomp-bpf works, and turning Chromium's seccomp policy off does not help |
+| Browser sandbox | fail: Chromium runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Ruled out: PID and network namespaces work as root, seccomp-bpf works, and turning Chromium's seccomp policy off does not help. Next to look at: how the helper passes the zygote's socket (SCM_RIGHTS) and its use of `/proc/self/ns` |
 | seccomp-bpf | pass: the kernel takes filters (so a working setuid sandbox would get both layers) |
 
 Open items:

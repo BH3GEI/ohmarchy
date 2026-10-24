@@ -146,4 +146,15 @@ install -d -o "$user" -g "$user" "$home/.config/pipewire" "$home/.config/pipewir
 install -m 644 -o "$user" -g "$user" "$here/desktop/ohmarchy-audio.conf" "$home/.config/pipewire/pipewire.conf.d/"
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 rm -rf "$build"
+
+# Last: no passwordless root for the desktop user. Without user namespaces, root in
+# the session is root on the HarmonyOS host. Omarchy's own narrow NOPASSWD rules
+# (DNS, timezone, browser theme policy) come later in sudoers.d and still apply.
+# The password comes from ARCH_PASSWORD (never stored here); without it the user
+# has none and sudo is unavailable until `passwd` is run as root.
+# Roll back: echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-wheel
+echo '%wheel ALL=(ALL:ALL) ALL' > /tmp/10-wheel
+visudo -cf /tmp/10-wheel && install -m 440 /tmp/10-wheel /etc/sudoers.d/10-wheel
+rm -f /tmp/10-wheel
+[ -n "$ARCH_PASSWORD" ] && printf '%s:%s\n' "$user" "$ARCH_PASSWORD" | chpasswd
 echo "Done. Start it from the host with: omarchy desktop start"

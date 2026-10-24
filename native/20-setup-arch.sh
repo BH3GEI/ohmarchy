@@ -58,6 +58,7 @@ echo /usr/local/lib/libsplice-eof.so > /etc/ld.so.preload
 
 userdel -r alarm 2>/dev/null || true
 id "$user" >/dev/null 2>&1 || useradd -m -u "$uid" -U -G wheel -s /bin/bash "$user"
+# passwordless only while installing: 40-install-desktop.sh ends it
 echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-wheel
 chmod 440 /etc/sudoers.d/10-wheel
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime

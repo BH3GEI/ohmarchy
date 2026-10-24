@@ -27,7 +27,11 @@ prep_root() {
   cp /kds/vmwgfx.ko /root2/usr/lib/modules/$kv/updates/vmwgfx.ko
   cp /kds/vmwgfx-oseasy.conf /root2/etc/modprobe.d/vmwgfx-oseasy.conf
   for d in proc sys dev; do mount --bind /$d /root2/$d; done
+  # d-i's devtmpfs has no /dev/fd, which mkinitcpio needs (route B's note)
+  [ -e /dev/fd ] || ln -s /proc/self/fd /dev/fd
+  # depmod from the target, with its own depmod.d (updates/ first)
   chroot /root2 /usr/bin/depmod $kv; p prep "depmod $kv rc=$?"
+  p prep "vmwgfx resolves to $(chroot /root2 /usr/bin/modinfo -k $kv -n vmwgfx 2>&1)"
   chroot /root2 /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
   p prep "mkinitcpio rc=$? $(grep -ci error /tmp/mkinitcpio.txt) error lines"
   grep -i -e error -e warn /tmp/mkinitcpio.txt | head -5 | sed 's/^/KDSINST   /'

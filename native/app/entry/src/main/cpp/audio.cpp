@@ -181,7 +181,12 @@ void AudioLoop()
                     if (r == nullptr || OH_AudioRenderer_Start(r) != AUDIOSTREAM_SUCCESS) {
                         LOGE("audio renderer did not start");
                     } else {
-                        LOGI("playing");
+                        OH_AudioStream_LatencyMode mode = AUDIOSTREAM_LATENCY_MODE_NORMAL;
+                        int32_t frames = 0;
+                        OH_AudioRenderer_GetLatencyMode(r, &mode);
+                        OH_AudioRenderer_GetFrameSizeInCallback(r, &frames);
+                        LOGI("playing: %{public}s latency mode, %{public}d frames per callback",
+                             mode == AUDIOSTREAM_LATENCY_MODE_FAST ? "fast" : "normal", frames);
                     }
                 }
             }

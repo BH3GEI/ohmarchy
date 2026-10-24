@@ -1,8 +1,7 @@
 #!/bin/bash
 # Omarchy's Hyprland desktop on the HongMeng kernel, for the HarmonyOS display app.
 # Patched Hyprland renders headless into dma-heap buffers and exports them to the app
-# over the abstract socket @ohmarchy-display; wayvnc on 127.0.0.1:5900 carries input
-# (and frames, for older app builds).
+# over the abstract socket @ohmarchy-display, which also carries the app's input.
 #   ohmarchy-desktop start|stop|status
 R=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 LOG=$R/ohmarchy-desktop.log
@@ -30,7 +29,8 @@ start)
     pgrep -u "$(id -u)" -x ohmarchy-audio- > /dev/null || [ -z "$OHMARCHY_APP_UID" ] ||
         setsid ohmarchy-audio-relay < /dev/null >> "$R/ohmarchy-audio-relay.log" 2>&1 &
     setsid start-hyprland --path /opt/ohmarchy/bin/Hyprland -- -c ~/.config/hypr/ohdisplay.lua < /dev/null > "$LOG" 2>&1 &
-    for _ in $(seq 50); do ss -ltn 2>/dev/null | grep -q '127.0.0.1:5900 ' && break; sleep 0.2; done
+    # ready when Hyprland answers (up to 10 s)
+    for _ in $(seq 50); do hyprctl instances -j 2>/dev/null | grep -q '"instance"' && break; sleep 0.2; done
     running && echo "started (log: $LOG)" || { echo "failed:"; tail -5 "$LOG"; exit 1; }
     ;;
 stop)

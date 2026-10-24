@@ -13,7 +13,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | Area | Criterion | Test | Status |
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
-| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | desktop start 6.2 s, launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
+| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | cold start about 8 s (session 2.0 s + desktop 5.7-6.1 s), launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser (Firefox) sandboxed: pass. Open: web apps in Chromium without sandbox; broker and session init in the `su` SELinux domain |
@@ -153,13 +153,17 @@ nothing that shows the display app ran). Official numbers when the machine is id
 
 | Criterion | Test | Result | Target |
 |---|---|---|---|
-| Desktop cold start: `omarchy desktop start` until the Omarchy bar and background are up (session already running) | `tests/perf/coldstart.sh` | 6.0-6.3 s (3 rounds; Hyprland answers at 4.1-4.4 s, bar 4.7-5.1 s) | <= 10 s |
+| Cold start: Arch session plus desktop until the Omarchy bar and background are up | `tests/perf/coldstart.sh` (desktop, 5 rounds) and `arch.sh start` timed in the second environment (session, 3 rounds), 2026-10-24 21:20, machine quiet | session 2.0 s + desktop 5.7-6.1 s (Hyprland answers at 3.9 s, bar 4.5-4.7 s): about 8 s. Not counted: HarmonyOS's own boot and opening the app | <= 10 s |
 | App launch | `tests/apps/run.sh` (A1) | median 0.67 s, P95 1.22 s | P95 <= 3 s |
 | Workspace switch | `tests/perf/workspace.sh` (HarmonyOS compositor frame timestamps while switching every 0.45 s for 10 s, in-app GPU path) | 119.4 fps (2026-10-24 18:35, machine quiet) | >= 110 fps |
 | Idle CPU and memory, desktop processes only | `tests/perf/idle.sh` | display app closed: 0.5 % of one core, 1.0 GB (PSS; Omarchy shell 430 MB, Hyprland 140 MB, fcitx5 67 MB). Display app open, idle: 1.9 % of one core in the app (`tests/perf/app-threads.sh`; was about 14 % before its frame-rate vote dropped to 10 Hz when nothing changes) | recorded |
 | Power vs the HarmonyOS desktop | `tests/perf/power.sh` (below) | proxy only: see the table below. Battery drain needs a run on battery (on mains with a full battery it reports 0 current) | |
 
 Found while measuring, fixed:
+
+- `omarchy desktop start` (and restart: at boot and when the app connects) returned
+  only after 12.5 s: it still waited up to 10 s for wayvnc, which is no longer
+  started. It now waits for Hyprland to answer: 2.45 s.
 
 - PipeWire sent silence to the display app all the time: 10 % of a core for
   PipeWire alone. Its forwarding stream is now passive, so the sound graph sleeps

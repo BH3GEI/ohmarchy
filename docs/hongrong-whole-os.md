@@ -282,8 +282,10 @@ sudo pacman -S docker docker-compose
 sudo systemctl enable --now docker
 ```
 
-Docker Hub is slow or unreachable from mainland China; the image ships
-`/etc/docker/daemon.json` with registry mirrors (to be verified).
+Docker Hub is slow or unreachable from mainland China: add registry mirrors
+in `/etc/docker/daemon.json` (for example `docker.m.daocloud.io`). The current
+image has neither Docker nor this file; whether the next one should is decided
+after the Docker test.
 
 ### Known limits
 

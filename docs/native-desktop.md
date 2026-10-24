@@ -14,6 +14,23 @@ HarmonyOS app (native/app)                      Arch chroot (route D)
   touch/mouse/keys -- evdev events -->  @ohmarchy-display (aquamarine's export devices)
 ```
 
+## The three stages
+
+The plan for this route had three stages; all three are done and were accepted
+(2026-10-24). What each one asked for, and what shows it:
+
+| Stage | Asked for | Done | Evidence |
+|---|---|---|---|
+| 0. The pipe | a minimal HarmonyOS app showing the session's desktop and sending input back | `native/app`: the app shows the compositor's frames (dmabufs over `@ohmarchy-display`) and sends pointer, touch, keys and IME text back over the same socket | [cf9b3d1](https://github.com/BH3GEI/ohmarchy/commit/cf9b3d1), [256d741](https://github.com/BH3GEI/ohmarchy/commit/256d741), [b10a7c0](https://github.com/BH3GEI/ohmarchy/commit/b10a7c0) |
+| 1. Hyprland | an aquamarine backend, Omarchy's desktop in it | aquamarine 0.15.1 with a dma-heap allocator and headless frame export, Hyprland 0.56.2 patched for EGL surfaceless; Omarchy 4.0.6's session runs in the app (bar, menu, apps, Xwayland, Chinese input); 73 of 78 apps open in 3 s | [cf9b3d1](https://github.com/BH3GEI/ohmarchy/commit/cf9b3d1), [509f5c0](https://github.com/BH3GEI/ohmarchy/commit/509f5c0), [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712) |
+| 2. GPU | vtest + virglrenderer, as smooth as the VM or better | the renderer runs in the app (vtest on the system virglrenderer, Maleoon GPU) and presents Hyprland's frames into the window without a copy at 120 Hz: es2gears 117-120 fps on screen against 60 in the 鸿融 VM, workspace switch 119 fps | [06d44d0](https://github.com/BH3GEI/ohmarchy/commit/06d44d0), [403f900](https://github.com/BH3GEI/ohmarchy/commit/403f900), [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
+
+Past the three stages, the "commercially usable" acceptance (A to G) is in
+[acceptance.md](acceptance.md): most items pass; still running or open are the
+24 h soak (until 2026-10-25 17:52), the checks that need someone at the machine,
+web apps in Chromium without a sandbox, and the remote virgl trial (a VM's GPU work
+shown by this app, [vm-own.md](vm-own.md)).
+
 ## Status
 
 Verified on an HM740 (Kirin X90, HongMeng kernel 1.11.13.0, HarmonyOS 7.0):

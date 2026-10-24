@@ -345,3 +345,26 @@ flow only offers ISOs; the qcow2 import is not reachable from it.
 - While Oseasy shows a VM, the host panel stays at 60 Hz (`activeMode`), with the
   Windows guest too.
 - Unloading vmwgfx crashes in this setup; reboot the guest (`sysrq b`) instead.
+
+### Where the black frames come from (offline, StratoVirt disassembly)
+
+- The present path (`svga_dx_backend.rs`, around `0x2e4500` in the stripped
+  binary) logs `svga driver not ready, avoid present`, `swap_chain is None` and
+  `back surface not find` at WARN level, which `vmlog` records (it records INFO).
+  None of them appeared during the probe runs: the host found the blitted
+  surface and presented it. The texture it presented was black.
+- Besides the standard GB-object commands, StratoVirt's table has VirtualBox's
+  newer `SVGA_3D_CMD_DX_MAP_RESOURCE`, `SVGA_3D_CMD_DX_PAGING_RESOURCE` and
+  `SVGA_3D_CMD_DX_CMO_RESOURCE`, with messages such as `Paging resource transfer
+  size or offset is invalid`. A likely reading: the Windows driver moves CPU data
+  into host textures with these, and `UPDATE_GB_IMAGE`/`UPDATE_GB_SURFACE` do not
+  fill the host's D3D11 copy. Not followed up until the GPU-rendering test
+  (kmsgl) shows whether GPU-rendered surfaces display.
+
+`oseasy/probe/kmsgl.c`: GBM + EGL + GLES2 straight on KMS (Mesa's SVGA gallium
+driver), rotating triangle on an animated background, page flips, prints
+`GL_RENDERER`, frames per second and the first frame's centre pixel. The probe
+ISO now carries it with Mesa's `vmwgfx_dri.so`, `libgallium` and `libLLVM`
+(ISO 394 MB). The probe ISO in 下载 is replaced in place between runs (it is only
+referenced by Oseasy's VM): `6d13d26f…bce4f30` (run 1) →
+`46e1044a3f44d8735c6b45e8c3992b51f38255e7f1003ef8b7666e6b5e8c376d` (kmsgl).

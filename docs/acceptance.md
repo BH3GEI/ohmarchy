@@ -13,7 +13,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | Area | Criterion | Test | Status |
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
-| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | | pending |
+| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | | pending; open items listed under E below |
@@ -144,6 +144,32 @@ verified without sound: the PCM the app hands to the renderer carries each beep
 moves past those samples on the speaker sink. A capture at FastRendererSink itself
 would be silent at volume 0: the gain stage (hpaeGainNode) before the sink applies
 the volume. Microphone input is not done.
+
+## B. Performance
+
+Preliminary, 2026-10-24 17:00-17:20, while a kernel package was building in the
+session (load around 21) and the screen was in use by another test line (so
+nothing that shows the display app ran). Official numbers when the machine is idle.
+
+| Criterion | Test | Result | Target |
+|---|---|---|---|
+| Desktop cold start: `omarchy desktop start` until the Omarchy bar and background are up (session already running) | `tests/perf/coldstart.sh` | 6.0-6.3 s (3 rounds; Hyprland answers at 4.1-4.4 s, bar 4.7-5.1 s) | <= 10 s |
+| App launch | `tests/apps/run.sh` (A1) | median 0.67 s, P95 1.22 s | P95 <= 3 s |
+| Workspace switch | Phase 2 measurement (HarmonyOS composer fps, in-app GPU path) | 115-116 fps at 1920x1280 | >= 110 fps; to re-run as a script |
+| Idle CPU and memory, desktop processes only | `tests/perf/idle.sh` | display app closed: 0.5 % of one core, 1.0 GB (PSS; Omarchy shell 430 MB, Hyprland 140 MB, fcitx5 67 MB). Display app open: about 14 % of one core more, in the app itself | recorded |
+| Power vs the HarmonyOS desktop | | not measured: on mains with a full battery the battery reports 0 current; needs a run on battery | |
+
+Found while measuring, fixed:
+
+- PipeWire sent silence to the display app all the time: 10 % of a core for
+  PipeWire alone. Its forwarding stream is now passive, so the sound graph sleeps
+  when nothing plays (0.03 %); the app treats a quiet socket as silence.
+- With the host GPU server, every desktop restart left one server process behind
+  (about 80 MB each): on HongMeng it is not told its client went away.
+  `omarchy desktop stop` now ends them.
+
+Open: the display app's own idle CPU (about 14 % of a core with nothing changing on
+screen; likely its 120 Hz frame callback running with no new frames).
 
 ## E. Security: open items
 

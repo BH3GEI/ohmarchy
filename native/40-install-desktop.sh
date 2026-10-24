@@ -156,5 +156,5 @@ rm -rf "$build"
 echo '%wheel ALL=(ALL:ALL) ALL' > /tmp/10-wheel
 visudo -cf /tmp/10-wheel && install -m 440 /tmp/10-wheel /etc/sudoers.d/10-wheel
 rm -f /tmp/10-wheel
-[ -n "$ARCH_PASSWORD" ] && printf '%s:%s\n' "$user" "$ARCH_PASSWORD" | chpasswd
+[ -n "${ARCH_PASSWORD:-}" ] && printf '%s:%s\n' "$user" "$ARCH_PASSWORD" | chpasswd
 echo "Done. Start it from the host with: omarchy desktop start"

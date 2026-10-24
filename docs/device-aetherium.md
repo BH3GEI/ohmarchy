@@ -119,7 +119,12 @@ a QEMU port and clearing the permission gate. The permission test is queued.
   `VIRTIO_GPU_F_VIRGL` strings are in `libqemu_full.so` because hw/display always
   registers them, but with no virglrenderer/opengl linked they cannot provide 3D.
   So the guest gets 2D `virtio-gpu` (software) or `ramfb` only — matching route F,
-  where Hyprland fell back to llvmpipe (CPU). No venus either.
+  where Hyprland fell back to llvmpipe (CPU). No venus either. Confirmed at the binary
+  level: `libqemu_full.so`'s `DT_NEEDED` is only `libz.so`, `libohaudio.so`,
+  `libability_access_control.so`, `libc.so` — no virglrenderer, epoxy, rutabaga,
+  Vulkan or EGL/GL, and it imports no `virgl_renderer_*`/`rutabaga`/`gl*` symbols;
+  the binary also contains the string "OpenGL support was not enabled in this build
+  of QEMU". So selecting `virtio-gpu-gl-pci` in the wizard would fail at runtime.
 - **120 Hz: no hardware path.** `ramfb` has no refresh-rate concept (the guest
   pushes a fixed-size framebuffer); 2D `virtio-gpu`'s on-screen rate is bounded by
   the guest's CPU drawing and the HarmonyOS compositor's presentation, not a

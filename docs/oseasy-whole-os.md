@@ -806,7 +806,18 @@ one), checks every 5 minutes with es2gears and workspace switching.
 - No guest console was captured, so the cause is open. Suspects: the 1 ms fence
   poll timer added today (`hvm_irq_poll_us`), the GEM_CLOSE fallback, or two GPU
   clients at once. Next: boot with `softlockup_panic=1 hung_task_panic=1` and a
-  console that survives, and repeat once with `hvm_irq_poll_us=0`.
+  console that survives. (`hvm_irq_poll_us=0` would bring the first bug back at
+  once, fences would not advance, so it cannot tell anything apart.)
+- Capture for the repeat: [`oseasy/guest/hang-capture.sh`](../oseasy/guest/hang-capture.sh)
+  sets up netconsole at run time (configfs; the kernel sends the UDP itself, so it
+  keeps going while user space starves) to a `toybox nc -u -l` on the host's wlan0
+  address (the HarmonyOS shell may listen on UDP, tested), turns on
+  softlockup/hung-task/RCU-stall panics with backtraces of all CPUs, and logs a
+  heartbeat (load, top processes) to the kernel log every 10 s. The guest kernel
+  (7.2.12-1.1) has `CONFIG_NETCONSOLE=m` with the dynamic interface and the
+  softlockup detector, but no hardlockup detector: a CPU spinning with interrupts
+  off would not be reported, only the heartbeat stopping. Same ISO and driver as
+  the hang, same load (two es2gears).
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

@@ -6,6 +6,11 @@
 set -uo pipefail
 . "$(dirname "$0")/config.sh"
 L=$1 R=$2 A=$3 B=$4 BLK=64   # 64 MiB blocks
+LOCK="${TMPDIR:-/tmp}/ohmarchy-repair-$(echo "$R" | tr -c 'A-Za-z0-9' _).lock"  # repair-lock: one writer
+if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
+    echo "another repair is running for $R (pid $(cat "$LOCK")); refusing" >&2; exit 1
+fi
+echo $$ > "$LOCK"; trap 'rm -f "$LOCK"' EXIT
 locblk() { tail -c +$(( $1*BLK*1048576 + 1 )) "$L" | head -c $((BLK*1048576)) | shasum -a 256 | cut -c1-16; }
 remblk() { to 120 ssh -o ConnectTimeout=15 -o ServerAliveInterval=8 "$OHDEV" \
     "dd if='$R' bs=1048576 skip=$(( $1*BLK )) count=$BLK 2>/dev/null | sha256sum | cut -c1-16" 2>/dev/null | tr -cd '0-9a-f'; }

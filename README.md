@@ -21,18 +21,18 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | headless backend for D: Docker + full kernel. Omarchy's 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app); D's terminal uses its dockerd over ssh | First run: network both ways, 120 Hz mode, virgl on the Maleoon GPU, Docker + compose; service `ohmarchy-vm` written, D's docker context set up, waiting for a slot |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 10:20 PDT)
+## Progress (updated hourly; last: 2026-10-24 11:18 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Next VM slot (~10:40 PDT, 25 min): reinstall with the fence-polling fix, then measure on screen (es2gears, workspace switch, app launch, glmark2, warm reboots) | **Hyprland freeze explained**: 166 frames go through, then a commit waits on a GPU fence that never signals, because the device raises no interrupts and `vmwgfx` only advances fences from its IRQ thread. Fix: under HVM a 1 ms timer does the IRQ thread's work (`hvm_irq_poll_us`, 060fc92); not yet tested |
-| C. 鸿融 VM | Waiting for a slot: 鸿融's own "import qcow2" with the StratoVirt-shaped header (`-sv`), on-screen fps at 120 Hz | Developer image passes in a real 鸿融 VM: desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker, warm reboot, 30-min soak; CRTC at 120 Hz |
-| D. Native | Final A1 rerun (78 entries); 24 h soak until 2026-10-25 17:52 PDT | **Docker from the native desktop** through route I's VM: `docker run`, compose and lazydocker work (1d70b74). Tests now close windows by address, so Firefox no longer sees a crash (a3c8c89). Last rerun: 74 pass, 0 fail |
-| I. Own VM | headless backend for D: Docker + full kernel | `tools/ownvm/ohmarchy-vm`: Docker from D's terminal over ssh (hello-world, compose), D's `/home/builder` at the same path in the VM (virtiofs as uid 60000, bind mounts from `$PWD` work), port publishing, virtio-balloon returning ~3 GiB in ~6 s ([docs/vm-own.md](docs/vm-own.md)) |
-| H. Aetherium on the device | TCG baseline with the stock Omarchy image (now, both locks): create, 4 GB boot, boot time, fps, refresh, host CPU/temperature | Root can open `/dev/hmv` with no SELinux gate; the only barrier to a custom VMM is StratoVirt's closed ioctl ABI, deliberately not pursued (0d27517, 740663d). No-root VMs stay closed to third parties ([docs/vm-api.md](docs/vm-api.md)) |
+| B. Oseasy VM | Next (~11:20 PDT): on-screen frame counts and app launch times, then a 1-hour soak (~11:45–13:00) with the panel at 120 Hz | **Hyprland no longer freezes**: with the 1 ms fence poll under HVM (060fc92), glmark2-es2-wayland completes in the plain session (score 1083, SVGA3D on the GPU) and warm reboots pass 3/3 (0c3e718). The run's frame counts were discarded (OSEasy's own window was in front); `measure-fps.sh` now counts per thread |
+| C. 鸿融 VM | Waiting: 鸿融's own "import qcow2" with the StratoVirt-shaped header (`-sv`), on-screen fps at 120 Hz | Developer image passes in a real 鸿融 VM: desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker, warm reboot, 30-min soak; CRTC at 120 Hz |
+| D. Native | 24 h soak until 2026-10-25 17:52 PDT | A1 rerun: **74 of 78, 0 failed**, median 0.58 s, P95 1.13 s (f9f7181). **Docker bind mounts from the home directory work**: `docker run -v $PWD:/w` and compose `.:/w` read and write D's files through route I's VM (4a28b96) |
+| I. Own VM | Offline until a slot after 13:00 PDT: check umask 022 (container files 0644) | **D's home shared into the VM** (a3720f1): virtiofs needs `--passthrough-fs`; virtiofsd runs as uid 60000 with no capabilities; a `../../etc` symlink made in the guest stays in the guest; container files land on the host as 60000 |
+| H. Aetherium on the device | TCG baseline (7.2.12 developer image with its HMV patch off, as a near-stock stand-in), then clean CPU/temperature/fps with no other VM | Aetherium's disk import fails because the picker hands back a display path its uid cannot read; workaround: create with a blank disk and swap the image in (root). The missing `files/vms` bug and its no-root workaround are documented (3fa8a83) |
 | G. 铠大师 VM | Concluded | Same `svga-pci` path as B; Linux only lives in an install session |
 
-Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel. Starting or killing processes on the device also needs `vm.lock` (after a test killed another VM's virtiofsd at 10:02; no harm done).
+Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel. Starting or killing processes on the device also needs `vm.lock`.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

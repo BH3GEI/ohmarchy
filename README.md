@@ -18,17 +18,17 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 03:25 PDT)
+## Progress (updated hourly; last: 2026-10-24 04:25 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Testing GPU rendering on KMS (`kmsgl`, Mesa's SVGA driver) to see whether GPU-rendered surfaces reach the Oseasy window | 7.2.12 with `arm64.hmv_idreg_quirk` boots in Oseasy (6 vCPUs, network up), which explains the old ">= 6.5 hangs"; `vmwgfx` binds and offers 2100x1511@120, frames reach the host but CPU-written surfaces show black; the host panel stays at 60 Hz, as it does for Oseasy's own Windows |
-| C. 鸿融 VM | Seventh run of the Omarchy-only disk build (ETA 18:40 +0800), then a 2-hour test slot: cold boot, warm reboots, soak | Six build blockers fixed on HongMeng: devtmpfs, pacman sandbox, chroot root mount, btrfs-only initramfs hook, download timeout, DMI and PCI probes |
-| D. Native | Exclusive measurement window (power proxy, workspace fps, app background/foreground x20) | Sudo now needs a password (Omarchy's narrow rules kept); 100 open/close rounds +0.1% memory; 24 h soak running since 17:52 +0800; network and DNS outages recover in 0.1 s; DPMS off/on 20/20; `tests/run-all.sh` gives one table; idle frame-rate vote drops to 10 Hz |
-| G. 铠大师 VM | Installer that writes the Omarchy disk from 铠大师's virtiofs share; third slot to test it and the guest network | 7.2.12 boots in 铠大师 but the guest receives nothing (its virtio-net has no `mac` or iothreads, unlike Oseasy's and 鸿融's); Oseasy's Windows guest dissected: VirtualBox-based WDDM driver, 60 Hz modes |
-| H. Aetherium on the device | Last 7% of the stock Omarchy disk copy to `ohdev`, then the TCG baseline | Resumable push now has a single-writer lock after two writers overran the file |
+| B. Oseasy VM | Next in the VM slot: stream the Omarchy-only disk into the Oseasy VM, then Hyprland, glmark2/es2gears against 鸿融's virgl, workspace fps, cold-boot time | GPU-rendered KMS output now shows in the Oseasy window (Mesa SVGA3D, GL ES 3.0, hardware 3D); the guest renders 120 fps but the host panel stays at 60 Hz, so 60 reach the screen |
+| C. 鸿融 VM | Stage 1 of the Omarchy-only disk test: three warm reboots over the serial console; network for hand-started VMs next (鸿融 removes its bridge when it stops) | Omarchy-only disk (Omarchy 4.0.6, linux-aarch64 7.2.12 with the HMV patches, pacman-owned modules) cold-boots to `omarchy login:` in under 2 minutes in a headless StratoVirt started by root on `/dev/hmv` |
+| D. Native | One-command install and reset into a second environment (`native/install.sh`, `reset.sh`); Chromium sandbox investigation | Exclusive measurement: workspace switching 119.4 fps; display app idle CPU 1.9% of a core (was 14%); background/foreground 20/20; for the same CPU the native desktop shows about twice the frames of the VM |
+| G. 铠大师 VM | After Oseasy: test whether the installer's own power-off counts as "install finished", so the VM is kept and later starts with a full network | Root cause of the dead guest network: 铠大师's install session uses a hard-coded virtio-net with no `mac` or iothreads; normal starts add both |
+| H. Aetherium on the device | Repairing 37 corrupted 64 MiB blocks of the copied disk in place, then the TCG baseline | Static answers: no virgl/venus and no 120 Hz path in Aetherium's QEMU; HMV create-VM permission probe ready for the VM slot |
 
-VM tests share one HMV hypervisor and the screen; they take turns (one VM at a time).
+Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

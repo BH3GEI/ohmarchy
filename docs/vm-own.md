@@ -412,3 +412,35 @@ must find them, so D's `/home/builder` is shared into the guest at
 Next slot: mount in the guest, `ls -ln /home/builder`, a file created by yao
 and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then
 `ls -ln` in D for both; `docker compose up` with a bind mount from D.
+
+### Home share, run (2026-10-24 10:48–10:59 PDT, vm.lock)
+
+| Check | Result |
+|---|---|
+| virtiofsd identity | `Uid/Gid 60000`, no groups, `CapEff 0`, `NoNewPrivs 1` |
+| Guest mount | `builder` on `/home/builder`, virtiofs; builder's files show as yao (1000) |
+| Ownership in D | files written from the guest by yao **and by a root container** are `60000:60000` in D |
+| D → VM Docker (native-desktop line, `tests/compat/docker-mount.sh`) | `docker run -v $PWD:/w` reads: PASS; a container's file belongs to 60000 in D: PASS; compose writes through a `.` bind mount: PASS |
+| Symlink `../../etc` made in the guest | resolves in the guest: yao reads Omarchy's `/etc`, a container reads Alpine's; no host file reachable. `/home/builder/..` is the guest's `/home` |
+| Open | files created in containers are `0660`, not `0644` (umask/mode handling in passthrough mode); harmless for builder, not looked into |
+
+What it took, beyond the offline plan:
+
+- **`--passthrough-fs`.** HarmonyOS's virtiofsd 1.13.0 has its own
+  `--passthrough-fs` ("whether we are virtual_fs or passthrough_fs"). Without it,
+  every `OPENDIR` and `MKDIR` is answered with `ENODEV` (as root too), so the
+  guest saw the mount but `ls` failed with "No such device". Now the default.
+- **Dropping root.** util-linux `setpriv` fails on HongMeng even with only
+  `--reuid/--regid` ("keep process capabilities failed: Operation not
+  permitted": it always calls `PR_SET_KEEPCAPS`). `tools/ownvm/dropuid.c`
+  (NDK build) does `setgroups(0)`, `setresgid`, `setresuid`, checks it cannot
+  regain root, sets `PR_SET_NO_NEW_PRIVS`, and execs. uid 60000 may not execute
+  `/system/bin/…/virtiofsd` (EACCES despite mode 755), so a plain copy in
+  `/data/local/kaidashi/bin` is used (`cp -p` keeps the system file's label
+  and fails the same way).
+- **A bug in my own script, found in this slot.** `running()` grepped
+  `/proc/PID/cmdline`, which HongMeng's grep does not match (NUL-separated). A
+  start was taken for a failure, and the cleanup removed the routing rules, the
+  tap and the lock while the VM ran. The lock was retaken at once (same slot,
+  nobody else waiting), and the VM was restarted. `cmdline()` now converts with
+  `tr` first; kills check the pid's command line names our disk or directory.

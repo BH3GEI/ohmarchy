@@ -42,7 +42,9 @@ FW=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi-linux
 SVDIR=/system/bin/virt_service/vm_engine/stratovirt
 pidf=$D/stratovirt.pid
 # ours only: the recorded pid, still a StratoVirt on our disk (never by name)
-running() { [ -f $pidf ] && [ -d /proc/$(cat $pidf) ] && grep -q "$DISK" /proc/$(cat $pidf)/cmdline 2>/dev/null; }
+# (HongMeng's grep does not match inside the NUL-separated cmdline: tr first)
+cmdline() { tr '\0' ' ' < /proc/$1/cmdline 2>/dev/null; }
+running() { [ -f $pidf ] && [ -d /proc/$(cat $pidf) ] && cmdline $(cat $pidf) | grep -q "$DISK"; }
 # ssh comes from route D's Arch root (archtest) until the host has its own
 AR=/proc/$(cat /data/local/archtest/session.pid 2>/dev/null)/root
 SSH() {
@@ -103,15 +105,21 @@ start() {
     # the share (there is no chroot: HongMeng refuses virtiofsd's chroot and
     # namespace sandboxes) reaches only builder's own files. As 60000 it cannot
     # open /proc/<root pid>/root, hence the bind mount to a plain host path;
-    # setpriv comes from D's Arch root (HongMeng refuses PR_SET_KEEPCAPS, so
-    # only the uid/gid switch, which clears all capabilities by itself).
+    # dropuid (tools/ownvm/dropuid.c) switches uid/gid, which clears all
+    # capabilities; util-linux setpriv cannot (HongMeng refuses PR_SET_KEEPCAPS).
     mkdir -p $MB $FD; chown 60000:60000 $FD; rm -f $FD/*.sock
     grep -q " $MB " /proc/self/mountinfo || mount --bind "$BH" $MB
-    "$AR/usr/lib/ld-linux-aarch64.so.1" --library-path "$AR/usr/lib" "$AR/usr/bin/setpriv" \
-      --reuid 60000 --regid 60000 --clear-groups --no-new-privs \
-      $SVDIR/virtiofsd --shared-dir $MB --socket-path $FD/fs.sock \
+    # --passthrough-fs (HarmonyOS's build): without it the default
+    # "virtual_fs" mode answers OPENDIR/MKDIR with ENODEV.
+    # a copy of the system virtiofsd: uid 60000 may not execute the one under
+    # /system (exec gives EACCES although the mode is 755)
+    # plain cp: -p keeps the system file's security label, and exec fails again
+    [ -x /data/local/kaidashi/bin/virtiofsd ] || cp $SVDIR/virtiofsd /data/local/kaidashi/bin/virtiofsd
+    run_as="/data/local/kaidashi/bin/dropuid 60000 60000"
+    [ "${OVM_FS_ROOT:-0}" = 1 ] && run_as=   # diagnostic: virtiofsd as root
+    $run_as /data/local/kaidashi/bin/virtiofsd --shared-dir $MB --socket-path $FD/fs.sock \
       --cmd-socket-path $FD/fs-cmd.sock --tag builder \
-      --sandbox none --seccomp none --rlimit-nofile 0 --cache auto --announce-submounts \
+      --sandbox none --seccomp none --rlimit-nofile 0 --cache auto --announce-submounts --passthrough-fs ${OVM_FS_EXTRA:-} \
       --translate-uid host:60000:1000:1 --translate-uid squash-guest:0:60000:4294967295 \
       --translate-gid host:60000:1000:1 --translate-gid squash-guest:0:60000:4294967295 \
       --log-file $FD/virtiofsd.log > $D/virtiofsd.out 2>&1 &
@@ -152,7 +160,7 @@ stop_rest() {
   for f in vhost-device-gpu virtiofsd; do
     if [ -f $D/$f.pid ]; then
       p=$(cat $D/$f.pid)
-      grep -q "$OVM_DIR" /proc/$p/cmdline 2>/dev/null && kill $p
+      cmdline $p | grep -q "$OVM_DIR" && kill $p
       rm -f $D/$f.pid
     fi
   done

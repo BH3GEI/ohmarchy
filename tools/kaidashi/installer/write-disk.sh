@@ -17,9 +17,9 @@ case $(uname -r) in
   6.1.*) modprobe virtio_net && p modprobe virtio_net ;;   # d-i's own modules
   *) for m in failover net_failover virtio_net; do insmod /kmod/$m.ko && p insmod $m; done ;;
 esac
-IP=172.16.100.3 GZ=0 SRC=net
+IP=172.16.100.3 GZ=0 SRC=net OFF=1
 for a in $(cat /proc/cmdline); do
-  case $a in kds_ip=*) IP=${a#kds_ip=};; kds_gz=1) GZ=1;; kds_src=*) SRC=${a#kds_src=};; esac
+  case $a in kds_ip=*) IP=${a#kds_ip=};; kds_gz=1) GZ=1;; kds_src=*) SRC=${a#kds_src=};; kds_poweroff=0) OFF=0;; esac
 done
 if [ $SRC = virtiofs ]; then
   for m in fuse virtiofs; do insmod /kmod/$m.ko && p insmod $m; done
@@ -36,6 +36,10 @@ if [ $SRC = virtiofs ]; then
     [ $rc = 0 ] && p done "boot 'the installed Omarchy disk' from the GRUB menu next"
   fi
   umount /mnt
+  # During 铠大师's install session a guest power-off is what vm_manager takes as
+  # "install finished" (HandleVmStateCallback in libvm_manager); a window close
+  # aborts the install and deletes the disk. So power off on our own.
+  if [ "${rc:-1}" = 0 ] && [ $OFF = 1 ]; then p poweroff "in 5 s"; sleep 5; sync; poweroff -f; fi
   while :; do sh </dev/tty1 >/dev/tty1 2>&1; sleep 1; done
 fi
 sleep 2

@@ -128,6 +128,26 @@ address. Both taps are opened with `queues: 2`. The difference is the device:
 | `-device virtio-net-pci` | `netdev=net0,id=nic0,bus=pcie.0,addr=0x6.0x0` | `…,mac=02:9f:…,addr=0x6.0x0,rx-iothread=rx-iothread0,tx-iothread=tx-iothread0` |
 | MAC in the guest | `52:54:00:12:34:56` (StratoVirt's default; the app's `vmdevice.json` MAC `c2:82:96:65:29:d0` is not passed) | the configured one |
 
+**Why: two command lines in `libvm_manager.z.so`** (disassembled with
+capstone; addresses are file virtual addresses). The VM that 铠大师's wizard
+starts is an *install session*, built by the function at `0x25d6dc`: install
+ISO and unattend ISO as USB CD-ROMs, disk id `system`, and a fixed
+`-device virtio-net-pci,netdev=net0,id=nic0,bus=pcie.0,addr=0x6.0x0` (string at
+`0x548f7`, used at `0x25ddc0`), no MAC, no iothreads. A normal start goes
+through `GetOHStartVmCmd` (`0x262c5c`): disk id `disk_image`, `-mem-swap`, and
+`GetOHNetCmd` appends `,mac=…` and `rx-iothread=rx-iothread0,tx-iothread=
+tx-iothread0` (`0x263d8c`–`0x263f8c`); that is the line 鸿融's and Oseasy's VMs
+run with. So the NIC is only crippled during the install session.
+
+**Ending an install session.** `HandleVmStateCallback` (`0x1bb3e0`) logs
+"install finished need stop vm" when it gets state code 1 while the VM's
+installing flag (`this+0xf8`) is set, then stops the VM and records the result.
+Closing 铠大师's window instead aborts (安装过程异常终止) and the app deletes
+`img/` (seen after both test slots). The installer therefore powers the guest
+off itself after a successful write (`poweroff -f`, PSCI SYSTEM_OFF); whether
+state 1 is that power-off is the next slot's test. If it is, the VM survives
+and later starts through `GetOHStartVmCmd` with a working NIC and no ISO.
+
 Same PCI address, so the same ITS device ID; the "Devices Table too large,
 reduce ids 32->19" line is not the difference. Untested idea: with a two-queue
 tap and a single-queue device without its rx iothread, frames the host kernel

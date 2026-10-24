@@ -16,6 +16,20 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 | **G. Whole OS in the 铠大师 VM**: [docs/vm-kaidashi.md](docs/vm-kaidashi.md) | The complete Omarchy AArch64 disk (UEFI + GRUB, linux-aarch64 7.2 with the HMV ID-register quirk) in sanway's Windows-on-ARM VM app `com.sanway.ecoengine` | Survey only: same system VM service as Oseasy (StratoVirt on HMV, `svga-pci` expected), accepts only a Windows 11 24H2 ARM64 ISO (WIM metadata check), one VM at a time |
 
+<!-- progress:start -->
+## Progress (updated hourly; last: 2026-10-24 01:10 PDT)
+
+| Route | Now | Latest |
+|---|---|---|
+| B. Oseasy VM | Patching the 7.2 `vmwgfx` driver (refresh/vblank parameters) so the Hyprland desktop reaches the Oseasy window; then a qcow2 import with the 7.2 kernel and `arm64.hmv_idreg_quirk` | Oseasy 3.1.1.7 surveyed on the MateBook 14: StratoVirt on HMV, VMSVGA with a DXVK backend, qcow2 import with no signature check |
+| C. 鸿融 VM | Packaging linux-aarch64 7.2.12 with the HMV ID-register patches (fakeroot hangs on HongMeng, worked around), then an Omarchy-only disk without deepin, tested in its own StratoVirt instance | 7.2.11 + quirk booted to the Hyprland desktop once; the root cause of the >=6.9 and >=6.17 hangs is in [docs/hmv-idreg-report.md](docs/hmv-idreg-report.md) |
+| D. Native | Acceptance suite ([docs/acceptance.md](docs/acceptance.md)): A2 core operations next (files, clipboard, Chinese input, audio, file picker) | A1: 78 apps, 72 open within 3 s (P95 1.4 s), 0 failures, 6 unsupported with root causes; SysV `msgrcv` wake-up bug found and worked around with a preload |
+| G. 铠大师 VM | Building a Windows-11-looking probe ISO that boots GRUB, to see the real StratoVirt command line | Survey: same system VM service as Oseasy, WIM metadata check only |
+| H. Aetherium on the device | Installing the patched Aetherium on `ohdev` and moving the Omarchy disk over; checking whether QEMU can use the HMV hypervisor instead of TCG | Plan agreed; Route F issues filed upstream (AetheriumSimulator/qemu-hmos #49-#53) |
+
+VM tests share one HMV hypervisor and take turns (one VM at a time).
+<!-- progress:end -->
+
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
 ## Route B quick start

@@ -3,8 +3,8 @@
 # copy of agent-2a's verified omarchy-pure.img with a 120 Hz EDID for the
 # virtio-gpu connector and the kernel argument that loads it.
 #   perl -e 'alarm 3600; exec @ARGV' ssh ohdev sh -s [SRC [DST]] < tools/ownvm/prep-disk.sh
-# Needs next to DST: ohmarchy-120.bin (tools/ownvm/edid-nopref.py applied to
-# hongrong/edid/omarchy-120.bin) and edid.cpio
+# Needs next to DST: ohmarchy-120.bin (a copy of hongrong/edid/omarchy-120.bin)
+# and edid.cpio
 # (a newc cpio holding usr/lib/firmware/edid/ohmarchy-120.bin), and optionally
 # authorized_keys (installed for yao, so the guest takes ssh keys; the disk has
 # none). Docker is installed later inside the running guest.

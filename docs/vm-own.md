@@ -23,8 +23,8 @@ Offline preparation, 2026-10-24:
   `omarchy-pure.img` (linux-aarch64 7.2.12-1.1, cold boot + 3 warm reboots).
 - The GPU part to add is 鸿融's own (below).
 - 120 Hz: agent-2a's EDID (`hongrong/edid/omarchy-120.bin`: 2160×1440 at
-  119.983 Hz first, 59.955 Hz second) with the preferred-timing bit cleared by
-  `tools/ownvm/edid-nopref.py` (see "Why 120 Hz was dropped"), loaded with
+  119.983 Hz first, 59.955 Hz second, no preferred timing since e9d1672; see
+  "Why 120 Hz was dropped"), copied to the disk as `ohmarchy-120.bin`, loaded with
   `drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin`
   (`CONFIG_DRM_LOAD_EDID_FIRMWARE=y` in 7.2.12). The test boot also has
   `drm.debug=0x5`.
@@ -199,8 +199,8 @@ different window size, or 0×0 while the output is disabled) it is deleted and
 the second, non-preferred 59.955 Hz timing survives, which matches 鸿融's
 59.955 Hz exactly.
 
-Fix without a kernel change: clear bit 0x02 (`edid-nopref.py`, features
-`0x08`). No mode is preferred, every mode passes, and `drm_mode_sort`
+Fix without a kernel change: clear bit 0x02 (features `0x08`; agent-2a's
+`mkedid.py` does this by default since e9d1672, `--preferred` sets it). No mode is preferred, every mode passes, and `drm_mode_sort`
 ([drm_modes.c](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/drm_modes.c))
 orders same-size modes by refresh, so 119.983 Hz comes first. The boot check:
 `drm.debug=0x5` prints `output 0: WxH+0+0` (the host size) and any

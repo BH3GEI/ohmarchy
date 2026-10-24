@@ -60,15 +60,27 @@ def desktop_mb():
     return round(total / 1024, 1)
 
 
+def check(fn):
+    """A hung or failing check counts as failed instead of ending the run."""
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001
+        return f"error: {e}"[:120]
+
+
 def main():
     r = {"time": time.strftime("%Y-%m-%d %H:%M:%S")}
     rc, out = sh("pgrep -x Hyprland")
     r["hyprland_pid"] = int(out.split()[0]) if rc == 0 and out else None
-    r["window"] = window() if r["hyprland_pid"] else False
+    r["window"] = check(window) if r["hyprland_pid"] else False
     text = f"soak {time.time()}"
-    subprocess.run(["wl-copy"], input=text, text=True, timeout=10)
-    time.sleep(0.3)
-    r["clipboard"] = sh("wl-paste --no-newline", 10)[1] == text
+
+    def clipboard():
+        subprocess.run(["wl-copy"], input=text, text=True, timeout=10)
+        time.sleep(0.3)
+        return sh("wl-paste --no-newline", 10)[1] == text
+
+    r["clipboard"] = check(clipboard)
     with tempfile.NamedTemporaryFile("w+") as f:
         f.write(text)
         f.flush()
@@ -79,7 +91,7 @@ def main():
     r["sound"] = sh(f"pw-play {wav}", 15)[0] == 0
     r["system_bus"] = sh("busctl --system list --no-pager", 10)[0] == 0
     r["desktop_mb"] = desktop_mb()
-    r["ok"] = all(r[k] for k in ("window", "clipboard", "file", "sound", "system_bus"))
+    r["ok"] = all(r[k] is True for k in ("window", "clipboard", "file", "sound", "system_bus"))
     print(json.dumps(r), flush=True)
 
 

@@ -251,6 +251,13 @@ desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
 Desktop restarts by the tests themselves (cold start) are logged in the results.
 Desktop stopped and started on purpose during the soak: 18:29:41/18:29:59 (switch to
 the in-app GPU path), 18:47:31 (power baseline) to 18:54:27. The 18:52 run fell into that gap (no desktop: all checks false) and does not count.
+The 19:52 run failed too, also my doing: after the exclusive window the desktop was
+left on the in-app GPU path with the display app closed. On that path the app is
+the GPU, so with it closed Hyprland waits for it and the session stalls (`wl-copy`
+hung; the smoke script stopped with a timeout). Back on the host GPU path at 20:14
+(as at the start of the soak), smoke all ok at 20:15. The smoke script now records
+a hung check as failed instead of stopping. Further planned restarts: 19:57 and
+20:02 (sound relay, broker), 20:14 (back to the host GPU path).
 
 ## D. Upgrade and recovery
 

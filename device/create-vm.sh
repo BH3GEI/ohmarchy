@@ -65,3 +65,23 @@ echo "VM starting under TCG. Measure on the device directly:"
 echo "  frame rate / refresh:  oseasy/measure-fps.sh 8   (hidumper on ohdev; Aetherium window in front)"
 echo "  host CPU / temp:       device/baseline.sh 10"
 echo "  first-boot wizard:     drive the Aetherium VM window with tools/ohdev/ohui (verify focus first)"
+
+# --- On-device quirks solved 2026-10-25 (ohdev, Aetherium 1.1.1.103) ---------
+# 1) The final "创建并启动" button lives in a bindSheet that `ohui dump` does NOT
+#    capture, so dui can't find it by text. uitest dumpLayout DOES see it, but its
+#    bounds are PHYSICAL px while ohui/injection use the 1440-wide shot space.
+#    Convert: shot_xy = uitest_center * (shot_width / phys_width)  (~0.499 here,
+#    i.e. 1440/2886; phys ~= VirtualWidth 1645 * density 1.75). Then `ohui tap`.
+#    Calibrate the factor from a visible element, e.g. 创建第一个虚拟机:
+#      uitest center (2007,992) <-> shot (1001,495)  => factor 0.499
+#    创建并启动 uitest center (1890,1223) => ohui tap 943 610.  (uitest uiInput
+#    click with the physical coords did NOT fire it; the shot-space ohui tap does.)
+# 2) The picker "import existing qcow2" is broken on device: it hands Aetherium a
+#    display path /storage/Users/currentUser/Download/... that does not resolve
+#    (real file is in hmdfs, unreadable by Aetherium's uid 20020166) -> hilog
+#    "导入磁盘镜像失败: No such file or directory". Likely an upstream Aetherium bug.
+#    Workaround: create with a BLANK disk (skip 选择 on the disk page), then swap:
+#      VM config: haps/entry/preferences/vms  (id, name, config)
+#      First 普通启动(VNC) creates the blank disk under files/vms/<...>/; stop the VM,
+#      then as root overwrite that disk.qcow2 with the Omarchy image and fix owner/
+#      mode/SELinux label to match (see device/vmtest hrswap.sh pattern), restart.

@@ -165,6 +165,71 @@ the guest serial port to the hwf_service log (`RedirectToLog`), which root can
 read in `/data/log/hwf_service/vmlog`. Other entries: the Debian rescue
 installer and `fwsetup`.
 
+## OSEasy's Windows guest
+
+How Oseasy drives the same `svga-pci` for Windows, read from its backup
+(`/data/local/backup/oseasy-win11-20261024/…/vm.qcow2`, Windows 11 ARM64
+installed 2026-10-22/23) without writing to it; method in
+[`tools/kaidashi/wininspect/`](../tools/kaidashi/wininspect/README.md).
+Only names, versions and interfaces are recorded here, no driver files.
+
+**Display driver.** `DriverStore\FileRepository\svgampwddm.inf_arm64_3b4a2f92f66fb491`,
+installed as `oem7.inf`, bound to `PCI\VEN_15AD&DEV_0405&SUBSYS_040515AD&REV_00`:
+
+| | |
+|---|---|
+| Provider | `OS-EASY`, `DriverVer 10/09/2026,17.56.17.215`, class Display, PnpLockdown |
+| Kernel driver | `SVGAMPWDDM.sys` (169 KB, ARM64), service `SVGAMPWDDM`, demand start, group Video |
+| User-mode drivers | VirtualBox's: `VBoxDispD3D` (D3D9), `VBoxDX` (D3D10/11 UMD, `umd10`/`umd11`), `VBoxGL` (OpenGL ICD), `VBoxNine`, `VBoxSVGA`, each ARM64EC and Win32 |
+| Registry (`Control\Class\{4d36e968…}\0000`) | exactly the INF's values: `InstalledDisplayDrivers`, `UserModeDriverName[Wow]`, `OpenGLDriverName[Wow]`, `OpenGLFlags=1`, `VgaCompatible=0`, `HwMonoCursorUnsupportedApps=StormPlayer.exe`. Nothing about VRAM, refresh or present mode |
+
+`SVGAMPWDDM.sys` is VirtualBox's WDDM miniport cut down to VMSVGA ("just
+support vmsvga", "HW type is not VMSVGA!") and extended by Oseasy. From its
+log strings: it maps BAR0 registers, VRAM and the FIFO (`Map sys io`,
+`Map FIFO`), requires `SVGA_ID_2`, uses command buffers (`svgaCB*`), MOBs and
+GB surfaces, GMRs, fences and IRQs (`GaDxgkDdiInterruptRoutine`), and draws
+the screen with `SvgaGenDefineGMRFB`, `SvgaGenBlitGMRFBToScreen`,
+`SvgaGenBlitScreenToGMRFB` and `SvgaGenBlitSurfaceToScreen` plus
+`GaDxgkPresentBlt`/`Flip` (ColorFill is not implemented).
+
+**Resolution and refresh.** The driver builds the monitor's EDID itself
+(`vboxWddmConstructEdid`) and derives its mode list from the host surface size
+(`vboxInitResolutionsWithSurfaceSize: Use adaptive resolutions`, with
+`vboxVidPnMonitorModeSetByVSync`). StratoVirt raises an IRQ when the window
+changes ("VmView Size change, send irq to guest driver to change resolution
+list", "Set resolution end, send irq to guest driver to refresh resolution
+list"; device state `need_change_resolution_list`,
+`need_refresh_resolution_list`), and the driver signals
+`\BaseNamedObjects\SvgaResolutionEvent` to user mode. The agent confirms that
+nothing else does it: `3D resolution is handled by SVGA driver, skip
+display.exe` (`agent_service.log`). Windows' saved display configurations
+(`Control\GraphicsDrivers\Configuration`) show the driver's monitor
+`VDS00005653587` at 1700×1223 and 1920×1280, both **60 Hz**
+(`VSyncFreq 60000/1000`), and the firmware's `MSBDD_NOEDID_15AD_0405` at
+800×600. So even Oseasy's own Windows stack runs this device at 60 Hz.
+
+**What Oseasy installs** (`C:\ProgramData\VMAgent`, from `oetool.iso`):
+
+| Service / file | Role |
+|---|---|
+| `vmagent` → `VMAgent\agent_service.exe` (auto) | host link over virtio-serial: capability handshake with the host (`Proc host capset: peer cap N`), time zone, app lists, shutdown, DFX events |
+| `vmgtsrv` → `VMAgent\driver1\viogpu\vmgtsrv.exe` (auto) | "VMGT service", built 2026-09-10 from virtio-win's `viogpusc`; starts `vmgtsharemgr.exe` in the user session (clipboard on vioserial port 3, FUSE file sharing on port 4) |
+| `OETool` → `Program Files\oetool\OETool.exe` (auto), `MessagesExchangeTools.exe`, `display.exe` | user-session tools; `display.exe` sets the resolution only when the SVGA driver is absent |
+| `oyService` → `Program Files\oseasy\appstore\oysvc.exe` | Oseasy app store |
+| `AudioSession\audio_session.exe` + `Scream.sys` | audio over `ivshmem-scream` |
+| drivers (`driver1`, `driver2`) | virtio-win `viostor`, `netkvm`, `viofs`, `vioinput`/`viohidkmdf`, `vioser`, `viomem`, `balloon`, `pvpanic`, `viogpudo` (installed but unused here), plus `ivshmem`, `hwfs`, `app_filter_driver`, `VDeskMou` |
+
+Install order (`VMAgent\log\setup.log`): copy drivers and agent, install the
+signed drivers (`wddm\SVGAMPWDDM.inf` first), then `display`, then `driver2`.
+
+**For a Linux guest** (route B's vmwgfx work): the Windows driver uses the
+same screen-object + blit path that route B targets, so nothing in the
+command set is Windows-only. What a Linux driver additionally needs to match it:
+(1) handle the host's resolution IRQ and rebuild the connector's modes from the
+host surface size, (2) provide its own EDID/modes (the device has none),
+(3) expect 60 Hz: the Windows stack never runs this device faster, so a
+120 Hz mode is at best untested on the host side.
+
 ## Test slot log
 
 | When | What |

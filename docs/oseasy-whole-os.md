@@ -439,7 +439,7 @@ the runs above unless marked pending.
 | App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | | |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | | |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak **failed** twice (hang after 38 and 51 min): use-after-free of command buffer headers, fixed, re-test running | | |
+| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak failed twice (hang after 38 and 51 min, use-after-free of command buffer headers); with the fix **77 min, no fault** (0 late writes seen) | | |
 
 ### Commits (MateBook 14 work)
 
@@ -855,6 +855,36 @@ download folder instead). Same ISO and driver as run ten, same load.
   ISO `d52909fa1559b2c1422b45128f396d50ffe86ddfd940dd91a3af3add5cf850c4`
   (also carries the obsidian launcher). Pass: over 60 minutes, no oops, and the
   late writes counted.
+
+### Twelfth run: GPU-load soak with the fix, 77 minutes without a fault (14:41-16:05, 2026-10-25)
+
+Logs: [`soak4.log`](../oseasy/runs/2026-10-25-pollfix/soak4.log),
+[`soak4-netconsole.log`](../oseasy/runs/2026-10-25-pollfix/soak4-netconsole.log).
+VM reinstalled from the run-eleven package and ISO (再次安装); the guest log shows
+the fixed module (`HVM: polling fences every 1000 us`). Same load as runs ten and
+eleven: two es2gears the whole time, workspace switching for 8 s every 5 minutes,
+Oseasy alone in front.
+
+- Soak from 14:46:48 to 16:03 PDT (guest uptime 107 s to 4726 s). All 16 checks
+  answered. Every check: the VM's `dxvk-submit` flushes 120 frames/s, the screen
+  composes 60/s (the panel at 60 Hz with Oseasy alone, as in run nine), both
+  with es2gears alone and while switching workspaces. Load 1.1, 6.9 GB free, both
+  steady from start to end.
+- netconsole: 466 lines, a heartbeat every 10 s from 107 s to 4726 s with no gap,
+  no oops, BUG, WARNING, hung task or RCU stall. The guest's own journal (checked
+  before power-off) has none either.
+- **Late device writes: 0.** No retired header changed during its 5 ms wait.
+- Powered off from the guest (`systemctl poweroff`); Oseasy's process exited.
+
+Reading: the supervisor's pass condition (over 60 minutes, no oops) is met. The run
+went past both earlier failure points (38 and 51 min). The cause is still not
+directly proven: no late write was seen. Either the race is rarer than once per
+77 minutes of this load (the two failures came at 38 and 51 minutes, so one clean
+run is weak evidence), or the late write comes more than 5 ms after `COMPLETED`.
+A write that late would not be seen by the check, but it would also land after
+the header had been freed, so it could still corrupt the pool. The 5 ms delay
+stays as it is: with no measured latency there is nothing to tune it from. A
+longer soak, or a second one, would tell the two cases apart.
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

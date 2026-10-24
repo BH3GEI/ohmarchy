@@ -14,8 +14,8 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Screen off/on: pending. Real Wi-Fi switch: needs someone on site |
-| D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: pending. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
+| D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/collect-logs.sh` | log bundle: done. Reset and `-Syu` regression: on a separate environment once the machine is free |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
 | G. Other devices | | | only one machine so far. The tests take the host, base path and user from `OHOS_HOST`, `ARCH_BASE`, `ARCH_USER`; nothing else names this device |
@@ -202,6 +202,19 @@ Measured with curl (a new connection each time). Not done: a long-running browse
 across the outage, and a real Wi-Fi switch or disconnect (needs someone at the
 machine: if the host's Wi-Fi did not come back, the machine would be out of reach).
 
+### C4. Display off and on
+
+`tests/lib/session-py.sh dpms tests/stability/dpms.py 600 20`: Hyprland's DPMS off
+for 2 s, then on; after each round a new window must map and render (grim sees a
+real frame), Hyprland must be the same process and the window list unchanged.
+2026-10-24 18:14: 20 of 20 rounds ok.
+
+HarmonyOS's own screen off cannot be tested remotely: the only command-line
+switch, `power-shell suspend`, suspends the whole machine, which could leave it out
+of reach. Needs someone at the machine. The closest remote stand-in, sending the
+display app to the background and back (HarmonyOS destroys and recreates its
+surface, as at screen off), is scheduled for a window with the screen to itself.
+
 ### C3. Soak
 
 `tests/stability/soak.sh start` runs `smoke.py` every hour for 24 h on the host
@@ -209,6 +222,14 @@ machine: if the host's Wi-Fi did not come back, the machine would be out of reac
 window opens and closes, clipboard, file write, sound into PipeWire, system bus,
 desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
 Desktop restarts by the tests themselves (cold start) are logged in the results.
+
+## D. Upgrade and recovery
+
+Log bundle: `sh /data/local/archtest/collect-logs.sh [dir]` on the host writes
+one `ohmarchy-logs-<time>.tar.gz` (default in /data/local/tmp): host side (session,
+GPU server, boot, soak logs, the display app's hilog lines, its version, processes,
+memory, crash list) and session side (desktop, Hyprland, sound logs, processes,
+package versions, disk, test results). No passwords or user files.
 
 ## E. Security
 

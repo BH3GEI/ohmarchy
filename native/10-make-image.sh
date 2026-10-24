@@ -41,5 +41,6 @@ losetup -d "$L" 2>/dev/null || true
 # 3. Session manager and launcher
 cp "$here/arch.sh" "$B/arch.sh"
 cp "$here/omarchy" "$B/bin/omarchy"
+cp "$here/collect-logs.sh" "$B/collect-logs.sh"
 chmod 755 "$B/arch.sh" "$B/bin/omarchy"
 echo "Done. Next: sh $B/arch.sh start; sh $B/arch.sh run $here/20-setup-arch.sh USER"

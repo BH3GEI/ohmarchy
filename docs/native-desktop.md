@@ -198,4 +198,5 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 | vtest server or broker lives in the session's mount namespace, outside its pid namespace, and would keep the image mounted | `arch.sh stop` stops it first |
 | `start-hyprland` restarts Hyprland when it is killed | stop the watchdog first |
 | `/etc/machine-id` empty: libdbus aborts, which took the Omarchy shell down once Qt loaded its fcitx plugin | write one with `dbus-uuidgen` |
+| Host GPU server (`OHMARCHY_GPU=host`): each desktop restart left a `virgl_test_server` child behind (~80 MB), its connection still ESTAB with no peer | `omarchy desktop stop` ends the server's children; the desktop's clients are gone by then |
 | Omarchy's Lua config: `hyprctl dispatch`/`keyword` do not parse | `hyprctl eval 'hl.exec_cmd("...")'` |

@@ -30,6 +30,10 @@ sysbus() {
 if [ "$1" = desktop ] && [ "$2" = stop ] && kill -0 "$(cat "$B/session.pid" 2>/dev/null)" 2>/dev/null; then
     sh "$0" -c /opt/ohmarchy/bin/ohmarchy-desktop stop
     sysbus stop
+    # The host GPU server forks a child per client, and on HongMeng a child is not
+    # told when its client goes away (the connection stays ESTAB with no peer): each
+    # desktop restart left one behind (~80 MB). The desktop's clients are gone now.
+    for s in $(pgrep -f "virgl_test_server.*$R/tmp/.virgl_test"); do pkill -P "$s"; done
     exit 0
 fi
 case "$1" in

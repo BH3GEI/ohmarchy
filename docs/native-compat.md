@@ -125,7 +125,7 @@ The root causes behind most ❌ rows:
 | Multi-monitor | ❌ | One headless output shown in one app window. |
 | Clipboard to/from HarmonyOS | ❌ | Not bridged. Wayland clipboard inside works. |
 | HarmonyOS files | ⚠️ | Not mounted. A bind mount from the host (e.g. `/storage/media/100/local/files/Docs` into the session's mount namespace) works, but only root can read it (uid 60000 gets EACCES). |
-| Docker | ❌ | No daemon. dockerd would need cgroups and would change the HarmonyOS network (shared namespace); not tried. |
+| Docker | ⚠️ | No daemon here (dockerd would need cgroups and would change the HarmonyOS network: shared namespace). The CLI uses dockerd in route I's VM over ssh instead; see acceptance.md A1b. |
 | Podman, flatpak | ❌ | Not installed; both need user namespaces (bwrap fails: "Creating new namespace failed"). |
 | AUR / makepkg | ⚠️ | `fakeroot` hangs: `faked` talks over a SysV message queue, and makepkg's packaging step blocks in `msgrcv` for good (`/proc/<pid>/wchan`: `ipcmgr_msgrcv`; seen 2026-10-24 packaging linux-aarch64). ALARM has no `fakeroot-tcp`. Workaround for local packages: run a copy of makepkg with its root check removed, as root, so it needs no fakeroot (`sed 's/^\(\s*\)if (( EUID == 0 )); then/\1if false; then/' /usr/bin/makepkg`). `yay -Si` works. |
 | pacman | ✅ | Omarchy and ALARM repositories. |

@@ -21,15 +21,15 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | headless backend for D: Docker + full kernel. Omarchy's 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app); D's terminal uses its dockerd over ssh | First run: network both ways, 120 Hz mode, virgl on the Maleoon GPU, Docker + compose; service `ohmarchy-vm` written, D's docker context set up, waiting for a slot |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 13:18 PDT)
+## Progress (updated hourly; last: 2026-10-24 14:18 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Next (14:00–15:30 PDT): rerun the same GPU-load soak with hang capture (netconsole to the host, lockup panics, heartbeat every 10 s; aea6f62) | GPU apps draw (120 frames/s to the host, 60 on screen), but **the GPU-load soak hung after ~38 min**: guest ssh dead, all 6 vCPUs at 100%, frames to 0 (6871e40). Oseasy's "install failed" popup came 15 min later and only reacts to the disk image no longer growing (cb6633c). Obsidian opens in 0.67 s with `--ozone-platform=wayland`. 120 Hz: a second window takes the VM layer off direct display and the system composites at 40–51/s |
+| B. Oseasy VM | Hang-capture soak running since 13:40 PDT (same ISO, driver and load as the run that hung; until ~15:30): netconsole reaches the host through Oseasy's NAT, heartbeat every 10 s (aea6f62) | GPU apps draw (120 frames/s to the host, 60 on screen), but **the GPU-load soak hung after ~38 min**: guest ssh dead, all 6 vCPUs at 100%, frames to 0 (6871e40). Oseasy's "install failed" popup came 15 min later and only reacts to the disk image no longer growing (cb6633c). Obsidian opens in 0.67 s with `--ozone-platform=wayland`. 120 Hz: a second window takes the VM layer off direct display and the system composites at 40–51/s |
 | C. 鸿融 VM | Paused (session idle since 09:14 PDT): 鸿融's own "import qcow2" with the StratoVirt-shaped header, on-screen fps at 120 Hz | Developer image passes in a real 鸿融 VM: desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker, warm reboot, 30-min soak; CRTC at 120 Hz |
 | D. Native | 24 h soak until 2026-10-25 17:52 PDT | A1: 74 of 78, 0 failed, P95 1.13 s. Docker, compose and bind mounts from the home directory work through route I's VM |
 | I. Own VM | Offline; `--mapped-perm` to try in the next slot | Files created through the share come out 0660/0771: not D's filesystem (D itself creates 0644) and not virtiofsd's umask; HarmonyOS's virtiofsd applies its own storage modes unless `--mapped-perm` is given (3d6ed25) |
-| H. Aetherium on the device | Confirming the cause from SELinux denials | **TCG cannot start on the device**: Aetherium's QEMU exits in `tcg_region_init` even at 1 vCPU / 2 GB; most likely HarmonyOS blocks executable (JIT) memory for the app, which TCG's code buffer needs |
+| H. Aetherium on the device | Concluded (81cb74d, 5a6b00a) | **Without root, Aetherium does not run on the device**: HMV is closed to third parties, and TCG aborts in `tcg_region_init` (4 vCPU / 4 GB and 1 vCPU / 2 GB alike); inferred cause, without a direct AVC: the app domain gets no executable memory. Running QEMU's TCG as root was considered and declined, since route I already runs with HMV as root |
 | G. 铠大师 VM | Concluded | Same `svga-pci` path as B; Linux only lives in an install session |
 
 Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel. Starting or killing processes on the device also needs `vm.lock`.

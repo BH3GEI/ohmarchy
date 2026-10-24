@@ -72,30 +72,58 @@ Crucially the abc also contains the constants **`UNTRUSTED_CALLER` / `untrusted_
 `callerBundleName`, `publisherBundleName`, `hasPermissions` — so the VM service **validates
 the calling app's identity** and has a dedicated "untrusted caller" rejection.
 
-## Runtime test (option A): build a stub, debug-sign, install, call `createVm`
+## Runtime test (option A): build a stub, debug-sign, install, call the API
 
-Supervisor-approved 2-hour empirical test. Minimal probe app `com.ohmarchy.vmtest`
-(`native/vmtest/`): `EntryAbility.onCreate` calls `virtualization.getVmAvailableCpuNumRange()`
-then `virtualization.createVm('com.ohmarchy.vmtest', …)` — **create only, never `startVm`**
-(the device's `vm_manager` is simultaneously running the 鸿融 main VM), and `destroyVm` to
-clean up if a VM is actually created.
+Supervisor-approved empirical test. Minimal probe app `com.ohmarchy.vmtest`
+(`native/vmtest/`), **create-only, never `startVm`** (the device's `vm_manager` was
+simultaneously running the 鸿融 main VM), with `destroyVm` cleanup. Built against a
+hand-written stub `.d.ts`, signed with the OpenHarmony **test** keys (not an AppGallery
+cert), installed with `bm install -r`.
 
-Gates cleared so far:
+The runtime verdict, layer by layer — every obvious gate is **open** for a debug-signed,
+non-AppGallery third-party app, until the service's own authorization check:
 
-1. **Build-time gate — PASSED with a stub.** The public DevEco SDK ships no
-   `@hms.virtService.vmManager` (195 `@hms.*` d.ts, none virt/vm). Dropping a hand-written
-   stub `.d.ts` (`native/vmtest/stub/`, reverse-engineered from the abc) into
-   `sdk/default/hms/ets/api/` lets hvigor resolve the import and the HAP compiles. So the
-   closed SDK is **not** an absolute barrier — a third party can compile against the API
-   with a stub.
-2. **Install gate — PASSED.** The HAP, signed with the OpenHarmony **test** keys + a debug
-   provisioning profile bound to the device UDID (not an AppGallery cert), installs via
-   `bm install -r`: `appProvisionType=debug`, `appDistributionType=none`. Declaring/importing
-   the VM API does not block install.
+| Layer | Result |
+|---|---|
+| Compile against the closed API | **PASS** with a stub `.d.ts` (hvigor resolves `@hms:virtService.vmManager`) |
+| Install the debug-signed HAP | **PASS** (`appProvisionType=debug`, `appDistributionType=none`) |
+| Load the closed module at runtime | **PASS** — the module resolves and loads; all ~80 `virtualization.*` functions are enumerable (`Object.keys`) |
+| Reach the VM service over IPC | **PASS** — `getVmStatus('com.ohmarchy.vmtest')` returns `0` (STATE_STOPPED) with no error |
+| Privileged query | **DENIED** — `getVmAvailableCpuNumRange()`/`getVmAvailableMemorySizeRange()` return `[201,…]`, `getHostSN()` throws **`201 Permission denied`** |
+| `createVm(bundle, minimalCfg)` | `401` = **`VM_ERROR_INVALID_PARAM`** (reaches the module; config rejected) |
+| `createVm(bundle, fullCfg)` | resolves (no throw) but **no VM is created** — no new entry under `/data/service/*/vm_manager`, no `stratovirt`, 鸿融 untouched |
 
-Remaining (the real question): **does the runtime `vm_manager` service accept this
-debug-signed, non-AppGallery caller, or reject it** (expected: `UNTRUSTED_CALLER`, i.e. a
-signature/appId gate)? Launch the probe, read `hilog` for the `VMPROBE` verdict and any
-`vm_manager`/`virt_service` rejection reason. Launch foregrounds a window briefly, so it
-waits for `/data/local/screen.lock`; create-only needs no `vm.lock`. Result pending.
+`VmErrorCode = {VM_OK:0, VM_ERROR_INVALID_PARAM:401, VM_ERROR_IPC_FAILED:403, VM_ERROR_NULLPTR:404}`
+— so the `401` is a **parameter** error, not a permission error. Enums also recovered:
+`VmState`, `VmStartType {START,MEMORY_SNAPSHOT_RESUME,FORCE_START}`,
+`StorageType {TYPE_VIRTIO,TYPE_USB}`, `NetMode {MODE_BRIDGE,MODE_NAT}`, `Feature {…}`.
 
+### Where the gate is
+
+Not the SDK, not install, not module-load, not IPC reachability. The gate is the VM
+service's **caller-authorization check on privileged operations** (`libvm_manager`'s
+`GetAppIdByCallingUid` + "caller identity validation", with the `UNTRUSTED_CALLER`
+constant seen in OSEasy's abc). A plain debug-signed third-party app is refused the
+privileged calls (`201`) and cannot actually create a VM.
+
+OSEasy/铠大师 pass this check **without declaring any VM permission** — their full manifests
+request only ordinary `ohos.permission.*`, and `applicationInfo.permissions` is empty. The
+only things they have that an ordinary app does not are (a) an **AppGallery release
+signature / appId** (a VM partner identity) and (b) a cluster of **type-255 extension
+abilities** (`VirtualAbility`, `VMConsoleAbility`, `WinAppAbility`, `VmFormAbility`,
+`StatusBarAbility`). So authorization is tied to the app's **identity**, not to a
+grantable permission a third party could simply request.
+
+### Still pending (to make it airtight)
+- The `vm_manager` **service-side** log line for a third-party `createVm` (the exact
+  rejection reason), captured during the probe run.
+- Whether declaring a `VirtualAbility` (type-255) extension lifts the `201` — if it does,
+  the gate is the extension (satisfiable by any third party → no-root VM feasible); if not,
+  the gate is the AppGallery signature/appId entitlement (a Huawei VM-partner privilege).
+
+### Bottom line so far
+A third party **can** compile, install, load and talk to the VM service without root — but
+**cannot create a VM**: the service authorizes privileged VM operations by caller identity
+(AppGallery VM-partner signature/appId), not by a permission an ordinary developer can
+declare. Route I ("no-root self-built VM") is therefore blocked for a non-partner app at
+the service's identity check, pending the two tests above.

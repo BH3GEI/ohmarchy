@@ -1,7 +1,9 @@
 // Sound from the Linux session: PipeWire in the session mixes everything into the
-// sink "HarmonyOS" (native/desktop/ohmarchy-audio.conf), and its protocol-simple
-// module streams that sink's monitor as raw PCM (S16LE, 48 kHz, stereo) to whoever
-// connects to 127.0.0.1:4714. This plays it with OHAudio.
+// sink "HarmonyOS" (native/desktop/ohmarchy-audio.conf), and
+// native/desktop/ohmarchy-audio-relay streams that sink's monitor as raw PCM
+// (S16LE, 48 kHz, stereo) over the abstract socket @ohmarchy-audio, to this app's
+// uid only. This plays it with OHAudio, and only from a server running as the
+// desktop's user (the compositor's uid, DesktopUid()).
 //
 // Latency: a ring of at most kMaxMs between the socket and the renderer; when the
 // session runs ahead of the speaker clock the oldest audio is dropped back to
@@ -16,10 +18,10 @@
 #include <ohaudio/native_audiorenderer.h>
 #include <ohaudio/native_audiostreambuilder.h>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#include <stddef.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -43,8 +45,7 @@
 
 namespace {
 
-const char *kHost = "127.0.0.1";
-const int kPort = 4714;
+const char *kName = "ohmarchy-audio";
 const int kRate = 48000;
 const int kFrameBytes = 4;  // S16LE stereo
 const int kStartMs = 20, kTargetMs = 30, kMaxMs = 80, kIdleMs = 2000;
@@ -187,22 +188,30 @@ bool Silent(const uint8_t *p, size_t n)
 
 int Connect()
 {
-    int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    sockaddr_in a{};
-    a.sin_family = AF_INET;
-    a.sin_port = htons(kPort);
-    inet_pton(AF_INET, kHost, &a.sin_addr);
-    if (connect(fd, reinterpret_cast<sockaddr *>(&a), sizeof(a)) != 0) {
+    int64_t desktop = DesktopUid();
+    if (desktop < 0) {
+        return -1;  // not until the desktop is there to vouch for the server
+    }
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    sockaddr_un a{};
+    a.sun_family = AF_UNIX;
+    size_t len = strlen(kName);
+    memcpy(a.sun_path + 1, kName, len);  // abstract namespace
+    if (connect(fd, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + len) != 0) {
         close(fd);
         return -1;
     }
-    // No small SO_RCVBUF: on the host's network stack that stalled the connection
-    // (receiver waiting, sender's queue full). The ring bounds the latency instead.
+    ucred cr{};
+    socklen_t crlen = sizeof(cr);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &crlen) != 0 || static_cast<int64_t>(cr.uid) != desktop) {
+        LOGE("sound server uid %{public}u is not the desktop's (%{public}lld): refused", cr.uid,
+             static_cast<long long>(desktop));
+        close(fd);
+        return -1;
+    }
     // The session sends nothing while nothing plays; the timeout lets the renderer
     // stop then.
-    int one = 1;
     timeval tv{0, 500000};
-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     return fd;
 }

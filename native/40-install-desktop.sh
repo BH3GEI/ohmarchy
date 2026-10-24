@@ -99,6 +99,8 @@ gcc -O2 -o "$prefix/bin/ohime" "$here/desktop/ohime.c" "$build/input-method-unst
 mkdir -p "$prefix/lib"
 clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
+# Sound to the display app over an abstract socket, to its uid only
+cc -O2 -o "$prefix/bin/ohmarchy-audio-relay" "$here/desktop/ohmarchy-audio-relay.c"
 # System D-Bus, started and stopped with the desktop (ohmarchy-sysbus): only these
 # services can be bus-activated
 install -m 755 "$here/desktop/ohmarchy-sysbus" "$prefix/bin/"

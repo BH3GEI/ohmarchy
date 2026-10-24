@@ -61,6 +61,7 @@ std::mutex g_exportSendMu;
 const char *kExportName = "ohmarchy-display";
 uint8_t g_buttons = 0;
 std::atomic<uint64_t> g_blits{0};  // frames shown by the CPU path (Blit)
+std::atomic<int64_t> g_desktopUid{-1};  // the compositor's uid (export socket peer)
 
 bool ReadAll(int fd, void *buf, size_t n)
 {
@@ -450,6 +451,13 @@ void FrameLoop()
             continue;
         }
         LOGI("frame export connected");
+        {
+            ucred cr{};
+            socklen_t len = sizeof(cr);
+            if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &len) == 0) {
+                g_desktopUid = static_cast<int64_t>(cr.uid);
+            }
+        }
         g_shown = false;
         g_exportSock = fd;
         g_frameMode = true;
@@ -1092,6 +1100,8 @@ napi_module g_module = {
 };
 
 }  // namespace
+
+int64_t DesktopUid() { return g_desktopUid; }
 
 extern "C" __attribute__((constructor)) void RegisterOhdispModule()
 {

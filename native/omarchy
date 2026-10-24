@@ -45,6 +45,9 @@ case "$1" in
 desktop)
     gui=1
     cmd="/opt/ohmarchy/bin/ohmarchy-desktop ${2:-start}"
+    # the display app's uid: the only one the sound relay serves
+    app_uid=$(bm dump -n com.ohmarchy.display 2>/dev/null | grep -m1 '"uid"' | tr -dc 0-9)
+    [ -n "$app_uid" ] && cmd="OHMARCHY_APP_UID=$app_uid $cmd"
     # GPU for Hyprland: Mesa's virpipe at /tmp/.virgl_test inside Arch reaches the
     # host's virglrenderer (zink on the Maleoon GPU). With bin/vtest-broker the
     # renderer runs in the display app, which presents frames into its window

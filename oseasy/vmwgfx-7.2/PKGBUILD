@@ -1,0 +1,27 @@
+# vmwgfx for the HarmonyOS SVGA device (Oseasy / 铠大师 VMs), built against
+# Arch Linux ARM's linux-aarch64 with the 鸿融 patches. Installs into the
+# kernel's updates/ directory, which depmod prefers over the in-tree vmwgfx.
+# KDIR must point at the kernel's build tree (an unpacked
+# linux-aarch64-headers package is enough) and _kpkgver at its pkgver-pkgrel;
+# see build.sh.
+pkgname=vmwgfx-oseasy
+pkgver=7.2.12
+pkgrel=1
+pkgdesc='vmwgfx with indexed MMIO, screen objects and timer vblank for the HarmonyOS SVGA device'
+arch=(aarch64)
+license=(GPL-2.0-only)
+depends=("linux-aarch64=${_kpkgver:?set _kpkgver}")
+backup=(etc/modprobe.d/vmwgfx-oseasy.conf)
+source=()
+
+build() {
+  rm -rf src && cp -r "${VMWGFX_SRC:-$startdir/../../driver/vmwgfx-oseasy-7.2}" src
+  make -C "${KDIR:?}" M="$srcdir/src" CONFIG_DRM_VMWGFX=m modules
+}
+
+package() {
+  local kver
+  kver=$(cat "$KDIR/version")
+  install -Dm644 "$srcdir/src/vmwgfx.ko" "$pkgdir/usr/lib/modules/$kver/updates/vmwgfx.ko"
+  install -Dm644 "$startdir/vmwgfx-oseasy.conf" "$pkgdir/etc/modprobe.d/vmwgfx-oseasy.conf"
+}

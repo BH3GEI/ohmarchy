@@ -191,3 +191,43 @@ Oseasy's last start (`/data/log/hwf_service/vmlog4`, 2026-10-23 09:38, pid 15337
 Sources: [Oseasy launch coverage, mydrivers](https://news.mydrivers.com/1/1048/1048600.htm),
 [unwire.hk hands-on (ISO install)](https://unwire.hk/2025/05/12/harmonyos-windows11/notebook/),
 [ithome](https://www.ithome.com/0/940/942.htm).
+
+### Display: what changes with a 7.2 guest
+
+- The host accepts the screen-object path in principle: StratoVirt's SVGA
+  command table has `SVGA_CMD_DEFINE_SCREEN`, `SVGA_CMD_DEFINE_GMRFB`,
+  `SVGA_CMD_BLIT_GMRFB_TO_SCREEN`, `SVGA_3D_CMD_BLIT_SURFACE_TO_SCREEN`,
+  `SVGA_3D_CMD_PRESENT` and `SVGA_3D_CMD_DX_PRESENTBLT`, and the Windows driver
+  generates the same blits (`SvgaGenBlitSurfaceToScreen`,
+  `SvgaGenBlitGMRFBToScreen`). Writes to `SVGA_REG_WIDTH`/`HEIGHT`/
+  `BITS_PER_PIXEL` are refused (`Not supported register 2/3/7` even for the
+  Windows driver), so there is no legacy mode at all.
+- Linux 7.2's vmwgfx backs dumb buffers with GB surfaces when the device has
+  MOBs and 3D (`vmw_dumb_create`), so the fbdev console and any dumb-buffer
+  client already present through `SVGA_3D_CMD_BLIT_SURFACE_TO_SCREEN`; on 6.1
+  they went through `BLIT_GMRFB_TO_SCREEN`. That is the first thing to test.
+- With root on the host, StratoVirt's log (`/data/log/hwf_service/vmlog*`) shows
+  the SVGA backend's complaints and the guest's serial console
+  (`RedirectToLog`), which the Fold's `hdc` shell could not read.
+- Mesa in Arch Linux ARM ships the SVGA gallium driver (`vmwgfx_dri.so`).
+
+`driver/vmwgfx-oseasy-7.2/` is Linux 7.2.12's vmwgfx with the 6.1 changes
+ported ([patch against v7.2.12](../driver/vmwgfx-oseasy-7.2/hvm-oseasy-vs-linux-7.2.patch))
+and new module parameters:
+
+| Parameter | Default | Effect |
+|---|---|---|
+| `hvm_mmio` | 0 | registers through the 16-byte MMIO BAR0 (required here) |
+| `hvm_display` | 0 | 2 = screen objects (the host rejects screen targets) |
+| `msg_enabled` | 1 | 0 = no VMware backdoor RPC (it would trap on HMV) |
+| `hvm_refresh` | 60 | refresh rate written into the reported modes (the panel does 120) |
+| `hvm_vblank` | 1 | timer vblank (vmwgfx's vkms code) at that rate; normally enabled only through VMware guestinfo |
+| `hvm_dumb_bo` | 0 | 1 = dumb buffers as plain BOs (GMRFB blits), for A/B tests |
+
+`oseasy/vmwgfx-7.2/build.sh HEADERS.pkg.tar.zst` builds the `vmwgfx-oseasy`
+pacman package against an unpacked `linux-aarch64-headers` (nothing is installed
+in the build environment); it puts the module in `updates/` and the options in
+`/etc/modprobe.d/vmwgfx-oseasy.conf`. Not built yet: waiting for the 7.2.12
+`linux-aarch64` package with the HMV patches.
+
+`oseasy/vmlock.sh take|show|drop` handles the host's one-VM lock.

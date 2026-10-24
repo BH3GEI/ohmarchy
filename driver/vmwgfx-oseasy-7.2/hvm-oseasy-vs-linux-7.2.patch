@@ -1,0 +1,735 @@
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c b/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c
+index f45d93e8c..2976d91d5 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c
+@@ -307,6 +307,8 @@ static int vmw_cmdbuf_header_submit(struct vmw_cmdbuf_header *header)
+ 
+ 	header->cb_header->id = man->id++;
+ 
++	/* Make DMA-visible header/commands precede the device notification. */
++	dma_wmb();
+ 	val = upper_32_bits(header->handle);
+ 	vmw_write(man->dev_priv, SVGA_REG_COMMAND_HIGH, val);
+ 
+@@ -314,6 +316,8 @@ static int vmw_cmdbuf_header_submit(struct vmw_cmdbuf_header *header)
+ 	val |= header->cb_context & SVGA_CB_CONTEXT_MASK;
+ 	vmw_write(man->dev_priv, SVGA_REG_COMMAND_LOW, val);
+ 
++	/* The synchronous device-context result must be read after submission. */
++	dma_rmb();
+ 	return header->cb_header->status;
+ }
+ 
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_context.c b/drivers/gpu/drm/vmwgfx/vmwgfx_context.c
+index bd96f4d5e..a4c099abd 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_context.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_context.c
+@@ -114,6 +114,20 @@ static const struct vmw_res_func vmw_dx_context_func = {
+ 	.unbind = vmw_dx_context_unbind
+ };
+ 
++/* HVM creates resident DX contexts with DEFINE_CONTEXT. The EFI-only pixel
++ * test verified rendering with the CB's dxContext selector, while HVM rejects
++ * DX_BIND_CONTEXT. Do not pretend that an unsupported MOB restore succeeded:
++ * keep these contexts resident for their entire resource lifetime instead.
++ */
++static const struct vmw_res_func vmw_hvm_dx_context_func = {
++	.res_type = vmw_res_dx_context,
++	.needs_guest_memory = false,
++	.may_evict = false,
++	.type_name = "HVM resident dx contexts",
++	.create = vmw_dx_context_create,
++	.destroy = vmw_dx_context_destroy,
++};
++
+ /*
+  * Context management:
+  */
+@@ -185,13 +199,13 @@ static int vmw_gb_context_init(struct vmw_private *dev_priv,
+ 	int ret, i;
+ 	struct vmw_user_context *uctx =
+ 		container_of(res, struct vmw_user_context, res);
++	const struct vmw_res_func *func = dx ?
++		(dev_priv->hvm_mmio ? &vmw_hvm_dx_context_func : &vmw_dx_context_func) :
++		&vmw_gb_context_func;
+ 
+ 	res->guest_memory_size = (dx ? sizeof(SVGADXContextMobFormat) :
+ 				 sizeof(SVGAGBContextData));
+-	ret = vmw_resource_init(dev_priv, res, true,
+-				res_free,
+-				dx ? &vmw_dx_context_func :
+-				&vmw_gb_context_func);
++	ret = vmw_resource_init(dev_priv, res, true, res_free, func);
+ 	if (unlikely(ret != 0))
+ 		goto out_err;
+ 
+@@ -658,6 +672,10 @@ static int vmw_dx_context_destroy(struct vmw_resource *res)
+ 	if (likely(res->id == -1))
+ 		return 0;
+ 
++	/* Resident contexts have no MOB unbind callback to scrub their tables. */
++	if (res->func == &vmw_hvm_dx_context_func)
++		vmw_dx_context_scrub_cotables(res, false);
++
+ 	cmd = VMW_CMD_RESERVE(dev_priv, sizeof(*cmd));
+ 	if (unlikely(cmd == NULL))
+ 		return -ENOMEM;
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
+index 0f101aedb..0b10f41aa 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
+@@ -254,6 +254,8 @@ static int vmw_restrict_iommu;
+ static int vmw_force_coherent;
+ static int vmw_restrict_dma_mask;
+ static int vmw_assume_16bpp;
++static bool vmw_hvm_mmio;
++static bool vmw_hvm_trace;
+ 
+ static int vmw_probe(struct pci_dev *, const struct pci_device_id *);
+ static int vmwgfx_pm_notifier(struct notifier_block *nb, unsigned long val,
+@@ -267,6 +269,22 @@ MODULE_PARM_DESC(restrict_dma_mask, "Restrict DMA mask to 44 bits with IOMMU");
+ module_param_named(restrict_dma_mask, vmw_restrict_dma_mask, int, 0600);
+ MODULE_PARM_DESC(assume_16bpp, "Assume 16-bpp when filtering modes");
+ module_param_named(assume_16bpp, vmw_assume_16bpp, int, 0600);
++MODULE_PARM_DESC(hvm_mmio, "Experimental indexed MMIO for the isolated HVM guest");
++module_param_named(hvm_mmio, vmw_hvm_mmio, bool, 0400);
++MODULE_PARM_DESC(hvm_trace, "Bounded surface/view metadata diagnostics for HVM");
++module_param_named(hvm_trace, vmw_hvm_trace, bool, 0400);
++int vmw_hvm_display;
++MODULE_PARM_DESC(hvm_display, "HVM display unit: 0=auto, 1=legacy VRAM scanout, 2=screen object");
++module_param_named(hvm_display, vmw_hvm_display, int, 0400);
++int vmw_hvm_refresh = 60;
++MODULE_PARM_DESC(hvm_refresh, "HVM: refresh rate of the reported modes in Hz (default 60)");
++module_param_named(hvm_refresh, vmw_hvm_refresh, int, 0400);
++bool vmw_hvm_vblank = true;
++MODULE_PARM_DESC(hvm_vblank, "HVM: emulate vblank with a timer at the mode's refresh rate");
++module_param_named(hvm_vblank, vmw_hvm_vblank, bool, 0400);
++bool vmw_hvm_dumb_bo;
++MODULE_PARM_DESC(hvm_dumb_bo, "HVM: back dumb buffers with plain buffer objects (GMRFB blits) instead of surfaces");
++module_param_named(hvm_dumb_bo, vmw_hvm_dumb_bo, bool, 0400);
+ 
+ 
+ struct bitmap_name {
+@@ -422,7 +440,8 @@ static int vmw_device_init(struct vmw_private *dev_priv)
+ 
+ 	dev_priv->enable_state = vmw_read(dev_priv, SVGA_REG_ENABLE);
+ 	dev_priv->config_done_state = vmw_read(dev_priv, SVGA_REG_CONFIG_DONE);
+-	dev_priv->traces_state = vmw_read(dev_priv, SVGA_REG_TRACES);
++	if (!dev_priv->hvm_mmio)
++		dev_priv->traces_state = vmw_read(dev_priv, SVGA_REG_TRACES);
+ 
+ 	vmw_write(dev_priv, SVGA_REG_ENABLE, SVGA_REG_ENABLE_ENABLE |
+ 		  SVGA_REG_ENABLE_HIDE);
+@@ -430,7 +449,8 @@ static int vmw_device_init(struct vmw_private *dev_priv)
+ 	uses_fb_traces = !vmw_cmd_supported(dev_priv) &&
+ 			 (dev_priv->capabilities & SVGA_CAP_TRACES) != 0;
+ 
+-	vmw_write(dev_priv, SVGA_REG_TRACES, uses_fb_traces);
++	if (!dev_priv->hvm_mmio)
++		vmw_write(dev_priv, SVGA_REG_TRACES, uses_fb_traces);
+ 	dev_priv->fifo = vmw_fifo_create(dev_priv);
+ 	if (IS_ERR(dev_priv->fifo)) {
+ 		int err = PTR_ERR(dev_priv->fifo);
+@@ -452,9 +472,11 @@ static void vmw_device_fini(struct vmw_private *vmw)
+ 	/*
+ 	 * Legacy sync
+ 	 */
+-	vmw_write(vmw, SVGA_REG_SYNC, SVGA_SYNC_GENERIC);
+-	while (vmw_read(vmw, SVGA_REG_BUSY) != 0)
+-		;
++	if (!vmw->hvm_mmio) {
++		vmw_write(vmw, SVGA_REG_SYNC, SVGA_SYNC_GENERIC);
++		while (vmw_read(vmw, SVGA_REG_BUSY) != 0)
++			;
++	}
+ 
+ 	atomic_set(&vmw->last_read_seqno, vmw_fence_read(vmw));
+ 
+@@ -462,8 +484,8 @@ static void vmw_device_fini(struct vmw_private *vmw)
+ 		  vmw->config_done_state);
+ 	vmw_write(vmw, SVGA_REG_ENABLE,
+ 		  vmw->enable_state);
+-	vmw_write(vmw, SVGA_REG_TRACES,
+-		  vmw->traces_state);
++	if (!vmw->hvm_mmio)
++		vmw_write(vmw, SVGA_REG_TRACES, vmw->traces_state);
+ 
+ 	vmw_fifo_destroy(vmw);
+ }
+@@ -496,6 +518,11 @@ static int vmw_request_device_late(struct vmw_private *dev_priv)
+ 		if (ret) {
+ 			struct vmw_cmdbuf_man *man = dev_priv->cman;
+ 
++			if (dev_priv->hvm_mmio) {
++				if (dev_priv->has_mob)
++					vmw_otables_takedown(dev_priv);
++				return ret;
++			}
+ 			dev_priv->cman = NULL;
+ 			vmw_cmdbuf_man_destroy(man);
+ 		}
+@@ -516,7 +543,10 @@ static int vmw_request_device(struct vmw_private *dev_priv)
+ 	vmw_fence_fifo_up(dev_priv->fman);
+ 	dev_priv->cman = vmw_cmdbuf_man_create(dev_priv);
+ 	if (IS_ERR(dev_priv->cman)) {
++		ret = PTR_ERR(dev_priv->cman);
+ 		dev_priv->cman = NULL;
++		if (dev_priv->hvm_mmio)
++			goto out_no_mob;
+ 		dev_priv->sm_type = VMW_SM_LEGACY;
+ 	}
+ 
+@@ -540,9 +570,11 @@ static int vmw_request_device(struct vmw_private *dev_priv)
+ 		ttm_resource_manager_evict_all(&dev_priv->bdev, man);
+ 		vmw_otables_takedown(dev_priv);
+ 	}
+-	if (dev_priv->cman)
+-		vmw_cmdbuf_man_destroy(dev_priv->cman);
+ out_no_mob:
++	if (dev_priv->cman) {
++		vmw_cmdbuf_man_destroy(dev_priv->cman);
++		dev_priv->cman = NULL;
++	}
+ 	vmw_fence_fifo_down(dev_priv->fman);
+ 	vmw_device_fini(dev_priv);
+ 	return ret;
+@@ -720,6 +752,15 @@ static int vmw_setup_pci_resources(struct vmw_private *dev,
+ 		return ret;
+ 
+ 	dev->pci_id = pci_id;
++	if (vmw_hvm_mmio &&
++	    (pci_id != VMWGFX_PCI_ID_SVGA2 ||
++	     vmw_guest_rpc_enabled() ||
++	     !(pci_resource_flags(pdev, 0) & IORESOURCE_MEM) ||
++	     pci_resource_len(pdev, 0) != 16 ||
++	     pci_resource_len(pdev, 2) != 0x200000)) {
++		pci_release_regions(pdev);
++		return -ENODEV;
++	}
+ 	if (pci_id == VMWGFX_PCI_ID_SVGA3) {
+ 		rmmio_start = pci_resource_start(pdev, 0);
+ 		rmmio_size = pci_resource_len(pdev, 0);
+@@ -738,6 +779,22 @@ static int vmw_setup_pci_resources(struct vmw_private *dev,
+ 			return -ENOMEM;
+ 		}
+ 	} else if (pci_id == VMWGFX_PCI_ID_SVGA2) {
++		if (pci_resource_flags(pdev, 0) & IORESOURCE_MEM) {
++			if (!vmw_hvm_mmio) {
++				pci_release_regions(pdev);
++				return -ENODEV;
++			}
++			/* Explicit opt-in: validated only in the isolated HVM guest. */
++			dev->hvm_regs = devm_ioremap(dev->drm.dev,
++						   pci_resource_start(pdev, 0), 16);
++			if (!dev->hvm_regs) {
++				pci_release_regions(pdev);
++				return -ENOMEM;
++			}
++			dev->hvm_mmio = true;
++			dev->hvm_trace = vmw_hvm_trace;
++			drm_info(&dev->drm, "Experimental HVM indexed MMIO enabled\n");
++		}
+ 		dev->io_start = pci_resource_start(pdev, 0);
+ 		dev->vram_start = pci_resource_start(pdev, 1);
+ 		dev->vram_size = pci_resource_len(pdev, 1);
+@@ -868,6 +925,11 @@ static int vmw_driver_load(struct vmw_private *dev_priv, u32 pci_id)
+ 	dev_priv->assume_16bpp = !!vmw_assume_16bpp;
+ 
+ 	dev_priv->capabilities = vmw_read(dev_priv, SVGA_REG_CAPABILITIES);
++	if (dev_priv->hvm_mmio &&
++	    !(dev_priv->capabilities & SVGA_CAP_COMMAND_BUFFERS)) {
++		ret = -ENODEV;
++		goto out_err0;
++	}
+ 	vmw_print_bitmap(&dev_priv->drm, "Capabilities",
+ 			 dev_priv->capabilities,
+ 			 cap1_names, ARRAY_SIZE(cap1_names));
+@@ -958,6 +1020,16 @@ static int vmw_driver_load(struct vmw_private *dev_priv, u32 pci_id)
+ 		dev_priv->texture_max_height = 8192;
+ 		dev_priv->max_primary_mem = dev_priv->vram_size;
+ 	}
++	if (dev_priv->hvm_mmio) {
++		drm_info(&dev_priv->drm,
++			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%u\n",
++			 dev_priv->fb_max_width, dev_priv->fb_max_height,
++			 dev_priv->stdu_max_width, dev_priv->stdu_max_height,
++			 dev_priv->texture_max_width,
++			 dev_priv->texture_max_height,
++			 dev_priv->max_primary_mem);
++	}
++
+ 	drm_info(&dev_priv->drm,
+ 		 "Legacy memory limits: VRAM = %llu KiB, FIFO = %llu KiB, surface = %u KiB\n",
+ 		 (u64)dev_priv->vram_size / 1024,
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
+index 38bea8aba..e6fc26547 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
+@@ -466,11 +466,14 @@ struct vmw_private {
+ 	struct ttm_device bdev;
+ 
+ 	u32 pci_id;
++	bool hvm_mmio;
++	bool hvm_trace;
+ 	resource_size_t io_start;
+ 	resource_size_t vram_start;
+ 	resource_size_t vram_size;
+ 	resource_size_t max_primary_mem;
+ 	u32 __iomem *rmmio;
++	void __iomem *hvm_regs;
+ 	u32 *fifo_mem;
+ 	resource_size_t fifo_mem_size;
+ 	uint32_t fb_max_width;
+@@ -659,7 +662,14 @@ static inline bool vmw_is_svga_v3(const struct vmw_private *dev)
+ static inline void vmw_write(struct vmw_private *dev_priv,
+ 			     unsigned int offset, uint32_t value)
+ {
+-	if (vmw_is_svga_v3(dev_priv)) {
++	if (dev_priv->hvm_mmio) {
++		unsigned long flags;
++
++		spin_lock_irqsave(&dev_priv->hw_lock, flags);
++		iowrite32(offset, dev_priv->hvm_regs);
++		iowrite32(value, dev_priv->hvm_regs + 4);
++		spin_unlock_irqrestore(&dev_priv->hw_lock, flags);
++	} else if (vmw_is_svga_v3(dev_priv)) {
+ 		iowrite32(value, dev_priv->rmmio + offset);
+ 	} else {
+ 		spin_lock(&dev_priv->hw_lock);
+@@ -674,7 +684,14 @@ static inline uint32_t vmw_read(struct vmw_private *dev_priv,
+ {
+ 	u32 val;
+ 
+-	if (vmw_is_svga_v3(dev_priv)) {
++	if (dev_priv->hvm_mmio) {
++		unsigned long flags;
++
++		spin_lock_irqsave(&dev_priv->hw_lock, flags);
++		iowrite32(offset, dev_priv->hvm_regs);
++		val = ioread32(dev_priv->hvm_regs + 4);
++		spin_unlock_irqrestore(&dev_priv->hw_lock, flags);
++	} else if (vmw_is_svga_v3(dev_priv)) {
+ 		val = ioread32(dev_priv->rmmio + offset);
+ 	} else {
+ 		spin_lock(&dev_priv->hw_lock);
+@@ -1350,6 +1367,7 @@ int vmw_bo_cpu_blit(struct vmw_bo *dst,
+ 
+ /* Host messaging -vmwgfx_msg.c: */
+ void vmw_disable_backdoor(void);
++bool vmw_guest_rpc_enabled(void);
+ int vmw_host_get_guestinfo(const char *guest_info_param,
+ 			   char *buffer, size_t *length);
+ __printf(1, 2) int vmw_host_printf(const char *fmt, ...);
+@@ -1485,7 +1503,9 @@ static inline void vmw_fence_write(struct vmw_private *dev_priv,
+ static inline u32 vmw_irq_status_read(struct vmw_private *vmw)
+ {
+ 	u32 status;
+-	if (vmw_is_svga_v3(vmw))
++	if (vmw->hvm_mmio)
++		status = ioread32(vmw->hvm_regs + 12);
++	else if (vmw_is_svga_v3(vmw))
+ 		status = vmw_read(vmw, SVGA_REG_IRQ_STATUS);
+ 	else
+ 		status = inl(vmw->io_start + SVGA_IRQSTATUS_PORT);
+@@ -1495,7 +1515,10 @@ static inline u32 vmw_irq_status_read(struct vmw_private *vmw)
+ static inline void vmw_irq_status_write(struct vmw_private *vmw,
+ 					uint32 status)
+ {
+-	if (vmw_is_svga_v3(vmw))
++	if (vmw->hvm_mmio) {
++		/* HVM retains the readback flags; repeated IRQ delivery is tested. */
++		iowrite32(status, vmw->hvm_regs + 12);
++	} else if (vmw_is_svga_v3(vmw))
+ 		vmw_write(vmw, SVGA_REG_IRQ_STATUS, status);
+ 	else
+ 		outl(status, vmw->io_start + SVGA_IRQSTATUS_PORT);
+@@ -1521,4 +1544,9 @@ static inline bool vmw_shadertype_is_valid(enum vmw_sm_type shader_model,
+ 	return shader_type >= SVGA3D_SHADERTYPE_MIN && shader_type < max_allowed;
+ }
+ 
++extern int vmw_hvm_display;
++extern int vmw_hvm_refresh;
++extern bool vmw_hvm_vblank;
++extern bool vmw_hvm_dumb_bo;
++
+ #endif
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c b/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c
+index a9136a652..288ac698a 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c
+@@ -1896,12 +1896,31 @@ static int vmw_cmd_invalidate_gb_surface(struct vmw_private *dev_priv,
+ 					 struct vmw_sw_context *sw_context,
+ 					 SVGA3dCmdHeader *header)
+ {
++	static atomic_t hvm_trace_count = ATOMIC_INIT(0);
+ 	VMW_DECLARE_CMD_VAR(*cmd, SVGA3dCmdInvalidateGBSurface) =
+ 		container_of(header, typeof(*cmd), header);
++	struct vmw_resource *res;
++	int ret;
+ 
+-	return vmw_cmd_res_check(dev_priv, sw_context, vmw_res_surface,
+-				 VMW_RES_DIRTY_CLEAR, user_surface_converter,
+-				 &cmd->body.sid, NULL);
++	ret = vmw_cmd_res_check(dev_priv, sw_context, vmw_res_surface,
++				VMW_RES_DIRTY_CLEAR, user_surface_converter,
++				&cmd->body.sid, &res);
++	if (ret || !dev_priv->hvm_mmio)
++		return ret;
++	if (!(vmw_res_to_srf(res)->metadata.flags & SVGA3D_SURFACE_BIND_DEPTH_STENCIL))
++		return 0;
++
++	/* HVM's full-surface invalidate breaks subsequent depth-view creation.
++	 * Preserve validation, SID relocation and dirty bookkeeping, but upload
++	 * the now-undefined contents instead. Both wire bodies are a single SID.
++	 * An isolated 640x480 test reproduced the failure and verified this path
++	 * by clearing and reading back every pixel through two resource lifetimes.
++	 */
++	static_assert(sizeof(SVGA3dCmdInvalidateGBSurface) == sizeof(SVGA3dCmdUpdateGBSurface));
++	header->id = SVGA_3D_CMD_UPDATE_GB_SURFACE;
++	if (dev_priv->hvm_trace && atomic_inc_return(&hvm_trace_count) <= 32)
++		drm_info(&dev_priv->drm, "HVM depth discard translated to upload\n");
++	return 0;
+ }
+ 
+ /**
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
+index 1b407b61f..aea5ff330 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
+@@ -1179,11 +1179,18 @@ int vmw_kms_init(struct vmw_private *dev_priv)
+ 	drm_mode_create_suggested_offset_properties(dev);
+ 	vmw_kms_create_hotplug_mode_update_property(dev_priv);
+ 
+-	ret = vmw_kms_stdu_init_display(dev_priv);
+-	if (ret) {
++	if (dev_priv->hvm_mmio && vmw_hvm_display == 1) {
++		/* Oseasy scans out the legacy VRAM framebuffer only. */
++		ret = vmw_kms_ldu_init_display(dev_priv);
++	} else if (dev_priv->hvm_mmio && vmw_hvm_display == 2) {
+ 		ret = vmw_kms_sou_init_display(dev_priv);
+-		if (ret) /* Fallback */
+-			ret = vmw_kms_ldu_init_display(dev_priv);
++	} else {
++		ret = vmw_kms_stdu_init_display(dev_priv);
++		if (ret) {
++			ret = vmw_kms_sou_init_display(dev_priv);
++			if (ret) /* Fallback */
++				ret = vmw_kms_ldu_init_display(dev_priv);
++		}
+ 	}
+ 	BUILD_BUG_ON(ARRAY_SIZE(display_unit_names) != (vmw_du_max + 1));
+ 	drm_info(&dev_priv->drm, "%s display unit initialized\n",
+@@ -1218,9 +1225,22 @@ int vmw_kms_write_svga(struct vmw_private *vmw_priv,
+ 		vmw_fifo_mem_write(vmw_priv, SVGA_FIFO_PITCHLOCK, pitch);
+ 	vmw_write(vmw_priv, SVGA_REG_WIDTH, width);
+ 	vmw_write(vmw_priv, SVGA_REG_HEIGHT, height);
+-	if ((vmw_priv->capabilities & SVGA_CAP_8BIT_EMULATION) != 0)
++	if ((vmw_priv->capabilities & SVGA_CAP_8BIT_EMULATION) != 0 ||
++	    vmw_priv->hvm_mmio)
+ 		vmw_write(vmw_priv, SVGA_REG_BITS_PER_PIXEL, bpp);
+ 
++	if (vmw_priv->hvm_mmio) {
++		u32 host_depth = vmw_read(vmw_priv, SVGA_REG_DEPTH);
++		u32 host_bpl = vmw_read(vmw_priv, SVGA_REG_BYTES_PER_LINE);
++
++		/* The HVM device does not report SVGA_REG_DEPTH (reads 0). */
++		drm_info_once(&vmw_priv->drm,
++			      "HVM legacy scanout %ux%u bpp %u pitch %u (host depth %u, host bpl %u)\n",
++			      width, height, bpp, pitch, host_depth, host_bpl);
++		if (host_depth == 0 || host_depth == depth)
++			return 0;
++	}
++
+ 	if (vmw_read(vmw_priv, SVGA_REG_DEPTH) != depth) {
+ 		DRM_ERROR("Invalid depth %u for %u bpp, host expects %u\n",
+ 			  depth, bpp, vmw_read(vmw_priv, SVGA_REG_DEPTH));
+@@ -1352,6 +1372,11 @@ vmw_du_connector_detect(struct drm_connector *connector, bool force)
+ 	struct vmw_display_unit *du = vmw_connector_to_du(connector);
+ 
+ 	num_displays = vmw_read(dev_priv, SVGA_REG_NUM_DISPLAYS);
++	/* HVM's native view is a single virtual output, without VMware tools. */
++	if (dev_priv->hvm_mmio && !num_displays) {
++		drm_info_once(dev, "HVM reports no displays; exposing one native target\n");
++		num_displays = 1;
++	}
+ 
+ 	return ((vmw_connector_to_du(connector)->unit < num_displays &&
+ 		 du->pref_active) ?
+@@ -1376,6 +1401,11 @@ void vmw_guess_mode_timing(struct drm_display_mode *mode)
+ 	mode->vtotal = mode->vsync_end + 50;
+ 
+ 	mode->clock = (u32)mode->htotal * (u32)mode->vtotal / 100 * 6;
++	/* HVM: the host presents with a mailbox swapchain on a panel of up to
++	 * 120 Hz, so the refresh rate of the guest's modes is ours to choose. */
++	if (vmw_hvm_refresh > 0 && vmw_hvm_refresh != 60)
++		mode->clock = (u32)DIV_ROUND_UP_ULL((u64)mode->htotal * mode->vtotal *
++						    vmw_hvm_refresh, 1000);
+ }
+ 
+ 
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c b/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c
+index de7a504de..4f5adb0d6 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c
+@@ -205,19 +205,37 @@ static void vmw_takedown_otable_base(struct vmw_private *dev_priv,
+ 		return;
+ 
+ 	bo = &otable->page_table->pt_bo->tbo;
+-	cmd = VMW_CMD_RESERVE(dev_priv, sizeof(*cmd));
+-	if (unlikely(cmd == NULL))
+-		return;
++	if (dev_priv->hvm_mmio) {
++		struct {
++			SVGA3dCmdHeader header;
++			SVGA3dCmdSetOTableBase64 body;
++		} *cmd64;
++
++		/* HVM accepts the 64-bit setup form, not legacy command 1091. */
++		cmd64 = VMW_CMD_RESERVE(dev_priv, sizeof(*cmd64));
++		if (!cmd64)
++			return;
++		memset(cmd64, 0, sizeof(*cmd64));
++		cmd64->header.id = SVGA_3D_CMD_SET_OTABLE_BASE64;
++		cmd64->header.size = sizeof(cmd64->body);
++		cmd64->body.type = type;
++		cmd64->body.ptDepth = SVGA3D_MOBFMT_INVALID;
++		vmw_cmd_commit(dev_priv, sizeof(*cmd64));
++	} else {
++		cmd = VMW_CMD_RESERVE(dev_priv, sizeof(*cmd));
++		if (unlikely(cmd == NULL))
++			return;
+ 
+-	memset(cmd, 0, sizeof(*cmd));
+-	cmd->header.id = SVGA_3D_CMD_SET_OTABLE_BASE;
+-	cmd->header.size = sizeof(cmd->body);
+-	cmd->body.type = type;
+-	cmd->body.baseAddress = 0;
+-	cmd->body.sizeInBytes = 0;
+-	cmd->body.validSizeInBytes = 0;
+-	cmd->body.ptDepth = SVGA3D_MOBFMT_INVALID;
+-	vmw_cmd_commit(dev_priv, sizeof(*cmd));
++		memset(cmd, 0, sizeof(*cmd));
++		cmd->header.id = SVGA_3D_CMD_SET_OTABLE_BASE;
++		cmd->header.size = sizeof(cmd->body);
++		cmd->body.type = type;
++		cmd->body.baseAddress = 0;
++		cmd->body.sizeInBytes = 0;
++		cmd->body.validSizeInBytes = 0;
++		cmd->body.ptDepth = SVGA3D_MOBFMT_INVALID;
++		vmw_cmd_commit(dev_priv, sizeof(*cmd));
++	}
+ 
+ 	if (bo) {
+ 		int ret;
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c b/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c
+index fd77ab656..4281939fe 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c
+@@ -66,6 +66,13 @@
+ #define MAX_USER_MSG_LENGTH	PAGE_SIZE
+ 
+ static u32 vmw_msg_enabled = 1;
++module_param_named(msg_enabled, vmw_msg_enabled, uint, 0400);
++MODULE_PARM_DESC(msg_enabled, "Enable VMware-specific guest RPC and statistics");
++
++bool vmw_guest_rpc_enabled(void)
++{
++	return vmw_msg_enabled != 0;
++}
+ 
+ enum rpc_msg_type {
+ 	MSG_TYPE_OPEN,
+@@ -538,6 +545,8 @@ int vmw_msg_ioctl(struct drm_device *dev, void *data,
+ 	char *msg;
+ 	int length;
+ 
++	if (!vmw_msg_enabled)
++		return -EOPNOTSUPP;
+ 	msg = kmalloc(MAX_USER_MSG_LENGTH, GFP_KERNEL);
+ 	if (!msg) {
+ 		DRM_ERROR("Cannot allocate memory for log message.\n");
+@@ -760,6 +769,8 @@ int vmw_mksstat_get_kern_slot(pid_t pid, struct vmw_private *dev_priv)
+ 	const size_t base = (u32)hash_32(pid, MKSSTAT_CAPACITY_LOG2);
+ 	size_t i;
+ 
++	if (!vmw_msg_enabled)
++		return -EOPNOTSUPP;
+ 	for (i = 0; i < ARRAY_SIZE(dev_priv->mksstat_kern_pids); ++i) {
+ 		const size_t slot = (i + base) % ARRAY_SIZE(dev_priv->mksstat_kern_pids);
+ 
+@@ -832,6 +843,8 @@ int vmw_mksstat_remove_all(struct vmw_private *dev_priv)
+ 	int ret = 0;
+ 	size_t i;
+ 
++	if (!vmw_msg_enabled)
++		return 0;
+ 	/* Discard all PFN mappings with the hypervisor */
+ 	hypervisor_ppn_reset_all();
+ 
+@@ -956,6 +969,8 @@ int vmw_mksstat_add_ioctl(struct drm_device *dev, void *data,
+ 
+ 	arg->id = -1;
+ 
++	if (!vmw_msg_enabled)
++		return -EOPNOTSUPP;
+ 	if (!arg->stat || !arg->info || !arg->strs)
+ 		return -EINVAL;
+ 
+@@ -1099,6 +1114,8 @@ int vmw_mksstat_remove_ioctl(struct drm_device *dev, void *data,
+ 	const size_t slot = arg->id;
+ 	pid_t pgid, pid;
+ 
++	if (!vmw_msg_enabled)
++		return -EOPNOTSUPP;
+ 	if (slot >= ARRAY_SIZE(dev_priv->mksstat_user_pids))
+ 		return -EINVAL;
+ 
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_so.c b/drivers/gpu/drm/vmwgfx/vmwgfx_so.c
+index d199e718c..aa0d257df 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_so.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_so.c
+@@ -316,6 +316,7 @@ int vmw_view_add(struct vmw_cmdbuf_res_manager *man,
+ 		 size_t cmd_size,
+ 		 struct list_head *list)
+ {
++	static atomic_t hvm_trace_count = ATOMIC_INIT(0);
+ 	static const size_t vmw_view_define_sizes[] = {
+ 		[vmw_view_sr] = sizeof(SVGA3dCmdDXDefineShaderResourceView),
+ 		[vmw_view_rt] = sizeof(SVGA3dCmdDXDefineRenderTargetView),
+@@ -340,6 +341,26 @@ int vmw_view_add(struct vmw_cmdbuf_res_manager *man,
+ 		return -EINVAL;
+ 	}
+ 
++	if (dev_priv->hvm_trace && view_type == vmw_view_ds &&
++	    atomic_inc_return(&hvm_trace_count) <= 32) {
++		const SVGA3dCmdDXDefineDepthStencilView *ds =
++			(const void *)((const SVGA3dCmdHeader *)cmd + 1);
++		const struct vmw_surface_metadata *meta =
++			&vmw_res_to_srf(srf)->metadata;
++
++		drm_info(&dev_priv->drm,
++			 "HVM DS ctx=%d view=%u sid=%d format=%u dimension=%u mip=%u first=%u array=%u flags=%u\n",
++			 ctx->id, ds->depthStencilViewId, srf->id, ds->format,
++			 ds->resourceDimension, ds->mipSlice,
++			 ds->firstArraySlice, ds->arraySize, ds->flags);
++		drm_info(&dev_priv->drm,
++			 "HVM DS surface format=%u flags=%#llx size=%ux%ux%u mips=%u array=%u samples=%u\n",
++			 meta->format, (unsigned long long)meta->flags,
++			 meta->base_size.width, meta->base_size.height,
++			 meta->base_size.depth, meta->mip_levels[0],
++			 meta->array_size, meta->multisample_count);
++	}
++
+ 	size = offsetof(struct vmw_view, cmd) + cmd_size;
+ 
+ 	view = kmalloc(size, GFP_KERNEL);
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+index 4139837f4..4c486fe49 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+@@ -1696,6 +1696,18 @@ int vmw_kms_stdu_init_display(struct vmw_private *dev_priv)
+ 	if (!(dev_priv->capabilities & SVGA_CAP_GBOBJECTS))
+ 		return -ENOSYS;
+ 
++	/*
++	 * HVM advertises GB objects but reports no screen-target dimensions
++	 * and rejects DEFINE/BIND_GB_SCREENTARGET. Use the existing display
++	 * fallback, which independently checks Screen Object 2 and GMR support.
++	 * Keep GB objects and DX enabled for rendering.
++	 */
++	if (dev_priv->hvm_mmio &&
++	    (!dev_priv->stdu_max_width || !dev_priv->stdu_max_height)) {
++		drm_info(dev, "HVM has no screen targets; trying screen objects\n");
++		return -ENOSYS;
++	}
++
+ 	dev_priv->active_display_unit = vmw_du_screen_target;
+ 
+ 	for (i = 0; i < VMWGFX_NUM_DISPLAY_UNITS; ++i) {
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c b/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
+index bd0563741..82d3fc82e 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
+@@ -1118,6 +1118,7 @@ int vmw_surface_reference_ioctl(struct drm_device *dev, void *data,
+  */
+ static int vmw_gb_surface_create(struct vmw_resource *res)
+ {
++	static atomic_t hvm_trace_count = ATOMIC_INIT(0);
+ 	struct vmw_private *dev_priv = res->dev_priv;
+ 	struct vmw_surface *srf = vmw_res_to_srf(res);
+ 	struct vmw_surface_metadata *metadata = &srf->metadata;
+@@ -1155,7 +1156,12 @@ static int vmw_gb_surface_create(struct vmw_resource *res)
+ 		goto out_no_fifo;
+ 	}
+ 
+-	if (has_sm5_context(dev_priv) && metadata->array_size > 0) {
++	/* HVM rejects the v1/v2 encodings despite advertising the older caps.
++	 * The explicit HVM adapter uses the v4 wire layout, verified by an
++	 * isolated render/clear/readback test. This does not advertise SM5.
++	 */
++	if (dev_priv->hvm_mmio ||
++	    (has_sm5_context(dev_priv) && metadata->array_size > 0)) {
+ 		cmd_id = SVGA_3D_CMD_DEFINE_GB_SURFACE_V4;
+ 		cmd_len = sizeof(cmd4->body);
+ 		submit_len = sizeof(*cmd4);
+@@ -1183,7 +1189,8 @@ static int vmw_gb_surface_create(struct vmw_resource *res)
+ 		goto out_no_fifo;
+ 	}
+ 
+-	if (has_sm5_context(dev_priv) && metadata->array_size > 0) {
++	if (dev_priv->hvm_mmio ||
++	    (has_sm5_context(dev_priv) && metadata->array_size > 0)) {
+ 		cmd4->header.id = cmd_id;
+ 		cmd4->header.size = cmd_len;
+ 		cmd4->body.sid = srf->res.id;
+@@ -1241,6 +1248,21 @@ static int vmw_gb_surface_create(struct vmw_resource *res)
+ 		cmd->body.size.depth = metadata->base_size.depth;
+ 	}
+ 
++	if (dev_priv->hvm_trace &&
++	    atomic_inc_return(&hvm_trace_count) <= 64) {
++		drm_info(&dev_priv->drm,
++			 "HVM surface sid=%d cmd=%u format=%u flags=%#llx size=%ux%ux%u\n",
++			 res->id, cmd_id, metadata->format,
++			 (unsigned long long)metadata->flags,
++			 metadata->base_size.width, metadata->base_size.height,
++			 metadata->base_size.depth);
++		drm_info(&dev_priv->drm,
++			 "HVM surface sid=%d mips=%u array=%u samples=%u pattern=%u quality=%u filter=%u stride=%u\n",
++			 res->id, metadata->mip_levels[0], metadata->array_size,
++			 metadata->multisample_count, metadata->multisample_pattern,
++			 metadata->quality_level, metadata->autogen_filter,
++			 metadata->buffer_byte_stride);
++	}
+ 	vmw_cmd_commit(dev_priv, submit_len);
+ 
+ 	return 0;
+@@ -2278,7 +2300,8 @@ int vmw_dumb_create(struct drm_file *file_priv,
+ 	 * without 3d (i.e. gpu usage on the host) because then all the
+ 	 * contents is going to be rendered guest side.
+ 	 */
+-	if (!dev_priv->has_mob || !vmw_supports_3d(dev_priv)) {
++	if (!dev_priv->has_mob || !vmw_supports_3d(dev_priv) ||
++	    (dev_priv->hvm_mmio && vmw_hvm_dumb_bo)) {
+ 		ret = drm_mode_size_dumb(dev, args, 0, 0);
+ 		if (ret)
+ 			return ret;
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c b/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c
+index 3d0d5dfa8..70ae01d17 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c
+@@ -205,8 +205,12 @@ vmw_vkms_init(struct vmw_private *vmw)
+ 
+ 	vmw->vkms_enabled = false;
+ 
+-	ret = vmw_host_get_guestinfo(GUESTINFO_VBLANK, buffer, &buf_len);
+-	if (!ret && buf_len <= max_buf_len) {
++	/* HVM has no guestinfo channel: a module parameter asks for vblank. */
++	if (vmw->hvm_mmio && vmw_hvm_vblank) {
++		ret = drm_vblank_init(&vmw->drm, VMWGFX_NUM_DISPLAY_UNITS);
++		vmw->vkms_enabled = (ret == 0);
++	} else if (!(ret = vmw_host_get_guestinfo(GUESTINFO_VBLANK, buffer, &buf_len)) &&
++		   buf_len <= max_buf_len) {
+ 		buffer[buf_len] = '\0';
+ 
+ 		ret = kstrtobool(buffer, &vmw->vkms_enabled);

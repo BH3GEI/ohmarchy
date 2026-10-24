@@ -19,7 +19,7 @@ ssize_t msgrcv(int id, void *msg, size_t size, long type, int flags)
     if (flags & IPC_NOWAIT) {
         return real_msgrcv(id, msg, size, type, flags);
     }
-    long wait_ns = 50000;
+    long wait_ns = 50000, waited_ns = 0;
     for (;;) {
         ssize_t n = real_msgrcv(id, msg, size, type, flags | IPC_NOWAIT);
         if (n >= 0 || errno != ENOMSG) {
@@ -29,8 +29,10 @@ ssize_t msgrcv(int id, void *msg, size_t size, long type, int flags)
         if (nanosleep(&ts, NULL) < 0 && errno == EINTR) {
             return -1;
         }
-        if (wait_ns < 1000000) {
-            wait_ns *= 2;
+        waited_ns += wait_ns;
+        long cap = waited_ns < 1000000000L ? 1000000 : 20000000;
+        if (wait_ns < cap) {
+            wait_ns = wait_ns * 2 > cap ? cap : wait_ns * 2;
         }
     }
 }

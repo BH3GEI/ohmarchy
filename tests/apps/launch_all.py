@@ -259,8 +259,15 @@ def run_one(app_id, name, cmd):
             rec["frame"] = "n/a"
     clients = [c for c in hypr("clients") or [] if c["address"] not in base_clients]
     if found and found[0] == "panel":
-        sh("omarchy-menu close; omarchy-shell shell hide omarchy.speedtest; omarchy-shell shell hide omarchy.disk-speedtest", 5)
-    rec["leftovers"] = close(clients, own_pids(marker))
+        # the Omarchy shell names a panel's layer omarchy-NAME; it hides as omarchy.NAME
+        sh("omarchy-menu close", 5)
+        for ns in sorted({l[0] for l in layers() - base_layers}):
+            if ns.startswith("omarchy-"):
+                sh(f"omarchy-shell -q shell hide omarchy.{ns[len('omarchy-'):]}", 5)
+        time.sleep(0.5)
+        if any(l[0] not in ("", "hyprpicker") for l in layers() - base_layers):
+            rec["leftovers"] += 1
+    rec["leftovers"] += close(clients, own_pids(marker))
     try:
         rec["log"] = "".join(open(log, errors="ignore").readlines()[-6:])[-600:]
     except OSError:

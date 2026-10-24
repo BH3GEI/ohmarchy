@@ -5,7 +5,12 @@
 //
 // Latency: a ring of at most kMaxMs between the socket and the renderer; when the
 // session runs ahead of the speaker clock the oldest audio is dropped back to
-// kTargetMs. The renderer runs only while there is sound: after kIdleMs of silence
+// kTargetMs. The session sends in bursts (one PipeWire quantum at a time), so the
+// renderer starts reading only once kStartMs is queued, and again after running dry.
+//
+// For latency tests the first sound after kOnsetQuietMs of silence is timed: when
+// the speaker plays it (the renderer's timestamp), on CLOCK_MONOTONIC, which the
+// Linux session shares; the log line "onset played at" carries it. The renderer runs only while there is sound: after kIdleMs of silence
 // it stops, so an idle desktop holds no audio focus.
 #include <hilog/log.h>
 #include <ohaudio/native_audiorenderer.h>
@@ -18,6 +23,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -41,7 +47,7 @@ const char *kHost = "127.0.0.1";
 const int kPort = 4714;
 const int kRate = 48000;
 const int kFrameBytes = 4;  // S16LE stereo
-const int kTargetMs = 30, kMaxMs = 80, kIdleMs = 2000;
+const int kStartMs = 20, kTargetMs = 30, kMaxMs = 80, kIdleMs = 2000;
 
 size_t MsBytes(int ms) { return static_cast<size_t>(kRate) * ms / 1000 * kFrameBytes; }
 
@@ -49,7 +55,12 @@ size_t MsBytes(int ms) { return static_cast<size_t>(kRate) * ms / 1000 * kFrameB
 std::mutex g_mu;
 std::vector<uint8_t> g_ring(MsBytes(500));
 size_t g_head = 0, g_level = 0;  // read position, bytes queued
+bool g_primed = false;            // kStartMs queued since the ring last ran dry
 uint64_t g_underruns = 0, g_droppedBytes = 0;
+const int kOnsetQuietMs = 300;
+int64_t g_fedFrames = 0;      // frames handed to the renderer, silence included
+int64_t g_quietFrames = 0;    // trailing silent frames fed
+int64_t g_onsetFrame = -1;    // renderer position of the pending onset
 
 void Push(const uint8_t *p, size_t n)
 {
@@ -72,6 +83,13 @@ OH_AudioData_Callback_Result OnWrite(OH_AudioRenderer *, void *, void *data, int
 {
     auto *out = static_cast<uint8_t *>(data);
     std::lock_guard<std::mutex> lk(g_mu);
+    if (!g_primed && g_level < MsBytes(kStartMs)) {
+        memset(out, 0, size);
+        g_fedFrames += size / kFrameBytes;
+        g_quietFrames += size / kFrameBytes;
+        return AUDIO_DATA_CALLBACK_RESULT_VALID;
+    }
+    g_primed = true;
     size_t n = g_level < static_cast<size_t>(size) ? g_level : static_cast<size_t>(size);
     size_t cap = g_ring.size();
     for (size_t i = 0; i < n; i++) {
@@ -79,9 +97,23 @@ OH_AudioData_Callback_Result OnWrite(OH_AudioRenderer *, void *, void *data, int
     }
     g_head = (g_head + n) % cap;
     g_level -= n;
+    auto *s16 = reinterpret_cast<const int16_t *>(out);
+    for (size_t i = 0; i < n / 2; i++) {
+        if (s16[i] > 64 || s16[i] < -64) {
+            if (g_quietFrames >= static_cast<int64_t>(kRate) * kOnsetQuietMs / 1000 && g_onsetFrame < 0) {
+                g_onsetFrame = g_fedFrames + static_cast<int64_t>(i / 2);
+            }
+            g_quietFrames = 0;
+        } else if (i % 2 == 1) {
+            g_quietFrames++;
+        }
+    }
+    g_fedFrames += size / kFrameBytes;
     if (n < static_cast<size_t>(size)) {
+        g_quietFrames += (size - n) / kFrameBytes;
         memset(out + n, 0, size - n);
         g_underruns++;
+        g_primed = false;
     }
     return AUDIO_DATA_CALLBACK_RESULT_VALID;
 }
@@ -125,6 +157,24 @@ double RendererQueuedMs(OH_AudioRenderer *r)
     return (written - played) * 1000.0 / kRate;
 }
 
+void CheckOnset(OH_AudioRenderer *r)
+{
+    int64_t onset;
+    {
+        std::lock_guard<std::mutex> lk(g_mu);
+        onset = g_onsetFrame;
+    }
+    int64_t pos = 0, ts = 0;
+    if (onset < 0 || OH_AudioRenderer_GetTimestamp(r, CLOCK_MONOTONIC, &pos, &ts) != AUDIOSTREAM_SUCCESS ||
+        pos < onset) {
+        return;
+    }
+    int64_t played = ts - (pos - onset) * 1000000000LL / kRate;
+    LOGI("onset played at %{public}lld ns (CLOCK_MONOTONIC)", static_cast<long long>(played));
+    std::lock_guard<std::mutex> lk(g_mu);
+    g_onsetFrame = -1;
+}
+
 bool Silent(const uint8_t *p, size_t n)
 {
     for (size_t i = 0; i < n; i++) {
@@ -146,9 +196,13 @@ int Connect()
         close(fd);
         return -1;
     }
-    int one = 1, rcv = static_cast<int>(MsBytes(kTargetMs));
+    // No small SO_RCVBUF: on the host's network stack that stalled the connection
+    // (receiver waiting, sender's queue full). The ring bounds the latency instead.
+    // The session always streams (silence too): two quiet seconds mean it is stuck.
+    int one = 1;
+    timeval tv{2, 0};
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcv, sizeof(rcv));
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     return fd;
 }
 
@@ -169,6 +223,9 @@ void AudioLoop()
         for (;;) {
             ssize_t n = recv(fd, buf.data() + partial, buf.size() - partial, 0);
             if (n <= 0) {
+                if (n < 0) {
+                    LOGE("session audio: %{public}s", strerror(errno));
+                }
                 break;
             }
             size_t have = partial + static_cast<size_t>(n);
@@ -177,6 +234,12 @@ void AudioLoop()
             if (!Silent(buf.data(), whole)) {
                 lastSound = now;
                 if (r == nullptr) {
+                    {
+                        std::lock_guard<std::mutex> lk(g_mu);
+                        g_fedFrames = 0;
+                        g_quietFrames = static_cast<int64_t>(kRate) * kOnsetQuietMs / 1000;
+                        g_onsetFrame = -1;
+                    }
                     r = NewRenderer();
                     if (r == nullptr || OH_AudioRenderer_Start(r) != AUDIOSTREAM_SUCCESS) {
                         LOGE("audio renderer did not start");
@@ -192,12 +255,14 @@ void AudioLoop()
             }
             if (r != nullptr) {
                 Push(buf.data(), whole);
+                CheckOnset(r);
                 if (now - lastSound > std::chrono::milliseconds(kIdleMs)) {
                     OH_AudioRenderer_Stop(r);
                     OH_AudioRenderer_Release(r);
                     r = nullptr;
                     std::lock_guard<std::mutex> lk(g_mu);
                     g_level = 0;
+                    g_primed = false;
                     LOGI("idle, renderer stopped");
                 } else if (now - lastLog > std::chrono::seconds(5)) {
                     lastLog = now;
@@ -225,6 +290,7 @@ void AudioLoop()
         {
             std::lock_guard<std::mutex> lk(g_mu);
             g_level = 0;
+            g_primed = false;
         }
         close(fd);
         LOGE("session audio disconnected");

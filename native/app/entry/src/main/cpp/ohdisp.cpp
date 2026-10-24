@@ -21,6 +21,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <ctime>
 #include <cstddef>
 #include <map>
 #include <cstring>
@@ -502,6 +503,17 @@ void FrameLoop()
             g_fbH = static_cast<int>(hdr.h);
             Blit(b.map, static_cast<int>(hdr.w), static_cast<int>(hdr.h), static_cast<int>(hdr.stride),
                  rgb ? NATIVEBUFFER_PIXEL_FMT_RGBA_8888 : NATIVEBUFFER_PIXEL_FMT_BGRA_8888, false);
+            // A/V sync tests (tests/audio/avsync.sh) time a white flash in the middle
+            // of the screen, on CLOCK_MONOTONIC like the sound onsets (audio.cpp).
+            const uint8_t *mid = b.map + static_cast<size_t>(hdr.h / 2) * hdr.stride + (hdr.w / 2) * 4;
+            bool bright = mid[0] > 200 && mid[1] > 200 && mid[2] > 200;
+            static bool wasBright = false;
+            if (bright && !wasBright) {
+                timespec now{};
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                LOGI("flash shown at %{public}lld ns", static_cast<long long>(now.tv_sec * 1000000000LL + now.tv_nsec));
+            }
+            wasBright = bright;
         }
         for (auto &[id, b] : bufs) {
             if (b.map != nullptr) {

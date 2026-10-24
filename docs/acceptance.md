@@ -12,11 +12,11 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Area | Criterion | Test | Status |
 |---|---|---|---|
-| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 5 of 6 core operations pass; audio unsupported (no sound device) |
+| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass. Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | | pending |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
-| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | | pending |
+| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | | pending; open items listed under E below |
 | F. Regression | `tests/run-all.sh`, one table | | pending |
 | G. Other devices | | | to do: only one machine so far |
 
@@ -95,9 +95,56 @@ Results, 2026-10-24 (host GPU path):
 | file-nvim | write the text from Neovim, read it back | pass, 0.1 s |
 | clipboard | `wl-copy` in one client, `wl-paste` in another | pass, 0.5 s |
 | chinese-input | type `nihao` + space through fcitx5 pinyin into foot, expect 你好 | pass, 4.9 s |
-| audio | play a tone with pw-play, paplay, then aplay | unsupported: no `/dev/snd`, no sound server; needs a bridge to HarmonyOS audio |
+| audio | play a tone with pw-play, paplay, then aplay | pass, 0.6 s (PipeWire to the display app, below) |
 | file-chooser | ask the desktop portal for an Open File dialog | pass, xdg-desktop-portal-gtk dialog in 1.3 s |
+
+Re-run 16:55 with sound and the system D-Bus: all 6 pass.
 
 LibreOffice's text export starts with a byte-order mark; the test reads it with
 `utf-8-sig`. A Hyprland that has had no input yet gives a new window no keyboard
 focus; the HarmonyOS app always moves the pointer first, so the test does too.
+
+### A3. Sound
+
+How it works: PipeWire, its Pulse server and WirePlumber start with the desktop
+(`ohmarchy-desktop`). Everything plays into one sink, "HarmonyOS"
+(`native/desktop/ohmarchy-audio.conf`); PipeWire's protocol-simple module streams
+that sink's monitor (48 kHz, S16LE, stereo, 240-frame quantum) on
+127.0.0.1:4714 to the display app, which plays it with OHAudio
+(`native/app/entry/src/main/cpp/audio.cpp`): a ring of 20-80 ms, then an
+`OH_AudioRenderer` in fast mode (5 ms callbacks of 240 frames; the system confirmed
+fast mode). The renderer only runs while there is sound, so an idle desktop holds
+no audio focus. HarmonyOS lists the stream as `com.ohmarchy.display` on
+FastRendererSink (speaker), 48 kHz, no resampling.
+
+`tests/audio/run.sh` times each beep from the moment it is handed to the Pulse
+server to the moment the speaker plays it (the app reads the renderer's
+timestamp; both sides use CLOCK_MONOTONIC). `tests/audio/avsync.sh` plays a video
+with a white flash and a beep every second in mpv and compares when each reaches
+the app. Results 2026-10-24, load around 21 (kernel build), desktop on the host
+GPU path:
+
+| | Median | Max | Target |
+|---|---|---|---|
+| First sound after silence (`paplay`, renderer starting) | 89-104 ms | 140 ms | <= 200 ms |
+| Sound during playback (paced stream, 20 ms client buffer) | 75-80 ms | 87 ms | <= 200 ms |
+| Underruns during a 10 s tone | 0 | | |
+| mpv: sound minus picture | -37 ms (sound first) | -87 .. +24 ms | within 100 ms |
+
+The same latency held after `omarchy desktop restart` (the app reconnects by
+itself). A/V: the picture is the slow side here (mpv on the CPU, the host GPU path,
+load 21; 8 of 10 flashes made it, the rest were dropped frames); one more
+HarmonyOS vsync (about 8 ms) is not counted on the picture side. To re-measure on
+the in-app GPU path when the machine is idle.
+
+Not verified yet: actually hearing it. HarmonyOS's media volume was 0 during the
+tests and no one was at the machine; the stream ran on the speaker sink. Microphone
+input is not done.
+
+## E. Security: open items
+
+- Sound: protocol-simple listens on 127.0.0.1:4714 in the host's network
+  namespace, so any process on the HarmonyOS host can connect and receive the
+  session's sound output (not send to it). To do: an abstract Unix socket relayed
+  like the GPU's vtest-broker, or a peer-uid check. If the port is taken, PipeWire
+  fails to load the module rather than picking another port.

@@ -1,5 +1,5 @@
 diff --git a/vtest/vtest_renderer.c b/vtest/vtest_renderer.c
-index a4450f6..15d9171 100644
+index a4450f6..50df7d4 100644
 --- a/vtest/vtest_renderer.c
 +++ b/vtest/vtest_renderer.c
 @@ -36,6 +36,7 @@
@@ -25,7 +25,15 @@ index a4450f6..15d9171 100644
  struct vtest_context {
     struct list_head head;
  
-@@ -470,6 +479,9 @@ static void vtest_free_context(struct vtest_context *ctx, bool cleanup);
+@@ -121,6 +130,7 @@ struct vtest_context {
+    unsigned protocol_version;
+    unsigned capset_id;
+    bool context_initialized;
++   bool remote; /* over TCP: protocol version 0 */
+ 
+    struct util_hash_table *resource_table;
+    struct util_hash_table *sync_table;
+@@ -470,6 +480,9 @@ static void vtest_free_context(struct vtest_context *ctx, bool cleanup);
  
  void vtest_cleanup_renderer(void)
  {
@@ -35,7 +43,24 @@ index a4450f6..15d9171 100644
     if (renderer.next_context_id > 1) {
        struct vtest_context *ctx, *tmp;
  
-@@ -649,6 +661,9 @@ void vtest_destroy_context(struct vtest_context *ctx)
+@@ -563,6 +576,7 @@ static struct vtest_context *vtest_new_context(struct vtest_input *input,
+    ctx->protocol_version = 0;
+    ctx->capset_id = 0;
+    ctx->context_initialized = false;
++   ctx->remote = false;
+ 
+    return ctx;
+ }
+@@ -626,7 +640,7 @@ int vtest_lazy_init_context(struct vtest_context *ctx)
+    if (ctx->context_initialized)
+       return 0;
+ 
+-   if (renderer.multi_clients && ctx->protocol_version < 3)
++   if (renderer.multi_clients && ctx->protocol_version < 3 && !ctx->remote)
+       return report_failed_call("protocol version too low", -EINVAL);
+ 
+    if (ctx->capset_id) {
+@@ -649,6 +663,9 @@ void vtest_destroy_context(struct vtest_context *ctx)
     struct vtest_sync_wait *wait, *wait_tmp;
     uint32_t i;
  
@@ -45,7 +70,27 @@ index a4450f6..15d9171 100644
     if (renderer.current_context == ctx) {
        renderer.current_context = NULL;
     }
-@@ -1258,6 +1273,291 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
+@@ -744,7 +761,18 @@ int vtest_protocol_version(UNUSED uint32_t length_dw)
+       version = 0;
+    }
+ 
+-   if (renderer.multi_clients && version < 3)
++   /* A client over TCP (a VM, through vtest-broker --tcp) cannot be sent the shm
++    * fds of versions 2 and 3: version 0, transfers copied through the socket. It
++    * gets a plain context, so the multi-client rule (version 3) does not apply. */
++   struct sockaddr_storage peer;
++   socklen_t peer_len = sizeof(peer);
++   bool remote = getsockname(ctx->out_fd, (struct sockaddr *)&peer, &peer_len) == 0 &&
++                 peer.ss_family != AF_UNIX;
++   if (remote)
++      version = 0;
++   ctx->remote = remote;
++
++   if (renderer.multi_clients && version < 3 && !remote)
+       return report_failed_call("protocol version too low", -EINVAL);
+ 
+    ctx->protocol_version = version;
+@@ -1258,6 +1286,291 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
     return 0;
  }
  
@@ -337,7 +382,7 @@ index a4450f6..15d9171 100644
  int vtest_submit_cmd(uint32_t length_dw)
  {
     struct vtest_context *ctx = vtest_get_current_context();
-@@ -1279,7 +1579,30 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1279,7 +1592,30 @@ int vtest_submit_cmd(uint32_t length_dw)
        return -1;
     }
  
@@ -368,7 +413,7 @@ index a4450f6..15d9171 100644
  
     free(cbuf);
     if (ret)
-@@ -1289,14 +1612,6 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1289,14 +1625,6 @@ int vtest_submit_cmd(uint32_t length_dw)
     return 0;
  }
  
@@ -383,7 +428,7 @@ index a4450f6..15d9171 100644
  
  static int vtest_transfer_decode_args(struct vtest_context *ctx,
                                        struct vtest_transfer_args *args,
-@@ -1384,6 +1699,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+@@ -1384,6 +1712,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
        }
     }
  
@@ -400,7 +445,7 @@ index a4450f6..15d9171 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_read_iov(res->res_id,
                                               ctx->ctx_id,
-@@ -1440,6 +1765,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
+@@ -1440,6 +1778,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
        }
     }
  
@@ -411,7 +456,7 @@ index a4450f6..15d9171 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_write_iov(res->res_id,
                                                ctx->ctx_id,
-@@ -1604,6 +1933,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
+@@ -1604,6 +1946,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
     /*  handle = bw_buf[VCMD_BUSY_WAIT_HANDLE]; unused as of now */
     flags = bw_buf[VCMD_BUSY_WAIT_FLAGS];
  

@@ -12,11 +12,18 @@
 // "the app" receives the desktop's GPU connections.
 // --user UID:GID: after binding, the broker drops to that user; a root parent
 // stays only to run --on-app CMD when the unprivileged child asks over a pipe.
-//   vtest-broker [--on-app CMD] [--app-uid UID] [--user UID:GID] <socket path> [name]
+// --tcp ADDR:PORT (off by default): also take vtest clients over TCP, from a VM on
+// the host (its Mesa virpipe reaches it through socat), only from --tcp-allow
+// NET/BITS (default 172.16.100.0/24, 鸿融's network). The app's vtest serves them
+// with protocol version 0: no shm fds can cross TCP, transfers are copied.
+//   vtest-broker [--on-app CMD] [--app-uid UID] [--user UID:GID]
+//                [--tcp ADDR:PORT [--tcp-allow NET/BITS]] <socket path> [name]
 //   (default name: ohmarchy-vtest)
 #define _GNU_SOURCE
 #include <errno.h>
+#include <arpa/inet.h>
 #include <grp.h>
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <poll.h>
 #include <stddef.h>
@@ -52,6 +59,25 @@ static int listen_on(const char *path, const char *abstract)
     }
     if (!abstract)
         chmod(path, 0666);
+    return fd;
+}
+
+static int listen_tcp(const char *spec)
+{
+    char host[64];
+    unsigned port;
+    struct sockaddr_in a = {.sin_family = AF_INET};
+    if (sscanf(spec, "%63[^:]:%u", host, &port) != 2 || inet_pton(AF_INET, host, &a.sin_addr) != 1) {
+        fprintf(stderr, "--tcp wants ADDR:PORT\n");
+        return -1;
+    }
+    a.sin_port = htons(port);
+    int one = 1, fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    if (fd < 0 || bind(fd, (struct sockaddr *)&a, sizeof(a)) < 0 || listen(fd, 8) < 0) {
+        perror(spec);
+        return -1;
+    }
     return fd;
 }
 
@@ -96,7 +122,7 @@ static void hook_runner(int pipe_rd, const char *cmd)
 
 int main(int argc, char **argv)
 {
-    const char *on_app = NULL, *user = NULL;
+    const char *on_app = NULL, *user = NULL, *tcp = NULL, *tcp_allow = "172.16.100.0/24";
     long app_uid = -1;
     time_t last_hook = 0;
     int hook_pipe = -1;
@@ -107,6 +133,10 @@ int main(int argc, char **argv)
             app_uid = strtol(argv[2], NULL, 10);
         else if (strcmp(argv[1], "--user") == 0)
             user = argv[2];
+        else if (strcmp(argv[1], "--tcp") == 0)
+            tcp = argv[2];
+        else if (strcmp(argv[1], "--tcp-allow") == 0)
+            tcp_allow = argv[2];
         else
             break;
         argv += 2;
@@ -122,6 +152,20 @@ int main(int argc, char **argv)
     int apps = listen_on(NULL, argc > 2 ? argv[2] : "ohmarchy-vtest");
     if (clients < 0 || apps < 0)
         return 1;
+    int remote = -1;
+    struct in_addr net = {0};
+    unsigned bits = 32;
+    if (tcp) {
+        char n[32];
+        if (sscanf(tcp_allow, "%31[^/]/%u", n, &bits) != 2 || inet_pton(AF_INET, n, &net) != 1 || bits > 32) {
+            fprintf(stderr, "--tcp-allow wants NET/BITS\n");
+            return 2;
+        }
+        if ((remote = listen_tcp(tcp)) < 0)
+            return 1;
+        printf("vtest clients over TCP on %s from %s\n", tcp, tcp_allow);
+    }
+    uint32_t mask = bits ? htonl(~0u << (32 - bits)) : 0;
     if (user) {
         unsigned uid, gid;
         int fds[2];
@@ -134,6 +178,8 @@ int main(int argc, char **argv)
             close(fds[1]);
             close(clients);
             close(apps);
+            if (remote >= 0)
+                close(remote);
             hook_runner(fds[0], on_app ? on_app : "true");
             return 0;
         }
@@ -147,8 +193,8 @@ int main(int argc, char **argv)
     }
     int app = -1, pending[MAX_PENDING], npending = 0;
     for (;;) {
-        struct pollfd p[3] = {{clients, POLLIN, 0}, {apps, POLLIN, 0}, {app, POLLIN, 0}};
-        if (poll(p, app >= 0 ? 3 : 2, -1) < 0) {
+        struct pollfd p[4] = {{clients, POLLIN, 0}, {apps, POLLIN, 0}, {remote, POLLIN, 0}, {app, POLLIN, 0}};
+        if (poll(p, app >= 0 ? 4 : 3, -1) < 0) {
             if (errno == EINTR)
                 continue;
             perror("poll");
@@ -178,12 +224,30 @@ int main(int argc, char **argv)
                 }
             }
         }
-        if (app >= 0 && (p[2].revents & (POLLIN | POLLHUP | POLLERR))) {
+        if (app >= 0 && (p[3].revents & (POLLIN | POLLHUP | POLLERR))) {
             char b;
             if (recv(app, &b, 1, MSG_DONTWAIT) <= 0) {
                 close(app);
                 app = -1;
                 printf("app gone\n");
+            }
+        }
+        if (p[2].revents & POLLIN) { /* a VM: only from the allowed network */
+            struct sockaddr_in from;
+            socklen_t fl = sizeof(from);
+            int fd = accept4(remote, (struct sockaddr *)&from, &fl, SOCK_CLOEXEC);
+            if (fd >= 0 && (from.sin_addr.s_addr & mask) != (net.s_addr & mask)) {
+                printf("refused TCP client %s\n", inet_ntoa(from.sin_addr));
+                close(fd);
+            } else if (fd >= 0) {
+                int one = 1;
+                setsockopt(fd, IPPROTO_TCP, 1 /* TCP_NODELAY */, &one, sizeof(one));
+                if (npending == MAX_PENDING) {
+                    close(fd);
+                } else {
+                    pending[npending++] = fd;
+                    printf("TCP client %s queued\n", inet_ntoa(from.sin_addr));
+                }
             }
         }
         if (p[0].revents & POLLIN) {

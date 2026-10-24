@@ -692,11 +692,10 @@ Log: [`oseasy/runs/2026-10-25-pollfix/slot.log`](../oseasy/runs/2026-10-25-pollf
 - Reinstall 142 s, Hyprland 7 s after the reset.
 - **Traced sessions still stop** after about 160 commits (9 s), in all three
   diagnostic stages, exactly as before the fix.
-- **The plain session (no `AQ_TRACE`/`HYPRLAND_TRACE`) runs**: glmark2-es2-wayland
-  completed with **score 1083** on `SVGA3D; build: RELEASE; LLVM;`. A Wayland
-  client that swaps with interval 1 cannot finish without Hyprland's frame
-  callbacks, so the compositor kept presenting. Before the fix (run 5) the plain
-  session stopped too. Not yet confirmed with counted frames (below).
+- glmark2-es2-wayland completed with score 1083 on `SVGA3D; build: RELEASE; LLVM;`.
+  **Correction (run 8): this does not show that Hyprland presents.** glmark2
+  swaps with interval 0 by default, so it never waits for Hyprland's frame
+  callbacks; and see run 8 for what actually happens to client buffers.
 - **Warm reboots 2 and 3**: `reboot: Restarting system`, Hyprland back in 21 s
   each. With run 5's: **3 of 3 warm reboots OK**.
 - **The frame counts of this run are not valid.** After the reset the Oseasy
@@ -709,6 +708,43 @@ Log: [`oseasy/runs/2026-10-25-pollfix/slot.log`](../oseasy/runs/2026-10-25-pollf
 
 - Launch times: Omarchy's image has neither alacritty nor ghostty (its terminal
   is something else), and `bc` is missing; to redo with the right app list.
+
+### Eighth run: the kernel side works; Hyprland rejects every GPU client buffer (11:20-, 2026-10-25)
+
+Logs: [`oseasy/runs/2026-10-25-pollfix/slot9-measure.log`](../oseasy/runs/2026-10-25-pollfix/slot9-measure.log).
+Reinstall 131 s, Hyprland 7 s after the reset. The VM console has to be brought to
+the front by hand: after the reset Oseasy shows its "正在安装 Windows 11…" window,
+and the console window starts with its intro carousel (tap 收起介绍).
+
+- **The fence/flip path is fine now.** With `drm.debug` and gdb on the running
+  Hyprland: every atomic commit gets its page-flip event 2-4 ms later; vmwgfx
+  polls fences every 1 ms (`HVM: polling fences every 1000 us`); the timer
+  vblank runs at 120 Hz. (The device does raise interrupts after all, 890 by
+  then; the earlier "0 in 2 s" windows were idle ones.)
+- **But Hyprland only commits every 600 ms**: nothing is damaged except the
+  cursor and the bar's clock. es2gears never draws a frame: it dies on
+  `wl_display.error: invalid arguments for wl_surface.attach`, because
+  Hyprland answered its `zwp_linux_buffer_params.create_immed` (XR24, implicit
+  modifier, which is exactly what Hyprland advertises) with `failed`.
+- **Why:** before accepting a client dma-buf, Hyprland 0.56 checks each plane
+  with `drmPrimeFDToHandle()` and `drmCloseBufferHandle()` on its DRM fd. For a
+  surface's dma-buf vmwgfx returns a TTM object handle and takes a TTM
+  reference; `DRM_IOCTL_GEM_CLOSE` does not know TTM handles and returns
+  `EINVAL` (reproduced with [`oseasy/guest/prime-close.c`](../oseasy/guest/prime-close.c)).
+  The import itself works, across processes and devices
+  ([`oseasy/guest/dmabuf-import.c`](../oseasy/guest/dmabuf-import.c),
+  [`oseasy/guest/egl-devices.c`](../oseasy/guest/egl-devices.c)). So every
+  GPU-rendered client is refused (es2gears; nautilus and obsidian never mapped a
+  window), and aquamarine's `drmCloseBufferHandle failed` lines are the same thing.
+- **Fix:** vmwgfx-oseasy's ioctl wrapper turns a failed `GEM_CLOSE` on a TTM
+  handle into the matching `ttm_ref_object_base_unref()`. Package sha256
+  `b4fec8c5377332174159e2d57ca1adc07ff1cf0a5349846a736586f634b8761d`, install ISO
+  `e58b9ffb0e0779576a1e0bb75522b4ef806e80788e50cce38acbd942ebe2f5d6`.
+- **Counting the VM's frames:** on the host they are `NativeWindowFlushBuffer`
+  calls of Oseasy's `dxvk-submit` thread (1/s on the idle desktop, which matches
+  600 ms commits). `measure-fps.sh` lists flushes per thread.
+- Launch times so far (window mapped): foot 0.09 s, chromium 1.09 s (both draw
+  with shared memory); nautilus and obsidian never mapped (GPU clients, refused).
 
 ### Decision: no guest agent for Oseasy
 

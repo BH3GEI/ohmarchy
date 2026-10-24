@@ -270,10 +270,11 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	vmw_print_bitmap(&dev_priv->drm, "Capabilities",
  			 dev_priv->capabilities,
  			 cap1_names, ARRAY_SIZE(cap1_names));
-@@ -958,6 +1026,16 @@
+@@ -957,7 +1025,17 @@
+ 		dev_priv->texture_max_width = 8192;
  		dev_priv->texture_max_height = 8192;
  		dev_priv->max_primary_mem = dev_priv->vram_size;
- 	}
++	}
 +	if (dev_priv->hvm_mmio) {
 +		drm_info(&dev_priv->drm,
 +			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%llu\n",
@@ -282,7 +283,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
 +			 dev_priv->texture_max_width,
 +			 dev_priv->texture_max_height,
 +			 (u64)dev_priv->max_primary_mem);
-+	}
+ 	}
 +
  	drm_info(&dev_priv->drm,
  		 "Legacy memory limits: VRAM = %llu KiB, FIFO = %llu KiB, surface = %u KiB\n",
@@ -311,6 +312,32 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	vmw_fence_manager_takedown(dev_priv->fman);
  	if (dev_priv->capabilities & SVGA_CAP_IRQMASK)
  		vmw_irq_uninstall(&dev_priv->drm);
+@@ -1259,6 +1340,25 @@
+ 		flags = ioctl->flags;
+ 	} else if (!drm_ioctl_flags(nr, &flags))
+ 		return -EINVAL;
++
++	if (cmd == DRM_IOCTL_GEM_CLOSE) {
++		long ret = ioctl_func(filp, cmd, arg);
++		struct drm_gem_close req;
++
++		/*
++		 * drmPrimeFDToHandle() of a surface's dma-buf returns a TTM
++		 * object handle and takes a TTM reference (ttm_prime_fd_to_handle),
++		 * which DRM_IOCTL_GEM_CLOSE does not know. Compositors close every
++		 * handle they import (Hyprland rejects a client buffer when that
++		 * fails), so drop the TTM reference here instead.
++		 */
++		if (ret == -EINVAL &&
++		    !copy_from_user(&req, (void __user *)arg, sizeof(req)) &&
++		    req.handle > VMWGFX_NUM_MOB &&
++		    !ttm_ref_object_base_unref(vmw_fpriv(file_priv)->tfile, req.handle))
++			ret = 0;
++		return ret;
++	}
+ 
+ 	return ioctl_func(filp, cmd, arg);
+ 
 diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
 --- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
 +++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h

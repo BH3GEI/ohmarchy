@@ -1341,6 +1341,25 @@ static long vmw_generic_ioctl(struct file *filp, unsigned int cmd,
 	} else if (!drm_ioctl_flags(nr, &flags))
 		return -EINVAL;
 
+	if (cmd == DRM_IOCTL_GEM_CLOSE) {
+		long ret = ioctl_func(filp, cmd, arg);
+		struct drm_gem_close req;
+
+		/*
+		 * drmPrimeFDToHandle() of a surface's dma-buf returns a TTM
+		 * object handle and takes a TTM reference (ttm_prime_fd_to_handle),
+		 * which DRM_IOCTL_GEM_CLOSE does not know. Compositors close every
+		 * handle they import (Hyprland rejects a client buffer when that
+		 * fails), so drop the TTM reference here instead.
+		 */
+		if (ret == -EINVAL &&
+		    !copy_from_user(&req, (void __user *)arg, sizeof(req)) &&
+		    req.handle > VMWGFX_NUM_MOB &&
+		    !ttm_ref_object_base_unref(vmw_fpriv(file_priv)->tfile, req.handle))
+			ret = 0;
+		return ret;
+	}
+
 	return ioctl_func(filp, cmd, arg);
 
 out_io_encoding:

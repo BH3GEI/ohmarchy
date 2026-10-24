@@ -2,7 +2,7 @@
 # Copy a byte range of a (sparse) disk image to a new sparse file, e.g. one
 # partition out of a raw disk, without reading or writing the holes.
 #   slice.py SRC OFFSET SIZE DST
-import os, sys
+import errno, os, sys
 src, off, size, dst = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
 CH = 4 << 20
 fi = os.open(src, os.O_RDONLY)
@@ -16,8 +16,8 @@ while pos < end:
         try:
             pos = os.lseek(fi, pos, os.SEEK_DATA)
             hole = os.lseek(fi, pos, os.SEEK_HOLE)
-        except OSError:
-            if pos >= end: break
+        except OSError as e:
+            if e.errno == errno.ENXIO: break          # no data after pos
             seek_ok, hole = False, end
         if pos >= end: break
     else:

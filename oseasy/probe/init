@@ -38,11 +38,12 @@ fi
 
 case " $cmd " in
 *" probe.install=1 "*)
-    # The host streams a raw disk image: toybox nc 172.16.100.2 5003 < disk.img
+    # The host streams a zstd-compressed raw disk image:
+    #   toybox nc 172.16.100.2 5003 < disk.img.zst   (oseasy/push-disk.sh)
     modprobe virtio_blk 2>/dev/null; sleep 1
     log "install: waiting for a disk image on tcp/5003, writing /dev/vda"
     # -w 30: busybox nc -l does not exit when the sender closes; stop after 30 s idle
-    nc -l -p 5003 -w 30 | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    nc -l -p 5003 -w 30 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     log "install: dd: $(tail -1 /tmp/dd.txt)"
     blockdev --rereadpt /dev/vda; sleep 2
     root=$(ls /dev/vda2 2>/dev/null)

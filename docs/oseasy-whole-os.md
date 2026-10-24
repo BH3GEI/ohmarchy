@@ -496,3 +496,20 @@ Related Route G commits: [`07528eb`](https://github.com/BH3GEI/ohmarchy/commit/0
   `device_shutdown()` log each device, to name the one that hangs; cold start
   (power off, start from Oseasy) for the measurements meanwhile. The hung VM was
   stopped with SIGTERM to its own StratoVirt (Oseasy's, `68eaa5b5`).
+
+Faster disk transfer for the next install: `omarchy-pure.img.zst` (zstd -3, made
+from the read-only original through the Arch environment: `cat img | arch.sh run
+zc.sh`), 3 352 141 996 bytes instead of 64 GiB, sha256
+`c2d6f17f36ee54c0cf48de8d4a95403b773bf34e357f3c5b65e836ae33ba32b3`; its
+decompressed stream hashes to the original's `d2c7150e…`. The install mode now
+expects a zstd stream (`nc | zstd -dc | dd conv=sparse`); install ISO sha256
+`690f87d0659eec40259b7787593560f8fb6e143b793fac1913b1d45d76ae0c18`.
+
+Warm-reboot hang, more context: 鸿融's main VM has the same vhost-user-fs,
+virtio-serial, balloon, multitouch and xHCI devices, and 7.2 restarts there
+(agent-2a, 08:41). What only Oseasy adds is `ivshmem-scream` (no Linux driver)
+and `svga-pci` with vmwgfx. `reboot: Restarting system` is printed after
+`device_shutdown()` and needs the console lock; with fbcon on vmwgfx, a console
+write that waits for an SVGA fence during shutdown would stall every console,
+the serial one included. To test: `initcall_debug` (per-device shutdown lines),
+then `drm_client_lib.active=` (no fbdev client) if the log stops at the console.

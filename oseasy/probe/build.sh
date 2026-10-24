@@ -70,6 +70,7 @@ for l in /usr/lib/dri/vmwgfx_dri.so /usr/lib/gbm/dri_gbm.so /usr/lib/libEGL_mesa
 done
 install -D -m644 /usr/share/glvnd/egl_vendor.d/50_mesa.json "$R/usr/share/glvnd/egl_vendor.d/50_mesa.json"
 copy_bin /usr/bin/dd     # coreutils: conv=sparse keeps the VM's qcow2 small
+copy_bin /usr/bin/zstd   # the install mode takes a zstd stream
 copy_bin /usr/bin/kmod
 copy_bin /usr/bin/modetest
 copy_bin /usr/bin/kmsprint 2>/dev/null || true

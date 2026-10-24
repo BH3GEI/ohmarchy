@@ -20,6 +20,14 @@ bsdtar -xf "$PKG" -C "$W/k" boot/Image 'usr/lib/modules/*/kernel/net/core/failov
   'usr/lib/modules/*/kernel/fs/fuse/virtiofs.ko'
 find "$W/k/usr" -name '*.ko' -exec cp {} "$W/inst-root/kmod/" \;
 cp "$here/write-disk.sh" "$here/../probe-iso/probe.sh" "$W/inst-root/"
+# Route B's patched vmwgfx for this kernel (VMWGFX_KO, e.g. extracted from
+# oseasy-probe.iso's initramfs) and its packaged options, written into the
+# Omarchy root after the disk write.
+if [ -n "${VMWGFX_KO:-}" ]; then
+  mkdir -p "$W/inst-root/kds"
+  cp "$VMWGFX_KO" "$W/inst-root/kds/vmwgfx.ko"
+  cp "$here/../../../oseasy/vmwgfx-7.2/vmwgfx-oseasy.conf" "$W/inst-root/kds/"
+fi
 (cd "$W/inst-root" && find . | cpio -o -H newc 2>/dev/null | gzip -9 > "$W/installer.cpio.gz")
 rm -f "$W/kds-installer.iso"
 xorriso -indev "$W/mini.iso" -outdev "$W/kds-installer.iso" \

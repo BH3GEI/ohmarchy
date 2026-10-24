@@ -404,3 +404,18 @@ So the display blocker from the Fold is gone: KMS clients, and so Hyprland
 acceleration through SVGA3D → D3D11 (DXVK) → Vulkan. Next: the Omarchy disk with
 `linux-aarch64` 7.2.12 + `vmwgfx-oseasy`, booted to Hyprland; then the comparison
 measurements.
+
+### Getting the Omarchy disk into Oseasy's VM
+
+This Oseasy version only creates VMs from ISOs, and the VM's disk lives under
+`vm_manager/`, which is not touched by hand. So the disk goes in over the VM's
+network, from the probe: `PROBE_DEFAULT=4 oseasy/probe/build.sh …` makes a probe
+whose default entry is the install mode (`probe.install=1`): it listens on
+`172.16.100.2:5003`, writes what arrives to `/dev/vda` with coreutils
+`dd conv=sparse` (zeros stay unallocated in the qcow2), mounts the root
+partition, adds `updates/vmwgfx.ko` and `/etc/modprobe.d/vmwgfx-oseasy.conf`
+for the kernel found there and runs `depmod` (Arch's depmod searches `updates`
+first, so the patched module wins over the in-tree one). On the host,
+[`oseasy/push-disk.sh`](../oseasy/push-disk.sh) streams the image read-only:
+`sh push-disk.sh /data/local/vmtest/omarchy-pure.img`. Then reboot the guest;
+the firmware boots the disk before the ISO.

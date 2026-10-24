@@ -8,7 +8,7 @@
 # Runs as root in an Arch Linux ARM environment. Nothing is installed there:
 # busybox, mtools, grub and xorriso are downloaded with pacman -Sw into the
 # work directory and unpacked.
-#   build.sh OUTDIR linux-aarch64-*.pkg.tar.* vmwgfx-oseasy-*.pkg.tar.*
+#   [PROBE_DEFAULT=N] build.sh OUTDIR linux-aarch64-*.pkg.tar.* vmwgfx-oseasy-*.pkg.tar.*
 set -euo pipefail
 out=${1:?outdir}; kpkg=${2:?kernel package}; vpkg=${3:?vmwgfx-oseasy package}
 here=$(cd "$(dirname "$0")" && pwd)
@@ -48,6 +48,9 @@ cp -a "$M/updates" "$R/lib/modules/$kver/"
 # only the patched vmwgfx: the kernel's own autoload would otherwise pick the in-tree one
 rm -rf "$R/lib/modules/$kver/kernel/drivers/gpu/drm/vmwgfx"
 cp "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/"
+# for the install mode: the module and its options, copied into the written disk
+install -D -m644 "$M/updates/vmwgfx.ko" "$R/oseasy/vmwgfx.ko"
+install -D -m644 "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/oseasy/vmwgfx-oseasy.conf"
 # the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"
@@ -66,6 +69,7 @@ for l in /usr/lib/dri/vmwgfx_dri.so /usr/lib/gbm/dri_gbm.so /usr/lib/libEGL_mesa
     ldd "$l" | awk '/=> \//{print $3}' | while read -r d; do cp -nL "$d" "$R/usr/lib/" 2>/dev/null || true; done
 done
 install -D -m644 /usr/share/glvnd/egl_vendor.d/50_mesa.json "$R/usr/share/glvnd/egl_vendor.d/50_mesa.json"
+copy_bin /usr/bin/dd     # coreutils: conv=sparse keeps the VM's qcow2 small
 copy_bin /usr/bin/kmod
 copy_bin /usr/bin/modetest
 copy_bin /usr/bin/kmsprint 2>/dev/null || true
@@ -85,7 +89,8 @@ search --no-floppy --file /oseasy-probe --set=root
 set prefix=($root)/
 configfile ($root)/grub.cfg
 EOF
-cp "$here/grub.cfg" "$W/esp/grub.cfg"
+# PROBE_DEFAULT picks the default menu entry (0-based; 4 = install mode)
+sed "s/^set default=.*/set default=${PROBE_DEFAULT:-1}/" "$here/grub.cfg" > "$W/esp/grub.cfg"
 mkdir -p "$W/esp/EFI/BOOT"
 grub-mkstandalone -d "$W/t/usr/lib/grub/arm64-efi" -O arm64-efi \
     -o "$W/esp/EFI/BOOT/BOOTAA64.EFI" \

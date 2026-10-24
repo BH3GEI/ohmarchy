@@ -53,6 +53,13 @@ case " $cmd " in
         install -D -m644 /oseasy/vmwgfx-oseasy.conf /mnt/etc/modprobe.d/vmwgfx-oseasy.conf
         depmod -b /mnt "$kv"
         log "install: vmwgfx-oseasy added for $kv; $(grep -c vmwgfx /mnt/usr/lib/modules/$kv/modules.dep) modules.dep lines"
+        # mkinitcpio's kms hook put the in-tree vmwgfx into the initramfs, which
+        # would load before the root and crash on this device: rebuild it so it
+        # carries the patched module and its options (modconf)
+        for d in proc sys dev; do mount --bind /$d /mnt/$d; done
+        chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
+        log "install: mkinitcpio rc=$? $(grep -c -i error /tmp/mkinitcpio.txt) error lines"
+        for d in dev sys proc; do umount /mnt/$d; done
         umount /mnt
     else
         log "install: could not mount the root partition"

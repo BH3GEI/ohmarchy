@@ -1,6 +1,7 @@
 #!/bin/sh
-# The VM mutex on the HarmonyOS host: only one VM may run at a time (HMV has
-# never run two, and 鸿融's main VM counts as holding the lock while it runs).
+# The host's mutexes: /data/local/vm.lock (HMV: starting VMs, stopping 鸿融's main
+# VM; only one VM at a time) and, with LOCK=screen, /data/local/screen.lock (the
+# screen and foreground focus). A VM app with a window (Oseasy, 铠大师) takes both.
 # Run from the workstation:
 #   oseasy/vmlock.sh take OWNER HOURS   mkdir /data/local/vm.lock, write owner + times
 #   oseasy/vmlock.sh show               print the owner file, or "free"
@@ -9,7 +10,7 @@
 # VM again from the 鸿融 app, check it reaches the Omarchy desktop, then drop.
 set -eu
 HOST=${OHDEV:-ohdev}
-L=/data/local/vm.lock
+L=/data/local/${LOCK:-vm}.lock
 rsh() { perl -e 'alarm shift; exec @ARGV' 60 ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" sh -s; }
 
 case "${1:-show}" in

@@ -12,7 +12,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Area | Criterion | Test | Status |
 |---|---|---|---|
-| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 72 of 78 open within 3 s (P95 1.4 s), 6 unsupported, 0 failed; A2 in progress |
+| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 72 of 78 open within 3 s (P95 1.4 s), 6 unsupported, 0 failed. A2: 5 of 6 core operations pass; audio unsupported (no sound device) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | | pending |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
@@ -70,3 +70,25 @@ Unsupported, with the reason (reported as such by the test, not as failures):
 | Disks (gnome-disks) | needs udisks2 on the system D-Bus, which does not run in the session |
 | uuctl, menu > Reminders | systemd user units and timers; there is no systemd |
 | qvidcap | no V4L2 camera: HarmonyOS does not expose its camera to Linux |
+
+### A2. Core operations
+
+`tests/lib/session-py.sh core tests/core/core_ops.py` runs `tests/core/core_ops.py`
+in the desktop session as the desktop user. Keys are typed through the same input
+socket the HarmonyOS app uses (`@ohmarchy-display`), after focusing the window and
+moving the pointer onto it.
+
+Results, 2026-10-24 (host GPU path):
+
+| Check | What it does | Result |
+|---|---|---|
+| file-libreoffice | write Chinese + English text, convert to .odt with LibreOffice, convert back, compare | pass, 2.6 s |
+| file-nvim | write the text from Neovim, read it back | pass, 0.1 s |
+| clipboard | `wl-copy` in one client, `wl-paste` in another | pass, 0.5 s |
+| chinese-input | type `nihao` + space through fcitx5 pinyin into foot, expect 你好 | pass, 4.9 s |
+| audio | play a tone with pw-play, paplay, then aplay | unsupported: no `/dev/snd`, no sound server; needs a bridge to HarmonyOS audio |
+| file-chooser | ask the desktop portal for an Open File dialog | pass, xdg-desktop-portal-gtk dialog in 1.3 s |
+
+LibreOffice's text export starts with a byte-order mark; the test reads it with
+`utf-8-sig`. A Hyprland that has had no input yet gives a new window no keyboard
+focus; the HarmonyOS app always moves the pointer first, so the test does too.

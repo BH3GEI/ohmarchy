@@ -95,6 +95,13 @@ own certificate and profile.
 | The display choice `virtio-gpu-pci` is mapped to `virtio-gpu-device` (MMIO) on aarch64; `virt`'s virtio-mmio is legacy, which virtio-gpu rejects | VNC shows `Display output is not active`; in the guest the GPU's virtio status is `0x83` (FAILED) and there is no `card0` | the `-device tpm-tis-device,tpmdev=tpm0` string becomes `-device virtio-gpu-pci`: modern virtio, UEFI GOP, VNC console 0 |
 | `edk2-aarch64-code.fd` is 2 MiB, QEMU 10 `virt` needs a 64 MiB pflash | `cfi.pflash01 device … requires 67108864 bytes, pflash0 block backend provides 2097152 bytes` | pad to 64 MiB |
 
+Reported upstream: [#49](https://github.com/AetheriumSimulator/qemu-hmos/issues/49)
+(TPM), [#50](https://github.com/AetheriumSimulator/qemu-hmos/issues/50) (firmware size),
+[#51](https://github.com/AetheriumSimulator/qemu-hmos/issues/51) (virtio-gpu on legacy MMIO);
+the two UI bugs below as [#52](https://github.com/AetheriumSimulator/qemu-hmos/issues/52) and
+[#53](https://github.com/AetheriumSimulator/qemu-hmos/issues/53). Until a release fixes them,
+route F keeps using this patch on the pinned build.
+
 The firmware is copied into the app sandbox only once; after installing a new
 firmware, clear the app data (`hdc shell bm clean -n com.caidingding233.qemuhmos -d`).
 

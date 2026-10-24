@@ -67,7 +67,11 @@ desktop)
             sleep 0.3
             case $vtest in
             # opening the display app (re)starts the desktop for it
-            *broker) nsenter -t "$P" -m -- "$vtest" --on-app "sh $B/bin/omarchy desktop restart" "$sock" \
+            # only the display app gets the desktop's GPU connections, and the
+            # broker handles them as the desktop user (root only for the restart)
+            *broker) ug=$(grep "^$user:" "/proc/$P/root/etc/passwd" | cut -d: -f3,4)
+                     nsenter -t "$P" -m -- "$vtest" --on-app "sh $B/bin/omarchy desktop restart" \
+                         ${app_uid:+--app-uid "$app_uid"} ${ug:+--user "$ug"} "$sock" \
                          < /dev/null > "$B/vtest.log" 2>&1 & ;;
             *) nsenter -t "$P" -m -- "$vtest" --use-egl-surfaceless --socket-path "$sock" < /dev/null > "$B/vtest.log" 2>&1 & ;;
             esac

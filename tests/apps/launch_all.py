@@ -276,8 +276,11 @@ def run_one(app_id, name, cmd):
             rec["frame"] = "n/a"
     clients = [c for c in hypr("clients") or [] if c["address"] not in base_clients]
     if found and found[0] == "panel":
-        # the Omarchy shell names a panel's layer omarchy-NAME; it hides as omarchy.NAME
-        sh("omarchy-menu close", 5)
+        # the Omarchy shell names a panel's layer omarchy-NAME and mostly hides it as
+        # omarchy.NAME; not always (the speed tests' layers are omarchy-network-speedtest
+        # and so on), so those are named too
+        sh("omarchy-menu close; omarchy-shell -q shell hide omarchy.speedtest; "
+           "omarchy-shell -q shell hide omarchy.disk-speedtest; pkill -u $(id -u) -x omasnap", 5)
         for ns in sorted({l[0] for l in layers() - base_layers}):
             if ns.startswith("omarchy-"):
                 sh(f"omarchy-shell -q shell hide omarchy.{ns[len('omarchy-'):]}", 5)

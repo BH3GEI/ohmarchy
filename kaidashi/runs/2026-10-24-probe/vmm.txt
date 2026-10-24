@@ -1,0 +1,687 @@
+== pid 38867
+hwf_service  38867 43859 49 16:16:41 ?    00:00:11 stratovirt -machine virt,gic-version=3,mem-share=on,accel=hmv -cpu host,pmu=on -smp 6 -m 8192,maxmem=10240 -device virtio-mem-pci,id=viomem0,bus=pcie.0,addr=0xe.0x0,requested-size=8192 -drive file=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi,if=pflash,unit=0,readonly=true -device nec-usb-xhci,id=xhci,bus=pcie.0,addr=0x3.0x0,p2=14,p3=8,iothread=xhci-iothread -object iothread,id=xhci-iothread -drive if=none,id=disk,format=raw,media=cdrom,aio=off,direct=false,file=/storage/media/100/local/files/Docs/Download/kds-probe.iso,readonly=true -device usb-storage,drive=disk,id=disk -drive id=system,if=none,readonly=false,direct=on,aio=io_uring,format=qcow2,discard=unmap,detect-zeroes=unmap,file=/data/service/el0/virt_service/100/vm_manager/158e02cb/com.sanway.ecoengine/img/vm.qcow2 -object iothread,id=disk-iothread -device virtio-blk-pci,id=blk0,iothread=disk-iothread,drive=system,bus=pcie.0,addr=0x2 -device usb-kbd,id=kbd -device usb-tablet,id=tablet -devic
+hwf_service  38931 38867 1 16:16:41 ?     00:00:00 virtiofsd --socket-path /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/vhost-fs --sandbox=none --seccomp=none --readahead --log-level info --log-file /data/log/hwf_service/viofsd.log --vm-pid 38867 --trash --cmd-socket-path /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/virtiofs-cmd.sock
+hwf_service  43859     1 0 01:30:15 ?     00:02:18 vm_manager
+== cmdline
+/system/bin/virt_service/vm_engine/stratovirt/stratovirt
+-machine
+virt,gic-version=3,mem-share=on,accel=hmv
+-cpu
+host,pmu=on
+-smp
+6
+-m
+8192,maxmem=10240
+-device
+virtio-mem-pci,id=viomem0,bus=pcie.0,addr=0xe.0x0,requested-size=8192
+-drive
+file=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi,if=pflash,unit=0,readonly=true
+-device
+nec-usb-xhci,id=xhci,bus=pcie.0,addr=0x3.0x0,p2=14,p3=8,iothread=xhci-iothread
+-object
+iothread,id=xhci-iothread
+-drive
+if=none,id=disk,format=raw,media=cdrom,aio=off,direct=false,file=/storage/media/100/local/files/Docs/Download/kds-probe.iso,readonly=true
+-device
+usb-storage,drive=disk,id=disk
+-drive
+id=system,if=none,readonly=false,direct=on,aio=io_uring,format=qcow2,discard=unmap,detect-zeroes=unmap,file=/data/service/el0/virt_service/100/vm_manager/158e02cb/com.sanway.ecoengine/img/vm.qcow2
+-object
+iothread,id=disk-iothread
+-device
+virtio-blk-pci,id=blk0,iothread=disk-iothread,drive=system,bus=pcie.0,addr=0x2
+-device
+usb-kbd,id=kbd
+-device
+usb-tablet,id=tablet
+-device
+virtio-multitouch-pci,id=touchpad,bus=pcie.0,addr=0xb,x=12000,y=8000,touchtype=pad
+-device
+svga-pci,id=svga,bus=pcie.0,addr=0x4.0x0
+-device
+ivshmem-scream,interface=OhAudio,record-auth=off,play-concurrency=off,memdev=mb0,id=scream,bus=pcie.0,addr=0x5
+-object
+memory-backend-ram,id=mb0,share=on,size=2M
+-device
+virtio-serial-pci,id=virtio-serial0,bus=pcie.0,addr=0x7.0x0,max-ports=7
+-chardev
+socket,path=/data/service/el2/100/virt_service/hwf_service/158e02cb/com.sanway.ecoengine/uds/datashare.sock,server,nowait,id=clipboard_vioser0
+-device
+virtserialport,id=clipboard_vioser0,chardev=clipboard_vioser0,nr=3
+-chardev
+socket,path=/data/service/el2/100/virt_service/hwf_service/158e02cb/com.sanway.ecoengine/uds/gfscl.sock,server,nowait,id=gfscl
+-device
+virtserialport,id=gfscl,chardev=gfscl,nr=4
+-chardev
+socket,path=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/serial0.sock,server,nowait,id=virtio_serial0
+-device
+virtserialport,id=winbox_serial0,chardev=virtio_serial0,nr=1
+-chardev
+socket,path=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/serial1.sock,server,nowait,id=virtio_serial1
+-device
+virtserialport,id=winbox_serial1,chardev=virtio_serial1,nr=2
+-chardev
+socket,path=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/additions.sock,server,nowait,id=additions_vioser0
+-device
+virtserialport,id=additions_vioser0,chardev=additions_vioser0,nr=5
+-chardev
+socket,path=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/additions-ex.sock,server,nowait,id=additions_vioser1
+-device
+virtserialport,id=additions_vioser1,chardev=additions_vioser1,nr=6
+-device
+virtio-net-pci,netdev=net0,id=nic0,bus=pcie.0,addr=0x6.0x0
+-netdev
+tap,id=net0,ifname=WVMTap14571594
+-viofsd
+viofsd_bin=/system/bin/virt_service/vm_engine/stratovirt/virtiofsd,shared_dir=/data/service/el2/100/hmdfs/account/files/Docs/Documents,cmd_sock=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/virtiofs-cmd.sock,log_file=/data/log/hwf_service/viofsd.log,log_level=info
+-chardev
+socket,id=fsd_sock,path=/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/vhost-fs
+-device
+vhost-user-fs-pci,id=fsd_dev,chardev=fsd_sock,tag=shared_dir,bus=pcie.0,addr=0x8
+-object
+iothread,id=ohui-iothread
+-drive
+if=none,id=unattend,format=raw,media=cdrom,aio=off,direct=false,readonly=true,file=/storage/media/100/local/files/Docs/Download/com.sanway.ecoengine/server.iso
+-device
+usb-storage,drive=unattend,id=unattend
+-display
+ohui,iothread=ohui-iothread,socks-path=/data/service/el2/100/virt_service/hwf_service/158e02cb/com.sanway.ecoengine/uds
+-qmp
+unix:/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/stratovirt.sock,server,nowait
+-disable-seccomp
+-D
+/data/log/hwf_service/vmlog
+-windows_emu_pid
+43859
+-trace
+type=scopes
+-device
+pvpanic,id=pvpanic_pci,bus=pcie.0,addr=0x1,supported-features=7,dumpfile-path=/data/log/hwf_service/wds_log/minidump/
+-serial
+redirect-to-log
+-battery
+-drive
+file=/data/service/el0/virt_service/100/vm_manager/158e02cb/com.sanway.ecoengine/img/stratovirt-vars,if=pflash,unit=1,readonly=false
+-object
+iothread,id=logdev-iothread
+-device
+logdevice,id=logdevice,flush_logs=true,iothread=logdev-iothread
+-appid
+158e02cb
+-smbios
+type=1,uuid=99b10265-f865-45c0-a1d0-98ad1c01577c,serial=39 D2 07 6B 60 EB E2 9E 97 D3 A3 71 89 6A 2A 52
+== fds
+     63 anon_inode:[eventfd]
+      8 anon_inode:[eventpoll]
+      4 socket:[5574017]
+      2 socket:[5573553]
+      2 /sys/kernel/debug/tracing/trace_marker
+      2 /dev/vcodec_vdec
+      2 /dev/null
+      1 socket:[72543]
+      1 socket:[5574029]
+      1 socket:[5573581]
+      1 socket:[5573557]
+      1 socket:[5573539]
+      1 socket:[5573513]
+      1 socket:[5573511]
+      1 socket:[5573509]
+      1 socket:[5573507]
+      1 socket:[5573505]
+      1 socket:[5573503]
+      1 socket:[5573497]
+      1 socket:[5573483]
+      1 socket:[5573481]
+      1 socket:[5573479]
+      1 socket:[5573477]
+      1 pipe:[622752]
+      1 anon_inode:[timerfd]
+      1 anon_inode:[io_uring]
+      1 0
+      1 /system/opt/virt_service/virtualized_hwf/stratovirt-uefi
+      1 /storage/media/100/local/files/Docs/Download/kds-probe.iso
+      1 /storage/media/100/local/files/Docs/Download/com.sanway.ecoengine/server.iso
+      1 /dev/shm/hwf/ohui-fb
+      1 /dev/shm/hwf/ohui-cursor
+      1 /dev/shm/StratoVirt_158e02cb
+      1 /dev/net/tun
+      1 /dev/kmsg
+      1 /dev/hvgr0
+      1 /dev/hmv
+      1 /dev/binder
+      1 /data/service/el0/virt_service/100/vm_manager/158e02cb/com.sanway.ecoengine/img/vm.qcow2
+      1 /data/service/el0/virt_service/100/vm_manager/158e02cb/com.sanway.ecoengine/img/stratovirt-vars
+== maps (libs)
+/system/lib/ld-musl-aarch64.so.1
+/system/lib64/chipset-sdk-sp/libasync_stack.z.so
+/system/lib64/chipset-sdk-sp/libbacktrace_local.so
+/system/lib64/chipset-sdk-sp/libbeget_proxy.z.so
+/system/lib64/chipset-sdk-sp/libbegetutil.z.so
+/system/lib64/chipset-sdk-sp/libbuffer_handle.z.so
+/system/lib64/chipset-sdk-sp/libc++.so
+/system/lib64/chipset-sdk-sp/libcjson.z.so
+/system/lib64/chipset-sdk-sp/libclang_rt.ubsan_minimal.so
+/system/lib64/chipset-sdk-sp/libconfigpolicy_util.z.so
+/system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+/system/lib64/chipset-sdk-sp/libdfx_dumpcatcher.z.so
+/system/lib64/chipset-sdk-sp/libdfx_procinfo.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_hdi_impl_v1_4.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_proxy_1.0.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_proxy_1.1.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_proxy_1.2.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_proxy_1.3.z.so
+/system/lib64/chipset-sdk-sp/libdisplay_buffer_proxy_1.4.z.so
+/system/lib64/chipset-sdk-sp/libdmabufheap.z.so
+/system/lib64/chipset-sdk-sp/libeventhandler.z.so
+/system/lib64/chipset-sdk-sp/libfaultloggerd.z.so
+/system/lib64/chipset-sdk-sp/libhdf_ipc_adapter.z.so
+/system/lib64/chipset-sdk-sp/libhdi.z.so
+/system/lib64/chipset-sdk-sp/libhdi_base.z.so
+/system/lib64/chipset-sdk-sp/libhicollie.z.so
+/system/lib64/chipset-sdk-sp/libhilog_encode.so
+/system/lib64/chipset-sdk-sp/libhisysevent.z.so
+/system/lib64/chipset-sdk-sp/libhitrace_meter.so
+/system/lib64/chipset-sdk-sp/libhitracechain.so
+/system/lib64/chipset-sdk-sp/libjsoncpp.z.so
+/system/lib64/chipset-sdk-sp/liblzma.z.so
+/system/lib64/chipset-sdk-sp/libpcre2.z.so
+/system/lib64/chipset-sdk-sp/libprotobuf_lite.z.so
+/system/lib64/chipset-sdk-sp/libpub_utils.z.so
+/system/lib64/chipset-sdk-sp/libressched_client.z.so
+/system/lib64/chipset-sdk-sp/libsamgr_proxy.z.so
+/system/lib64/chipset-sdk-sp/libsec_shared.z.so
+/system/lib64/chipset-sdk-sp/libselinux.z.so
+/system/lib64/chipset-sdk-sp/libshared_libz.z.so
+/system/lib64/chipset-sdk-sp/libstack_printer.z.so
+/system/lib64/chipset-sdk-sp/libstorage_manager_acl.z.so
+/system/lib64/chipset-sdk-sp/libsurface.z.so
+/system/lib64/chipset-sdk-sp/libsystemparam.z.so
+/system/lib64/chipset-sdk-sp/libucollection_client.z.so
+/system/lib64/chipset-sdk-sp/libunwinder.z.so
+/system/lib64/chipset-sdk-sp/libusb_shared.z.so
+/system/lib64/chipset-sdk-sp/libutils.z.so
+/system/lib64/chipset-sdk/libaccesstoken_common_cxx.z.so
+/system/lib64/chipset-sdk/libaccesstoken_communication_adapter_cxx.z.so
+/system/lib64/chipset-sdk/libaccesstoken_sdk.z.so
+/system/lib64/chipset-sdk/libcamera_vendor_tag_proxy_1.0.z.so
+/system/lib64/chipset-sdk/libexif.z.so
+/system/lib64/chipset-sdk/libextractortool.z.so
+/system/lib64/chipset-sdk/libhukssdk.z.so
+/system/lib64/chipset-sdk/libimage_proxy_2.1.z.so
+/system/lib64/chipset-sdk/libmetadata.z.so
+/system/lib64/chipset-sdk/libohosffmpeg.z.so
+/system/lib64/chipset-sdk/libpng.z.so
+/system/lib64/chipset-sdk/libsocperf_client.z.so
+/system/lib64/chipset-sdk/libssl_openssl.z.so
+/system/lib64/chipset-sdk/libstring_utils.z.so
+/system/lib64/chipset-sdk/libturbojpeg.z.so
+/system/lib64/chipset-sdk/libuds_channel.z.so
+/system/lib64/chipset-sdk/libxml2.z.so
+/system/lib64/chipset-sdk/libxperfservice_client.z.so
+/system/lib64/chipset-sdk/libyuv.z.so
+/system/lib64/lib2d_graphics.z.so
+/system/lib64/libEGL.so
+/system/lib64/libGLESv3.so
+/system/lib64/libGameAwareLayer.so
+/system/lib64/libVkLayer_Trace3D.so
+/system/lib64/libabsl_base.z.so
+/system/lib64/libabsl_spinlock_wait.z.so
+/system/lib64/libabsl_time.z.so
+/system/lib64/libabsl_time_zone.z.so
+/system/lib64/libapp_util.z.so
+/system/lib64/libapplication_context_manager.z.so
+/system/lib64/libaps_client.z.so
+/system/lib64/libarktsbase.so
+/system/lib64/libaudio_accessory.z.so
+/system/lib64/libaudio_client_idl_interface.z.so
+/system/lib64/libaudio_engine_plugins.z.so
+/system/lib64/libaudio_framework_interface.z.so
+/system/lib64/libaudio_policy_client_idl_interface.z.so
+/system/lib64/libaudio_schedule.z.so
+/system/lib64/libav_codec_media_engine_modules.z.so
+/system/lib64/libav_codec_service_dfx.z.so
+/system/lib64/libav_codec_service_utils.z.so
+/system/lib64/libc++_shared.so
+/system/lib64/libcamera_utils.z.so
+/system/lib64/libcodec_proxy_4.0.z.so
+/system/lib64/libcolor_manager.z.so
+/system/lib64/libcolor_space_object_convertor.z.so
+/system/lib64/libconcurrent_task_client.z.so
+/system/lib64/libcups.z.so
+/system/lib64/libddgr.z.so
+/system/lib64/libdlp_permission_sdk.z.so
+/system/lib64/libdlpparse.z.so
+/system/lib64/libdm.z.so
+/system/lib64/libdxva2vaapi.so
+/system/lib64/libdxvk.so
+/system/lib64/libexpat.z.so
+/system/lib64/libfdleak_tracker.so
+/system/lib64/libfilemanager_client.z.so
+/system/lib64/libfilemanager_utils.z.so
+/system/lib64/libfileuri_native.z.so
+/system/lib64/libframe_analyzer.z.so
+/system/lib64/libframe_trace_intf.z.so
+/system/lib64/libframe_ui_intf.z.so
+/system/lib64/libgameservice_graphic_plugin.z.so
+/system/lib64/libgraphics_effect.z.so
+/system/lib64/libhilog_inner.so
+/system/lib64/libhispeed_image.so
+/system/lib64/libhistogrammanager.z.so
+/system/lib64/libhisysevent_report.z.so
+/system/lib64/libhiviewbase.z.so
+/system/lib64/libhwf_adapter.so
+/system/lib64/libhwf_agent.z.so
+/system/lib64/libhwf_kits.z.so
+/system/lib64/libhwf_util.z.so
+/system/lib64/libiGraphicsCore.z.so
+/system/lib64/libimf_hisysevent.z.so
+/system/lib64/libinputmethod_common.z.so
+/system/lib64/libinsight_intent_executor.z.so
+/system/lib64/libinsightintentcontext.z.so
+/system/lib64/libjit_code_sign.z.so
+/system/lib64/libmedia_ipc_common.z.so
+/system/lib64/libmedia_library_common.z.so
+/system/lib64/libmedia_library_manager.z.so
+/system/lib64/libmemmgrclient.z.so
+/system/lib64/libmmi_rust_key_config.z.so
+/system/lib64/libparticle_cxx_rust.z.so
+/system/lib64/libpower_setting.z.so
+/system/lib64/libpurgeablemem.z.so
+/system/lib64/libpurgeablemem_plugin.z.so
+/system/lib64/libqos.z.so
+/system/lib64/librelational_common_base.z.so
+/system/lib64/librender_service_base.z.so
+/system/lib64/librender_service_client.z.so
+/system/lib64/librtg_interface.z.so
+/system/lib64/libsecurec.so
+/system/lib64/libsecurity_component_sdk.z.so
+/system/lib64/libskia_canvaskit.z.so
+/system/lib64/libsocketpair.z.so
+/system/lib64/libstd.dylib.so
+/system/lib64/libtrace_manager.z.so
+/system/lib64/libtrash_client.z.so
+/system/lib64/libui_extension.z.so
+/system/lib64/libui_service_extension_connection.z.so
+/system/lib64/libva-ohos.so
+/system/lib64/libva.so
+/system/lib64/libvideoprocessingengine.z.so
+/system/lib64/libvm_manager_kits.z.so
+/system/lib64/libvma.z.so
+/system/lib64/libvsync.z.so
+/system/lib64/libvulkan.so
+/system/lib64/libvulkan_swapchain.so
+/system/lib64/libwindow_animation.z.so
+/system/lib64/libwm.z.so
+/system/lib64/libxmpsdk.so
+/system/lib64/ndk/libffrt.so
+/system/lib64/ndk/libhilog_ndk.z.so
+/system/lib64/ndk/libohaudio.so
+/system/lib64/ndk/libohprint.so
+/system/lib64/platformsdk/libability_business_error.z.so
+/system/lib64/platformsdk/libability_connect_callback_stub.z.so
+/system/lib64/platformsdk/libability_context_native.z.so
+/system/lib64/platformsdk/libability_deps_wrapper.z.so
+/system/lib64/platformsdk/libability_manager.z.so
+/system/lib64/platformsdk/libability_observer_ipc.z.so
+/system/lib64/platformsdk/libability_runtime_error_util.z.so
+/system/lib64/platformsdk/libability_start_options.z.so
+/system/lib64/platformsdk/libability_start_setting.z.so
+/system/lib64/platformsdk/libabilitykit_native.z.so
+/system/lib64/platformsdk/libabilitykit_utils.z.so
+/system/lib64/platformsdk/libabsl_raw_logging_internal.z.so
+/system/lib64/platformsdk/libabsl_strings.z.so
+/system/lib64/platformsdk/libabsl_strings_internal.z.so
+/system/lib64/platformsdk/libaccessibility_common.z.so
+/system/lib64/platformsdk/libaccessibility_interface.z.so
+/system/lib64/platformsdk/libaccessibilityconfig.z.so
+/system/lib64/platformsdk/libaccount_common.z.so
+/system/lib64/platformsdk/libaccountkits.z.so
+/system/lib64/platformsdk/libace_container_scope.z.so
+/system/lib64/platformsdk/libace_forward_compatibility.z.so
+/system/lib64/platformsdk/libace_napi.z.so
+/system/lib64/platformsdk/libace_uicontent.z.so
+/system/lib64/platformsdk/libapi_cache_manager.z.so
+/system/lib64/platformsdk/libapp_context.z.so
+/system/lib64/platformsdk/libapp_context_utils.z.so
+/system/lib64/platformsdk/libapp_manager.z.so
+/system/lib64/platformsdk/libappexecfwk_base.z.so
+/system/lib64/platformsdk/libappexecfwk_common.z.so
+/system/lib64/platformsdk/libappexecfwk_core.z.so
+/system/lib64/platformsdk/libappkit_delegator.z.so
+/system/lib64/platformsdk/libapplication_image_observer_manager.z.so
+/system/lib64/platformsdk/libark_jsruntime.so
+/system/lib64/platformsdk/libastc_encoder_shared.z.so
+/system/lib64/platformsdk/libaudio_capturer.z.so
+/system/lib64/platformsdk/libaudio_client.z.so
+/system/lib64/platformsdk/libaudio_common.z.so
+/system/lib64/platformsdk/libaudio_debug_manager.z.so
+/system/lib64/platformsdk/libaudio_definitions.z.so
+/system/lib64/platformsdk/libaudio_engine_manager.z.so
+/system/lib64/platformsdk/libaudio_foundation.z.so
+/system/lib64/platformsdk/libaudio_policy_client.z.so
+/system/lib64/platformsdk/libaudio_policy_manager.z.so
+/system/lib64/platformsdk/libaudio_renderer.z.so
+/system/lib64/platformsdk/libaudio_stream_client.z.so
+/system/lib64/platformsdk/libaudio_utils.z.so
+/system/lib64/platformsdk/libav_codec_client.z.so
+/system/lib64/platformsdk/libbase.z.so
+/system/lib64/platformsdk/libbatterysrv_client.z.so
+/system/lib64/platformsdk/libbgtaskmgr_innerkits.z.so
+/system/lib64/platformsdk/libbundle_napi_common.z.so
+/system/lib64/platformsdk/libcamera_framework.z.so
+/system/lib64/platformsdk/libcesfwk_core.z.so
+/system/lib64/platformsdk/libcesfwk_innerkits.z.so
+/system/lib64/platformsdk/libcj_bind_native.z.so
+/system/lib64/platformsdk/libconfiguration.z.so
+/system/lib64/platformsdk/libconfiguration_helper.z.so
+/system/lib64/platformsdk/libconnect_server_manager.z.so
+/system/lib64/platformsdk/libconsole.z.so
+/system/lib64/platformsdk/libcontinuation_ipc.z.so
+/system/lib64/platformsdk/libcrypto_framework_lib.z.so
+/system/lib64/platformsdk/libcrypto_openssl_plugin_lib.z.so
+/system/lib64/platformsdk/libdatabase_utils.z.so
+/system/lib64/platformsdk/libdataobs_manager.z.so
+/system/lib64/platformsdk/libdatashare_common.z.so
+/system/lib64/platformsdk/libdatashare_consumer.z.so
+/system/lib64/platformsdk/libdevicestatus_client.z.so
+/system/lib64/platformsdk/libdevicestatus_ipc.z.so
+/system/lib64/platformsdk/libdevicestatus_util.z.so
+/system/lib64/platformsdk/libdfx_signalhandler.z.so
+/system/lib64/platformsdk/libdialog_request_callback.z.so
+/system/lib64/platformsdk/libdialog_request_info.z.so
+/system/lib64/platformsdk/libdistributeddata_client_sync.z.so
+/system/lib64/platformsdk/libdistributeddata_inner.z.so
+/system/lib64/platformsdk/libdistributeddata_mgr.z.so
+/system/lib64/platformsdk/libdistributeddb.z.so
+/system/lib64/platformsdk/libdistributeddb_client.z.so
+/system/lib64/platformsdk/libdlp_permission_common_interface.z.so
+/system/lib64/platformsdk/libdm_lite.z.so
+/system/lib64/platformsdk/libdomain_account_innerkits.z.so
+/system/lib64/platformsdk/libdrawable_descriptor.z.so
+/system/lib64/platformsdk/libdrm_framework.z.so
+/system/lib64/platformsdk/libegl_image.z.so
+/system/lib64/platformsdk/libembeddablewindowstage_kit.z.so
+/system/lib64/platformsdk/libext2_uuid.z.so
+/system/lib64/platformsdk/libextension_manager.z.so
+/system/lib64/platformsdk/libextensionkit_native.z.so
+/system/lib64/platformsdk/libextensionwindow_napi.z.so
+/system/lib64/platformsdk/libextractresourcemanager.z.so
+/system/lib64/platformsdk/libform_render_info.z.so
+/system/lib64/platformsdk/libform_utils.z.so
+/system/lib64/platformsdk/libfreeze_util.z.so
+/system/lib64/platformsdk/libfwmark_client.z.so
+/system/lib64/platformsdk/libgame_acc_sched_client.z.so
+/system/lib64/platformsdk/libglobal_resmgr.z.so
+/system/lib64/platformsdk/libheifparser.z.so
+/system/lib64/platformsdk/libhiappevent_base.z.so
+/system/lib64/platformsdk/libhiappevent_innerapi.z.so
+/system/lib64/platformsdk/libhichecker.so
+/system/lib64/platformsdk/libhilog.so
+/system/lib64/platformsdk/libhiperf_client.z.so
+/system/lib64/platformsdk/libhitrace_dump.z.so
+/system/lib64/platformsdk/libhitrace_option.so
+/system/lib64/platformsdk/libhmicui18n.z.so
+/system/lib64/platformsdk/libhmicuuc.z.so
+/system/lib64/platformsdk/libimage_accessor.z.so
+/system/lib64/platformsdk/libimage_effect_impl.so
+/system/lib64/platformsdk/libimage_error_convert.z.so
+/system/lib64/platformsdk/libimage_napi.z.so
+/system/lib64/platformsdk/libimage_native.z.so
+/system/lib64/platformsdk/libimage_utils.z.so
+/system/lib64/platformsdk/libimageformatagent.z.so
+/system/lib64/platformsdk/libinputmethod_client.z.so
+/system/lib64/platformsdk/libintl_register.z.so
+/system/lib64/platformsdk/libintl_util.z.so
+/system/lib64/platformsdk/libipc_common.z.so
+/system/lib64/platformsdk/libipc_napi.z.so
+/system/lib64/platformsdk/libipc_single.z.so
+/system/lib64/platformsdk/libjs_environment.z.so
+/system/lib64/platformsdk/liblz4_shared.z.so
+/system/lib64/platformsdk/libmedia_client.z.so
+/system/lib64/platformsdk/libmedia_foundation.z.so
+/system/lib64/platformsdk/libmedia_library.z.so
+/system/lib64/platformsdk/libmedia_monitor_client.z.so
+/system/lib64/platformsdk/libmedia_monitor_common.z.so
+/system/lib64/platformsdk/libmedia_service_utils.z.so
+/system/lib64/platformsdk/libmission_info.z.so
+/system/lib64/platformsdk/libmmi-client.z.so
+/system/lib64/platformsdk/libmmi-util.z.so
+/system/lib64/platformsdk/libnapi_common.z.so
+/system/lib64/platformsdk/libnative_appdatafwk.z.so
+/system/lib64/platformsdk/libnative_dataability.z.so
+/system/lib64/platformsdk/libnative_preferences.z.so
+/system/lib64/platformsdk/libnative_rdb.z.so
+/system/lib64/platformsdk/libnativetoken_shared.z.so
+/system/lib64/platformsdk/libnet_conn_manager_if.z.so
+/system/lib64/platformsdk/libnet_manager_common.z.so
+/system/lib64/platformsdk/libnet_security_config_if.z.so
+/system/lib64/platformsdk/libopencl_wrapper.so
+/system/lib64/platformsdk/libos_account_innerkits.z.so
+/system/lib64/platformsdk/libpermsetproc_shared.z.so
+/system/lib64/platformsdk/libphonenumber_standard.z.so
+/system/lib64/platformsdk/libpixelconvertadapter.z.so
+/system/lib64/platformsdk/libpluginmanager.z.so
+/system/lib64/platformsdk/libpost_proc_gl.z.so
+/system/lib64/platformsdk/libpowermgr_client.z.so
+/system/lib64/platformsdk/libprint_client.z.so
+/system/lib64/platformsdk/libprint_helper.z.so
+/system/lib64/platformsdk/libprint_models.z.so
+/system/lib64/platformsdk/libprivacy_communication_adapter_cxx.z.so
+/system/lib64/platformsdk/libprivacy_sdk.z.so
+/system/lib64/platformsdk/libprocess_options.z.so
+/system/lib64/platformsdk/librdb_data_share_adapter.z.so
+/system/lib64/platformsdk/libresmgr_napi_core.z.so
+/system/lib64/platformsdk/librestorecon.z.so
+/system/lib64/platformsdk/libruntime.z.so
+/system/lib64/platformsdk/libruntime_utils.z.so
+/system/lib64/platformsdk/libsandbox_helper_native.z.so
+/system/lib64/platformsdk/libsandboxlog.so
+/system/lib64/platformsdk/libscene_session.z.so
+/system/lib64/platformsdk/libscreen_session.z.so
+/system/lib64/platformsdk/libscreen_session_manager_client.z.so
+/system/lib64/platformsdk/libsession_info.z.so
+/system/lib64/platformsdk/libsession_manager.z.so
+/system/lib64/platformsdk/libsession_manager_lite.z.so
+/system/lib64/platformsdk/libsonic.z.so
+/system/lib64/platformsdk/libsqlite.z.so
+/system/lib64/platformsdk/libstart_window_option.z.so
+/system/lib64/platformsdk/libstartup_util.z.so
+/system/lib64/platformsdk/libstorage_manager_sa_proxy.z.so
+/system/lib64/platformsdk/libthermalsrv_client.z.so
+/system/lib64/platformsdk/libtiff.so
+/system/lib64/platformsdk/libtime_client.z.so
+/system/lib64/platformsdk/libtimer.z.so
+/system/lib64/platformsdk/libtoken_callback_sdk.z.so
+/system/lib64/platformsdk/libtokenid_sdk.z.so
+/system/lib64/platformsdk/libtokensetproc_shared.z.so
+/system/lib64/platformsdk/libucollection_utility.z.so
+/system/lib64/platformsdk/libusbsrv_client.z.so
+/system/lib64/platformsdk/libutd_client.z.so
+/system/lib64/platformsdk/libuv.so
+/system/lib64/platformsdk/libwant.z.so
+/system/lib64/platformsdk/libwantagent_innerkits.z.so
+/system/lib64/platformsdk/libwantagent_manager.z.so
+/system/lib64/platformsdk/libwifi_sdk.z.so
+/system/lib64/platformsdk/libwifi_utils.z.so
+/system/lib64/platformsdk/libwindow_animation_utils.z.so
+/system/lib64/platformsdk/libwindow_native_kit.z.so
+/system/lib64/platformsdk/libwindow_scene_common.z.so
+/system/lib64/platformsdk/libwindowstage_kit.z.so
+/system/lib64/platformsdk/libwmutil.z.so
+/system/lib64/platformsdk/libwmutil_base.z.so
+/system/lib64/platformsdk/libwsutils.z.so
+/system/lib64/platformsdk/libzuri.z.so
+/vendor/lib64/chipsetsdk/libhmlibs.so.0
+/vendor/lib64/libvacore_drv_video.so
+/vendor/lib64/libvavdec.so
+/vendor/lib64/passthrough/indirect/libOMX_Core.z.so
+/vendor/lib64/passthrough/indirect/libbishenggpucompiler_v210.so.15
+/vendor/lib64/passthrough/indirect/libdisplay_buffer_vdi_impl.z.so
+/vendor/lib64/passthrough/indirect/libproperty.z.so
+/vendor/lib64/passthrough/indirect/libvcodecbase.so
+/vendor/lib64/passthrough/indirect/libvcodecosal.so
+/vendor/lib64/passthrough/libgralloc_priv.z.so
+/vendor/lib64/passthrough/vulkan.hvgr_v210.so
+[anon:ld-musl-aarch64.so.1.bss]
+[anon:lib2d_graphics.z.so.bss]
+[anon:libEGL.so.bss]
+[anon:libGameAwareLayer.so.bss]
+[anon:libOMX_Core.z.so.bss]
+[anon:libability_manager.z.so.bss]
+[anon:libabilitykit_native.z.so.bss]
+[anon:libabsl_base.z.so.bss]
+[anon:libaccessibility_common.z.so.bss]
+[anon:libaccessibility_interface.z.so.bss]
+[anon:libaccessibilityconfig.z.so.bss]
+[anon:libaccesstoken_sdk.z.so.bss]
+[anon:libace_napi.z.so.bss]
+[anon:libappexecfwk_base.z.so.bss]
+[anon:libaps_client.z.so.bss]
+[anon:libark_jsruntime.so.bss]
+[anon:libarktsbase.so.bss]
+[anon:libastc_encoder_shared.z.so.bss]
+[anon:libasync_stack.z.so.bss]
+[anon:libaudio_capturer.z.so.bss]
+[anon:libaudio_client.z.so.bss]
+[anon:libaudio_common.z.so.bss]
+[anon:libaudio_debug_manager.z.so.bss]
+[anon:libaudio_framework_interface.z.so.bss]
+[anon:libaudio_policy_client.z.so.bss]
+[anon:libaudio_policy_client_idl_interface.z.so.bss]
+[anon:libaudio_policy_manager.z.so.bss]
+[anon:libaudio_schedule.z.so.bss]
+[anon:libaudio_stream_client.z.so.bss]
+[anon:libav_codec_client.z.so.bss]
+[anon:libav_codec_service_dfx.z.so.bss]
+[anon:libbacktrace_local.so.bss]
+[anon:libbatterysrv_client.z.so.bss]
+[anon:libbeget_proxy.z.so.bss]
+[anon:libbishenggpucompiler_v210.so.15.bss]
+[anon:libc++.so.bss]
+[anon:libc++_shared.so.bss]
+[anon:libcamera_framework.z.so.bss]
+[anon:libcamera_utils.z.so.bss]
+[anon:libcesfwk_innerkits.z.so.bss]
+[anon:libcodec_proxy_4.0.z.so.bss]
+[anon:libcolor_manager.z.so.bss]
+[anon:libcrypto_openssl.z.so.bss]
+[anon:libdataobs_manager.z.so.bss]
+[anon:libddgr.z.so.bss]
+[anon:libdevicestatus_client.z.so.bss]
+[anon:libdfx_signalhandler.z.so.bss]
+[anon:libdistributeddb.z.so.bss]
+[anon:libdlpparse.z.so.bss]
+[anon:libdxvk.so.bss]
+[anon:libextensionwindow_napi.z.so.bss]
+[anon:libfdleak_tracker.so.bss]
+[anon:libffrt.so.bss]
+[anon:libfilemanager_client.z.so.bss]
+[anon:libfilemanager_utils.z.so.bss]
+[anon:libframe_analyzer.z.so.bss]
+[anon:libgameservice_graphic_plugin.z.so.bss]
+[anon:libglobal_resmgr.z.so.bss]
+[anon:libgraphics_effect.z.so.bss]
+[anon:libhdi.z.so.bss]
+[anon:libhdi_base.z.so.bss]
+[anon:libheifparser.z.so.bss]
+[anon:libhiappevent_base.z.so.bss]
+[anon:libhilog_inner.so.bss]
+[anon:libhitracechain.so.bss]
+[anon:libhmicui18n.z.so.bss]
+[anon:libhmicuuc.z.so.bss]
+[anon:libhukssdk.z.so.bss]
+[anon:libhwf_adapter.so.bss]
+[anon:libhwf_agent.z.so.bss]
+[anon:libhwf_util.z.so.bss]
+[anon:libiGraphicsCore.z.so.bss]
+[anon:libimage_accessor.z.so.bss]
+[anon:libimage_napi.z.so.bss]
+[anon:libimage_native.z.so.bss]
+[anon:libimageformatagent.z.so.bss]
+[anon:libintl_util.z.so.bss]
+[anon:libipc_napi.z.so.bss]
+[anon:libipc_single.z.so.bss]
+[anon:liblzma.z.so.bss]
+[anon:libmedia_client.z.so.bss]
+[anon:libmedia_library.z.so.bss]
+[anon:libmedia_library_common.z.so.bss]
+[anon:libmedia_library_manager.z.so.bss]
+[anon:libmemmgrclient.z.so.bss]
+[anon:libmmi-client.z.so.bss]
+[anon:libmmi_rust_key_config.z.so.bss]
+[anon:libnative_rdb.z.so.bss]
+[anon:libnet_conn_manager_if.z.so.bss]
+[anon:libnet_manager_common.z.so.bss]
+[anon:libohaudio.so.bss]
+[anon:libohosffmpeg.z.so.bss]
+[anon:libohprint.so.bss]
+[anon:libprint_client.z.so.bss]
+[anon:libprint_helper.z.so.bss]
+[anon:libprint_models.z.so.bss]
+[anon:libprotobuf_lite.z.so.bss]
+[anon:librender_service_base.z.so.bss]
+[anon:librender_service_client.z.so.bss]
+[anon:libresmgr_napi_core.z.so.bss]
+[anon:libressched_client.z.so.bss]
+[anon:libruntime.z.so.bss]
+[anon:libsandbox_helper_native.z.so.bss]
+[anon:libscene_session.z.so.bss]
+[anon:libscreen_session.z.so.bss]
+[anon:libsecurity_component_sdk.z.so.bss]
+[anon:libselinux.z.so.bss]
+[anon:libsession_manager.z.so.bss]
+[anon:libskia_canvaskit.z.so.bss]
+[anon:libstd.dylib.so.bss]
+[anon:libsurface.z.so.bss]
+[anon:libsystemparam.z.so.bss]
+[anon:libthermalsrv_client.z.so.bss]
+[anon:libtrash_client.z.so.bss]
+[anon:libunwinder.z.so.bss]
+[anon:libusbsrv_client.z.so.bss]
+[anon:libutd_client.z.so.bss]
+[anon:libva.so.bss]
+[anon:libvacore_drv_video.so.bss]
+[anon:libvideoprocessingengine.z.so.bss]
+[anon:libvm_manager_kits.z.so.bss]
+[anon:libvsync.z.so.bss]
+[anon:libwant.z.so.bss]
+[anon:libwifi_sdk.z.so.bss]
+[anon:libwifi_utils.z.so.bss]
+[anon:libwindow_native_kit.z.so.bss]
+[anon:libwm.z.so.bss]
+[anon:libxml2.z.so.bss]
+[anon:libxmpsdk.so.bss]
+[anon:vulkan.hvgr_v210.so.bss]
+== vm dirs
+total 4468736
+drwx------ 2 hwf_service hwf_service      3440 2026-10-24 16:16 .
+drwx------ 4 hwf_service hwf_service      3440 2026-10-24 16:16 ..
+-rw-r----- 1 hwf_service hwf_service   4194304 2026-10-24 16:16 stratovirt-vars
+-rw-r----- 1 hwf_service hwf_service 268697600 2026-10-24 16:16 vm.qcow2
+/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine:
+total 16384
+drwx------ 4 hwf_service hwf_service 3440 2026-10-24 16:16 .
+drwx------ 3 hwf_service hwf_service 3440 2026-10-24 16:16 ..
+drwx------ 2 hwf_service hwf_service 3440 2026-10-24 16:16 config
+drwx------ 2 hwf_service hwf_service 3440 2026-10-24 16:16 uds
+
+/data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/config:
+total 16384
+drwx------ 2 hwf_service hwf_service 3440 2026-10-24 16:16 .
+drwx------ 4 hwf_service hwf_service 3440 2026-10-24 16:16 ..
+-rw------- 1 hwf_service hwf_service   47 2026-10-24 16:16 version.json
+-rw-r--r-- 1 hwf_service hwf_service  153 2026-10-24 16:16 vmdevice.json
+-- /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/config/version.json
+{
+	"current":	{
+		"Unattend":	"server.iso"
+	}
+}
+-- /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/config/vmdevice.json
+{
+	"UUID":	"99b10265-f865-45c0-a1d0-98ad1c01577c",
+	"SN":	"39<>D2<>07<>6B<>60<>EB<>E2<>9E<>97<>D3<>A3<>71<>89<>6A<>2A<>52",
+	"MAC":	"c2:82:96:65:29:d0"
+}
+-- /data/service/el2/100/virt_service/vm_manager/*/com.sanway.ecoengine/*.json
+

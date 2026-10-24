@@ -60,6 +60,7 @@ std::atomic<int> g_exportSock{-1};     // export socket, also carries input to t
 std::mutex g_exportSendMu;
 const char *kExportName = "ohmarchy-display";
 uint8_t g_buttons = 0;
+std::atomic<uint64_t> g_blits{0};  // frames shown by the CPU path (Blit)
 
 bool ReadAll(int fd, void *buf, size_t n)
 {
@@ -152,6 +153,7 @@ void RequestUpdate(int fd, bool incremental)
 // rgbaFix: the source is RFB's RGBX with an undefined X byte, so force it opaque.
 void Blit(const uint8_t *src, int w, int h, int srcStride, int32_t format, bool rgbaFix)
 {
+    g_blits++;
     std::lock_guard<std::mutex> lk(g_winMu);
     if (g_win == nullptr || w <= 0 || h <= 0 || GpuActive()) {
         return;
@@ -1052,9 +1054,29 @@ napi_value Init(napi_env env, napi_value exports)
     OH_NativeXComponent_RegisterKeyEventCallbackWithResult(nc, OnKey);
     OH_NativeXComponent_RegisterUIInputEventCallback(nc, OnAxis, ARKUI_UIINPUTEVENT_TYPE_AXIS);
     // Ask for the panel's top refresh rate (it idles at 60 Hz otherwise): frames are
-    // presented as fast as the display takes them. The vote needs a frame callback.
+    // presented as fast as the display takes them. The vote needs a frame callback,
+    // which then runs on every vsync: after a second without new frames the vote
+    // drops to 10 Hz (an idle desktop costs the app almost nothing), and the first
+    // new frame raises it again.
     OH_NativeXComponent_ExpectedRateRange rate{60, 120, 120};
-    OH_NativeXComponent_RegisterOnFrameCallback(nc, [](OH_NativeXComponent *, uint64_t, uint64_t) {});
+    OH_NativeXComponent_RegisterOnFrameCallback(nc, [](OH_NativeXComponent *c, uint64_t ts, uint64_t) {
+        static uint64_t seen = 0, changed = 0;
+        static bool fast = true;
+        uint64_t frames = g_blits + GpuPresents();
+        if (frames != seen) {
+            seen = frames;
+            changed = ts;
+            if (!fast) {
+                OH_NativeXComponent_ExpectedRateRange r{60, 120, 120};
+                OH_NativeXComponent_SetExpectedFrameRateRange(c, &r);
+                fast = true;
+            }
+        } else if (fast && ts - changed > 1000000000ULL) {
+            OH_NativeXComponent_ExpectedRateRange r{1, 10, 10};
+            OH_NativeXComponent_SetExpectedFrameRateRange(c, &r);
+            fast = false;
+        }
+    });
     OH_NativeXComponent_SetExpectedFrameRateRange(nc, &rate);
     return exports;
 }

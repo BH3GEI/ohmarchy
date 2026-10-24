@@ -124,6 +124,29 @@ resource; and its outcome would repeat route B's, since 铠大师 and Oseasy sha
 the same `vm_manager` and `svga-pci` stack. Also, the Windows 11 ISO that Oseasy
 had used was no longer on the device when this was considered.
 
+Update (2026-10-24 08:45 PDT): the supervisor relayed that Yao accepts
+Microsoft's terms and put the path on the night queue, after route I's HMV slot
+and away from agent-2a's soak. Before running it, Claude asks Yao to confirm in
+its own session, since a relayed message does not count as his approval. The ISO
+is on the device after all, as
+`Download/com.oseasy1.ohvm/windows_11.iso` (8 852 006 912 bytes). Its WIM
+metadata, read offline by scanning the ISO for the UTF-16 `<WIM>` XML
+(read-only):
+
+| WIM | images | ARCH | version |
+|---|---|---|---|
+| boot | Windows PE, Windows Setup (arm64) | 12 | 10.0.26100.9457 |
+| winre | Windows Recovery Environment (arm64) | 12 | 10.0.26100.9444 |
+| install | Windows 11 Home, Home Single Language, Pro (zh-CN) | 12 | **10.0.26300**.9457 |
+
+铠大师's check reads `install.wim`. ARCH 12 passes, and so does the name
+(`WINDOWS 11` after `toUpperCase`). Its bytecode has a `compareVersions`
+function and the constant `10.0.26100`, and the error text says "24H2及以上"
+(24H2 or later), so build 26300 should pass. That is an inference from the
+strings: the check has not been run on this ISO. The ISO sits in another app's
+folder, and 铠大师 refuses those ("当前不支持从应用目录安装"), so it has to be
+copied to the top of 下载 first (8.9 GB, no spaces in the name).
+
 ## The app
 
 | | |

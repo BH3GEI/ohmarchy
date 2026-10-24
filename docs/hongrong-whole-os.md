@@ -276,6 +276,40 @@ Debugging a guest that hangs before any output: the PL011 serial goes to
 `memfd:stratovirt_anon_mem` mappings of the StratoVirt process, so
 `dd if=/proc/<pid>/mem ... | strings` on the host recovers the kernel log.
 
+### Omarchy alone, without deepin
+
+`hongrong/pure/build-disk.sh` builds a disk with nothing but Arch Linux ARM
+and Omarchy: GPT with a 512 MiB ESP (a standalone GRUB at
+`EFI/BOOT/BOOTAA64.EFI`, so no UEFI boot entry is needed) and an ext4 root,
+`linux-aarch64` with the patches installed with pacman (its modules belong to
+the package, so `linux-modules-cleanup` leaves them alone), Omarchy 4.0.6 via
+`20-install-omarchy.sh`, and the kernel command line
+`arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200`. It runs in the
+Arch environment on the HarmonyOS host itself (see the script's comments for
+what the HongMeng kernel needs: no devtmpfs, no pacman sandbox, a tmpfs /sys
+with the VM's DMI for Omarchy's hardware steps).
+
+Tested 2026-10-24 with `linux-aarch64` 7.2.12-1.1, in a VM started like 鸿融's
+(`hongrong/pure/testvm.sh`: same StratoVirt binary, HMV acceleration, UEFI
+firmware and virtio devices, serial console on a socket), with 鸿融's own VM
+shut down:
+
+| Boot | Kernel start | `systemctl is-system-running` |
+|---|---|---|
+| cold | 19:16:37 | running (19:18:35) |
+| warm reboot 1 | 19:18:47 | running |
+| warm reboot 2 | 19:20:57 | running |
+| warm reboot 3 | 19:23:06 | running |
+
+All six vCPUs come up every time; `poweroff` ends the VM. Not yet checked on
+this disk: the network (鸿融 removes its bridge when its VM stops, so a VM
+started by hand needs its own tap), the desktop on screen, and a long run.
+
+Notes for running a VM outside 鸿融: root (SELinux domain `su`) can open
+`/dev/hmv` and start StratoVirt directly; StratoVirt's QMP accepts one JSON
+command per write; `-serial socket,path=...,server,nowait` gives a console to
+log in through (`toybox nc -U`).
+
 ### Patches for `linux-aarch64`
 
 - `hongrong/kernel/patches/0001-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch`:

@@ -1,8 +1,10 @@
 #!/system/bin/sh
-# NOT YET TESTED (2026-10-24): first run pending.
+# Used on 2026-10-24 for omarchy-pure.img (cold boot + 3 warm reboots). QMP stop
+# did not trigger a guest shutdown yet: power off from inside the guest.
 # testvm.sh: run a disk image in a headless StratoVirt VM on the HarmonyOS host,
 # outside the 鸿融 app, the way 鸿融 starts its VM (HMV acceleration, the same
 # UEFI firmware, virtio-blk/net, vsock), with the serial console in a file.
+# The serial console is a unix socket ($D/serial.sock) to log in through.
 # Run as root on the host. Only while the 鸿融 VM is shut down and the shared
 # lock /data/local/vm.lock is held (see docs/hongrong-whole-os.md).
 #   testvm.sh start DISK   start (DISK: raw image)
@@ -21,10 +23,13 @@ start)
   disk=${2:?disk}
   pidof stratovirt >/dev/null && { echo "a StratoVirt VM is running (鸿融?); not starting"; exit 1; }
   [ -d /data/local/vm.lock ] || { echo "take /data/local/vm.lock first"; exit 1; }
-  mkdir -p $D; rm -f $D/qmp.sock; : > $D/serial.log
+  mkdir -p $D; rm -f $D/qmp.sock $D/serial.sock
   ip tuntap add dev $TAP mode tap 2>/dev/null
   [ -n "$BR" ] && ip link set $TAP master $BR
   ip link set $TAP up
+  # 鸿融 removes its bridge when its VM stops: then the host side of the
+  # guest's 172.16.100.0/24 is the tap itself
+  [ -n "$BR" ] || ip addr add 172.16.100.1/24 dev $TAP 2>/dev/null
   nohup $SV \
     -machine virt,gic-version=3,mem-share=on,accel=hmv \
     -cpu host,pmu=on,kvm-steal-time=on,bti=off -smp 6 -m 8192 \
@@ -35,7 +40,7 @@ start)
     -device virtio-net-pci,netdev=net0,id=nic0,bus=pcie.0,mac=52:54:00:4d:76:01,addr=0x6.0x0 \
     -device ohos-vhost-vsock-pci,guest-cid=2001,id=vsock0,bus=pcie.0,addr=0xf \
     -qmp unix:$D/qmp.sock,server,nowait \
-    -serial file,path=$D/serial.log \
+    -serial socket,path=$D/serial.sock,server,nowait \
     -D $D/stratovirt.log -disable-seccomp > $D/stdout.log 2>&1 &
   echo $! > $pidf; sleep 2
   running && echo "started pid $(cat $pidf)" || { echo "exited:"; tail -20 $D/stdout.log $D/stratovirt.log; exit 1; }
@@ -43,11 +48,13 @@ start)
 status)
   running && echo "pid $(cat $pidf), up $(ps -o etime= -p $(cat $pidf))" || echo "not running"
   running && echo "vCPUs started: $(grep "\[$(cat $pidf)\]" $D/stratovirt.log 2>/dev/null | grep -c 'psci.rs.*is running')"
-  tail -5 $D/serial.log 2>/dev/null
+  # serial console: toybox nc -U $D/serial.sock (one client at a time)
   ;;
 stop)
   running || { echo "not running"; exit 0; }
-  printf '{"execute":"qmp_capabilities"}\n{"execute":"system_powerdown"}\n' | toybox nc -U $D/qmp.sock >/dev/null 2>&1
+  # one command per write: StratoVirt's QMP parser rejects two JSON objects at once
+  { sleep 1; echo '{"execute":"qmp_capabilities"}'; sleep 1; echo '{"execute":"system_powerdown"}'; sleep 2; } |
+    timeout 10 toybox nc -U $D/qmp.sock >/dev/null 2>&1
   i=0; while running && [ $i -lt 60 ]; do sleep 2; i=$((i+2)); done
   running && { echo "no clean shutdown in 60 s; killing"; kill $(cat $pidf); sleep 2; }
   running || echo stopped

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ran end to end on 2026-10-24 (the resulting disk not yet booted).
+# Ran end to end on 2026-10-24; the disk booted in a 鸿融-style VM (cold + 3 warm reboots).
 # Build a disk image with Omarchy alone (no deepin) for the 鸿融 VM: GPT with an
 # EFI system partition and an ext4 root, Arch Linux ARM's linux-aarch64 with the
 # 鸿融 patches (hongrong/kernel/patches) installed as a package, and a
@@ -106,9 +106,9 @@ install -D -m 600 "$here/etc/lan.nmconnection" "$R/etc/NetworkManager/system-con
 #    in a chroot picks the build host's modules). conf.d is read in order, so a
 #    later file overrides HOOKS.
 install -D -m 644 /dev/stdin "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf" <<'HOOKS'
-# 鸿融 VM (ohmarchy hongrong/pure/build-disk.sh): ext4 root, no btrfs-overlayfs;
+# 鸿融 VM (ohmarchy hongrong/pure/build-disk.sh): ext4 root, no btrfs-overlayfs, no LUKS;
 # no autodetect so the image does not depend on where it was generated.
-HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block encrypt filesystems fsck)
+HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block filesystems fsck)
 HOOKS
 mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
 sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
@@ -126,11 +126,6 @@ menuentry "Omarchy (linux-aarch64, 鸿融 patches)" --id omarchy {
     search --no-floppy --fs-uuid --set=root $root_uuid
     linux /boot/Image root=UUID=$root_uuid $cmdline
     initrd /boot/initramfs-linux.img
-}
-menuentry "Omarchy (fallback initramfs)" --id omarchy-fallback {
-    search --no-floppy --fs-uuid --set=root $root_uuid
-    linux /boot/Image root=UUID=$root_uuid $cmdline
-    initrd /boot/initramfs-linux-fallback.img
 }
 GRUB
 cat > "$W/grub-early.cfg" <<EARLY

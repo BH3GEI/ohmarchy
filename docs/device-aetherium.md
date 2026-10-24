@@ -131,6 +131,33 @@ a QEMU port and clearing the permission gate. The permission test is queued.
   120 Hz scanout. The on-screen fps (measured with `oseasy/measure-fps.sh`) is
   pending the run, but a true 120 Hz 3D path is not in this build.
 
+## Creating the VM on the device (disk-import bug)
+
+The stock Omarchy qcow2 must be visible in the HarmonyOS file picker, which only
+lists files registered through the file-manager index: copy it **through the hmdfs
+account path** `/data/service/el2/100/hmdfs/account/files/Docs/Download/` as owner
+`20001006:1006` mode `660` (a file written by raw `dd`/`cat` to `/storage/media`
+bypasses the index and never appears). `device/create-vm.sh` drives the wizard
+(选择架构 ARM64 → 选择机器 virt → 选择显卡 virtio-gpu-pci → 选择网卡 virtio-net-pci →
+声卡 无声卡 → 配置内存 4 GB → 配置硬盘 导入现有 QEMU 磁盘 → 选择 → the qcow2 →
+系统 Linux → no ISO → name → 创建并启动).
+
+`创建并启动` silently does nothing if Aetherium's sandbox has no `files/vms`
+directory — the known Route F bug (`docs/emulator-aetherium.md`,
+[qemu-hmos#52](https://github.com/AetheriumSimulator/qemu-hmos/issues/52)): after a
+data reset the import creates `files/vms/<name>` but not its parent `files/vms`, and
+fails with "导入磁盘镜像失败: No such file or directory". **Normal users** fix it the
+documented way — open any VM's 虚拟机设置 → ISO 镜像 → 选择 and pick a file, which runs
+`StoragePaths.ensureDirectories()` and creates `files/vms`. On a **rooted dev box**
+the directory can be created directly (what we did here), matching the parent's owner,
+mode and label:
+
+```
+B=/data/app/el2/100/base/com.caidingding233.qemuhmos/files
+mkdir -p "$B/vms"; chown 20020166:20020166 "$B/vms"; chmod 771 "$B/vms"
+chcon u:object_r:debug_hap_data_file:s0 "$B/vms"
+```
+
 ## Measuring the baseline
 
 Once the VM runs under TCG (criterion 1), numbers are collected with scripts

@@ -160,7 +160,8 @@ Coordinated and TCG-only for now (HMV acceleration is under investigation):
 
 ```sh
 device/sign-hap.sh                 # sign the route-F patched Aetherium with the device debug profile
-device/push-inputs.sh              # gzip the HAP and the Omarchy qcow2 to ohdev (one transfer at a time)
+device/push-inputs.sh              # push the HAP and the Omarchy qcow2 to ohdev (one transfer at a time)
+                                   #   big files: device/push-resumable.sh (the frps tunnel drops long streams)
 device/install.sh                  # bm install the signed HAP as root
 # create the VM and run it from the Aetherium window (see docs/device-aetherium.md)
 ```

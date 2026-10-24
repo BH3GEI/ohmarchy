@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Drive the HarmonyOS device's UI by visible text, on top of tools/ohdev/ohui.
+
+usage: dui tap TEXT [--nth N] [--timeout S] [--prefix|--contains]   wait for TEXT, tap its center
+       dui wait TEXT [--timeout S] [--prefix|--contains]            wait until TEXT is on screen
+       dui has TEXT [--prefix|--contains]                           exit 0 if TEXT is on screen now
+       dui gone TEXT [--timeout S]                                  wait until TEXT is no longer shown
+       dui texts                                                    list visible texts with device-pixel centers
+       dui focus                                                    print the focused window's bundle (safety check)
+
+TEXT may list alternatives as "A|B". Buttons may carry an emoji, so use --contains.
+System pop-ups are answered while waiting: "Never add", "Allow" (override with
+DUI_DISMISS="A|B", empty to disable). Taps go to device pixels via `ohui -r tap`.
+This never touches the 鸿融 (com.huawei.medivh) window; `dui focus` reports which
+window has focus so the caller can refuse to type into the wrong one.
+"""
+import json, os, re, subprocess, sys, time
+
+OHUI = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tools', 'ohdev', 'ohui')
+DISMISS = [d for d in os.environ.get('DUI_DISMISS', 'Never add|Allow').split('|') if d]
+
+
+def ohui(*args):
+    return subprocess.run([OHUI, *args], capture_output=True, text=True)
+
+
+def texts():
+    r = ohui('dump', 'dui')
+    path = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''
+    if not path or not os.path.exists(path):
+        return []
+    try:
+        root = json.load(open(path))
+    except (OSError, ValueError):
+        return []
+    out = []
+
+    def walk(n):
+        a = n.get('attributes', {})
+        t = (a.get('text') or '').strip()
+        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', a.get('bounds', ''))
+        if t and m:
+            x1, y1, x2, y2 = map(int, m.groups())
+            if x2 > x1 and y2 > y1:
+                out.append((t, (x1 + x2) // 2, (y1 + y2) // 2))
+        for c in n.get('children', []):
+            walk(c)
+    walk(root)
+    out.sort(key=lambda f: (f[2], f[1]))
+    return out
+
+
+def find(text, mode, timeout):
+    alts = text.split('|')
+    one = {'exact': lambda t, a: t == a, 'prefix': lambda t, a: t.startswith(a),
+           'contains': lambda t, a: a in t}[mode]
+    end = time.time() + timeout
+    while True:
+        found = texts()
+        hits = [f for f in found if any(one(f[0], a) for a in alts)]
+        if hits or time.time() >= end:
+            return hits
+        for d in found:
+            if d[0] in DISMISS and d[0] not in alts:
+                ohui('-r', 'tap', str(d[1]), str(d[2]))
+                break
+        time.sleep(1.5)
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser(usage=__doc__.split('\n\n')[1])
+    ap.add_argument('cmd'); ap.add_argument('arg', nargs='?')
+    ap.add_argument('--nth', type=int, default=0); ap.add_argument('--timeout', type=float, default=25)
+    ap.add_argument('--prefix', action='store_true'); ap.add_argument('--contains', action='store_true')
+    o = ap.parse_args()
+    if o.cmd == 'focus':
+        r = ohui('sh', 'aa dump -l 2>/dev/null | grep -iE "focus|mission" | head')
+        print(r.stdout.strip() or '(could not read focus)')
+        return
+    if o.cmd == 'texts':
+        for t, x, y in texts():
+            print(f'{x:5d} {y:5d}  {t}')
+        return
+    mode = 'contains' if o.contains else 'prefix' if o.prefix else 'exact'
+    if o.cmd == 'gone':
+        end = time.time() + o.timeout
+        while any(t == o.arg for t, _, _ in texts()):
+            if time.time() >= end:
+                sys.exit(f'still on screen after {o.timeout:.0f}s: {o.arg!r}')
+            time.sleep(3)
+        return
+    hits = find(o.arg, mode, 0 if o.cmd == 'has' else o.timeout)
+    if not hits:
+        if o.cmd == 'has':
+            sys.exit(1)
+        sys.exit(f'not on screen after {o.timeout:.0f}s: {o.arg!r}')
+    if o.cmd == 'tap':
+        _, x, y = hits[o.nth]
+        ohui('-r', 'tap', str(x), str(y))
+
+
+if __name__ == '__main__':
+    main()

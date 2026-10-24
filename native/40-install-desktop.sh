@@ -30,6 +30,8 @@ pacman -S --noconfirm --needed qt6-5compat dua-cli
 # --no-sandbox; Firefox's content processes get their seccomp-bpf sandbox.
 # Web apps (omarchy-launch-webapp) still use Chromium.
 pacman -S --noconfirm --needed firefox
+# lazydocker for Omarchy's Docker entry (the daemon is in route I's VM)
+pacman -S --noconfirm --needed lazydocker
 
 # cmake does not know a "HarmonyOS" system; report Linux to the tools.
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-uname.so "$here/desktop/hongmeng-uname.c" -ldl
@@ -71,7 +73,7 @@ install -m 755 "$here/desktop/ohmarchy-desktop" "$here/desktop/systemd-cat" "$pr
 # precedes /usr/bin on the session's PATH.
 install -m 755 "$here/desktop/shims/uwsm-app" "$here/desktop/shims/systemd-run" "$here/desktop/shims/checkupdates" /usr/local/bin/
 # Replacements for Omarchy commands: ahead of Omarchy's bin in the apps' PATH (ohdisplay.lua)
-install -D -m 755 "$here/desktop/shims/omarchy-launch-webapp" /opt/ohmarchy/overrides/omarchy-launch-webapp
+install -D -m 755 "$here/desktop/shims/omarchy-launch-webapp" "$here/desktop/shims/omarchy-launch-docker-tui" -t /opt/ohmarchy/overrides/
 home=$(getent passwd "$user" | cut -d: -f6)
 # Chromium's sandbox needs user namespaces or a setuid helper; neither exists here.
 grep -qx -- --no-sandbox "$home/.config/chromium-flags.conf" 2>/dev/null ||

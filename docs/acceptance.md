@@ -14,7 +14,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Item | Status | What | Evidence |
 |---|---|---|---|
-| A1 every app opens in 3 s | pass | 73 of 78 pass, 0 failed, 4 unsupported (no camera, no systemd, no container runtime), 1 skip (foot-server); P95 1.22 s | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712), [3735447](https://github.com/BH3GEI/ohmarchy/commit/3735447) |
+| A1 every app opens in 3 s | pass | 73 of 78 pass, 0 failed, 4 unsupported (no camera, no systemd, no container runtime), 1 skip (foot-server); P95 1.22 s. Since 2026-10-24 09:53 Docker works through route I's VM (`docker run`, `docker compose`, lazydocker), so 3 unsupported remain | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712), [3735447](https://github.com/BH3GEI/ohmarchy/commit/3735447) |
 | A2 core operations | pass | files (LibreOffice, Neovim), clipboard, Chinese input, sound, file chooser: 6 of 6 | [83432cf](https://github.com/BH3GEI/ohmarchy/commit/83432cf), [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5) |
 | A3 sound | pass, plus on site | over the app-only socket (23:45): first sound median 101 ms (max 133), during playback median 72 ms (max 77); A/V within 100 ms; not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
 | B cold start <= 10 s | pass | about 8 s (session 2.0 s + desktop 5.7-6.1 s) | [68e71a7](https://github.com/BH3GEI/ohmarchy/commit/68e71a7) |
@@ -103,9 +103,23 @@ Unsupported, with the reason (reported as such by the test, not as failures):
 
 | Entry | Why |
 |---|---|
-| Docker (daemon), menu > Docker | no container runtime: no cgroup v2 or user namespaces for dockerd |
 | uuctl, menu > Reminders | systemd user units and timers; there is no systemd |
 | qvidcap | no V4L2 camera: HarmonyOS does not expose its camera to Linux |
+
+### A1b. Docker through route I's VM
+
+The HongMeng kernel cannot run containers (no cgroup v2, no user namespaces). Route
+I runs a small Arch VM on the HarmonyOS hypervisor (`ohmarchy-vm`, agent-a4's
+line, docs/vm-own.md) with dockerd; route D's docker CLI uses it over ssh: context
+`ohmarchy` = `ssh://yao@172.16.100.2`, the desktop user's own key, the VM's host
+key pinned (no daemon port on the network). `40-install-desktop.sh` sets it up.
+
+`tests/compat/docker.sh`, 2026-10-24 09:52, from the desktop session: `docker run
+--rm hello-world` 1.2 s; `docker compose up` of a one-service file ran. Omarchy's
+Docker entry (lazydocker) runs against it: Omarchy's launcher wants the local
+socket through pkexec, so route D's override (`/opt/ohmarchy/overrides`) runs it
+directly when the current context is remote. Needs the VM running
+(`ohmarchy-vm start`, about a minute).
 
 ### A2. Core operations
 

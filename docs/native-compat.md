@@ -35,7 +35,7 @@ The root causes behind most ❌ rows:
 | File manager (SUPER+SHIFT+F, and cwd variant) | ⚠️ | Nautilus, 1.0 s. No removable media or disks (udisks). |
 | Editor (SUPER+SHIFT+N) | ✅ | nvim in foot, 0.35 s. |
 | btop, lazygit (`omarchy-launch-tui`) | ✅ | 0.4 s. btop shows no CPU clock (no cpufreq). |
-| Docker TUI (SUPER+SHIFT+D, `Docker.desktop`) | ❌ | lazydocker isn't installed, there's no docker daemon, and pkexec has no polkit. The window closes at once. |
+| Docker | ⚠️ | No container runtime on HongMeng; the docker CLI uses dockerd in route I's VM over ssh (`docker run`, `docker compose`, lazydocker work; needs `ohmarchy-vm start`). See acceptance.md A1b. |
 | Music TUI cliamp (SUPER+SHIFT+ALT+M) | ⚠️ | Was: exits without ALSA/PipeWire. PipeWire now runs; not re-tested. |
 | Spotify, Signal, 1Password (SUPER+SHIFT+M/G/SLASH) | ❌ | Not installed (no aarch64 packages in the repo). |
 | Obsidian (SUPER+SHIFT+O) | ⚠️ | 1.2 s with `--no-sandbox`. Without it Electron's setuid sandbox aborts. Fix: `/usr/local/bin/obsidian` wrapper (below). |

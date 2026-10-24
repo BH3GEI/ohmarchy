@@ -58,7 +58,6 @@ MENU_ITEMS = [
     ("menu.browser", "Browser", "omarchy-launch-browser"),
     ("menu.editor", "Editor", "omarchy-launch-editor"),
     ("menu.files", "Files", "omarchy-launch-nautilus"),
-    ("menu.docker", "Docker TUI", "omarchy-launch-docker-tui"),
 ]
 # Desktop entries that open no window by design.
 NO_WINDOW = {"foot-server": "starts the foot server only"}
@@ -71,8 +70,6 @@ OVERRIDE = {
 # Entries that cannot work on the HongMeng kernel, with the reason. Still run (so a
 # change shows up), but reported as unsupported rather than failed.
 UNSUPPORTED = {
-    "Docker": "no container runtime: the HongMeng kernel has no cgroup v2 or user namespaces for dockerd",
-    "menu.docker": "no container runtime (see Docker); pkexec also needs polkit on a system bus",
     "uuctl": "manages systemd user units; there is no systemd",
     "menu.reminders": "reminders are systemd user timers; there is no systemd",
     "qvidcap": "no V4L2 camera device: HarmonyOS does not expose its camera to Linux",

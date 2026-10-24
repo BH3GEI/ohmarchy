@@ -113,17 +113,58 @@ signature / appId** (a VM partner identity) and (b) a cluster of **type-255 exte
 abilities** (`VirtualAbility`, `VMConsoleAbility`, `WinAppAbility`, `VmFormAbility`,
 `StatusBarAbility`). So authorization is tied to the app's **identity**, not to a
 grantable permission a third party could simply request.
+### The authorization mechanism (from `libvm_manager.z.so`)
 
-### Still pending (to make it airtight)
-- The `vm_manager` **service-side** log line for a third-party `createVm` (the exact
-  rejection reason), captured during the probe run.
-- Whether declaring a `VirtualAbility` (type-255) extension lifts the `201` — if it does,
-  the gate is the extension (satisfiable by any third party → no-root VM feasible); if not,
-  the gate is the AppGallery signature/appId entitlement (a Huawei VM-partner privilege).
+Pulled `/system/lib64/libvm_manager.z.so` (the VM-service SA) and analysed it. The caller
+check uses two things:
 
-### Bottom line so far
-A third party **can** compile, install, load and talk to the VM service without root — but
-**cannot create a VM**: the service authorizes privileged VM operations by caller identity
-(AppGallery VM-partner signature/appId), not by a permission an ordinary developer can
-declare. Route I ("no-root self-built VM") is therefore blocked for a non-partner app at
-the service's identity check, pending the two tests above.
+1. `AccessTokenKit::VerifyAccessToken(tokenId, "ohos.permission.MANAGE_VM")`. `MANAGE_VM`
+   is defined (`/system/etc/access_token/permission_definitions.json`) as
+   `grantMode: system_grant`, `availableLevel: system_basic`, `availableType: SYSTEM`,
+   `provisionEnable: true` — a restricted permission, grantable to a non-system app only
+   via an ACL in its signing provisioning profile.
+2. `GetAppIdentifier()` — reads the caller's **appIdentifier** (the AppGallery-issued app
+   identity) and checks it. Our debug app's `appIdentifier` is **empty**, so
+   `GetAppIdentifier can not get appIdentifier` → `permission denied`, logged by the SA for
+   every call (even `getVmStatus`; the `0` the client saw was a masked default).
+
+**The decisive finding:** `libvm_manager.z.so` contains a **hardcoded allowlist of eight
+appIdentifiers** in `.rodata` (constructed into a global container at library init via
+`__cxa_atexit`/`operator new`):
+
+```
+5765880207853062833  5765880207853281933*  5765880207854471529  5765880207854951925
+5765880207855081199  5765880207855082215   5765880207855186917** 5765880207855187037
+```
+
+`*` = 铠大师 (`com.sanway.ecoengine`), `**` = OSEasy (`com.oseasy1.ohvm`) — i.e. the two
+known VM apps are on the list. So the gate is **a baked-in partner allowlist, not a
+"non-empty appIdentifier" check**.
+
+### Conclusion (final)
+
+A third-party HarmonyOS app **cannot** create or manage VMs via `@hms:virtService.vmManager`
+without root, and this is **not** something a developer can unlock themselves:
+
+- Not blocked by the SDK (a stub `.d.ts` compiles), by install (a debug HAP installs), by
+  module-load (the closed module loads), or by IPC (the service answers).
+- Blocked by the VM service's caller authorization: it requires the system permission
+  `ohos.permission.MANAGE_VM` **and** that the caller's **appIdentifier be one of eight
+  values hardcoded in `libvm_manager.z.so`**.
+- OSEasy/铠大师 work because their AppGallery appIdentifiers are on that hardcoded list — a
+  closed Huawei VM-partner program. Declaring the same abilities (`VirtualAbility`, …)
+  changes nothing (they are ordinary UIAbilities and were tested: still denied).
+- Even a legitimately AGC-signed third-party app (which would have a non-empty
+  appIdentifier) would be rejected, because its identifier is not among the eight. The only
+  way in is Huawei adding your appIdentifier to `libvm_manager` and shipping it in a system
+  update.
+
+**Therefore Route I (a no-root, self-built VM through the system VM service) is not viable
+for a non-partner app.** The no-root VM paths that do work (Route C 鸿融, and OSEasy/铠大师
+themselves) all rely on an app whose appIdentifier is on Huawei's VM-partner allowlist.
+
+### Reproduction
+`native/vmtest/` (probe app, create-only), `native/vmtest/stub/` (the stub `.d.ts`),
+`device/vmapi/probe-run.sh` (launch + app/service hilog capture). The allowlist is in
+`/system/lib64/libvm_manager.z.so` `.rodata`; the permission in
+`/system/etc/access_token/permission_definitions.json`.

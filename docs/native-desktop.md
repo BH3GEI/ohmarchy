@@ -199,4 +199,5 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 | `start-hyprland` restarts Hyprland when it is killed | stop the watchdog first |
 | `/etc/machine-id` empty: libdbus aborts, which took the Omarchy shell down once Qt loaded its fcitx plugin | write one with `dbus-uuidgen` |
 | Host GPU server (`OHMARCHY_GPU=host`): each desktop restart left a `virgl_test_server` child behind (~80 MB), its connection still ESTAB with no peer | `omarchy desktop stop` ends the server's children; the desktop's clients are gone by then |
+| Reading `/proc/PID/cmdline` of a process that exits during the read (`tr '\0' ' ' < /proc/PID/cmdline` in a script) can spin forever: one such `tr` ran at 100 % of a core for 16 h | read it with a timeout, or check the process still exists first; kill strays |
 | Omarchy's Lua config: `hyprctl dispatch`/`keyword` do not parse | `hyprctl eval 'hl.exec_cmd("...")'` |

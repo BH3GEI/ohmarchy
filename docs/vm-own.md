@@ -389,7 +389,25 @@ must find them, so D's `/home/builder` is shared into the guest at
   `--cmd-socket-path`), so this does the same. The cost: virtiofsd runs as root
   without confinement, so a compromised guest kernel could try to reach host
   files outside the share, the same exposure as 鸿融's own share.
+- **Not as root (supervisor's condition for `--sandbox none`).** virtiofsd is
+  started as builder (uid/gid 60000) through `setpriv --reuid 60000 --regid
+  60000 --clear-groups --no-new-privs` from D's Arch root, so an escape from
+  the share (a symlink to `../../etc` made in the guest) reaches only what
+  builder may read. HongMeng refuses setpriv's `PR_SET_KEEPCAPS`
+  (`--inh-caps`/`--bounding-set` fail with EPERM), so only the uid/gid switch,
+  which clears the effective and permitted capabilities. As 60000 it cannot
+  open `/proc/<root pid>/root`, so builder's home is first bind-mounted to
+  `$OVM_DIR/home-builder` (works from the host, checked). As an unprivileged
+  process it creates files as 60000 anyway; `--translate-uid` only maps what
+  the guest sees. To check in the slot: it starts this way, the symlink test,
+  ownership both ways.
 - `OVM_SHARE=0` turns it off; `status` prints the guest's mount.
+- **Incident (10:02 PDT).** A dry run of this used `kill $(pidof virtiofsd)`;
+  the test process had not started, and the kill hit OSEasy's running VM's
+  virtiofsd (vm_manager restarted it; OSEasy's run does not use the share).
+  Since then: any test that starts or kills processes on ohdev takes vm.lock
+  first, and scripts kill only PIDs they recorded (`ohmarchy-vm` also checks
+  that the pid's command line names its own disk or directory).
 
 Next slot: mount in the guest, `ls -ln /home/builder`, a file created by yao
 and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then

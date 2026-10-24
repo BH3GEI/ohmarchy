@@ -469,3 +469,19 @@ with HongMeng's `hmmac=inherit_parent`. A host-side probe (as 60000 with umask
 `/proc/<session>/root`. The check that settles it, asked of the native-desktop
 line: `umask 022; touch ~/x; ls -l ~/x` as builder in D. Harmless for builder
 (the owner); it matters only for other users in D.
+
+**Known issue: files made through the share are 0660, directories 0771**
+(low priority; builder, the owner, is not affected). Not D's filesystem: in
+D's terminal, builder with umask 022 creates `0644`/`0755` under `~` on the
+same `hmmac=inherit_parent` mount (native-desktop line, 13:20 PDT). Not
+virtiofsd's process umask either (it is 0000). The guest sends normal modes
+(umask 0022 in yao's shell and in containers). So the mode is changed on the
+way through HarmonyOS's virtiofsd. 0660/0771 is exactly HarmonyOS's user-storage
+convention, and this build's own options point there: `--mapped-perm`
+("whether pass the host side uid/gid/mode directly to the virtual machine or
+the virtual machines have independent uid/gid/mode"; with it, it logs
+`Use mapped perm: euid: …, supgid: …`). Without it the VM gets "independent"
+modes and the host file seemingly a fixed one. To try next time vm.lock is
+held anyway: `OVM_FS_EXTRA=--mapped-perm` (interaction with `--translate-uid`
+unknown), and failing that `--posix-acl`/`--xattr` (no default ACL is set on
+D's home: not checked).

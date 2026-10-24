@@ -5,7 +5,7 @@
 # linux-aarch64-headers package is enough) and _kpkgver at its pkgver-pkgrel;
 # see build.sh.
 pkgname=vmwgfx-oseasy
-pkgver=7.2.12
+pkgver=${_kpkgver%%-*}  # the kernel's version
 pkgrel=1
 pkgdesc='vmwgfx with indexed MMIO, screen objects and timer vblank for the HarmonyOS SVGA device'
 arch=(aarch64)

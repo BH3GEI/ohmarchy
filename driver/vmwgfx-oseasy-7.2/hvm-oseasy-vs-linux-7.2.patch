@@ -75,7 +75,7 @@ index bd96f4d5e..a4c099abd 100644
  	if (unlikely(cmd == NULL))
  		return -ENOMEM;
 diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
-index 0f101aedb..0b10f41aa 100644
+index 0f101aedb..0f3797bb4 100644
 --- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
 +++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
 @@ -254,6 +254,8 @@ static int vmw_restrict_iommu;
@@ -250,12 +250,12 @@ index 0f101aedb..0b10f41aa 100644
  	}
 +	if (dev_priv->hvm_mmio) {
 +		drm_info(&dev_priv->drm,
-+			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%u\n",
++			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%llu\n",
 +			 dev_priv->fb_max_width, dev_priv->fb_max_height,
 +			 dev_priv->stdu_max_width, dev_priv->stdu_max_height,
 +			 dev_priv->texture_max_width,
 +			 dev_priv->texture_max_height,
-+			 dev_priv->max_primary_mem);
++			 (u64)dev_priv->max_primary_mem);
 +	}
 +
  	drm_info(&dev_priv->drm,

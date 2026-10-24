@@ -1022,12 +1022,12 @@ static int vmw_driver_load(struct vmw_private *dev_priv, u32 pci_id)
 	}
 	if (dev_priv->hvm_mmio) {
 		drm_info(&dev_priv->drm,
-			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%u\n",
+			 "HVM display limits: framebuffer=%ux%u screentarget=%ux%u texture=%ux%u primary_bytes=%llu\n",
 			 dev_priv->fb_max_width, dev_priv->fb_max_height,
 			 dev_priv->stdu_max_width, dev_priv->stdu_max_height,
 			 dev_priv->texture_max_width,
 			 dev_priv->texture_max_height,
-			 dev_priv->max_primary_mem);
+			 (u64)dev_priv->max_primary_mem);
 	}
 
 	drm_info(&dev_priv->drm,

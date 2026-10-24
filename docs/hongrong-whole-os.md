@@ -242,45 +242,63 @@ The scripts follow the ISO's order: repositories and keys, packages,
 
 Goal: boot Omarchy's `linux-aarch64` with a small, documented patch set on top,
 instead of deepin's kernel, and hand the hypervisor-side problems to Huawei.
-In progress.
 
-### What fails, and where
+### Status
 
-`linux-aarch64` 7.2.11 does not boot in 鸿融. GRUB loads it, the EFI stub exits
-boot services (the host log shows the firmware deactivating the virtio
-devices), and then nothing: no earlycon output even with `earlycon=efifb`, and
-the host never sees PSCI `CPU_ON` for vCPU 1. A working kernel brings up the
-other five vCPUs within 0.4 s of the hand-off, so the hang is on vCPU 0 in early
-boot, before SMP. `arm64.nosme arm64.nogcs arm64.nopoe nokaslr` do not help.
+Arch Linux ARM's `linux-aarch64` 7.2.11, rebuilt with the two patches below and
+booted with `arm64.hmv_idreg_quirk`, starts all six vCPUs and reaches the
+Omarchy desktop: Hyprland as `yao`, virtio-gpu with `+virgl`, vsock, virtio-net
+and virtiofs loaded, 鸿融's guest tools talking to the host (2026-10-24, one
+cold boot). It uses the package's own modules and initramfs: the rebuild keeps
+ALARM's config and release string (`tools/kbuild/alarm-build-native.sh`). Not
+yet the default; warm reboots and a soak are still to be done, in a separate
+test VM.
 
-Booting each kernel once without an initramfs and reading the host log
-(`hrvm ktest`) gives:
+### What failed, and why
 
-| Kernel | Source | Secondary CPUs start |
-|---|---|---|
-| 6.1.176 | Debian | yes |
-| 6.6.143 | deepin | yes |
-| 6.8.0 | Ubuntu | yes |
-| **v6.8** | upstream, `defconfig` | **yes** |
-| **v6.9** | upstream, `defconfig` | **no** |
-| 6.11.0 | Ubuntu, upstream `defconfig` | no |
-| 6.12.111 | Debian | no |
-| 7.2.11 | Arch Linux ARM | no |
+Every kernel from v6.9 on hung in early boot: the EFI stub exits boot services,
+then nothing on screen, and the host never sees PSCI `CPU_ON` for vCPU 1. The
+cause is HarmonyOS's hypervisor (HMV) hanging the vCPU on reads of ID
+registers Linux started reading after v6.8, `ID_AA64PFR2_EL1` for certain:
 
-So the regression is in v6.9 and does not depend on distribution configs.
-v6.9 rewrote arm64's early boot (Ard Biesheuvel's series moving the early page
-table and kernel mapping code from `head.S` into C under `arch/arm64/kernel/pi`,
-plus LPA2). 41 commits between v6.8 and v6.9 touch those files; a path-limited
-`git bisect` over them is running. The same 7.2 kernel boots under QEMU TCG
-(route F), so the trigger is something HarmonyOS's hypervisor does differently.
+- v6.9 reads `ID_AA64ISAR3_EL1`, `ID_AA64PFR2_EL1` and `ID_AA64FPFR0_EL1` in
+  `__cpuinfo_store_cpu()` (bisected to merge `0c5ade742e91`, branch
+  for-next/dpisa).
+- v6.17 checks `ID_AA64PFR2_EL1.GCIE` for the GICv5 boot capability through a
+  live read in `__read_sysreg_by_encoding()`; the guest log stops right after
+  `CPU features: detected: GICv3 CPU interface`.
 
-### Patches for `linux-aarch64` so far
+The report for Huawei, with the bisect, the register list and a reproduction,
+is [hmv-idreg-report.md](hmv-idreg-report.md).
+
+Debugging a guest that hangs before any output: the PL011 serial goes to
+`/dev/null` and 鸿融 hides the EFI framebuffer, but guest RAM is the
+`memfd:stratovirt_anon_mem` mappings of the StratoVirt process, so
+`dd if=/proc/<pid>/mem ... | strings` on the host recovers the kernel log.
+
+### Patches for `linux-aarch64`
 
 - `hongrong/kernel/patches/0001-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch`:
   upstream `5a9d62555e71` (mainline, Cc stable, not yet in 7.2.11). The
   host's ITS reports 32 event ID bits; without the fix MSI allocation fails,
   every device falls back to INTx, vsock is dead and the guest tools never
   connect. Drop it once Arch's kernel carries it.
+- `hongrong/kernel/patches/0002-arm64-arm64.hmv_idreg_quirk-to-read-new-ID-registers-as-zero.patch`:
+  with `arm64.hmv_idreg_quirk` on the command line, every ID register v6.8 did
+  not read at boot reads as zero without being accessed (in `cpuinfo` and in
+  `__read_sysreg_by_encoding()`), and MPAM is hidden. Without the parameter
+  nothing changes. Drop it once HMV reads unknown ID registers as zero.
+
+### Pitfall: deepin's modules disappear after booting Arch's kernel
+
+Arch's `kernel-modules-hook` runs `linux-modules-cleanup.service` at every
+boot: each `/usr/lib/modules/<version>` that is neither the running kernel nor
+owned by a package is moved to `/usr/lib/modules/.old/` and deleted. deepin's
+6.6 modules were copied in by hand, so the first boot of 7.2 removed them, and
+the next boot of deepin's kernel stopped in systemd (no `nls_cp437`, the ESP
+mount fails). While both kernels are in use, keep deepin's modules out of its
+reach (`systemctl mask linux-modules-cleanup.service`), or move them back from
+`.old/`.
 
 ### Method and tools
 
@@ -293,6 +311,11 @@ plus LPA2). 41 commits between v6.8 and v6.9 touch those files; a path-limited
   the running system, powers off, starts, and greps the host's
   `/data/log/hwf_service/vmlog` for `vCPU 1 is running`. A failed test lands
   back on the default entry at the next start.
+- `tools/kbuild/alarm-build-native.sh`: ALARM's `linux-aarch64` `Image` (its
+  tarball, stable patch, patches and config) with ours on top, built in the
+  Arch environment on the HarmonyOS host (20 cores, about 7 minutes).
+- `tools/kbuild/release-zero-build.sh`: upstream release `defconfig` Images
+  with the new ID register reads zeroed, for release-level bisects.
 - `tools/kbuild/kernel-build.sh`: upstream `defconfig` `Image` builds in a
   Debian arm64 container (an M3 Max builds one in about 8 to 12 minutes; the
   Image is gzipped for the trip through the host). The source is a blobless

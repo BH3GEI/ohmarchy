@@ -6,7 +6,7 @@
 #   hrvm settest "ARGS"         from the running default system: set the arch-linux
 #                               entry's kernel arguments and boot it once (next_entry)
 #   hrvm trial "ARGS" [SECS]    settest, power off, start, wait, screenshot, report
-#   hrvm ktest NAME...          boot /arch/boot/ktest/NAME.Image once without an
+#   [KTEST_ARGS=..] hrvm ktest NAME...  boot /arch/boot/ktest/NAME.Image once without an
 #                               initramfs; PASS when PSCI brings up vCPU 1 (host log)
 #
 # Environment: HRVM_HOST (HarmonyOS host, default ohdev), HRVM_GUEST (guest ssh
@@ -42,44 +42,42 @@ start() {
   # fixed position: raise 鸿融 by its sidebar corner if that point is uncovered,
   # then press the 开机 button found in the UI tree, only if no window above
   # covers its centre. Taps use device pixels.
-  "$OHUI" dump hrvm-raise >/dev/null
-  local rxy
-  if rxy=$(python3 -I - "$OHUI_DIR/hrvm-raise.json" <<'P'
+  # Press 开机 only where the UI tree shows it uncovered. Otherwise raise 鸿融
+  # with its dock icon and look again; tapping the icon of the app already in
+  # front minimizes it, so the icon is only tapped while 开机 is not usable.
+  local xy try
+  for try in 1 2 3; do
+    "$OHUI" dump hrvm-pre >/dev/null
+    if xy=$(python3 -I - "$OHUI_DIR/hrvm-pre.json" <<'P'
 import json, re, sys
 wins = json.load(open(sys.argv[1]))["children"]
-box = lambda n: tuple(map(int, re.findall(r"\d+", n["attributes"].get("bounds", "[0,0][0,0]"))))
-for i, w in enumerate(wins):
-    if w["attributes"].get("bundleName") == "com.huawei.medivh":
-        x1, y1, _, _ = box(w); cx, cy = x1 + 120, y1 + 60
-        if any(a <= cx <= c and b <= cy <= d for a, b, c, d in (box(o) for o in wins[:i])): sys.exit(2)
-        print(cx, cy); sys.exit(0)
-sys.exit(1)
-P
-); then "$OHUI" -r tap $rxy >/dev/null; sleep 1; fi
-  "$OHUI" shot hrvm-pre >/dev/null
-  "$OHUI" dump hrvm-pre >/dev/null
-  local xy
-  if ! xy=$(python3 -I - "$OHUI_DIR/hrvm-pre.json" <<'P'
-import json, re, sys
-wins = json.load(open(sys.argv[1]))["children"]
-box = lambda n: tuple(map(int, re.findall(r"\d+", n["attributes"].get("bounds", "[0,0][0,0]"))))
-def find(n):
-    if n["attributes"].get("text") == "开机":
-        return n
+box = lambda a: tuple(map(int, re.findall(r"\d+", a.get("bounds", "[0,0][0,0]"))))
+def find(n, pred):
+    if pred(n["attributes"]): return n["attributes"]
     for c in n.get("children", []):
-        r = find(c)
+        r = find(c, pred)
         if r: return r
 for i, w in enumerate(wins):
     if w["attributes"].get("bundleName") != "com.huawei.medivh": continue
-    b = find(w)
-    if not b: continue
+    b = find(w, lambda a: a.get("text") == "开机")
+    if not b: break
     x1, y1, x2, y2 = box(b); cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-    covered = any(a <= cx <= c and bb <= cy <= d for a, bb, c, d in (box(o) for o in wins[:i]))
-    if covered: sys.exit(2)
-    print(cx, cy); sys.exit(0)
-sys.exit(1)
+    if any(a <= cx <= c and bb <= cy <= d for a, bb, c, d in (box(o["attributes"]) for o in wins[:i])): break
+    print("press", cx, cy); sys.exit(0)
+dock = None
+for w in wins:
+    dock = find(w, lambda a: str(a.get("id", "")).startswith("SmartDock_AppIcon_Container_com.huawei.medivh"))
+    if dock: break
+if not dock: sys.exit(1)
+x1, y1, x2, y2 = box(dock)
+print("raise", (x1 + x2) // 2, (y1 + y2) // 2)
 P
-); then echo "鸿融's 开机 button not found or covered; not clicking" >&2; return 1; fi
+); then :; else echo "鸿融 not found on screen" >&2; return 1; fi
+    set -- $xy
+    if [ "$1" = press ]; then xy="$2 $3"; break; fi
+    "$OHUI" -r tap "$2" "$3" >/dev/null; sleep 2; xy=
+  done
+  [ -n "$xy" ] || { echo "鸿融's 开机 button stays covered; not clicking" >&2; return 1; }
   "$OHUI" -r tap $xy >/dev/null
   for _ in $(seq 1 15); do vm_running && { echo started; return 0; }; sleep 2; done
   echo "did not start (is 鸿融's main page in front?)" >&2; return 1
@@ -143,7 +141,7 @@ ktest() {
 set -e
 mkdir -p /mnt/deepinboot; mountpoint -q /mnt/deepinboot || mount /dev/vda2 /mnt/deepinboot
 test -f /boot/ktest/$name.Image
-grub-editenv /mnt/deepinboot/grub/grubenv set ktest=$name next_entry=arch-ktest
+grub-editenv /mnt/deepinboot/grub/grubenv set ktest=$name ktestargs='${KTEST_ARGS:-}' next_entry=arch-ktest
 umount /mnt/deepinboot
 EOF
   ssh -o BatchMode=yes $GUEST "echo $PW | sudo -S -p '' bash /tmp/kt.sh && (sleep 1; echo $PW | sudo -S -p '' systemctl poweroff) >/dev/null 2>&1 &" || true

@@ -27,8 +27,9 @@ glmark2)
 workspaces)
     end=$(( $(date +%s) + ${2:-10} ))
     while [ "$(date +%s)" -lt "$end" ]; do
-        hyprctl dispatch workspace 2 >/dev/null; sleep 0.4
-        hyprctl dispatch workspace 1 >/dev/null; sleep 0.4
+        # Omarchy 4 configures Hyprland in Lua: dispatchers are hl.dsp.* calls
+        hyprctl dispatch 'hl.dsp.focus({ workspace = "2" })' >/dev/null; sleep 0.4
+        hyprctl dispatch 'hl.dsp.focus({ workspace = "1" })' >/dev/null; sleep 0.4
     done
     ;;
 launch)

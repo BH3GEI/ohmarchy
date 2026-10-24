@@ -1,0 +1,55 @@
+e58b9ffb0e0779576a1e0bb75522b4ef806e80788e50cce38acbd942ebe2f5d6  /storage/media/100/local/files/Docs/Download/oseasy-probe.iso
+running: [] 11:44:59
+vms: [] 11:45:02
+armed
+tapped 946,419 on com.oseasy1.ohvm
+[probe] install: waiting for a disk image on tcp/5003, writing /dev/vda
+[probe] install: dd: 68719476736 bytes (69 GB, 64 GiB) copied, 91.826 s, 748 MB/s
+[probe] install: vmwgfx-oseasy added for 7.2.12-1.1-aarch64-ARCH; modinfo -> /lib/modules/7.2.12-1.1-aarch64-ARCH/updates/vmwgfx.ko
+[probe] install: mkinitcpio rc=0; initramfs vmwgfx: etc/modprobe.d/vmwgfx-oseasy.conf usr/lib/modules/7.2.12-1.1-aarch64-ARCH/updates/vmwgfx.ko 
+[probe] install: desktop autostart for yao: done: reboot to start the desktop on tty1
+[probe] install: boot diagnostics installed, not enabled
+[probe] install: INSTALL_DONE
+install 129 s
+Hyprland [yao] 6 s after reset
+yao            00:59
+BOOT_IMAGE=/boot/Image root=UUID=814b3fa7-d73a-4d9f-85b8-8050d8db48a2 rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200
+drmPrimeFDToHandle on /dev/dri/card0: 0 (ok), handle 53164
+drmCloseBufferHandle: 0 (ok)
+second drmCloseBufferHandle (must fail): -1 (Invalid argument)
+== leak loop
+before:
+  mob_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 302059520 Mob's used: 73745 pages, max: 131072 pages, 53032 id's 
+  system_mob_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 4190208 
+  system_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 96616448 
+  vram_ttm:  use_type: 1 use_tt: 0 size: 65536 usage: 12693504 0x0000000000000000-0x0000000000000c1b: 3099: used 0x0000000000000c1b-0x0000000000010000: 62437: free total: 65536, used 3099 free 62437 
+  MemAvailable: 7045492 kB Slab: 80048 kB 
+2000 rounds of create/export/import/close/destroy (512x512): 0 import failures, 0 close failures
+2000 rounds of create/export/import/close/destroy (512x512): 0 import failures, 0 close failures
+after:
+  mob_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 302059520 Mob's used: 73745 pages, max: 131072 pages, 53032 id's 
+  system_mob_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 4190208 
+  system_ttm:  use_type: 1 use_tt: 1 size: 0 usage: 96616448 
+  vram_ttm:  use_type: 1 use_tt: 0 size: 65536 usage: 12693504 0x0000000000000000-0x0000000000000c1b: 3099: used 0x0000000000000c1b-0x0000000000010000: 62437: free total: 65536, used 3099 free 62437 
+  MemAvailable: 7067480 kB Slab: 81052 kB 
+kernel log: 0 warnings
+tapped 720,738 on com.oseasy1.ohvm
+== idle
+activeMode: 2880x1920, refreshRate=60
+== gears, Oseasy alone
+activeMode: 2880x1920, refreshRate=60
+  dxvk-submit-37015                        120
+SKIP: top at 600,73 is '', not com.oseasy1.ohvm
+== gears, Oseasy + ohmarchy-120
+activeMode: 2880x1920, refreshRate=120
+  RSUniRenderThre-2792                     42
+  hmarchy.vote120-37582                    42
+  dxvk-submit-37015                        42
+== workspaces
+activeMode: 2880x1920, refreshRate=120
+  RSUniRenderThre-2792                     37
+  hmarchy.vote120-37582                    37
+== launch
+foot: 0.08 s 
+== power off 11:51:34
+vms after poweroff: [] 11:51:52

@@ -430,15 +430,15 @@ the runs above unless marked pending.
 |---|---|---|---|
 | Guest display device | `svga-pci` (VMware SVGA II, VirtualBox VMSVGA-style), vmwgfx-oseasy | `vhost-user-gpu-pci` (virtio-gpu, virgl) | none (HarmonyOS window) |
 | Modes offered to the guest | driver-made; `2100x1511@120` with `hvm_refresh=120` (no EDID) | EDID, 60 Hz only | `@120` |
-| Guest frame rate (KMS page flips) | 120.0 (kmsgl, modetest) | 114-120 (es2gears, reported) | 114-120 |
-| Frames the host window receives | 120/s (`NativeWindowFlushBuffer`, kmsgl) | 112-123/s | 116-118/s |
-| Frames on screen | 60 (panel stays at 60 Hz while Oseasy shows a VM) | 60 | 117-120 |
+| Guest frame rate (KMS page flips) | 120.0 (kmsgl, modetest; Hyprland with es2gears, run 9) | 114-120 (es2gears, reported) | 114-120 |
+| Frames the host window receives | 120/s: Hyprland + es2gears, Oseasy's `dxvk-submit` flushes (run 9) | 112-123/s | 116-118/s |
+| Frames on screen | 60 (composer fps; panel stays at 60 Hz). With ohmarchy-120 focused the panel goes to 120 Hz but composition reaches only 40-51/s (two layers); with the console focused the vote stops counting (60 Hz) | 60 | 117-120 |
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
 | Runs next to another VM | no: the system VM kit refuses (`Not support vm multi-instance`); not exercised (rule: one VM at a time) | no (same kit) | yes (no VM) |
-| Cold start to desktop | pending | | |
-| App launch times | pending | | |
-| es2gears / glmark2 | glmark2-es2-wayland 1280x720: 1083 (SVGA3D); es2gears pending | | |
-| Workspace switching on screen | pending (60 at most) | 59-60 | 109-115 |
+| Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app's own start not timed | | |
+| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s; obsidian no window within 20 s | | |
+| es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | | |
+| Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
 | 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); soak pending | | |
 
 ### Commits (MateBook 14 work)
@@ -745,6 +745,37 @@ and the console window starts with its intro carousel (tap 收起介绍).
   600 ms commits). `measure-fps.sh` lists flushes per thread.
 - Launch times so far (window mapped): foot 0.09 s, chromium 1.09 s (both draw
   with shared memory); nautilus and obsidian never mapped (GPU clients, refused).
+
+### Ninth run: GPU clients draw; 120 frames/s reach the host (11:44-, 2026-10-25)
+
+Log: [`oseasy/runs/2026-10-25-pollfix/slot10-gemclose.log`](../oseasy/runs/2026-10-25-pollfix/slot10-gemclose.log).
+The old-driver soak (11:31-11:43) was stopped on the supervisor's call: with every GPU
+client refused it only measured an idle desktop.
+
+- **GEM_CLOSE fix:** `prime-close` now closes the imported handle (`0 (ok)`), and a
+  second close fails with `EINVAL` as it must. **Leak check**
+  ([`oseasy/guest/leak-check.sh`](../oseasy/guest/leak-check.sh)): 2 x 2000 rounds
+  of create/export/import/close/destroy, 0 failures; vmwgfx's `mob_ttm`,
+  `system_mob_ttm`, `system_ttm`, `vram_ttm` usage identical before and after
+  (MOBs 73745 pages, 53032 ids), slab +1 MB, no refcount/KASAN/WARNING lines.
+  The fallback only drops a reference this file holds on that handle
+  (`ttm_ref_object_base_unref` finds it in the file's own table); it is the same
+  operation as the existing `DRM_VMW_UNREF_SURFACE` ioctl.
+- **es2gears draws.** Frames per thread on the host:
+
+  | Windows | Panel | Oseasy `dxvk-submit` (the VM's frames) | Composer (on screen) |
+  |---|---|---|---|
+  | Oseasy alone, focused | 60 Hz | 120/s | 60.0 fps |
+  | + ohmarchy-120, ohmarchy-120 focused | 120 Hz | 51/s | ~51 (RS composes 51/s) |
+  | + ohmarchy-120, console focused | 60 Hz | 80-95/s | 60.0 fps (40 compositions/s) |
+
+  So the VM now delivers 120 frames/s, but Oseasy's window alone keeps the panel at
+  60 Hz, and the voting window only counts while it has the focus; with it, the
+  system compositor reaches only 40-51 compositions/s with the two layers.
+- **Apps open** (first mapped window): foot 0.07-0.08 s, nautilus 0.60-0.90 s,
+  chromium 0.81-1.17 s; obsidian did not map a window within 20 s.
+- Workspace switching (Lua dispatch `hl.dsp.focus({ workspace = "2" })`, Omarchy 4
+  configures Hyprland in Lua): 60 on screen with es2gears running.
 
 ### Decision: no guest agent for Oseasy
 

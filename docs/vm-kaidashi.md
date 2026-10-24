@@ -23,8 +23,17 @@ Survey done (read-only), on ohdev (MateBook 14 `HM740-001`, HarmonyOS
 - One VM at a time, system-wide (`Not support vm multi-instance`,
   虚拟机启动失败，已有虚拟机在运行中).
 
-Next: build an ISO that passes the WIM check and boots GRUB, create the VM
-during a `vm.lock` slot, and record the StratoVirt command line it gets.
+- **The ISO check is beaten**: a Debian 12 netboot ISO with a 2.5 KB fake
+  `sources/install.wim` (`tools/kaidashi/make-fake-wim.sh`) is accepted as
+  安装版本 WINDOWS 11 PRO, 2026-10-24 16:07.
+- The wizard (选择镜像 → 配置环境 → 安装系统) offers only name, CPU (6),
+  memory (8 GB) and disk size (256 GB default), plus 自动创建D盘分区 and a
+  desktop card. No display, firmware or Secure Boot options. No login was asked
+  for up to the 开始安装 button (not pressed yet: it creates the VM).
+
+Next: press 开始安装 during a `vm.lock` slot (鸿融's VM has to be off: one VM at
+a time), record the StratoVirt command line, and boot the probe entry to read
+the devices, Secure Boot state and EDID from the serial log.
 
 ## The app
 
@@ -88,8 +97,29 @@ on, an unsigned GRUB will not start; shim (signed by the 2011 UEFI CA) would.
 - No signature or checksum of the ISO in the strings. The app writes its own
   `autounattend` (arm64 components, `<RefreshRate>60</RefreshRate>`) and guest
   tools ISO with genisoimage; the install ISO is attached as `Windows_install.iso`.
-- Importing a `.qcow2` is only for 铠大师's own exports (with a password,
+- Result with the probe ISO (`tools/kaidashi/probe-iso/build.sh`, Debian
+  `mini.iso` + fake WIM + Joliet names, volume id `CCCOMA_A64FRE_ZH-CN_DV9`):
+  accepted. The ISO has to be in a public folder (下载) to show up in the picker.
+
+  ![ISO check passed](img/kaidashi/iso-check-passed.jpeg)
+  ![Wizard step 3](img/kaidashi/wizard-step3.jpeg)
+
+- There is no qcow2 import in the UI (unlike Oseasy): only 镜像数据导出 and
+  backup/restore of 铠大师's own VM. Importing a `.qcow2` is only for 铠大师's own exports (with a password,
   `InputPwdForQcow2`).
+
+## Probe ISO
+
+`tools/kaidashi/probe-iso/build.sh WORKDIR` remasters Debian 12's arm64 netboot
+`mini.iso` (Microsoft-signed shim, Debian-signed GRUB and 6.1 kernel, so it
+starts with or without Secure Boot) with xorriso: the fake `install.wim`, a GRUB
+menu and `probe.cpio.gz`. The default entry boots with `rdinit=/probe.sh
+console=tty0 console=ttyAMA0`; `probe.sh` prints PCI IDs and BARs, the EFI
+`SecureBoot`/`SetupMode` variables, ACPI tables, framebuffer and DRM modes,
+EDID and dmesg as `KDSPROBE` lines, then opens a shell on tty1. StratoVirt sends
+the guest serial port to the hwf_service log (`RedirectToLog`), which root can
+read in `/data/log/hwf_service/vmlog`. Other entries: the Debian rescue
+installer and `fwsetup`.
 
 ## Sources
 

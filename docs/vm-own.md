@@ -457,3 +457,15 @@ copy when a system update changes the original. `dropuid` (built from
 sets umask 022 before exec, for the 0660 files (HongMeng's root shells start
 with umask 007). To verify in the next slot: `Umask` in virtiofsd's
 `/proc/PID/status` and a container's new file being 0644 in D.
+
+**umask check (2026-10-24 13:09–13:10 PDT, vm.lock).** Not fixed by
+`umask(022)` in `dropuid`: virtiofsd shows `Umask: 0000` (it sets this itself,
+as passthrough servers do, and applies the guest's mode). The guest's umask is
+0022 (yao's shell and an Alpine container), yet in D the new files are `0660`
+and directories `0771`: "others" is always cleared. That points at the
+filesystem under D's home rather than the share: arch.img's root is mounted
+with HongMeng's `hmmac=inherit_parent`. A host-side probe (as 60000 with umask
+022, directly in D's home, no VM) could not run: uid 60000 cannot traverse
+`/proc/<session>/root`. The check that settles it, asked of the native-desktop
+line: `umask 022; touch ~/x; ls -l ~/x` as builder in D. Harmless for builder
+(the owner); it matters only for other users in D.

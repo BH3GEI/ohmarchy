@@ -191,6 +191,25 @@ the guest serial port to the hwf_service log (`RedirectToLog`), which root can
 read in `/data/log/hwf_service/vmlog`. Other entries: the Debian rescue
 installer and `fwsetup`.
 
+## Comparison: 铠大师 vs 鸿融 vs native
+
+Same machine (MateBook 14, 2880×1920 panel up to 120 Hz). The 鸿融 and native
+columns are route C/D measurements
+([native-desktop.md](native-desktop.md#frame-rates)); the 铠大师 column is what
+is known so far, with the reason where a number is missing.
+
+| | 铠大师 (route G) | 鸿融 VM (route C) | Native (route D) |
+|---|---|---|---|
+| Display device | `svga-pci` (VMware SVGA II / VirtualBox VMSVGA, Oseasy's) | `vhost-user-gpu-pci` (virtio-gpu, virgl) | none: HarmonyOS app window, no VM |
+| Refresh rate the guest is offered | no EDID on the device; the Windows driver makes its own, and Windows' saved modes are all 60 Hz. Route B's vmwgfx can offer 120 Hz, but the panel stays at 60 Hz | 60 Hz (EDID: 1920×1280 @ 59.998, 2160×1440 @ 59.9999) | 120 Hz (the app asks the panel for it) |
+| Frames on screen, es2gears / workspace switch | not measurable yet: no Linux display path (EFI framebuffer 800×600 only; route B's vmwgfx presents black frames at ~54/s) | 60 / 59-60 fps (`composer fps`); 38-41/s compositions in `hitrace` | 117-120 / 109-116 fps |
+| GPU | Windows: D3D11 on DXVK on the Maleoon (`/dev/hvgr0`). Linux: none yet (route B) | virgl, OpenGL only (zink on Maleoon) | Maleoon through the host's virglrenderer |
+| App start times | pending (needs a desktop) | route C | route D |
+| Next to another VM | no: one VM system-wide (`Not support vm multi-instance`, 已有虚拟机在运行中); also true for 鸿融 and Oseasy | no (same rule) | yes: no VM |
+| Login / payment to create and boot a VM | none needed (2026-10-24) | none | n/a |
+| Disk in | no foreign-disk import; written from inside the guest (installer ISO, virtiofs share of 文档) | qcow2 import | image file on `/data` |
+| Warm reboot ×3, 1 h soak | pending (needs the Omarchy disk installed) | route C: warm reboot can hang (virgl MMIO trap) | route D |
+
 ## OSEasy's Windows guest
 
 How Oseasy drives the same `svga-pci` for Windows, read from its backup

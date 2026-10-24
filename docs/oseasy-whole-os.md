@@ -513,3 +513,34 @@ and `svga-pci` with vmwgfx. `reboot: Restarting system` is printed after
 write that waits for an SVGA fence during shutdown would stall every console,
 the serial one included. To test: `initcall_debug` (per-device shutdown lines),
 then `drm_client_lib.active=` (no fbdev client) if the log stops at the console.
+
+### Who holds the panel at 60 Hz (read-only investigation)
+
+Conclusion: **Oseasy itself; the system does not lock VM windows to 60 Hz.**
+The panel runs at whatever the frame-rate votes of the visible windows ask for,
+and Oseasy never votes, so it stays at the idle default of 60 Hz.
+
+- **No vote in Oseasy:** its ArkTS bytecode (`ets/modules.abc`) and native
+  libraries (`libentry.so`, `libcommon.so`) contain no `setExpectedFrameRateRange`,
+  no `@ohos.graphics.displaySync`, no `OH_NativeXComponent_SetExpectedFrameRateRange`
+  and no `OH_DisplaySoloist`. `getDefaultDisplaySync` / `getPrimaryDisplaySync` are
+  `@ohos.display` queries, and `refreshRate` is only read from the `Display` object.
+  The VM picture is an XComponent (`VMWinXComponent`, type `surface`) whose surface
+  id the app hands to the VM kit; StratoVirt draws into that native window with a
+  Vulkan (DXVK) mailbox swapchain and does not vote either.
+- **The host's state with Oseasy in front:** `expectedRefreshRate=-1` (no
+  expected rate from anyone), `activeMode` 60 Hz while the window receives 120
+  buffers/s. RenderService's `fpsCount` shows the panel does switch:
+  `Refresh Rate:60 Count:458829; 80 Count:4029; 120 Count:41842` (the 120 Hz time
+  comes from the native desktop app).
+- **How the native app gets 120 Hz:** `native/app/entry/src/main/cpp/ohdisp.cpp`
+  calls `OH_NativeXComponent_SetExpectedFrameRateRange(nc, {60, 120, 120})` for its
+  XComponent and drops to `{1, 10, 10}` after a second without frames
+  ([native-desktop.md](native-desktop.md): "The panel idles at 60 Hz | the app
+  votes 120 Hz for its XComponent"). It is a public API for ordinary apps; no
+  permission is involved.
+- **So:** Oseasy could reach 120 Hz on screen by voting for `VMWinXComponent`
+  (ArkTS `XComponentController`/`displaySync` or the NDK call above) while the VM
+  view is active. Without an Oseasy change, a possible workaround is another
+  visible window that votes 120 Hz (the panel follows the highest vote among the
+  visible layers); to be measured with the native app's window next to Oseasy's.

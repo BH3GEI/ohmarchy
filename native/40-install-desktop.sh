@@ -99,6 +99,14 @@ gcc -O2 -o "$prefix/bin/ohime" "$here/desktop/ohime.c" "$build/input-method-unst
 mkdir -p "$prefix/lib"
 clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
+# System D-Bus, started and stopped with the desktop (ohmarchy-sysbus): only these
+# services can be bus-activated
+install -m 755 "$here/desktop/ohmarchy-sysbus" "$prefix/bin/"
+install -D -m 644 "$here/desktop/dbus-system.conf" "$prefix/share/dbus-1/system.conf"
+mkdir -p "$prefix/share/dbus-1/system-services"
+for s in UDisks2 PolicyKit1 UPower; do
+    ln -sf "/usr/share/dbus-1/system-services/org.freedesktop.$s.service" "$prefix/share/dbus-1/system-services/"
+done
 if ! grep -q '^Name=pinyin' "$home/.config/fcitx5/profile" 2>/dev/null; then
     mkdir -p "$home/.config/fcitx5"
     cat > "$home/.config/fcitx5/profile" <<'T'
@@ -133,6 +141,9 @@ json.dump(d, open(p, "w"), indent=2)
 P
 chown -R "$user:" "$home/.config/chromium-flags.conf" "$home/.config/mise"
 install -m 644 -o "$user" -g "$user" "$here/desktop/ohdisplay.lua" "$home/.config/hypr/ohdisplay.lua"
+# Sound out to the display app (PipeWire, started by ohmarchy-desktop)
+install -d -o "$user" -g "$user" "$home/.config/pipewire" "$home/.config/pipewire/pipewire.conf.d"
+install -m 644 -o "$user" -g "$user" "$here/desktop/ohmarchy-audio.conf" "$home/.config/pipewire/pipewire.conf.d/"
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 rm -rf "$build"
 echo "Done. Start it from the host with: omarchy desktop start"

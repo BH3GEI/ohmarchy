@@ -21,6 +21,17 @@ if [ "$1" = desktop ] && [ "$2" = restart ]; then
     sh "$0" desktop stop > /dev/null 2>&1
     exec sh "$0" desktop start
 fi
+# The system D-Bus (bin/ohmarchy-sysbus inside) lives as long as the desktop.
+# The image is mounted only in the session's namespace: check for it there.
+sysbus() {
+    nsenter -t "$(cat "$B/session.pid")" -m -p -- chroot "$R" /usr/bin/env -i PATH=/usr/bin /bin/sh -c \
+        'b=/opt/ohmarchy/bin/ohmarchy-sysbus; [ ! -x $b ] || $b "$0"' "$1" > /dev/null
+}
+if [ "$1" = desktop ] && [ "$2" = stop ] && kill -0 "$(cat "$B/session.pid" 2>/dev/null)" 2>/dev/null; then
+    sh "$0" -c /opt/ohmarchy/bin/ohmarchy-desktop stop
+    sysbus stop
+    exit 0
+fi
 case "$1" in
 root) user=root; shift ;;
 esac
@@ -37,8 +48,11 @@ desktop)
     # bin/virgl_test_server on the host.
     vtest=$B/bin/vtest-broker
     [ -x "$vtest" ] && [ "$OHMARCHY_GPU" != host ] || vtest=$B/bin/virgl_test_server
-    if [ "${2:-start}" = start ] && [ -x "$vtest" ]; then
+    if [ "${2:-start}" = start ]; then
         sh "$B/arch.sh" start > /dev/null || exit 1
+        sysbus start
+    fi
+    if [ "${2:-start}" = start ] && [ -x "$vtest" ]; then
         P=$(cat "$B/session.pid")
         sock=$R/tmp/.virgl_test
         if ! pgrep -f "$vtest" > /dev/null; then

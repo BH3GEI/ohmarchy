@@ -74,7 +74,6 @@ UNSUPPORTED = {
     "uuctl": "manages systemd user units; there is no systemd",
     "menu.reminders": "reminders are systemd user timers; there is no systemd",
     "qvidcap": "no V4L2 camera device: HarmonyOS does not expose its camera to Linux",
-    "org.gnome.DiskUtility": "needs udisks2 on the system D-Bus, which does not run in the session",
 }
 
 

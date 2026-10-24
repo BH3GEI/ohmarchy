@@ -14,9 +14,10 @@ or the menu does it. "By inspection" means the script was read but not run.
 
 The root causes behind most ❌ rows:
 
-- **No systemd and no system D-Bus.** systemd can't be pid 1 (cgroup v1, no
-  namespaces). Daemons on the system bus don't run: NetworkManager, bluez, upower,
-  power-profiles-daemon, udisks2, polkit, cupsd. The session bus works.
+- **No systemd.** systemd can't be pid 1 (cgroup v1, no namespaces). A system
+  D-Bus runs with the desktop, but only udisks2, polkit and upower can be started
+  on it; NetworkManager, bluez, power-profiles-daemon and cupsd would act on
+  hardware HarmonyOS owns and are not allowed. The session bus works.
 - **No user namespaces.** No bwrap, Chromium/Electron sandbox, rootless
   containers or flatpak.
 - **No hardware devices.** The chroot has no DRM, sound, video, backlight or
@@ -110,14 +111,14 @@ The root causes behind most ❌ rows:
 |---|---|---|
 | SysV IPC (`tests/compat/sysv_ipc.c`) | ⚠️ | Shared memory and semaphores work. Message queues: a `msgrcv` that is already blocked is never woken by a later `msgsnd` (the message is queued; a non-blocking `msgrcv` reads it), so fakeroot, hence makepkg, hangs. Fix: preloaded `libhongmeng-msgrcv.so` polls instead; with it all three pass and `fakeroot chown` works. An idle waiter costs 0.2 % of one core (backoff 1 ms for the first second, then up to 20 ms). Roll back: remove its line from the Arch root's `/etc/ld.so.preload`. |
 | Session D-Bus | ✅ | Started with the desktop. Activation works for services with an `Exec=` (portals, gvfs, keyring, fcitx5). |
-| System D-Bus | ❌ | No `/run/dbus`. Everything on the system bus is missing (below). |
+| System D-Bus | ⚠️ | `ohmarchy-sysbus`, started and stopped by `omarchy desktop start/stop`; socket on the session's own `/run`. Started as the `dbus` user (switching to it itself fails: no PR_SET_KEEPCAPS). Bus activation limited to udisks2, polkit and upower; the launch helper (setuid) works. Roll back: delete `/opt/ohmarchy/bin/ohmarchy-sysbus`. |
 | Audio | ❌ | No `/dev/snd`. PipeWire isn't started (no systemd --user). It can be started by hand but has no sink. No path to HarmonyOS audio. |
 | Wi-Fi, Bluetooth widgets | ❌ | NetworkManager/bluez: system bus. The network itself works (host's network namespace). |
-| Power profile, battery | ❌ | power-profiles-daemon and upower: system bus. |
+| Power profile, battery | ⚠️ | upower runs but lists no battery (`upower -e`: only the display device). No power-profiles-daemon. |
 | Brightness | ❌ | No backlight device; HarmonyOS controls the panel. |
 | Printing | ❌ | cupsd not running. |
-| Removable media | ❌ | udisks2 and udev: system bus. `udiskie` in autostart fails. |
-| Polkit / pkexec | ❌ | No polkitd. Use `sudo` (no password). |
+| Removable media | ❌ | udisks2 runs but the session's `/dev` has no block devices (on purpose: HarmonyOS owns the disks). |
+| Polkit / pkexec | ⚠️ | polkitd starts on the system bus; no authentication agent tested. Use `sudo` (no password). |
 | Portals | ⚠️ | xdg-desktop-portal with the gtk and hyprland backends; FileChooser, Screenshot, OpenURI, Settings, etc. are on the bus. Not exercised from an app. ScreenCast needs PipeWire. |
 | Xwayland | ✅ | X11 client (`QT_QPA_PLATFORM=xcb cmake-gui`) maps in 0.4 s. |
 | Chinese input | ✅ | fcitx5 pinyin, started by the desktop with Omarchy's environment; Ctrl+Space switches. "nihao" + space gives 你好 in foot. The HarmonyOS IME through `ohime` is an option (`OHMARCHY_IME=harmony`), not verified on screen. |

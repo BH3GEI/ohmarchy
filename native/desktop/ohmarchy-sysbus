@@ -1,0 +1,45 @@
+#!/bin/bash
+# The system D-Bus for route D's session (run as root inside it). There is no
+# systemd: `omarchy desktop start|stop` starts and stops it with the desktop. Its
+# socket is /run/dbus/system_bus_socket on the session's own /run (a tmpfs only the
+# session sees). Bus activation is limited to the services in
+# /opt/ohmarchy/share/dbus-1/system-services (udisks2, polkit, upower); the rest of
+# Arch's system services (NetworkManager, bluez, wpa_supplicant, ...) would act on
+# hardware HarmonyOS owns. The session's /dev has no block devices, so udisks2
+# sees no disks.
+#   ohmarchy-sysbus start|stop|status
+# Rollback: delete /opt/ohmarchy/bin/ohmarchy-sysbus (omarchy skips it when absent).
+CONF=/opt/ohmarchy/share/dbus-1/system.conf
+PID=/run/dbus/pid
+SOCK=/run/dbus/system_bus_socket
+SERVICES="udisksd polkitd upowerd"
+
+running() { [ -S "$SOCK" ] && kill -0 "$(cat "$PID" 2>/dev/null)" 2>/dev/null; }
+
+case "${1:-status}" in
+start)
+    running && { echo running; exit 0; }
+    rm -f "$PID" "$SOCK"
+    # Started as the dbus user: switching to it itself fails on HongMeng (dropping
+    # capabilities needs PR_SET_KEEPCAPS). The launch helper is setuid root as usual.
+    install -d -m 755 -o dbus -g dbus /run/dbus
+    chroot --skip-chdir --userspec=dbus:dbus / dbus-daemon --config-file="$CONF" || exit 1
+    running && echo started || { echo "failed"; exit 1; }
+    ;;
+stop)
+    [ -s "$PID" ] && kill "$(cat "$PID")" 2>/dev/null
+    for s in $SERVICES; do pkill -x "$s"; done
+    for _ in $(seq 30); do
+        kill -0 "$(cat "$PID" 2>/dev/null)" 2>/dev/null || pgrep -x "udisksd|polkitd|upowerd" > /dev/null || break
+        sleep 0.1
+    done
+    [ -s "$PID" ] && kill -9 "$(cat "$PID")" 2>/dev/null
+    for s in $SERVICES; do pkill -9 -x "$s"; done
+    rm -f "$PID" "$SOCK"
+    ;;
+status)
+    running && echo "running (pid $(cat "$PID"))" || echo stopped
+    ;;
+*)
+    echo "usage: ohmarchy-sysbus start|stop|status" >&2; exit 2 ;;
+esac

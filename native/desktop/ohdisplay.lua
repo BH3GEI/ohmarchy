@@ -12,6 +12,12 @@ hl.monitor({
   scale = tonumber(os.getenv("OHMARCHY_DISPLAY_SCALE") or "1"),
 })
 
+-- Route D's replacements for a few Omarchy commands (/opt/ohmarchy/overrides, e.g.
+-- omarchy-launch-webapp: web apps in Firefox, which can sandbox itself here).
+-- Omarchy puts its own bin directory first in the apps' PATH; this goes before it.
+hl.env("PATH", "/opt/ohmarchy/overrides:" .. (os.getenv("OMARCHY_PATH") or "/usr/share/omarchy") .. "/bin:"
+  .. (os.getenv("PATH") or "/usr/local/bin:/usr/bin"))
+
 -- Without systemd, environment.d is not applied: read Omarchy's and the user's.
 for _, dir in ipairs({ "/usr/share/omarchy/default/environment.d", os.getenv("HOME") .. "/.config/environment.d" }) do
   local list = io.popen("ls " .. dir .. "/*.conf 2>/dev/null")

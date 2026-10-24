@@ -28,7 +28,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | C network loss | pass, plus on site | site and DNS outages: back within 0.1 s; a real Wi-Fi switch needs someone at the machine | [0fb8873](https://github.com/BH3GEI/ohmarchy/commit/0fb8873) |
 | C HarmonyOS screen off | on site | the only remote switch suspends the whole machine | (checklist below) |
 | D reset, upgrade check, logs | pass | fresh install about 30 min; reset 56 s; `check-upgrade.sh`; log bundle | [e090e8e](https://github.com/BH3GEI/ohmarchy/commit/e090e8e), [b569eec](https://github.com/BH3GEI/ohmarchy/commit/b569eec) |
-| E security | pass with open items | ordinary user, sudo with password, no TCP ports, GPU and sound sockets only for the app's uid, Firefox sandboxed. Open: web apps in Chromium without sandbox; `su` SELinux domain | [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa), [8f7acc9](https://github.com/BH3GEI/ohmarchy/commit/8f7acc9), [f1636a5](https://github.com/BH3GEI/ohmarchy/commit/f1636a5) |
+| E security | pass with open items | ordinary user, sudo with password, no TCP ports, GPU and sound sockets only for the app's uid, Firefox sandboxed. Open: Chromium itself (started by hand) without sandbox; `su` SELinux domain | [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa), [8f7acc9](https://github.com/BH3GEI/ohmarchy/commit/8f7acc9), [f1636a5](https://github.com/BH3GEI/ohmarchy/commit/f1636a5) |
 | F one-command regression | pass | `tests/run-all.sh` | [6e5d491](https://github.com/BH3GEI/ohmarchy/commit/6e5d491) |
 | G other devices | open | one machine so far; tests take host, path and user from the environment | |
 
@@ -43,7 +43,7 @@ Detail by area:
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | cold start about 8 s (session 2.0 s + desktop 5.7-6.1 s), launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
-| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser (Firefox) sandboxed: pass. Open: web apps in Chromium without sandbox; broker and session init in the `su` SELinux domain |
+| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser and web apps in Firefox (sandboxed): pass. Open: Chromium itself (when started by hand) without sandbox; broker and session init in the `su` SELinux domain |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
 | G. Other devices | | | only one machine so far. The tests take the host, base path and user from `OHOS_HOST`, `ARCH_BASE`, `ARCH_USER`; nothing else names this device |
 
@@ -334,7 +334,13 @@ package versions, disk, test results). No passwords or user files.
 
 Open items:
 
-- Web apps (Chromium) without a sandbox, see above.
+- Chromium without a sandbox, when started by hand. Omarchy's web apps (Basecamp,
+  HEY, WhatsApp, ...) now open in Firefox: route D's `omarchy-launch-webapp` in
+  `/opt/ohmarchy/overrides`, which `ohdisplay.lua` puts ahead of Omarchy's own bin
+  in the apps' PATH (Omarchy puts its bin first, so `/usr/local/bin` is not
+  enough). They get Firefox's toolbar instead of Chromium's app window; all 9 open
+  in 1.2-1.6 s (A1). `OHMARCHY_WEBAPP_BROWSER=chromium` restores Omarchy's
+  launcher.
 - The broker and the session init run in the `su` SELinux domain (all-powerful on
   the host); a narrower domain needs policy that cannot be loaded from here.
 

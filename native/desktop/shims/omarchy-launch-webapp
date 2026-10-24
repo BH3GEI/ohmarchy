@@ -1,0 +1,11 @@
+#!/bin/bash
+# Route D: Omarchy's web apps (Basecamp, HEY, WhatsApp, ...) open in a new Firefox
+# window instead of a Chromium --app window. Chromium cannot sandbox itself on the
+# HongMeng kernel (no user namespaces; its setuid sandbox fails a check) and runs
+# with --no-sandbox there; Firefox's content processes run under seccomp-bpf.
+# The window has Firefox's toolbar, unlike Chromium's app mode.
+#   OHMARCHY_WEBAPP_BROWSER=chromium   Omarchy's own launcher (Chromium, no sandbox)
+if [ "${OHMARCHY_WEBAPP_BROWSER:-firefox}" = chromium ] || ! command -v firefox > /dev/null; then
+  exec /usr/bin/omarchy-launch-webapp "$@"
+fi
+exec setsid uwsm-app -- firefox --new-window "$1"

@@ -6,7 +6,7 @@
 #   host-context     host-side processes of route D and their SELinux context
 #   listeners        TCP ports route D opens on the host
 #   browser-sandbox  whether the default browser runs sandboxed (Firefox)
-#   webapp-sandbox   whether Chromium (web apps) runs with its sandbox
+#   webapp-sandbox   whether Omarchy's web apps open in the sandboxed browser
 #   seccomp          whether the kernel takes seccomp-bpf filters (for sandboxes)
 here=$(cd "$(dirname "$0")" && pwd)
 B=${ARCH_BASE:-/data/local/archtest}
@@ -33,9 +33,11 @@ case "$d" in
 firefox*) echo "PASS browser-sandbox: the default browser is Firefox (content processes under seccomp-bpf)" ;;
 *) echo "FAIL browser-sandbox: the default browser is ${d:-unknown}" ;;
 esac
+w=$(ins "[ -x /opt/ohmarchy/overrides/omarchy-launch-webapp ] && grep -q /opt/ohmarchy/overrides /home/$U/.config/hypr/ohdisplay.lua && echo yes")
+[ "$w" = yes ] && echo "PASS webapp-sandbox: Omarchy's web apps open in Firefox (route D's omarchy-launch-webapp, ahead in the apps' PATH)" \
+    || echo "FAIL webapp-sandbox: web apps open in Chromium"
 f=$(ins "grep -x -- --no-sandbox /home/$U/.config/chromium-flags.conf")
-[ -n "$f" ] && echo "FAIL webapp-sandbox: web apps run in Chromium with --no-sandbox (no user namespaces; its setuid sandbox's zygote fails a check)" \
-    || echo "PASS webapp-sandbox: Chromium runs sandboxed"
+[ -n "$f" ] && echo "INFO chromium: started by hand, Chromium still runs with --no-sandbox (it cannot sandbox itself here)"
 ins "cat > /tmp/seccomp-check.py <<'PY'
 import ctypes, struct
 libc = ctypes.CDLL(None, use_errno=True)

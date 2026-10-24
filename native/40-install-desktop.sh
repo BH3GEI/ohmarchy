@@ -70,6 +70,8 @@ install -m 755 "$here/desktop/ohmarchy-desktop" "$here/desktop/systemd-cat" "$pr
 # update check needs fakeroot, which fails on HongMeng (SysV IPC); /usr/local/bin
 # precedes /usr/bin on the session's PATH.
 install -m 755 "$here/desktop/shims/uwsm-app" "$here/desktop/shims/systemd-run" "$here/desktop/shims/checkupdates" /usr/local/bin/
+# Replacements for Omarchy commands: ahead of Omarchy's bin in the apps' PATH (ohdisplay.lua)
+install -D -m 755 "$here/desktop/shims/omarchy-launch-webapp" /opt/ohmarchy/overrides/omarchy-launch-webapp
 home=$(getent passwd "$user" | cut -d: -f6)
 # Chromium's sandbox needs user namespaces or a setuid helper; neither exists here.
 grep -qx -- --no-sandbox "$home/.config/chromium-flags.conf" 2>/dev/null ||

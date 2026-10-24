@@ -245,14 +245,16 @@ instead of deepin's kernel, and hand the hypervisor-side problems to Huawei.
 
 ### Status
 
-Arch Linux ARM's `linux-aarch64` 7.2.11, rebuilt with the two patches below and
-booted with `arm64.hmv_idreg_quirk`, starts all six vCPUs and reaches the
-Omarchy desktop: Hyprland as `yao`, virtio-gpu with `+virgl`, vsock, virtio-net
-and virtiofs loaded, 鸿融's guest tools talking to the host (2026-10-24, one
-cold boot). It uses the package's own modules and initramfs: the rebuild keeps
-ALARM's config and release string (`tools/kbuild/alarm-build-native.sh`). Not
-yet the default; warm reboots and a soak are still to be done, in a separate
-test VM.
+**7.2.12 pure-Omarchy disk: cold boot + 3 warm reboots pass** (2026-10-24).
+Arch Linux ARM's `linux-aarch64` 7.2.12-1.1 with the two patches below,
+installed as a package on a disk with Omarchy alone (no deepin), booted with
+`arm64.hmv_idreg_quirk` in a 鸿融-style VM: every boot brings up six vCPUs and
+reaches systemd `running`; see [Omarchy alone, without
+deepin](#omarchy-alone-without-deepin) and the serial log
+[logs/hongrong-pure-7.2.12-serial-20261024.log](logs/hongrong-pure-7.2.12-serial-20261024.log).
+Earlier the same day, 7.2.11 (rebuilt with ALARM's config) reached the
+Omarchy desktop in 鸿融 on the deepin-based disk, with virgl, vsock and the
+network. Still to do on the pure disk: network, desktop on screen, a long run.
 
 ### What failed, and why
 

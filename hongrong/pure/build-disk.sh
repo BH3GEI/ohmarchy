@@ -32,6 +32,9 @@ chroot_up() {
   mountpoint -q "$R/sys" || mount -t sysfs sys "$R/sys" 2>/dev/null || mount --bind /sys "$R/sys"
   mountpoint -q "$R/dev" || mount --bind /dev "$R/dev"
   mountpoint -q "$R/run" || mount -t tmpfs run "$R/run"
+  # package cache outside the image, kept across runs
+  mkdir -p "$W/../pkgcache" "$R/var/cache/pacman/pkg"
+  mountpoint -q "$R/var/cache/pacman/pkg" || mount --bind "$W/../pkgcache" "$R/var/cache/pacman/pkg"
   cp -L /etc/resolv.conf "$R/etc/resolv.conf"
   # the build environment's HongMeng shims (ld.so.preload), for programs run in
   # the chroot; removed before the filesystem image is made
@@ -41,7 +44,7 @@ chroot_up() {
     for l in $(cat /etc/ld.so.preload); do echo "/usr/local/lib/hmbuild/$(basename "$l")"; done > "$R/etc/ld.so.preload"
   fi
 }
-chroot_down() { for m in run dev sys proc; do umount -l "$R/$m" 2>/dev/null || true; done; umount -l "$R" 2>/dev/null || true; }
+chroot_down() { for m in var/cache/pacman/pkg run dev sys proc; do umount -l "$R/$m" 2>/dev/null || true; done; umount -l "$R" 2>/dev/null || true; }
 in_root() { chroot "$R" /usr/bin/env -i HOME=/root TERM=xterm-256color LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin "$@"; }
 trap chroot_down EXIT
 
@@ -52,13 +55,15 @@ esp_uuid="${esp_id:0:4}-${esp_id:4:4}"
 # 1. Base system, the patched kernel, Omarchy's prerequisites. The [omarchy]
 #    repository needs its key in the target first; 20-install-omarchy.sh adds it.
 # pacman's download sandbox (user alpm, Landlock) cannot be set up on the
-# HongMeng kernel: DisableSandbox while building, removed from the result.
+# HongMeng kernel, and slow mirrors trip its 10 s low-speed timeout:
+# DisableSandbox and DisableDownloadTimeout while building, removed from the
+# result.
 awk '/^\[omarchy\]/{skip=1; next} /^\[/{skip=0} !skip' "$here/etc/pacman.conf" |
-  sed 's/^\[options\]$/[options]\nDisableSandbox/' > "$W/pacman-base.conf"
+  sed 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' > "$W/pacman-base.conf"
 mkdir -p "$R/var/lib/pacman" "$R/var/cache/pacman/pkg"
 chroot_up
 # packages are verified with the build environment's keyring
-pacman --root "$R" --config "$W/pacman-base.conf" --cachedir "$R/var/cache/pacman/pkg" \
+pacman --root "$R" --config "$W/pacman-base.conf" --cachedir "$W/../pkgcache" \
   -Sy --noconfirm base archlinuxarm-keyring sudo openssh networkmanager mkinitcpio grub efibootmgr git curl
 chroot_up
 in_root bash -c 'pacman-key --init && pacman-key --populate archlinuxarm' >/dev/null
@@ -97,7 +102,7 @@ install -D -m 644 /dev/stdin "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf" <<'HOOK
 HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block encrypt filesystems fsck)
 HOOKS
 mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
-sed -i 's/^\[options\]$/[options]\nDisableSandbox/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
+sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
 in_root bash /root/hongrong/20-install-omarchy.sh "$user"
 rm -rf "$R/root/hongrong"
 # omarchy-apply-system may regenerate the initramfs with autodetect again
@@ -129,10 +134,9 @@ grub-mkstandalone -O arm64-efi -o "$W/esp/EFI/BOOT/BOOTAA64.EFI" \
   "boot/grub/grub.cfg=$W/grub-early.cfg"
 
 # 5. Filesystem images and the disk
-in_root pacman -Scc --noconfirm >/dev/null || true
 chroot_down; trap - EXIT
 rm -f "$R/etc/resolv.conf" "$R/etc/ld.so.preload"; rm -rf "$R/usr/local/lib/hmbuild"
-sed -i '/^DisableSandbox$/d' "$R/etc/pacman.conf"
+sed -i '/^DisableSandbox$/d; /^DisableDownloadTimeout$/d' "$R/etc/pacman.conf"
 rm -f "$W/esp.img" "$W/root.img" "$W/omarchy-pure.img"
 root_mib=$(( disk_gib * 1024 - esp_mib - 2 ))
 truncate -s ${esp_mib}M "$W/esp.img"

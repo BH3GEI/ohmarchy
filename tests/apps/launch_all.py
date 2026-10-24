@@ -63,7 +63,7 @@ NO_WINDOW = {"foot-server": "starts the foot server only"}
 # Commands to use instead of the entry's own, where the entry needs an argument or
 # a server to show anything (as when opened from a file or after foot --server).
 OVERRIDE = {
-    "imv": "imv \"$(readlink -f ~/.config/omarchy/current/background)\"",
+    "imv": "imv \"$(readlink -f ~/.local/state/omarchy/current/background)\"",
     "footclient": "(foot --server &) ; sleep 0.5; footclient",
 }
 # Entries that cannot work on the HongMeng kernel, with the reason. Still run (so a

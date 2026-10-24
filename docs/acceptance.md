@@ -12,7 +12,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Area | Criterion | Test | Status |
 |---|---|---|---|
-| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 72 of 78 open within 3 s (P95 1.4 s), 6 unsupported, 0 failed. A2: 5 of 6 core operations pass; audio unsupported (no sound device) |
+| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 5 of 6 core operations pass; audio unsupported (no sound device) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | | pending |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
@@ -62,12 +62,21 @@ Fixed during the run: qv4l2 (missing `qt6-5compat`) and Disk Usage (missing
 footclient only failed in the test (imv shows a black canvas without a file,
 footclient needs `foot --server`), which now opens them that way.
 
+Re-run 2026-10-24 16:20 after the system D-Bus was added (`ohmarchy-sysbus`,
+started with the desktop; load still around 21 from a kernel build): 73 pass, 1
+skip (foot-server), 4 unsupported, 0 failed; median 0.67 s, P95 1.22 s. Nothing
+that passed before fails now. Changes: Disks (gnome-disks) opens (udisks2 runs, and
+sees no disks: the session's `/dev` has none, so it cannot change any); the Docker
+entry now opens its terminal UI in 0.3 s, but there is still no Docker daemon. imv
+failed once because the test opened the theme background from the old
+`~/.config/omarchy/current`; this Omarchy keeps it in `~/.local/state/omarchy/current`
+(fixed; passes).
+
 Unsupported, with the reason (reported as such by the test, not as failures):
 
 | Entry | Why |
 |---|---|
-| Docker, menu > Docker | no container runtime: no cgroup v2 or user namespaces for dockerd; pkexec also needs polkit on a system bus |
-| Disks (gnome-disks) | needs udisks2 on the system D-Bus, which does not run in the session |
+| Docker (daemon), menu > Docker | no container runtime: no cgroup v2 or user namespaces for dockerd |
 | uuctl, menu > Reminders | systemd user units and timers; there is no systemd |
 | qvidcap | no V4L2 camera: HarmonyOS does not expose its camera to Linux |
 

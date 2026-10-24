@@ -96,7 +96,7 @@ The root causes behind most ❌ rows:
 | Superwhisper (settings) | ⚠️ | 0.9 s. Dictation needs a microphone, and there is none. |
 | Print Settings (system-config-printer) | ⚠️ | 1.3 s with the statx fix. No cupsd. |
 | CUPS (web) | ❌ | Opens `localhost:631` in Chromium; nothing listens. |
-| Disks (gnome-disks) | ❌ | Exits: no udisks daemon. |
+| Disks (gnome-disks) | ⚠️ | Opens in 1.0 s on the system D-Bus (udisks2); lists no disks: the session has no block devices. |
 | Disk Usage (`dua`) | ❌ | `dua` isn't installed. |
 | uuctl | ❌ | Needs systemd --user and dmenu. |
 | qv4l2 | ❌ | Missing `libQt6Core5Compat.so.6`. |

@@ -18,16 +18,19 @@ mkdir -p "$out" "$W/cache" "$W/t" "$W/k" "$W/ir" "$W/esp"
 
 # 1. Tools, unpacked into $W/t
 pacman -Sw --noconfirm --cachedir "$W/cache" busybox mtools grub libisoburn libburn libisofs >/dev/null
-for p in "$W"/cache/*.pkg.tar.*; do bsdtar -xf "$p" -C "$W/t" --exclude .PKGINFO --exclude .MTREE \
-    --exclude .BUILDINFO --exclude .INSTALL 2>/dev/null; done
+for p in "$W"/cache/*.pkg.tar.*; do
+    case $p in *.sig) continue ;; esac
+    bsdtar -xf "$p" -C "$W/t" --exclude .PKGINFO --exclude .MTREE --exclude .BUILDINFO --exclude .INSTALL
+done
 export PATH=$W/t/usr/bin:$PATH LD_LIBRARY_PATH=$W/t/usr/lib
 
 # 2. Kernel and module
 bsdtar -xf "$kpkg" -C "$W/k"
 bsdtar -xf "$vpkg" -C "$W/k"
 kver=$(ls "$W/k/usr/lib/modules" | head -1)
-img=$(ls "$W/k/boot/Image" "$W/k/usr/lib/modules/$kver/vmlinuz" 2>/dev/null | head -1)
-[ -f "$img" ] || { echo "no kernel image in $kpkg"; exit 1; }
+img=
+for f in "$W/k/boot/Image" "$W/k/usr/lib/modules/$kver/vmlinuz"; do [ -f "$f" ] && { img=$f; break; }; done
+[ -n "$img" ] || { echo "no kernel image in $kpkg"; exit 1; }
 echo "kernel $kver from $img"
 
 # 3. initramfs
@@ -61,7 +64,7 @@ ln -s usr/lib "$R/lib64" 2>/dev/null || true
 ln -sf ../usr/lib/ld-linux-aarch64.so.1 "$R/lib/ld-linux-aarch64.so.1"
 for t in modprobe insmod rmmod lsmod modinfo depmod; do ln -sf kmod "$R/usr/bin/$t"; done
 install -m755 "$here/init" "$R/init"
-(cd "$R" && find . | cpio -o -H newc --quiet | zstd -q -19 -T0) > "$W/esp/initramfs.img"
+(cd "$R" && find . | cpio -o -H newc --quiet | gzip -9) > "$W/esp/initramfs.img"
 cp "$img" "$W/esp/Image"
 touch "$W/esp/oseasy-probe"
 ls -la "$W/esp"

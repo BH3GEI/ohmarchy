@@ -41,7 +41,8 @@ case " $cmd " in
     # The host streams a raw disk image: toybox nc 172.16.100.2 5003 < disk.img
     modprobe virtio_blk 2>/dev/null; sleep 1
     log "install: waiting for a disk image on tcp/5003, writing /dev/vda"
-    nc -l -p 5003 | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    # -w 30: busybox nc -l does not exit when the sender closes; stop after 30 s idle
+    nc -l -p 5003 -w 30 | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     log "install: dd: $(tail -1 /tmp/dd.txt)"
     blockdev --rereadpt /dev/vda; sleep 2
     root=$(ls /dev/vda2 2>/dev/null)
@@ -51,15 +52,18 @@ case " $cmd " in
         [ -n "$kv" ] || kv=$(ls /mnt/usr/lib/modules | head -1)
         install -D -m644 /oseasy/vmwgfx.ko "/mnt/usr/lib/modules/$kv/updates/vmwgfx.ko"
         install -D -m644 /oseasy/vmwgfx-oseasy.conf /mnt/etc/modprobe.d/vmwgfx-oseasy.conf
-        depmod -b /mnt "$kv"
-        log "install: vmwgfx-oseasy added for $kv; $(grep -c vmwgfx /mnt/usr/lib/modules/$kv/modules.dep) modules.dep lines"
-        # mkinitcpio's kms hook put the in-tree vmwgfx into the initramfs, which
-        # would load before the root and crash on this device: rebuild it so it
-        # carries the patched module and its options (modconf)
-        for d in proc sys dev; do mount --bind /$d /mnt/$d; done
+        # depmod and mkinitcpio run inside the target so its depmod.d (search
+        # updates first) applies; mkinitcpio's kms hook would otherwise carry the
+        # in-tree vmwgfx, which loads before the root and crashes on this device.
+        # mkinitcpio wants real proc/sys/dev mounts and /dev/fd.
+        mount -t proc proc /mnt/proc; mount -t sysfs sys /mnt/sys; mount -t devtmpfs dev /mnt/dev
+        ln -sf /proc/self/fd /mnt/dev/fd; ln -sf /proc/self/fd/0 /mnt/dev/stdin
+        ln -sf /proc/self/fd/1 /mnt/dev/stdout; ln -sf /proc/self/fd/2 /mnt/dev/stderr
+        chroot /mnt /usr/bin/depmod -a "$kv"
+        log "install: vmwgfx-oseasy added for $kv; modinfo -> $(chroot /mnt /usr/bin/modinfo -k "$kv" -n vmwgfx)"
         chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
-        log "install: mkinitcpio rc=$? $(grep -c -i error /tmp/mkinitcpio.txt) error lines"
-        for d in dev sys proc; do umount /mnt/$d; done
+        log "install: mkinitcpio rc=$?; initramfs vmwgfx: $(chroot /mnt /usr/bin/lsinitcpio /boot/initramfs-linux.img | grep vmwgfx | tr '\n' ' ')"
+        umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else
         log "install: could not mount the root partition"

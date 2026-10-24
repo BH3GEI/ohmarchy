@@ -461,3 +461,38 @@ the runs above unless marked pending.
 - [`d90b935`](https://github.com/BH3GEI/ohmarchy/commit/d90b935) Route B: guest benchmark script (renderer, es2gears, glmark2, workspace switching, app launch)
 
 Related Route G commits: [`07528eb`](https://github.com/BH3GEI/ohmarchy/commit/07528eb) (Oseasy's Windows guest and svga-pci).
+
+### Third run: the Omarchy disk in Oseasy (19:31-20:46)
+
+- **Disk in:** agent-2a's `omarchy-pure.img` (raw, 64 GiB sparse, GPT ESP + ext4,
+  `linux-aarch64` 7.2.12-1.1, sha256 `d2c7150e01acd76cb775443eb63a9286dc4d795faa2a6d89d85b331ac8010cd6`,
+  unchanged before and after) streamed into Oseasy's VM by the probe's install
+  mode: 2047 s for 64 GiB (33.6 MB/s), because all of it, zeros included, went
+  over the network, and because busybox `nc -l` does not exit when the sender
+  closes, so `dd` waited until the guest's `nc` was killed. Next time: idle
+  timeout on the listener (now `nc -l -w 30`) and a compressed or used-blocks-only
+  stream (e2image/fstrim) instead of the whole 64 GiB.
+- **Omarchy boots in Oseasy** from its own disk: systemd up, NetworkManager with
+  the static `172.16.100.2`, sshd (reachable from the workstation through the host).
+- **depmod ran with the probe's kmod configuration** (no `depmod.d`), so
+  `updates/` was not preferred, `mkinitcpio`'s kms hook packed the in-tree vmwgfx
+  and it ignored the `hvm_*` options (`unknown parameter 'hvm_mmio' ignored`).
+  Fixed in the guest over ssh: removed the hand-placed module, `pacman -U
+  vmwgfx-oseasy-7.2.12-1` (so pacman owns it), `depmod -a`, `mkinitcpio -P`;
+  `modinfo -n vmwgfx` → `updates/vmwgfx.ko` and the initramfs carries it with
+  `/etc/modprobe.d/vmwgfx-oseasy.conf`. The install mode now runs `depmod` and
+  `mkinitcpio` inside the target (with real proc/sys/devtmpfs mounts and
+  `/dev/fd`, which mkinitcpio checks), and logs what `modinfo` resolves.
+- **Warm reboot hangs:** `systemctl reboot` from the guest stops after systemd's
+  `Rebooting.`; the kernel never prints `reboot: Restarting system`. The same disk
+  passed 3 warm reboots in agent-2a's headless StratoVirt (same binary, devices:
+  virtio-blk, virtio-net, vsock only), and the probe's `sysrq b` reboots in Oseasy
+  always worked. `sysrq b` skips `device_shutdown()`, and vmwgfx has no
+  `.shutdown` callback, so the suspects are the shutdown callbacks of the devices
+  only Oseasy adds: vhost-user-fs (virtiofsd), virtio-serial, virtio-balloon,
+  virtio-multitouch (Linux >= 6.14 breaks and resets virtio devices in
+  `device_shutdown()`), xHCI with USB storage, keyboard and tablet,
+  `ivshmem-scream`. Next: `initcall_debug` on the kernel command line, which makes
+  `device_shutdown()` log each device, to name the one that hangs; cold start
+  (power off, start from Oseasy) for the measurements meanwhile. The hung VM was
+  stopped with SIGTERM to its own StratoVirt (Oseasy's, `68eaa5b5`).

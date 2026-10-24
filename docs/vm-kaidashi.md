@@ -434,3 +434,14 @@ has to cross the Mac–ohdev link.
 | [ac28f8f](https://github.com/BH3GEI/ohmarchy/commit/ac28f8f) | installer GRUB defaults to the installed disk |
 | [07528eb](https://github.com/BH3GEI/ohmarchy/commit/07528eb) | how Oseasy's Windows guest drives `svga-pci` |
 | [edaf00f](https://github.com/BH3GEI/ohmarchy/commit/edaf00f) | second slot: 7.2.12 boots, network receives nothing; installer diagnostics |
+| [95b6590](https://github.com/BH3GEI/ohmarchy/commit/95b6590) | second slot documented; NIC difference |
+| [10ef391](https://github.com/BH3GEI/ohmarchy/commit/10ef391) | Linux counterparts of Oseasy's Windows guest services |
+| [f4b972d](https://github.com/BH3GEI/ohmarchy/commit/f4b972d) | `kds-run.sh` |
+| [b8ce822](https://github.com/BH3GEI/ohmarchy/commit/b8ce822) | virtiofs disk channel, `stage-disk.sh` |
+| [6d1e231](https://github.com/BH3GEI/ohmarchy/commit/6d1e231) | comparison table |
+| [112fdf9](https://github.com/BH3GEI/ohmarchy/commit/112fdf9) | `wrap-iso.sh` |
+| [4b6f79b](https://github.com/BH3GEI/ohmarchy/commit/4b6f79b) | install-session vs normal-start command lines (disassembly) |
+| [91936e8](https://github.com/BH3GEI/ohmarchy/commit/91936e8) | installer adds route B's vmwgfx and rebuilds the initramfs |
+| [2acc434](https://github.com/BH3GEI/ohmarchy/commit/2acc434) | `sparsecp` |
+| [3583e34](https://github.com/BH3GEI/ohmarchy/commit/3583e34) | `/dev/fd` for mkinitcpio |
+| [956e315](https://github.com/BH3GEI/ohmarchy/commit/956e315) | concluded: last slot, install sessions cannot persist |

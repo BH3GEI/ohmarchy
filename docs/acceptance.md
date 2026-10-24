@@ -10,6 +10,33 @@ tied to one machine.
 Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 (HongMeng kernel 1.11.13.0).
 
+## Summary (2026-10-24 21:45)
+
+| Item | Status | What | Evidence |
+|---|---|---|---|
+| A1 every app opens in 3 s | pass | 73 of 78 pass, 0 failed, 4 unsupported (no camera, no systemd, no container runtime), 1 skip (foot-server); P95 1.22 s | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712), [3735447](https://github.com/BH3GEI/ohmarchy/commit/3735447) |
+| A2 core operations | pass | files (LibreOffice, Neovim), clipboard, Chinese input, sound, file chooser: 6 of 6 | [83432cf](https://github.com/BH3GEI/ohmarchy/commit/83432cf), [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5) |
+| A3 sound | pass, plus on site | 75-113 ms to the speaker, A/V within 100 ms (measured before sound moved to the app-only socket at 20:00; re-measurement waits for the screen); not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
+| B cold start <= 10 s | pass | about 8 s (session 2.0 s + desktop 5.7-6.1 s) | [68e71a7](https://github.com/BH3GEI/ohmarchy/commit/68e71a7) |
+| B app launch P95 <= 3 s | pass | 1.22 s | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712) |
+| B workspace switch >= 110 fps | pass | 119.4 fps | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
+| B idle memory/CPU | recorded | desktop 0.5 % of a core, display app 1.9 %, 1.0 GB | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d), [c5c680f](https://github.com/BH3GEI/ohmarchy/commit/c5c680f) |
+| B power | proxy done, on site | idle costs nothing over baseline; es2gears same CPU as in the VM at twice the frame rate. Battery drain needs a run on battery | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
+| C open/close 100 times | pass | 100 of 100, memory +0.1 % | [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8) |
+| C 24 h soak | running | hourly smoke since 17:52, ends 2026-10-25 17:52 | [7c6dec5](https://github.com/BH3GEI/ohmarchy/commit/7c6dec5) |
+| C display off/on, app background/foreground | pass | DPMS 20 of 20; app to background and back 20 of 20 | [4a3c1f8](https://github.com/BH3GEI/ohmarchy/commit/4a3c1f8), [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
+| C network loss | pass, plus on site | site and DNS outages: back within 0.1 s; a real Wi-Fi switch needs someone at the machine | [0fb8873](https://github.com/BH3GEI/ohmarchy/commit/0fb8873) |
+| C HarmonyOS screen off | on site | the only remote switch suspends the whole machine | (checklist below) |
+| D reset, upgrade check, logs | pass | fresh install about 30 min; reset 56 s; `check-upgrade.sh`; log bundle | [e090e8e](https://github.com/BH3GEI/ohmarchy/commit/e090e8e), [b569eec](https://github.com/BH3GEI/ohmarchy/commit/b569eec) |
+| E security | pass with open items | ordinary user, sudo with password, no TCP ports, GPU and sound sockets only for the app's uid, Firefox sandboxed. Open: web apps in Chromium without sandbox; `su` SELinux domain | [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa), [8f7acc9](https://github.com/BH3GEI/ohmarchy/commit/8f7acc9), [f1636a5](https://github.com/BH3GEI/ohmarchy/commit/f1636a5) |
+| F one-command regression | pass | `tests/run-all.sh` | [6e5d491](https://github.com/BH3GEI/ohmarchy/commit/6e5d491) |
+| G other devices | open | one machine so far; tests take host, path and user from the environment | |
+
+Not claimed: "100 % usable". Each line above is what the named test measured on
+this machine; what needs a person at the machine is listed at the end.
+
+Detail by area:
+
 | Area | Criterion | Test | Status |
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |

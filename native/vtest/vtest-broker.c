@@ -14,8 +14,11 @@
 // stays only to run --on-app CMD when the unprivileged child asks over a pipe.
 // --tcp ADDR:PORT (off by default): also take vtest clients over TCP, from a VM on
 // the host (its Mesa virpipe reaches it through socat), only from --tcp-allow
-// NET/BITS (default 172.16.100.0/24, 鸿融's network). The app's vtest serves them
-// with protocol version 0: no shm fds can cross TCP, transfers are copied.
+// NET/BITS (default 172.16.100.0/24, 鸿融's network). The app only ever gets Unix
+// sockets (a TCP socket passed to it fails on its first read): for each TCP client
+// a forked pump copies between it and one end of a socketpair, and the other end
+// goes to the app marked 'r'. The app's vtest serves those with protocol version 0:
+// no shm fds can cross TCP, transfers are copied.
 //   vtest-broker [--on-app CMD] [--app-uid UID] [--user UID:GID]
 //                [--tcp ADDR:PORT [--tcp-allow NET/BITS]] <socket path> [name]
 //   (default name: ohmarchy-vtest)
@@ -81,9 +84,57 @@ static int listen_tcp(const char *spec)
     return fd;
 }
 
-static int send_fd(int sock, int fd)
+/* Copy between a TCP client and the app's end of a socketpair until either closes. */
+static void pump(int a, int b)
 {
-    char byte = 'c';
+    static char buf[1 << 16];
+    struct pollfd p[2] = {{a, POLLIN, 0}, {b, POLLIN, 0}};
+    for (;;) {
+        if (poll(p, 2, -1) < 0 && errno != EINTR)
+            return;
+        for (int i = 0; i < 2; i++) {
+            if (!(p[i].revents & (POLLIN | POLLHUP | POLLERR)))
+                continue;
+            ssize_t n = read(p[i].fd, buf, sizeof(buf));
+            if (n <= 0)
+                return;
+            for (ssize_t off = 0; off < n;) {
+                ssize_t w = write(p[1 - i].fd, buf + off, n - off);
+                if (w <= 0)
+                    return;
+                off += w;
+            }
+        }
+    }
+}
+
+/* A TCP client becomes a Unix socket for the app; returns the app's end. */
+static int bridge(int tcp_fd)
+{
+    int sv[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) < 0) {
+        close(tcp_fd);
+        return -1;
+    }
+    pid_t child = fork();
+    if (child == 0) {
+        for (int fd = 3; fd < 1024; fd++) /* not the broker's sockets, only these two */
+            if (fd != tcp_fd && fd != sv[1])
+                close(fd);
+        pump(tcp_fd, sv[1]);
+        _exit(0);
+    }
+    close(tcp_fd);
+    close(sv[1]);
+    if (child < 0) {
+        close(sv[0]);
+        return -1;
+    }
+    return sv[0];
+}
+
+static int send_fd(int sock, int fd, char byte)
+{
     char cbuf[CMSG_SPACE(sizeof(int))];
     struct iovec iov = {&byte, 1};
     struct msghdr msg = {.msg_iov = &iov, .msg_iovlen = 1, .msg_control = cbuf, .msg_controllen = sizeof(cbuf)};
@@ -192,6 +243,7 @@ int main(int argc, char **argv)
         printf("running as uid %u\n", uid);
     }
     int app = -1, pending[MAX_PENDING], npending = 0;
+    char kind[MAX_PENDING]; /* 'c' local, 'r' over TCP */
     for (;;) {
         struct pollfd p[4] = {{clients, POLLIN, 0}, {apps, POLLIN, 0}, {remote, POLLIN, 0}, {app, POLLIN, 0}};
         if (poll(p, app >= 0 ? 4 : 3, -1) < 0) {
@@ -242,10 +294,10 @@ int main(int argc, char **argv)
             } else if (fd >= 0) {
                 int one = 1;
                 setsockopt(fd, IPPROTO_TCP, 1 /* TCP_NODELAY */, &one, sizeof(one));
-                if (npending == MAX_PENDING) {
-                    close(fd);
-                } else {
-                    pending[npending++] = fd;
+                int u = npending == MAX_PENDING ? -1 : bridge(fd);
+                if (u >= 0) {
+                    kind[npending] = 'r';
+                    pending[npending++] = u;
                     printf("TCP client %s queued\n", inet_ntoa(from.sin_addr));
                 }
             }
@@ -256,18 +308,20 @@ int main(int argc, char **argv)
                 if (npending == MAX_PENDING) {
                     close(fd);
                 } else {
+                    kind[npending] = 'c';
                     pending[npending++] = fd;
                     printf("client queued\n");
                 }
             }
         }
         while (app >= 0 && npending > 0) {
-            if (send_fd(app, pending[0]) < 0) {
+            if (send_fd(app, pending[0], kind[0]) < 0) {
                 close(app);
                 app = -1;
                 break;
             }
             close(pending[0]);
+            memmove(kind, kind + 1, npending - 1);
             memmove(pending, pending + 1, --npending * sizeof(int));
             printf("client passed to app\n");
         }

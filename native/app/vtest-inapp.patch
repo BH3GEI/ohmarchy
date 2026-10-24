@@ -1,5 +1,5 @@
 diff --git a/vtest/vtest_renderer.c b/vtest/vtest_renderer.c
-index a4450f6..50df7d4 100644
+index a4450f6..22dc730 100644
 --- a/vtest/vtest_renderer.c
 +++ b/vtest/vtest_renderer.c
 @@ -36,6 +36,7 @@
@@ -10,12 +10,13 @@ index a4450f6..50df7d4 100644
  
  #include <sys/uio.h>
  #include <sys/socket.h>
-@@ -108,6 +109,14 @@ struct vtest_sync_wait {
+@@ -108,6 +109,15 @@ struct vtest_sync_wait {
     uint32_t signaled_count;
  };
  
 +#ifdef VTEST_BROKER
 +bool vtest_present_hook(const char *client, uint32_t res_id, const struct virgl_box *box) __attribute__((weak));
++bool vtest_server_fd_is_remote(int fd) __attribute__((weak));
 +/* op: 0 transfer get, 1 transfer put, 2 command buffer (cmd, length in dwords) */
 +void vtest_trace_hook(const char *client, int op, uint32_t res_id, const struct virgl_box *box,
 +                      const uint32_t *cmd, uint32_t length_dw) __attribute__((weak));
@@ -25,7 +26,7 @@ index a4450f6..50df7d4 100644
  struct vtest_context {
     struct list_head head;
  
-@@ -121,6 +130,7 @@ struct vtest_context {
+@@ -121,6 +131,7 @@ struct vtest_context {
     unsigned protocol_version;
     unsigned capset_id;
     bool context_initialized;
@@ -33,7 +34,7 @@ index a4450f6..50df7d4 100644
  
     struct util_hash_table *resource_table;
     struct util_hash_table *sync_table;
-@@ -470,6 +480,9 @@ static void vtest_free_context(struct vtest_context *ctx, bool cleanup);
+@@ -470,6 +481,9 @@ static void vtest_free_context(struct vtest_context *ctx, bool cleanup);
  
  void vtest_cleanup_renderer(void)
  {
@@ -43,7 +44,7 @@ index a4450f6..50df7d4 100644
     if (renderer.next_context_id > 1) {
        struct vtest_context *ctx, *tmp;
  
-@@ -563,6 +576,7 @@ static struct vtest_context *vtest_new_context(struct vtest_input *input,
+@@ -563,6 +577,7 @@ static struct vtest_context *vtest_new_context(struct vtest_input *input,
     ctx->protocol_version = 0;
     ctx->capset_id = 0;
     ctx->context_initialized = false;
@@ -51,7 +52,7 @@ index a4450f6..50df7d4 100644
  
     return ctx;
  }
-@@ -626,7 +640,7 @@ int vtest_lazy_init_context(struct vtest_context *ctx)
+@@ -626,7 +641,7 @@ int vtest_lazy_init_context(struct vtest_context *ctx)
     if (ctx->context_initialized)
        return 0;
  
@@ -60,7 +61,7 @@ index a4450f6..50df7d4 100644
        return report_failed_call("protocol version too low", -EINVAL);
  
     if (ctx->capset_id) {
-@@ -649,6 +663,9 @@ void vtest_destroy_context(struct vtest_context *ctx)
+@@ -649,6 +664,9 @@ void vtest_destroy_context(struct vtest_context *ctx)
     struct vtest_sync_wait *wait, *wait_tmp;
     uint32_t i;
  
@@ -70,18 +71,20 @@ index a4450f6..50df7d4 100644
     if (renderer.current_context == ctx) {
        renderer.current_context = NULL;
     }
-@@ -744,7 +761,18 @@ int vtest_protocol_version(UNUSED uint32_t length_dw)
+@@ -744,7 +762,20 @@ int vtest_protocol_version(UNUSED uint32_t length_dw)
        version = 0;
     }
  
 -   if (renderer.multi_clients && version < 3)
-+   /* A client over TCP (a VM, through vtest-broker --tcp) cannot be sent the shm
-+    * fds of versions 2 and 3: version 0, transfers copied through the socket. It
-+    * gets a plain context, so the multi-client rule (version 3) does not apply. */
++   /* A client over TCP (a VM, through vtest-broker --tcp, which bridges it to a
++    * Unix socket marked 'r') cannot be sent the shm fds of versions 2 and 3:
++    * version 0, transfers copied through the socket. It gets a plain context, so
++    * the multi-client rule (version 3) does not apply. */
 +   struct sockaddr_storage peer;
 +   socklen_t peer_len = sizeof(peer);
-+   bool remote = getsockname(ctx->out_fd, (struct sockaddr *)&peer, &peer_len) == 0 &&
-+                 peer.ss_family != AF_UNIX;
++   bool remote = (vtest_server_fd_is_remote && vtest_server_fd_is_remote(ctx->out_fd)) ||
++                 (getsockname(ctx->out_fd, (struct sockaddr *)&peer, &peer_len) == 0 &&
++                  peer.ss_family != AF_UNIX);
 +   if (remote)
 +      version = 0;
 +   ctx->remote = remote;
@@ -90,7 +93,7 @@ index a4450f6..50df7d4 100644
        return report_failed_call("protocol version too low", -EINVAL);
  
     ctx->protocol_version = version;
-@@ -1258,6 +1286,291 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
+@@ -1258,6 +1289,291 @@ int vtest_resource_unref(UNUSED uint32_t length_dw)
     return 0;
  }
  
@@ -382,7 +385,7 @@ index a4450f6..50df7d4 100644
  int vtest_submit_cmd(uint32_t length_dw)
  {
     struct vtest_context *ctx = vtest_get_current_context();
-@@ -1279,7 +1592,30 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1279,7 +1595,30 @@ int vtest_submit_cmd(uint32_t length_dw)
        return -1;
     }
  
@@ -413,7 +416,7 @@ index a4450f6..50df7d4 100644
  
     free(cbuf);
     if (ret)
-@@ -1289,14 +1625,6 @@ int vtest_submit_cmd(uint32_t length_dw)
+@@ -1289,14 +1628,6 @@ int vtest_submit_cmd(uint32_t length_dw)
     return 0;
  }
  
@@ -428,7 +431,7 @@ index a4450f6..50df7d4 100644
  
  static int vtest_transfer_decode_args(struct vtest_context *ctx,
                                        struct vtest_transfer_args *args,
-@@ -1384,6 +1712,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
+@@ -1384,6 +1715,16 @@ static int vtest_transfer_get_internal(struct vtest_context *ctx,
        }
     }
  
@@ -445,7 +448,7 @@ index a4450f6..50df7d4 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_read_iov(res->res_id,
                                               ctx->ctx_id,
-@@ -1440,6 +1778,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
+@@ -1440,6 +1781,10 @@ static int vtest_transfer_put_internal(struct vtest_context *ctx,
        }
     }
  
@@ -456,7 +459,7 @@ index a4450f6..50df7d4 100644
     if (do_transfer) {
        ret = virgl_renderer_transfer_write_iov(res->res_id,
                                                ctx->ctx_id,
-@@ -1604,6 +1946,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
+@@ -1604,6 +1949,15 @@ int vtest_resource_busy_wait(UNUSED uint32_t length_dw)
     /*  handle = bw_buf[VCMD_BUSY_WAIT_HANDLE]; unused as of now */
     flags = bw_buf[VCMD_BUSY_WAIT_FLAGS];
  
@@ -473,7 +476,7 @@ index a4450f6..50df7d4 100644
        busy = renderer.implicit_fence_completed !=
               renderer.implicit_fence_submitted;
 diff --git a/vtest/vtest_server.c b/vtest/vtest_server.c
-index 3173323..8855379 100644
+index 3173323..798b4f4 100644
 --- a/vtest/vtest_server.c
 +++ b/vtest/vtest_server.c
 @@ -145,11 +145,13 @@ while (__AFL_LOOP(1000)) {
@@ -490,7 +493,7 @@ index 3173323..8855379 100644
  
     vtest_server_run();
  
-@@ -393,6 +395,52 @@ static void vtest_server_open_read_file(void)
+@@ -393,6 +395,62 @@ static void vtest_server_open_read_file(void)
     }
  }
  
@@ -500,6 +503,14 @@ index 3173323..8855379 100644
 +/* In-process server (HarmonyOS app): a root broker owns the listening socket and
 + * passes each accepted client fd over the abstract socket named by
 + * server.socket_name ("@name"). */
++/* Clients the broker bridged from TCP (marker 'r'): served with protocol version 0. */
++static bool vtest_remote_fds[1024];
++
++bool vtest_server_fd_is_remote(int fd)
++{
++   return fd >= 0 && fd < 1024 && vtest_remote_fds[fd];
++}
++
 +static int vtest_server_accept(int sock)
 +{
 +   char byte;
@@ -519,6 +530,8 @@ index 3173323..8855379 100644
 +      if (c->cmsg_level == SOL_SOCKET && c->cmsg_type == SCM_RIGHTS)
 +         memcpy(&fd, CMSG_DATA(c), sizeof(int));
 +   }
++   if (fd >= 0 && fd < 1024)
++      vtest_remote_fds[fd] = byte == 'r';
 +   return fd;
 +}
 +
@@ -543,7 +556,7 @@ index 3173323..8855379 100644
  static void vtest_server_open_socket(void)
  {
     struct sockaddr_un un;
-@@ -423,6 +471,7 @@ err:
+@@ -423,6 +481,7 @@ err:
     perror("Failed to setup socket.");
     exit(1);
  }
@@ -551,7 +564,7 @@ index 3173323..8855379 100644
  
  static void vtest_server_wait_clients(void)
  {
-@@ -458,6 +507,15 @@ static void vtest_server_wait_clients(void)
+@@ -458,6 +517,15 @@ static void vtest_server_wait_clients(void)
        exit(1);
     }
  
@@ -567,7 +580,7 @@ index 3173323..8855379 100644
     ret = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
     if (ret < 0) {
        perror("Failed to select on socket!");
-@@ -479,7 +537,7 @@ static void vtest_server_wait_clients(void)
+@@ -479,7 +547,7 @@ static void vtest_server_wait_clients(void)
     }
  
     if (server.socket >= 0 && FD_ISSET(server.socket, &read_fds)) {

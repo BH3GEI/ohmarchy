@@ -555,3 +555,34 @@ rate its frame callback gets. Window size from want parameters:
 `oseasy/vote120/build.sh` builds it with DevEco's hvigor and signs it like the
 native app (SDK test keys, device-bound debug profile). Installed on ohdev; the
 measurement next to the Oseasy window is pending (needs the screen lock).
+
+### Fourth run: Hyprland in Oseasy, and 120 Hz through a voting window (21:30-21:45)
+
+- **Reinstall in 135 s**: 再次安装 on the "安装失败" dialog recreates the disk and
+  boots the install ISO; the host pushes the 3.3 GB zstd stream as soon as the
+  guest listens; 64 GiB written in 92 s (748 MB/s); vmwgfx-oseasy, initramfs,
+  tty1 autologin (uwsm) and the agent recorder installed (all logged).
+- **Hyprland runs in Oseasy** as the user on `Virtual-1 2100x1511@120`, renderer
+  `SVGA3D; build: RELEASE; LLVM;` (OpenGL ES 3.0, Mesa 26.2.5): GPU-accelerated.
+- **But it does not present new frames:** the window shows Hyprland's dark
+  background and the cursor and then nothing updates; es2gears gets no frame
+  callbacks; the host's `NativeWindowFlushBuffer` stays at 0. Same with
+  `AQ_NO_ATOMIC=1` (legacy KMS), whose log fills with `legacy drm: cursor drmIoctl
+  failed: Invalid argument`. kmsgl and modetest page-flip fine on the same driver,
+  so the gap is between aquamarine and vmwgfx (page-flip completion, cursor
+  plane). Next: software cursor (`AQ_NO_HW_CURSOR`/Hyprland `cursor:no_hardware_cursors`).
+- **120 Hz on screen without changing Oseasy** (`ohmarchy-120`, modetest
+  page-flipping in the guest):
+
+  | Visible windows | Panel `activeMode` | `composer fps` |
+  |---|---|---|
+  | Oseasy only | 60 Hz | (follows the guest) |
+  | Oseasy + ohmarchy-120 (240x48 px, top left) | **120 Hz** | **120.0** |
+  | Oseasy + ohmarchy-120 minimized | 60 Hz (the app is frozen in the background) | |
+
+  ohmarchy-120's frame callback ran at 120-121/s while visible. So one small
+  visible window voting 120 Hz is enough to take the whole panel to 120 Hz, and
+  with it Oseasy's 120 frames/s; it has to stay visible (not minimized). Covered,
+  1x1 and floating variants: next run.
+
+  ![ohmarchy-120 next to the Oseasy window](img/oseasy-mb14-vote120.jpeg)

@@ -278,3 +278,18 @@ per-second `DoComposition` / `HwcPresentDisplay` / `NativeWindowFlushBuffer`
 counts from a hitrace capture: the same sources as the native/鸿融 table in
 [native-desktop.md](native-desktop.md), where 鸿融 shows 60 frames/s on screen and
 native 117.
+
+Built 2026-10-24 16:25 against agent-2a's `linux-aarch64` 7.2.12-1.1 (HMV patches,
+`hongrong/kernel/pkgbuild/`, package sha256 `0c54d8e5…d3f2f3`, headers
+`7ba11471…fdd6f6`, checked against its `SHA256SUMS`), on the host under
+`/data/local/oseasy/`:
+
+| File | Size | SHA-256 |
+|---|---|---|
+| `vmwgfx-oseasy-7.2.12-1-aarch64.pkg.tar.xz` | 118 944 | `9dfdd303395fc36145d94157f45a0783659bf983bf4c70c86dd90c89c03b62bc` |
+| `oseasy-probe.iso` | 209 373 184 | `83cf51f49cc1a122be519246f603272c95188fc7450b72e520886f8d582b8077` |
+| `oseasy-probe.img` (raw GPT) | 123 731 968 | `6ba4399ac157939d76dcf4a009c20fe28fa6120a9c1977f41381cfba3ddbc734` |
+| `oseasy-probe.qcow2` (from the raw disk, qemu-img 11.1.2) | 87 490 560 | `458f2f54959da4810b3fcd7705993eec779bf7bea073872e7f7b404a59c15662` |
+
+The ISO and the qcow2 are also in the Download folder (下载), owned
+`20001006:file_manager`, mode 640, like the other images there.

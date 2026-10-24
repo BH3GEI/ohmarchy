@@ -5,8 +5,10 @@ Runs inside the Arch session as the desktop user (tests/apps/run.sh does that).
 For each app: start it through Hyprland (hl.exec_cmd, so it gets the session's own
 environment, as from the launcher), poll `hyprctl clients -j` / `hyprctl layers -j`
 until a new mapped window (or shell panel) appears, screenshot that region with grim
-and check it is not uniformly black or white, then close it and kill anything it
-left behind.
+and check it is not uniformly black or white, then close it and kill what it left
+behind. Only processes this test started are killed: each app runs in its own
+session (setsid), and cleanup takes that session and its descendants, never other
+processes of the same user (builds may be running as that user).
 
 Results go to $OUT (JSON lines), one record per app:
   id, name, exec, result (pass|slow|fail|timeout|crash|skip), seconds, frame,
@@ -101,8 +103,33 @@ def layers():
     return out
 
 
-def user_pids():
-    return {int(p) for p in sh(f"pgrep -u {os.getuid()}").split()}
+def own_pids(marker):
+    """The app's processes: the session the launch wrapper started (its pid is in
+    `marker`) and everything descended from it."""
+    try:
+        root = int(open(marker).read())
+    except (OSError, ValueError):
+        return []
+    parent, session = {}, {}
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            stat = open(f"/proc/{d}/stat").read()
+        except OSError:
+            continue
+        fields = stat[stat.rindex(")") + 2:].split()
+        parent[int(d)], session[int(d)] = int(fields[1]), int(fields[3])
+    ours = {p for p, sid in session.items() if sid == root}
+    for p in parent:
+        q, seen = p, 0
+        while q > 1 and seen < 64:
+            if q == root or q in ours:
+                ours.add(p)
+                break
+            q, seen = parent.get(q, 0), seen + 1
+    ours.discard(os.getpid())
+    return sorted(ours)
 
 
 def desktop_entries():
@@ -191,8 +218,13 @@ def run_one(app_id, name, cmd):
     log = os.path.join(LOGDIR, app_id.replace("/", "_") + ".log")
     base_clients = {c["address"] for c in hypr("clients") or []}
     base_layers = layers()
-    base_pids = user_pids()
-    lua = f'hl.exec_cmd([[sh -c {shlex.quote(cmd)} > {log} 2>&1]])'
+    marker = log + ".pid"
+    try:
+        os.remove(marker)
+    except OSError:
+        pass
+    wrapped = f"echo $$ > {marker}; exec sh -c {shlex.quote(cmd)}"
+    lua = f'hl.exec_cmd([[setsid sh -c {shlex.quote(wrapped)} > {log} 2>&1]])'
     t0 = time.monotonic()
     sh(f"hyprctl eval {shlex.quote(lua)}", 5)
     found = None
@@ -207,7 +239,7 @@ def run_one(app_id, name, cmd):
             break
         time.sleep(0.1)
     elapsed = time.monotonic() - t0
-    new_pids = sorted(user_pids() - base_pids)
+    new_pids = own_pids(marker)
     if found is None:
         alive = [p for p in new_pids if os.path.exists(f"/proc/{p}")]
         rec["result"] = "timeout" if alive else "crash"
@@ -228,8 +260,7 @@ def run_one(app_id, name, cmd):
     clients = [c for c in hypr("clients") or [] if c["address"] not in base_clients]
     if found and found[0] == "panel":
         sh("omarchy-menu close; omarchy-shell shell hide omarchy.speedtest; omarchy-shell shell hide omarchy.disk-speedtest", 5)
-    new_pids = sorted(user_pids() - base_pids)
-    rec["leftovers"] = close(clients, new_pids)
+    rec["leftovers"] = close(clients, own_pids(marker))
     try:
         rec["log"] = "".join(open(log, errors="ignore").readlines()[-6:])[-600:]
     except OSError:

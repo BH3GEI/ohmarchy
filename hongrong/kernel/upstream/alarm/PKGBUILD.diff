@@ -1,0 +1,38 @@
+--- /private/tmp/claude-501/-Users-yao-Desktop-code-agent/3bf55c14-e596-490b-9520-a99ac9540d57/scratchpad/ohmarchy/hongrong/kernel/upstream/alarm/PKGBUILD.orig	2026-10-24 06:05:30
++++ /private/tmp/claude-501/-Users-yao-Desktop-code-agent/3bf55c14-e596-490b-9520-a99ac9540d57/scratchpad/ohmarchy/hongrong/kernel/upstream/alarm/PKGBUILD	2026-10-24 06:05:30
+@@ -9,7 +9,7 @@
+ _kernelname=${pkgbase#linux}
+ _desc="AArch64 multi-platform"
+ pkgver=7.3
+-pkgrel=1
++pkgrel=2
+ arch=('aarch64')
+ url="http://www.kernel.org/"
+ license=('GPL-2.0-only')
+@@ -22,6 +22,8 @@
+         '0003-Revert-arm64-dts-rockchip-Move-rk3568-PCIe3-MSI-to-u.patch'
+         '0004-serial-amba-pl011-add-arm-pl011-axi-binding-for-RP1.patch'
+         '0005-arm64-dts-rpi5-add-RP1-UART0-GPIO14-15-console.patch'
++        '0006-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch'
++        '0007-arm64-arm64.hmv_idreg_quirk-to-read-new-ID-registers-as-zero.patch'
+         'config'
+         'generate_chromebook_its.sh'
+         'kernel.keyblock'
+@@ -34,6 +36,8 @@
+          'a9bcf91cab44e1193240a43189a9313f'
+          '24c403d3738a418a67b8c0e7659380aa'
+          '95261d0e026bb038cb202ea009a778fa'
++         '54760401f5983b1f571c5a291e75ba7e'
++         '8f5844da429fb9613185ee76a1533d4a'
+          '7c97cf141750ad810235b1ad06eb9f75'
+          '61c5ff73c136ed07a7aadbf58db3d96a'
+          '584777ae88bce2c5659960151b64c7d8'
+@@ -57,6 +61,8 @@
+   git apply ../0003-Revert-arm64-dts-rockchip-Move-rk3568-PCIe3-MSI-to-u.patch
+   git apply ../0004-serial-amba-pl011-add-arm-pl011-axi-binding-for-RP1.patch
+   git apply ../0005-arm64-dts-rpi5-add-RP1-UART0-GPIO14-15-console.patch
++  git apply ../0006-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch
++  git apply ../0007-arm64-arm64.hmv_idreg_quirk-to-read-new-ID-registers-as-zero.patch
+ 
+   cat "${srcdir}/config" > ./.config
+ }

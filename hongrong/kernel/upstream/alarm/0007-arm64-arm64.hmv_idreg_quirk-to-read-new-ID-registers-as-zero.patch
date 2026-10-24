@@ -1,0 +1,159 @@
+From bae7b3283d682710e16617239736c640ba4d677c Mon Sep 17 00:00:00 2001
+From: BH3GEI <scholar.liyao@gmail.com>
+Date: Fri, 23 Oct 2026 23:25:20 +0000
+Subject: [PATCH] arm64: arm64.hmv_idreg_quirk to read new ID registers as zero
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The HarmonyOS hypervisor (HMV) behind StratoVirt in the 鸿融 VM hangs the
+vCPU when the guest reads ID_AA64PFR2_EL1 (and possibly the other ID
+registers Linux started reading after v6.8). Linux reads them since v6.9:
+
+- v6.9 (for-next/dpisa): __cpuinfo_store_cpu() reads ID_AA64ISAR3_EL1,
+  ID_AA64PFR2_EL1 and ID_AA64FPFR0_EL1; the boot CPU stops before PSCI
+  starts the secondaries.
+- v6.17 (GICv5 support): the boot CPU capability ARM64_HAS_GICV5_CPUIF
+  checks ID_AA64PFR2_EL1.GCIE through __read_sysreg_by_encoding(), a live
+  read; the kernel stops right after "detected: GICv3 CPU interface".
+
+The architecture requires unallocated ID registers to read as zero, so
+this is a hypervisor bug. With arm64.hmv_idreg_quirk on the command line,
+every ID register that v6.8 did not read at boot (ID_AA64ISAR3_EL1,
+ID_AA64PFR2_EL1, ID_AA64FPFR0_EL1, ID_AA64MMFR4_EL1, AIDR_EL1, SMIDR_EL1,
+MPAMIDR_EL1) reads as zero without being accessed, both in cpuinfo and in
+__read_sysreg_by_encoding(), and MPAM is hidden so that MPAMIDR_EL1 is not
+read. Without the parameter nothing changes.
+---
+ arch/arm64/include/asm/cpufeature.h |  1 +
+ arch/arm64/kernel/cpufeature.c      | 37 +++++++++++++++++++++++++++++
+ arch/arm64/kernel/cpuinfo.c         | 18 +++++++++-----
+ 3 files changed, 50 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/include/asm/cpufeature.h b/arch/arm64/include/asm/cpufeature.h
+index f6a7200700cc..43075dcbd1e1 100644
+--- a/arch/arm64/include/asm/cpufeature.h
++++ b/arch/arm64/include/asm/cpufeature.h
+@@ -635,6 +635,7 @@ void check_local_cpu_capabilities(void);
+ 
+ u64 read_sanitised_ftr_reg(u32 id);
+ u64 __read_sysreg_by_encoding(u32 sys_id);
++bool hmv_idreg_skipped(u32 sys_id);
+ 
+ static inline bool cpu_supports_mixed_endian_el0(void)
+ {
+diff --git a/arch/arm64/kernel/cpufeature.c b/arch/arm64/kernel/cpufeature.c
+index 5dbc20d6d969..f355b18c80d5 100644
+--- a/arch/arm64/kernel/cpufeature.c
++++ b/arch/arm64/kernel/cpufeature.c
+@@ -1558,6 +1558,40 @@ EXPORT_SYMBOL_GPL(read_sanitised_ftr_reg);
+ #define read_sysreg_case(r)	\
+ 	case r:		val = read_sysreg_s(r); break;
+ 
++/*
++ * The HarmonyOS HMV hypervisor (StratoVirt VMs in the 鸿融 app) hangs the vCPU
++ * on reads of ID registers that Linux reads at boot since v6.9 (seen with
++ * ID_AA64PFR2_EL1), although the architecture requires unallocated ID
++ * registers to read as zero. With arm64.hmv_idreg_quirk, every ID register
++ * that v6.8 did not read at boot reads as zero without being accessed.
++ */
++static bool hmv_idreg_quirk __ro_after_init;
++
++static int __init parse_hmv_idreg_quirk(char *unused)
++{
++	hmv_idreg_quirk = true;
++	return 0;
++}
++early_param("arm64.hmv_idreg_quirk", parse_hmv_idreg_quirk);
++
++bool hmv_idreg_skipped(u32 sys_id)
++{
++	if (!hmv_idreg_quirk)
++		return false;
++
++	switch (sys_id) {
++	case SYS_ID_AA64ISAR3_EL1:
++	case SYS_ID_AA64PFR2_EL1:
++	case SYS_ID_AA64FPFR0_EL1:
++	case SYS_ID_AA64MMFR4_EL1:
++	case SYS_AIDR_EL1:
++	case SYS_SMIDR_EL1:
++	case SYS_MPAMIDR_EL1:
++		return true;
++	}
++	return false;
++}
++
+ /*
+  * __read_sysreg_by_encoding() - Used by a STARTING cpu before cpuinfo is populated.
+  * Read the system register on the current CPU
+@@ -1567,6 +1601,9 @@ u64 __read_sysreg_by_encoding(u32 sys_id)
+ 	struct arm64_ftr_reg *regp;
+ 	u64 val;
+ 
++	if (hmv_idreg_skipped(sys_id))
++		return 0;
++
+ 	switch (sys_id) {
+ 	read_sysreg_case(SYS_ID_PFR0_EL1);
+ 	read_sysreg_case(SYS_ID_PFR1_EL1);
+diff --git a/arch/arm64/kernel/cpuinfo.c b/arch/arm64/kernel/cpuinfo.c
+index 45c63f3d75c5..69dce89194d4 100644
+--- a/arch/arm64/kernel/cpuinfo.c
++++ b/arch/arm64/kernel/cpuinfo.c
+@@ -467,6 +467,8 @@ static void __cpuinfo_store_cpu_32bit(struct cpuinfo_32bit *info)
+ 	info->reg_mvfr2 = read_cpuid(MVFR2_EL1);
+ }
+ 
++#define read_cpuid_hmv(reg)	(hmv_idreg_skipped(SYS_##reg) ? 0 : read_cpuid(reg))
++
+ static void __cpuinfo_store_cpu(struct cpuinfo_arm64 *info)
+ {
+ 	info->reg_cntfrq = arch_timer_get_cntfrq();
+@@ -482,25 +484,29 @@ static void __cpuinfo_store_cpu(struct cpuinfo_arm64 *info)
+ 	info->reg_dczid = read_cpuid(DCZID_EL0);
+ 	info->reg_midr = read_cpuid_id();
+ 	info->reg_revidr = read_cpuid(REVIDR_EL1);
+-	info->reg_aidr = read_cpuid(AIDR_EL1);
++	info->reg_aidr = read_cpuid_hmv(AIDR_EL1);
+ 
+ 	info->reg_id_aa64dfr0 = read_cpuid(ID_AA64DFR0_EL1);
+ 	info->reg_id_aa64dfr1 = read_cpuid(ID_AA64DFR1_EL1);
+ 	info->reg_id_aa64isar0 = read_cpuid(ID_AA64ISAR0_EL1);
+ 	info->reg_id_aa64isar1 = read_cpuid(ID_AA64ISAR1_EL1);
+ 	info->reg_id_aa64isar2 = read_cpuid(ID_AA64ISAR2_EL1);
+-	info->reg_id_aa64isar3 = read_cpuid(ID_AA64ISAR3_EL1);
++	info->reg_id_aa64isar3 = read_cpuid_hmv(ID_AA64ISAR3_EL1);
+ 	info->reg_id_aa64mmfr0 = read_cpuid(ID_AA64MMFR0_EL1);
+ 	info->reg_id_aa64mmfr1 = read_cpuid(ID_AA64MMFR1_EL1);
+ 	info->reg_id_aa64mmfr2 = read_cpuid(ID_AA64MMFR2_EL1);
+ 	info->reg_id_aa64mmfr3 = read_cpuid(ID_AA64MMFR3_EL1);
+-	info->reg_id_aa64mmfr4 = read_cpuid(ID_AA64MMFR4_EL1);
++	info->reg_id_aa64mmfr4 = read_cpuid_hmv(ID_AA64MMFR4_EL1);
+ 	info->reg_id_aa64pfr0 = read_cpuid(ID_AA64PFR0_EL1);
+ 	info->reg_id_aa64pfr1 = read_cpuid(ID_AA64PFR1_EL1);
+-	info->reg_id_aa64pfr2 = read_cpuid(ID_AA64PFR2_EL1);
++	info->reg_id_aa64pfr2 = read_cpuid_hmv(ID_AA64PFR2_EL1);
++	if (hmv_idreg_skipped(SYS_MPAMIDR_EL1)) {
++		info->reg_id_aa64pfr0 &= ~ID_AA64PFR0_EL1_MPAM_MASK;
++		info->reg_id_aa64pfr1 &= ~ID_AA64PFR1_EL1_MPAM_frac_MASK;
++	}
+ 	info->reg_id_aa64zfr0 = read_cpuid(ID_AA64ZFR0_EL1);
+ 	info->reg_id_aa64smfr0 = read_cpuid(ID_AA64SMFR0_EL1);
+-	info->reg_id_aa64fpfr0 = read_cpuid(ID_AA64FPFR0_EL1);
++	info->reg_id_aa64fpfr0 = read_cpuid_hmv(ID_AA64FPFR0_EL1);
+ 
+ 	if (gmid_el1_accessible(info))
+ 		info->reg_gmid = read_cpuid(GMID_EL1);
+@@ -521,7 +527,7 @@ static void __cpuinfo_store_cpu(struct cpuinfo_arm64 *info)
+ 		 * supports priorities the kernel does not at present
+ 		 * and we block access to them.
+ 		 */
+-		info->reg_smidr = read_cpuid(SMIDR_EL1) & ~SMIDR_EL1_SMPS;
++		info->reg_smidr = read_cpuid_hmv(SMIDR_EL1) & ~SMIDR_EL1_SMPS;
+ 	}
+ 
+ 	cpuinfo_detect_icache_policy(info);
+-- 
+2.47.3
+

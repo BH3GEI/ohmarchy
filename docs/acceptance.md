@@ -12,7 +12,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Area | Criterion | Test | Status |
 |---|---|---|---|
-| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass. Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
+| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | | pending |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
@@ -137,9 +137,13 @@ load 21; 8 of 10 flashes made it, the rest were dropped frames); one more
 HarmonyOS vsync (about 8 ms) is not counted on the picture side. To re-measure on
 the in-app GPU path when the machine is idle.
 
-Not verified yet: actually hearing it. HarmonyOS's media volume was 0 during the
-tests and no one was at the machine; the stream ran on the speaker sink. Microphone
-input is not done.
+Not verified yet: hearing it. HarmonyOS's media volume was 0 during the tests and
+no one was at the machine, so it stays to be confirmed by ear on site. What is
+verified without sound: the PCM the app hands to the renderer carries each beep
+(the onset detector fires on samples above 64), and the renderer's play position
+moves past those samples on the speaker sink. A capture at FastRendererSink itself
+would be silent at volume 0: the gain stage (hpaeGainNode) before the sink applies
+the volume. Microphone input is not done.
 
 ## E. Security: open items
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# NOT YET TESTED end to end (2026-10-24): written, syntax-checked, first run pending.
+# Ran end to end on 2026-10-24 (the resulting disk not yet booted).
 # Build a disk image with Omarchy alone (no deepin) for the 鸿融 VM: GPT with an
 # EFI system partition and an ext4 root, Arch Linux ARM's linux-aarch64 with the
 # 鸿融 patches (hongrong/kernel/patches) installed as a package, and a

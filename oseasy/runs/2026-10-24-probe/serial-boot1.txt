@@ -1,0 +1,936 @@
+DAIF after ArmWriteVBar in Sec.c is 960
+UEFI firmware (version ce741e47cd built at 18:09:48 on Oct 19 2026)
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[0m[30m[40m[2J[01;01H[0m[37m[40m[0m[30m[40m[2J[01;01H[0m[37m[40m[02;38HGNU GRUB  version 2:2.16-1
+
+[04;02H/------------------------------------------------------------------------------------------------\[05;02H|[05;99H|[06;02H|[06;99H|[07;02H|[07;99H|[08;02H|[08;99H|[09;02H|[09;99H|[10;02H|[10;99H|[11;02H|[11;99H|[12;02H|[12;99H|[13;02H|[13;99H|[14;02H|[14;99H|[15;02H|[15;99H|[16;02H|[16;99H|[17;02H|[17;99H|[18;02H|[18;99H|[19;02H|[19;99H|[20;02H|[20;99H|[21;02H|[21;99H|[22;02H|[22;99H|[23;02H|[23;99H|[24;02H\------------------------------------------------------------------------------------------------/[25;02H[26;02H     Use the ^ and v keys to select which entry is highlighted.                              
+      Press enter to boot the selected OS, `e' to edit the commands before booting or `c' for 
+      a command-line. ESC to return previous menu.                                            [05;:0H [05;03H probe: EFI framebuffer only                                                                    [05;98H[0m[30m[47m[06;03H*probe: vmwgfx, surface-backed dumb buffers, 120 Hz modes                                       [0m[37m[40m[06;98H[07;03H probe: vmwgfx, BO-backed dumb buffers (GMRFB blits), 120 Hz modes                              [07;98H[08;03H probe: vmwgfx with HVM trace, 60 Hz                                                            [08;98H[09;03H                                                                                                [09;98H[10;03H                                                                                                [10;98H[11;03H                                                                                                [11;98H[12;03H                                                                                                [12;98H[13;03H                                                                                                [13;98H[14;03H                                                                                                [14;98H[15;03H                                                                                                [15;98H[16;03H                                                                                                [16;98H[17;03H                                                                                                [17;98H[18;03H                                                                                                [18;98H[19;03H                                                                                                [19;98H[20;03H                                                                                                [20;98H[21;03H                                                                                                [21;98H[22;03H                                                                                                [22;98H[23;03H                                                                                                [23;98H[23;:0H [06;98H[29;01H   The highlighted entry will be executed automatically in 5s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 4s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 3s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 2s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 1s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 0s.                                     [06;98H[0m[30m[40m[2J[01;01H[0m[37m[40m  Booting `probe: vmwgfx, surface-backed dumb buffers, 120 Hz modes'
+
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd032]
+[    0.000000] Linux version 7.2.12-1.1-aarch64-ARCH (builder@localhost) (gcc (GCC) 16.1.1 20260430, GNU ld (GNU Binutils) 2.46.0) #3 SMP PREEMPT_DYNAMIC Sat Oct 24 15:51:47 CST 2026
+[    0.000000] earlycon: pl11 at MMIO32 0x0000000009000000 (options '')
+[    0.000000] printk: legacy bootconsole [pl11] enabled
+[    0.000000] efi: EFI v2.7 by EDK II
+[    0.000000] efi: SMBIOS 3.0=0x13fed0000 MEMATTR=0x13e4c1018 ACPI 2.0=0x13ec5b018 INITRD=0x13e4b1198 MEMRESERVE=0x13e4b1218 
+[    0.000000] ACPI: Early table checksum verification disabled
+[    0.000000] ACPI: RSDP 0x000000013EC5B018 000024 (v02 STRATO)
+[    0.000000] ACPI: XSDT 0x000000013EC5BF18 000064 (v01 STRATO VIRTFACP 00000001      01000013)
+[    0.000000] ACPI: FACP 0x000000013EC5BB18 000114 (v06 STRATO VIRTFACP 00000001      00000000)
+[    0.000000] ACPI: DSDT 0x000000013EAD0018 000F57 (v02 STRATO VIRTDSDT 00000001      00000000)
+[    0.000000] ACPI: FACS 0x00000000FFFE0000 000040
+[    0.000000] ACPI: APIC 0x000000013EC5BC98 000248 (v05 STRATO VIRTAPIC 00000001      00000000)
+[    0.000000] ACPI: GTDT 0x000000013EC5B098 000060 (v02 STRATO VIRTGTDT 00000001      00000000)
+[    0.000000] ACPI: DBG2 0x000000013EC5BA98 000057 (v00 STRATO VIRTDBG2 00000001      00000000)
+[    0.000000] ACPI: IORT 0x000000013EC5B818 000080 (v03 STRATO VIRTIORT 00000001      00000000)
+[    0.000000] ACPI: SPCR 0x000000013EC5B918 000050 (v02 STRATO VIRTSPCR 00000001      00000000)
+[    0.000000] ACPI: MCFG 0x000000013EC5B998 00003C (v01 STRATO VIRTMCFG 00000001      00000000)
+[    0.000000] ACPI: PPTT 0x000000013EC5B198 0002D8 (v02 STRATO VIRTPPTT 00000001      00000000)
+[    0.000000] ACPI: SPCR: console: pl011,mmio,0x9000000,9600
+[    0.000000] cma: Reserved 64 MiB at 0x00000000fbe00000
+[    0.000000] psci: probing for conduit method from ACPI.
+[    0.000000] psci: PSCIv1.0 detected in firmware.
+[    0.000000] psci: Using standard PSCI v0.2 function IDs
+[    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+[    0.000000] psci: SMC Calling Convention v1.1
+[    0.000000] Zone ranges:
+[    0.000000]   DMA      [mem 0x0000000040000000-0x00000000ffffffff]
+[    0.000000]   DMA32    empty
+[    0.000000]   Normal   [mem 0x0000000100000000-0x000000023fffffff]
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000040000000-0x0000000047fcffff]
+[    0.000000]   node   0: [mem 0x0000000047fd0000-0x0000000047feffff]
+[    0.000000]   node   0: [mem 0x0000000047ff0000-0x00000000fffdffff]
+[    0.000000]   node   0: [mem 0x00000000fffe0000-0x00000000fffeffff]
+[    0.000000]   node   0: [mem 0x00000000ffff0000-0x000000013ec8ffff]
+[    0.000000]   node   0: [mem 0x000000013ec90000-0x000000013ef8ffff]
+[    0.000000]   node   0: [mem 0x000000013ef90000-0x000000013efcffff]
+[    0.000000]   node   0: [mem 0x000000013efd0000-0x000000013f01ffff]
+[    0.000000]   node   0: [mem 0x000000013f020000-0x000000013fbfffff]
+[    0.000000]   node   0: [mem 0x000000013fc00000-0x000000013ffdffff]
+[    0.000000]   node   0: [mem 0x000000013ffe0000-0x000000023fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000040000000-0x000000023fffffff]
+[    0.000000] percpu: Embedded 35 pages/cpu s104408 r8192 d30760 u143360
+[    0.000000] Detected PIPT I-cache on CPU0
+[    0.000000] CPU features: detected: GICv3 CPU interface
+[    0.000000] CPU features: detected: ARM erratum 843419
+[    0.000000] CPU features: detected: ARM erratum 845719
+[    0.000000] CPU features: detected: ARM errata 826319, 827319, 824069, or 819472
+[    0.000000] alternatives: applying boot alternatives
+[    0.000000] Kernel command line: BOOT_IMAGE=/Image console=tty0 console=ttyAMA0,115200 earlycon=pl011,mmio32,0x09000000 arm64.hmv_idreg_quirk loglevel=7 probe.vmwgfx=1 vmwgfx.hvm_mmio=1 vmwgfx.hvm_display=2 vmwgfx.msg_enabled=0 vmwgfx.hvm_refresh=120
+[    0.000000] printk: log buffer data + meta data: 262144 + 1114112 = 1376256 bytes
+[    0.000000] Dentry cache hash table entries: 1048576 (order: 11, 8388608 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+[    0.000000] software IO TLB: area num 8.
+[    0.000000] software IO TLB: mapped [mem 0x00000000f7e00000-0x00000000fbe00000] (64MB)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 2097152
+[    0.000000] mem auto-init: stack:off, heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=6, Nodes=1
+[    0.000000] Dynamic Preempt: full
+[    0.000000] rcu: Preemptible hierarchical RCU implementation.
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=6.
+[    0.000000] 	Trampoline variant of Tasks RCU enabled.
+[    0.000000] 	Tracing variant of Tasks RCU enabled.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 100 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=6
+[    0.000000] RCU Tasks: Setting shift to 3 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=6.
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    0.000000] GICv3: 988 SPIs implemented
+[    0.000000] GICv3: 0 Extended SPIs implemented
+[    0.000000] Root IRQ handler: gic_handle_irq
+[    0.000000] GICv3: GICv3 features: 16 PPIs
+[    0.000000] GICv3: GICD_CTLR.DS=0, SCR_EL3.FIQ=0
+[    0.000000] GICv3: CPU0: found redistributor 0 region 0:0x0000000008040000
+[    0.000000] ITS [mem 0x08020000-0x0803ffff]
+[    0.000000] ITS@0x0000000008020000: Devices Table too large, reduce ids 32->19
+[    0.000000] ITS@0x0000000008020000: Devices too large, reduce ITS pages 1024->256
+[    0.000000] ITS@0x0000000008020000: allocated 131072 Devices @100200000 (flat, esz 8, psz 4K, shr 1)
+[    0.000000] ITS@0x0000000008020000: allocated 256 Interrupt Collections @100166000 (flat, esz 16, psz 4K, shr 1)
+[    0.000000] GICv3: using LPI property table @0x0000000100180000
+[    0.000000] GICv3: CPU0: using allocated LPI pending table @0x0000000100190000
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns
+[    0.000000] arch_timer: cp15 timer running at 1000.00MHz (virt).
+[    0.000000] clocksource: arch_sys_counter: mask: 0x1fffffffffffffff max_cycles: 0x1cd42e4dffb, max_idle_ns: 881590591483 ns
+[    0.000000] sched_clock: 61 bits at 1000MHz, resolution 1ns, wraps every 4398046511103ns
+[    0.002488] Console: colour dummy device 80x25
+[    0.003682] printk: legacy console [tty0] enabled
+[    0.005058] ACPI: Core revision 20260408
+[    0.006533] Calibrating delay loop (skipped), value calculated using timer frequency.. 2000.00 BogoMIPS (lpj=1000000)
+[    0.009502] pid_max: default: 32768 minimum: 301
+[    0.012123] Yama: becoming mindful.
+[    0.013137] landlock: Up and running.
+[    0.014820] Mount-cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+[    0.017191] Mountpoint-cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+[    0.019976] VFS: Finished mounting rootfs on nullfs
+[    0.024107] rcu: Hierarchical SRCU implementation.
+[    0.025441] rcu: 	Max phase no-delay instances is 400.
+[    0.027137] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+[    0.030110] Remapping and enabling EFI services.
+[    0.032057] smp: Bringing up secondary CPUs ...
+[    0.033877] Detected PIPT I-cache on CPU1
+[    0.033892] GICv3: CPU1: found redistributor 1 region 0:0x0000000008080000
+[    0.033902] GICv3: CPU1: using allocated LPI pending table @0x00000001001a0000
+[    0.033944] CPU1: Booted secondary processor 0x0000000001 [0x410fd032]
+[    0.034602] Detected PIPT I-cache on CPU2
+[    0.034613] GICv3: CPU2: found redistributor 2 region 0:0x00000000080c0000
+[    0.034621] GICv3: CPU2: using allocated LPI pending table @0x00000001001b0000
+[    0.034655] CPU2: Booted secondary processor 0x0000000002 [0x410fd032]
+[    0.035261] Detected PIPT I-cache on CPU3
+[    0.035274] GICv3: CPU3: found redistributor 3 region 0:0x0000000008100000
+[    0.035282] GICv3: CPU3: using allocated LPI pending table @0x00000001001c0000
+[    0.035318] CPU3: Booted secondary processor 0x0000000003 [0x410fd032]
+[    0.035852] Detected PIPT I-cache on CPU4
+[    0.035865] GICv3: CPU4: found redistributor 4 region 0:0x0000000008140000
+[    0.035873] GICv3: CPU4: using allocated LPI pending table @0x00000001001d0000
+[    0.035908] CPU4: Booted secondary processor 0x0000000004 [0x410fd032]
+[    0.036518] Detected PIPT I-cache on CPU5
+[    0.036529] GICv3: CPU5: found redistributor 5 region 0:0x0000000008180000
+[    0.036537] GICv3: CPU5: using allocated LPI pending table @0x00000001001e0000
+[    0.036569] CPU5: Booted secondary processor 0x0000000005 [0x410fd032]
+[    0.036743] smp: Brought up 1 node, 6 CPUs
+[    0.071877] SMP: Total of 6 processors activated.
+[    0.073188] CPU: All CPU(s) started at EL1
+[    0.074361] CPU features: detected: Branch Target Identification
+[    0.076016] CPU features: detected: ARMv8.4 Translation Table Level
+[    0.077679] CPU features: detected: Common not Private translations
+[    0.079385] CPU features: detected: CRC32 instructions
+[    0.080799] CPU features: detected: Data independent timing control (DIT)
+[    0.082670] CPU features: detected: E0PD
+[    0.083729] CPU features: detected: Enhanced Privileged Access Never
+[    0.085506] CPU features: detected: RCpc load-acquire (LDAPR)
+[    0.087093] CPU features: detected: LSE atomic instructions
+[    0.088649] CPU features: detected: Privileged Access Never
+[    0.090156] CPU features: detected: PMUv3
+[    0.091284] CPU features: detected: RAS Extension Support
+[    0.092780] CPU features: detected: RASv1p1 Extension Support
+[    0.094525] CPU features: detected: Speculation barrier (SB)
+[    0.096145] CPU features: detected: TLB range maintenance instructions
+[    0.097991] CPU features: detected: Speculative Store Bypassing Safe (SSBS)
+[    0.100265] alternatives: applying system-wide alternatives
+[    0.103297] CPU features: detected: Activity Monitors Unit (AMU) on CPU0-5
+[    0.105236] CPU features: detected: Hardware dirty bit management on CPU0-5
+[    0.107442] Memory: 8009908K/8388608K available (24896K kernel code, 6486K rwdata, 14724K rodata, 3072K init, 732K bss, 304244K reserved, 65536K cma-reserved)
+[    0.112831] devtmpfs: initialized
+[    0.114365] setend instruction emulation is not supported on this system
+[    0.116624] posixtimers hash table entries: 4096 (order: 4, 65536 bytes, linear)
+[    0.119111] futex hash table entries: 2048 (131072 bytes on 1 NUMA nodes, total 128 KiB, linear).
+[    0.121743] 20224 pages in range for non-PLT usage
+[    0.121745] 511744 pages in range for PLT usage
+[    0.124108] DMI: SMBIOS 3.0.0 present.
+[    0.126456] DMI: StratoVirt Virtual Machine, BIOS  
+[    0.127758] DMI: Memory slots populated: 1/1
+[    0.135281] NET: Registered PF_NETLINK/PF_ROUTE protocol family
+[    0.137612] DMA: preallocated 1024 KiB GFP_KERNEL pool for atomic allocations
+[    0.139715] DMA: preallocated 1024 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+[    0.141988] audit: initializing netlink subsys (disabled)
+[    0.143792] audit: type=2000 audit(0.086:1): state=initialized audit_enabled=0 res=1
+[    0.144049] thermal_sys: Registered thermal governor 'fair_share'
+[    0.146347] thermal_sys: Registered thermal governor 'bang_bang'
+[    0.148044] thermal_sys: Registered thermal governor 'step_wise'
+[    0.149690] thermal_sys: Registered thermal governor 'user_space'
+[    0.151296] thermal_sys: Registered thermal governor 'power_allocator'
+[    0.153099] cpuidle: using governor ladder
+[    0.156136] cpuidle: using governor menu
+[    0.157378] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+[    0.159472] ASID allocator initialised with 65536 entries
+[    0.161843] acpiphp: ACPI Hot Plug PCI Controller Driver version: 0.5
+[    0.164151] Serial: AMBA PL011 UART driver
+[    0.166711] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+[    0.168596] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+[    0.170332] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+[    0.172137] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+[    0.173787] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+[    0.175582] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+[    0.177173] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+[    0.179234] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+[    0.182638] raid6: using neon recovery algorithm
+[    0.201034] raid6: int64x1  gen()  5906 MB/s
+[    0.219289] raid6: int64x2  gen()  6350 MB/s
+[    0.237551] raid6: int64x4  gen()  7133 MB/s
+[    0.255902] raid6: int64x8  gen()  5107 MB/s
+[    0.274500] raid6: neonx1   gen() 12102 MB/s
+[    0.292745] raid6: neonx2   gen() 13829 MB/s
+[    0.311380] raid6: neonx4   gen() 18704 MB/s
+[    0.329704] raid6: neonx8   gen() 18256 MB/s
+[    0.331342] raid6: using algorithm neonx4 gen() 18704 MB/s
+[    0.349826] raid6: .... xor() 17096 MB/s, rmw enabled
+[    0.351494] ACPI: Added _OSI(Module Device)
+[    0.352610] ACPI: Added _OSI(Processor Device)
+[    0.353800] ACPI: Added _OSI(Processor Aggregator Device)
+[    0.355936] ACPI: 1 ACPI AML tables successfully acquired and loaded
+[    0.358142] ACPI: \_SB_: platform _OSC: OS support mask [002a6eee]
+[    0.359984] ACPI: Interpreter enabled
+[    0.361086] ACPI: Using GIC for interrupt routing
+[    0.362380] ACPI: MCFG table detected, 1 entries
+[    0.364571] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.366951] ACPI Warning: \_SB.BAT0._STA: Expected return object of type Integer (20260408/nspredef-249)
+[    0.369995] ACPI: CPU0 has been hot-added
+[    0.371103] ACPI: CPU1 has been hot-added
+[    0.372259] ACPI: CPU2 has been hot-added
+[    0.373389] ACPI: CPU3 has been hot-added
+[    0.374499] ACPI: CPU4 has been hot-added
+[    0.375630] ACPI: CPU5 has been hot-added
+[    0.376669] ACPI: PCI Root Bridge [PCI0] (domain 0000 [bus 00-ff])
+[    0.378447] acpi PNP0A08:00: _OSC: OS supports [ExtendedConfig ASPM ClockPM Segments MSI HPX-Type3]
+[    0.381270] acpi PNP0A08:00: _OSC: platform does not support [PME AER LTR]
+[    0.383222] acpi PNP0A08:00: _OSC: OS now controls [PCIeHotplug PCIeCapability]
+[    0.385224] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.387459] ACPI Error: No object was returned from \_SB.BAT0._STA due to previous error (AE_NOT_EXIST) (20260408/uteval-79)
+[    0.390683] acpi PNP0A08:00: [Firmware Bug]: ECAM area [mem 0x4010000000-0x401fffffff] not reserved in ACPI namespace
+[    0.393701] acpi PNP0A08:00: ECAM at [mem 0x4010000000-0x401fffffff] for [bus 00-ff]
+[    0.396004] ACPI: Remapped I/O 0x000000003eff0000 to [io  0x0000-0xffff window]
+[    0.398213] PCI host bridge to bus 0000:00
+[    0.399401] pci_bus 0000:00: root bus resource [io  0x0000-0xffff window] (bus address [0x3eff0000-0x3effffff])
+[    0.402244] pci_bus 0000:00: root bus resource [mem 0x6000000000-0x7fffffffff window]
+[    0.404413] pci_bus 0000:00: root bus resource [mem 0x10000000-0x3efeffff window]
+[    0.406442] pci_bus 0000:00: root bus resource [bus 00-ff]
+[    0.407986] pci 0000:00:00.0: [1b36:0008] type 00 class 0x060000 conventional PCI endpoint
+[    0.411128] pci 0000:00:01.0: [1b36:0011] type 00 class 0x088000 conventional PCI endpoint
+[    0.413669] pci 0000:00:01.0: BAR 0 [mem 0x600021c000-0x600021c01f 64bit]
+[    0.415752] pci 0000:00:02.0: [1af4:1042] type 00 class 0x010000 conventional PCI endpoint
+[    0.418668] pci 0000:00:02.0: BAR 1 [mem 0x20228000-0x20228fff]
+[    0.420385] pci 0000:00:02.0: BAR 2 [mem 0x6000218000-0x600021bfff 64bit]
+[    0.422866] pci 0000:00:03.0: [1b36:000d] type 00 class 0x0c0330 conventional PCI endpoint
+[    0.425460] pci 0000:00:03.0: BAR 0 [mem 0x6000214000-0x6000217fff 64bit]
+[    0.427809] pci 0000:00:04.0: [15ad:0405] type 00 class 0x030000 conventional PCI endpoint
+[    0.432449] pci 0000:00:04.0: BAR 0 [mem 0x20227000-0x2022700f]
+[    0.434089] pci 0000:00:04.0: BAR 1 [mem 0x10000000-0x1fffffff pref]
+[    0.435837] pci 0000:00:04.0: BAR 2 [mem 0x20000000-0x201fffff]
+[    0.437435] pci 0000:00:04.0: BAR 3 [mem 0x20200000-0x2021ffff]
+[    0.439373] pci 0000:00:05.0: [1af4:1110] type 00 class 0x050000 conventional PCI endpoint
+[    0.441840] pci 0000:00:05.0: BAR 0 [mem 0x20226000-0x202260ff]
+[    0.443505] pci 0000:00:05.0: BAR 1 [mem 0x20225000-0x20225fff]
+[    0.445192] pci 0000:00:05.0: BAR 2 [mem 0x6000000000-0x60001fffff 64bit pref]
+[    0.447679] pci 0000:00:06.0: [1af4:1041] type 00 class 0x028000 conventional PCI endpoint
+[    0.450715] pci 0000:00:06.0: BAR 1 [mem 0x20224000-0x20224fff]
+[    0.452301] pci 0000:00:06.0: BAR 2 [mem 0x6000210000-0x6000213fff 64bit]
+[    0.454910] pci 0000:00:07.0: [1af4:1043] type 00 class 0x078000 conventional PCI endpoint
+[    0.457755] pci 0000:00:07.0: BAR 1 [mem 0x20223000-0x20223fff]
+[    0.459449] pci 0000:00:07.0: BAR 2 [mem 0x600020c000-0x600020ffff 64bit]
+[    0.461961] pci 0000:00:08.0: [1af4:105a] type 00 class 0x018000 conventional PCI endpoint
+[    0.464959] pci 0000:00:08.0: BAR 1 [mem 0x20222000-0x20222fff]
+[    0.466625] pci 0000:00:08.0: BAR 2 [mem 0x6000208000-0x600020bfff 64bit]
+[    0.469229] pci 0000:00:09.0: [1af4:1045] type 00 class 0x00ff00 conventional PCI endpoint
+[    0.472259] pci 0000:00:09.0: BAR 1 [mem 0x20221000-0x20221fff]
+[    0.473955] pci 0000:00:09.0: BAR 2 [mem 0x6000204000-0x6000207fff 64bit]
+[    0.476571] pci 0000:00:0b.0: [1af4:1052] type 00 class 0x00ff00 conventional PCI endpoint
+[    0.479616] pci 0000:00:0b.0: BAR 1 [mem 0x20220000-0x20220fff]
+[    0.481307] pci 0000:00:0b.0: BAR 2 [mem 0x6000200000-0x6000203fff 64bit]
+[    0.483989] pci 0000:00:04.0: BAR 1 [mem 0x10000000-0x1fffffff pref]: assigned
+[    0.486135] pci 0000:00:04.0: BAR 2 [mem 0x20000000-0x201fffff]: assigned
+[    0.488032] pci 0000:00:05.0: BAR 2 [mem 0x6000000000-0x60001fffff 64bit pref]: assigned
+[    0.490332] pci 0000:00:04.0: BAR 3 [mem 0x20200000-0x2021ffff]: assigned
+[    0.492225] pci 0000:00:02.0: BAR 2 [mem 0x6000200000-0x6000203fff 64bit]: assigned
+[    0.494774] pci 0000:00:03.0: BAR 0 [mem 0x6000204000-0x6000207fff 64bit]: assigned
+[    0.496990] pci 0000:00:06.0: BAR 2 [mem 0x6000208000-0x600020bfff 64bit]: assigned
+[    0.499448] pci 0000:00:07.0: BAR 2 [mem 0x600020c000-0x600020ffff 64bit]: assigned
+[    0.501809] pci 0000:00:08.0: BAR 2 [mem 0x6000210000-0x6000213fff 64bit]: assigned
+[    0.504189] pci 0000:00:09.0: BAR 2 [mem 0x6000214000-0x6000217fff 64bit]: assigned
+[    0.506667] pci 0000:00:0b.0: BAR 2 [mem 0x6000218000-0x600021bfff 64bit]: assigned
+[    0.509202] pci 0000:00:02.0: BAR 1 [mem 0x20220000-0x20220fff]: assigned
+[    0.511241] pci 0000:00:05.0: BAR 1 [mem 0x20221000-0x20221fff]: assigned
+[    0.513082] pci 0000:00:06.0: BAR 1 [mem 0x20222000-0x20222fff]: assigned
+[    0.515273] pci 0000:00:07.0: BAR 1 [mem 0x20223000-0x20223fff]: assigned
+[    0.517039] pci 0000:00:08.0: BAR 1 [mem 0x20224000-0x20224fff]: assigned
+[    0.519185] pci 0000:00:09.0: BAR 1 [mem 0x20225000-0x20225fff]: assigned
+[    0.521267] pci 0000:00:0b.0: BAR 1 [mem 0x20226000-0x20226fff]: assigned
+[    0.523374] pci 0000:00:05.0: BAR 0 [mem 0x20227000-0x202270ff]: assigned
+[    0.525312] pci 0000:00:01.0: BAR 0 [mem 0x600021c000-0x600021c01f 64bit]: assigned
+[    0.527628] pci 0000:00:04.0: BAR 0 [mem 0x20227100-0x2022710f]: assigned
+[    0.529858] pci_bus 0000:00: resource 4 [io  0x0000-0xffff window]
+[    0.531660] pci_bus 0000:00: resource 5 [mem 0x6000000000-0x7fffffffff window]
+[    0.533736] pci_bus 0000:00: resource 6 [mem 0x10000000-0x3efeffff window]
+[    0.537387] ACPI: PCI: Interrupt link GSI0 configured for IRQ 48
+[    0.539071] ACPI: PCI: Interrupt link GSI1 configured for IRQ 49
+[    0.540583] ACPI: PCI: Interrupt link GSI2 configured for IRQ 50
+[    0.541956] ACPI: PCI: Interrupt link GSI3 configured for IRQ 51
+[    0.543671] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.546486] ARMH0011:00: ttyAMA0 at MMIO 0x9000000 (irq = 17, base_baud = 0) is a SBSA
+[    0.548661] printk: console [ttyAMA0] enabled
+[    0.548661] printk: console [ttyAMA0] enabled
+[    0.550622] printk: legacy bootconsole [pl11] disabled
+[    0.550622] printk: legacy bootconsole [pl11] disabled
+[    0.554152] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.555250] iommu: Default domain type: Translated
+[    0.555255] iommu: DMA domain TLB invalidation policy: strict mode
+[    0.556589] SCSI subsystem initialized
+[    0.557016] ACPI: bus type USB registered
+[    0.557038] usbcore: registered new interface driver usbfs
+[    0.557058] usbcore: registered new interface driver hub
+[    0.557067] usbcore: registered new device driver usb
+[    0.557292] pps_core: LinuxPPS API ver. 1 registered
+[    0.557296] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    0.557317] PTP clock support registered
+[    0.557525] EDAC MC: Ver: 3.0.0
+[    0.558098] scmi_core: SCMI protocol bus registered
+[    0.558226] efivars: Registered efivars operations
+[    0.558604] FPGA manager framework
+[    0.558658] Advanced Linux Sound Architecture Driver Initialized.
+[    0.559054] NetLabel: Initializing
+[    0.559057] NetLabel:  domain hash size = 128
+[    0.559059] NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+[    0.559088] NetLabel:  unlabeled traffic allowed by default
+[    0.559248] pci 0000:00:04.0: vgaarb: setting as boot VGA device
+[    0.559252] pci 0000:00:04.0: vgaarb: bridge control possible
+[    0.559255] pci 0000:00:04.0: vgaarb: VGA device added: decodes=io+mem,owns=io+mem,locks=none
+[    0.559262] vgaarb: loaded
+[    0.559840] clocksource: Switched to clocksource arch_sys_counter
+[    0.561180] VFS: Disk quotas dquot_6.6.0
+[    0.561201] VFS: Dquot-cache hash table entries: 512 (4096 bytes)
+[    0.562891] pnp: PnP ACPI init
+[    0.562992] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.562999] ACPI Error: No object was returned from \_SB.BAT0._STA due to previous error (AE_NOT_EXIST) (20260408/uteval-79)
+[    0.563015] pnp: PnP ACPI: found 0 devices
+[    0.568310] NET: Registered PF_INET protocol family
+[    0.571024] IP idents hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+[    0.573081] tcp_listen_portaddr_hash hash table entries: 4096 (order: 4, 65536 bytes, linear)
+[    0.573283] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+[    0.573292] TCP established hash table entries: 65536 (order: 7, 524288 bytes, linear)
+[    0.574880] TCP bind hash table entries: 65536 (order: 9, 2097152 bytes, linear)
+[    0.580949] TCP: Hash tables configured (established 65536 bind 65536)
+[    0.582106] MPTCP token hash table entries: 8192 (order: 6, 196608 bytes, linear)
+[    0.582205] UDP hash table entries: 4096 (order: 6, 262144 bytes, linear)
+[    0.583250] NET: Registered PF_UNIX/PF_LOCAL protocol family
+[    0.584134] RPC: Registered named UNIX socket transport module.
+[    0.584141] RPC: Registered udp transport module.
+[    0.584143] RPC: Registered tcp transport module.
+[    0.584145] RPC: Registered tcp-with-tls transport module.
+[    0.584148] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    0.584320] pci 0000:00:03.0: enabling device (0000 -> 0002)
+[    0.584822] pci 0000:00:04.0: CLS mismatch (64 != 32), using 64 bytes
+[    0.584956] Trying to unpack rootfs image as initramfs...
+[    0.587975] kvm [1]: HYP mode not available
+[    0.588762] Initialise system trusted keyrings
+[    0.589186] workingset: timestamp_bits=46 (anon: 41) max_order=21 bucket_order=0 (anon: 0)
+[    0.591239] NFS: Registering the id_resolver key type
+[    0.591252] Key type id_resolver registered
+[    0.591255] Key type id_legacy registered
+[    0.591287] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[    0.591295] nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
+[    0.591312] ntfs3: Read-only LZX/Xpress compression included
+[    0.591518] SGI XFS with ACLs, security attributes, quota, no debug enabled
+[    0.594372] cryptd: max_cpu_qlen set to 1000
+[    0.604369] NET: Registered PF_ALG protocol family
+[    0.604380] Key type asymmetric registered
+[    0.604382] Asymmetric key parser 'x509' registered
+[    0.604485] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 239)
+[    0.604649] io scheduler mq-deadline registered
+[    0.604655] io scheduler kyber registered
+[    0.604766] io scheduler bfq registered
+[    0.604832] xor: measuring software checksum speed
+[    0.605059]    eor3            : 15967 MB/sec
+[    0.605209]    32regs          : 22529 MB/sec
+[    0.605351]    8regs           : 23382 MB/sec
+[    0.605354] xor: using function: 8regs (23382 MB/sec)
+[    0.609119] ledtrig-cpu: registered to indicate activity on CPUs
+[    0.609588] IPMI message handler: version 39.2
+[    0.610178] ACPI: AC: AC Adapter [ACAD] (on-line)
+[    0.610351] input: Power Button as /devices/platform/PNP0C0C:00/input/input0
+[    0.610405] ACPI: button: Power Button [PWRB]
+[    0.617999] ACPI: \_SB_.PCI0.GSI2: Enabled at IRQ 50
+[    0.619738] virtio-pci 0000:00:05.0: enabling device (0000 -> 0002)
+[    0.622328] ACPI: \_SB_.PCI0.GSI3: Enabled at IRQ 51
+[    0.624336] ACPI: \_SB_.PCI0.GSI0: Enabled at IRQ 48
+[    0.626349] ACPI: \_SB_.PCI0.GSI1: Enabled at IRQ 49
+[    0.630688] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+[    0.632498] msm_serial: driver initialized
+[    0.644854] ACPI: bus type drm_connector registered
+[    0.647081] virtio_blk virtio0: 6/0/0 default/read/poll queues
+[    0.653864] virtio_blk virtio0: [vda] 536870912 512-byte logical blocks (275 GB/256 GiB)
+[    0.659692] xhci_hcd 0000:00:03.0: xHCI Host Controller
+[    0.659776] xhci_hcd 0000:00:03.0: new USB bus registered, assigned bus number 1
+[    0.660916] xhci_hcd 0000:00:03.0: hcc params 0x00080001 hci version 0x100 quirks 0x0000000000000010
+[    0.662408] xhci_hcd 0000:00:03.0: xHCI Host Controller
+[    0.662613] xhci_hcd 0000:00:03.0: new USB bus registered, assigned bus number 2
+[    0.662622] xhci_hcd 0000:00:03.0: Host supports USB 3.0 SuperSpeed
+[    0.662728] usb usb1: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 7.02
+[    0.662757] usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[    0.662760] usb usb1: Product: xHCI Host Controller
+[    0.662762] usb usb1: Manufacturer: Linux 7.2.12-1.1-aarch64-ARCH xhci-hcd
+[    0.662765] usb usb1: SerialNumber: 0000:00:03.0
+[    0.662970] hub 1-0:1.0: USB hub found
+[    0.663234] hub 1-0:1.0: 14 ports detected
+[    0.665124] usb usb2: We don't know the algorithms for LPM for this host, disabling LPM.
+[    0.665131] usb usb2: New USB device found, idVendor=1d6b, idProduct=0003, bcdDevice= 7.02
+[    0.665158] usb usb2: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[    0.665161] usb usb2: Product: xHCI Host Controller
+[    0.665163] usb usb2: Manufacturer: Linux 7.2.12-1.1-aarch64-ARCH xhci-hcd
+[    0.665166] usb usb2: SerialNumber: 0000:00:03.0
+[    0.665352] hub 2-0:1.0: USB hub found
+[    0.665457] hub 2-0:1.0: 8 ports detected
+[    0.667364] usbcore: registered new interface driver uas
+[    0.667430] usbcore: registered new interface driver usb-storage
+[    0.667451] usbcore: registered new interface driver ums-alauda
+[    0.667467] usbcore: registered new interface driver ums-cypress
+[    0.667481] usbcore: registered new interface driver ums-datafab
+[    0.667512] usbcore: registered new interface driver ums_eneub6250
+[    0.667525] usbcore: registered new interface driver ums-freecom
+[    0.667539] usbcore: registered new interface driver ums-isd200
+[    0.667568] usbcore: registered new interface driver ums-jumpshot
+[    0.667582] usbcore: registered new interface driver ums-karma
+[    0.667597] usbcore: registered new interface driver ums-onetouch
+[    0.667623] usbcore: registered new interface driver ums-realtek
+[    0.667654] usbcore: registered new interface driver ums-sddr09
+[    0.667670] usbcore: registered new interface driver ums-sddr55
+[    0.667701] usbcore: registered new interface driver ums-usbat
+[    0.667781] usbcore: registered new interface driver usbserial_generic
+[    0.667799] usbserial: USB Serial support registered for generic
+[    0.668238] mousedev: PS/2 mouse device common for all mice
+[    0.668940] rtc-efi rtc-efi.0: registered as rtc0
+[    0.669008] rtc-efi rtc-efi.0: setting system clock to 2026-10-24T09:20:08 UTC (1792833608)
+[    0.670044] device-mapper: uevent: version 1.0.3
+[    0.670255] device-mapper: ioctl: 4.50.0-ioctl (2025-04-28) initialised: dm-devel@lists.linux.dev
+[    0.672633] efifb: probing for efifb
+[    0.672798] efifb: framebuffer at 0x10000000, using 1876k, total 1875k
+[    0.672803] efifb: mode is 800x600x32, linelength=3200, pages=1
+[    0.672805] efifb: scrolling: redraw
+[    0.672807] efifb: Truecolor: size=8:8:8:8, shift=24:16:8:0
+[    0.677504] Console: switching to colour frame buffer device 100x37
+[    0.677877] fb0: EFI VGA frame buffer device
+[    0.678543] hid: raw HID events driver (C) Jiri Kosina
+[    0.678627] usbcore: registered new interface driver usbhid
+[    0.678633] usbhid: USB HID core driver
+[    0.680666] hw perfevents: enabled with armv8_pmuv3_0 PMU driver, 9 (0,800000ff) counters available
+[    0.680689] watchdog: NMI not fully supported
+[    0.680768] watchdog: Hard watchdog permanently disabled
+[    0.682657] Initializing XFRM netlink socket
+[    0.682924] NET: Registered PF_INET6 protocol family
+[    0.684853] Segment Routing with IPv6
+[    0.684961] In-situ OAM (IOAM) with IPv6
+[    0.685096] mip6: Mobile IPv6
+[    0.685176] NET: Registered PF_PACKET protocol family
+[    0.685475] Key type dns_resolver registered
+[    0.692164] registered taskstats version 1
+[    0.692550] Loading compiled-in X.509 certificates
+[    0.698113] debug_vm_pgtable: [debug_vm_pgtable         ]: Validating architecture page table helpers
+[    0.699122] Key type .fscrypt registered
+[    0.699217] Key type fscrypt-provisioning registered
+[    0.700330] Btrfs loaded, zoned=yes, fsverity=no
+[    0.700457] Key type encrypted registered
+[    0.701204] clk: Disabling unused clocks
+[    0.701300] PM: genpd: Disabling unused power domains
+[    0.701383] ALSA device list:
+[    0.701463]   No soundcards found.
+[    0.905869] usb 1-1: new high-speed USB device number 2 using xhci_hcd
+[    1.003697] Freeing initrd memory: 19472K
+[    1.005026] Freeing unused kernel memory: 3072K
+[    1.005165] Run /init as init process
+[probe] up: 7.2.12-1.1-aarch64-ARCH
+[probe] cmdline: BOOT_IMAGE=/Image console=tty0 console=ttyAMA0,115200 earlycon=pl011,mmio32,0x09000000 arm64.hmv_idreg_quirk loglevel=7 probe.vmwgfx=1 vmwgfx.hvm_mmio=1 vmwgfx.hvm_display=2 vmwgfx.msg_enabled=0 vmwgfx.hvm_refresh=120
+[probe] pci 0000:00:00.0 0x1b36:0x0008 class 0x060000
+[probe] pci 0000:00:01.0 0x1b36:0x0011 class 0x088000
+[probe] pci 0000:00:02.0 0x1af4:0x1042 class 0x010000
+[probe] pci 0000:00:03.0 0x1b36:0x000d class 0x0c0330
+[    1.033161] usb 1-1: New USB device found, idVendor=b74c, idProduct=0003, bcdDevice= 0.00
+[    1.034099] usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[    1.034189] usb 1-1: Product: StratoVirt USB Storage
+[probe] pci 0000:00:04.0 0x15ad:0x0405 class 0x030000[    1.034270] usb 1-1: Manufacturer: StratoVirt
+
+[    1.034348] usb 1-1: SerialNumber: 3-disk
+[    1.036263] usb-storage 1-1:1.0: USB Mass Storage device detected
+[    1.036786] scsi host0: usb-storage 1-1:1.0
+[probe] pci 0000:00:05.0 0x1af4:0x1110 class 0x050000
+[probe] pci 0000:00:06.0 0x1af4:0x1041 class 0x028000
+[probe] pci 0000:00:07.0 0x1af4:0x1043 class 0x078000
+[probe] pci 0000:00:08.0 0x1af4:0x105a class 0x018000
+[probe] pci 0000:00:09.0 0x1af4:0x1045 class 0x00ff00
+[probe] pci 0000:00:0b.0 0x1af4:0x1052 class 0x00ff00
+[    1.062005] virtio_net: Unknown symbol net_failover_destroy (err -2)
+[    1.062143] virtio_net: Unknown symbol net_failover_create (err -2)
+[    1.070420] virtio_net: Unknown symbol net_failover_destroy (err -2)
+[    1.070560] virtio_net: Unknown symbol net_failover_create (err -2)
+[probe] net: eth0 172.16.100.2/24, telnet root shell on port 5000
+[probe] loading vmwgfx
+[    1.095712] vmwgfx: loading out-of-tree module taints kernel.
+[    1.095822] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[    1.095956] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[    1.096045] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[    1.096121] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[    1.096195] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[    1.096259] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[    1.096319] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[    1.096380] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[    1.096453] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[    1.096524] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[    1.096586] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[    1.096646] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[    1.096711] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[    1.096772] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[    1.096829] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[    1.096919] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[    1.096983] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[    1.097039] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[    1.097100] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[    1.097162] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[    1.097225] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[    1.097283] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[    1.097353] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[    1.097415] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[    1.097477] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[    1.097537] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[    1.097614] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[    1.097675] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[    1.097735] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[    1.097793] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[    1.097867] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[    1.097985] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[    1.098050] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[    1.098115] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[    1.098170] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[    1.098225] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[    1.098277] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[    1.098331] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[    1.098388] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[    1.098439] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[    1.098490] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[    1.098545] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[    1.109770] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[    1.109882] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[    1.109947] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[    1.110004] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[    1.110062] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[    1.110115] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[    1.110167] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[    1.110221] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[    1.110284] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[    1.110344] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[    1.110396] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[    1.110449] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[    1.110505] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[    1.110561] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[    1.110615] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[    1.110679] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[    1.110738] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[    1.110792] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[    1.110888] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[    1.110949] vmwgfx: Unknown symbol ttm_eu_fenc
+** replaying previous printk message **
+[    1.110949] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[    1.111009] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[    1.111065] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[    1.111128] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[    1.111184] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[    1.111240] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[    1.111296] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[    1.111368] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[    1.111424] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[    1.111480] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[    1.111535] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[    1.111588] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[    1.111642] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[    1.111697] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[    1.111753] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[    1.111806] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[    1.111863] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[    1.111914] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[    1.111967] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[    1.112022] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[    1.112073] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[    1.112124] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[    1.112177] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[    1.131333] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[    1.131441] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[    1.131505] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[    1.131564] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[    1.131624] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[    1.131701] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[    1.131755] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[    1.131809] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[    1.131884] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[    1.131945] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[    1.131998] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[    1.132052] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[    1.132110] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[    1.132167] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[    1.132221] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[    1.132289] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[    1.132349] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[    1.132403] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[    1.132465] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[    1.132526] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[    1.132585] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[    1.132641] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[    1.132705] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[    1.132762] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[    1.132820] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[    1.132879] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[    1.132950] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[    1.133007] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[    1.133063] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[    1.133120] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[    1.133175] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[    1.133230] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[    1.133285] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[    1.133341] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[    1.133395] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[    1.133449] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[    1.133500] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[    1.133555] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[    1.133611] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[    1.133662] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[    1.133714] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[    1.133769] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[    1.140006] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[    1.140087] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[    1.140145] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[    1.140201] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[    1.140263] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[    1.140317] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[    1.140369] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[    1.140422] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[    1.140483] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[    1.140543] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[    1.140595] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[    1.140649] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[    1.140705] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[    1.140760] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[    1.140813] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[    1.140883] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[    1.140942] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[    1.140995] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[    1.141056] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[    1.141114] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[    1.141173] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[    1.141227] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[    1.141289] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[    1.141345] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[    1.141402] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[    1.141456] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[    1.141524] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[    1.141579] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[    1.141634] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[    1.141690] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[    1.141743] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[    1.141797] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[    1.141855] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[    1.141911] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[    1.141964] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[    1.142017] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[    1.142069] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[    1.142122] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[    1.142177] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[    1.142228] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[    1.142279] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[    1.142333] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[    1.149878] usb 1-2: new full-speed USB device number 3 using xhci_hcd
+[    1.171759] Console: switching to colour dummy device 80x25
+[    1.171921] vmwgfx 0000:00:04.0: [drm] FIFO at 0x0000000020000000 size is 2048 KiB
+[    1.171933] vmwgfx 0000:00:04.0: [drm] VRAM at 0x0000000010000000 size is 262144 KiB
+[    1.171941] Unable to handle kernel paging request at virtual address ffffffffe0a27100
+[    1.171945] Mem abort info:
+[    1.171947]   ESR = 0x0000000096000046
+[    1.171949]   EC = 0x25: DABT (current EL), IL = 32 bits
+[    1.171952]   SET = 0, FnV = 0
+[    1.171954]   EA = 0, S1PTW = 0
+[    1.171955]   FSC = 0x06: level 2 translation fault
+[    1.171958] Data abort info:
+[    1.171960]   ISV = 0, ISS = 0x00000046, ISS2 = 0x00000000
+[    1.171962]   CM = 0, WnR = 1, TnD = 0, TagAccess = 0
+[    1.171965]   GCS = 0, Overlay = 0, DirtyBit = 0
+[    1.171967] swapper pgtable: 4k pages, 48-bit VAs, pgdp=00000001388d0000
+[    1.171970] [ffffffffe0a27100] pgd=00000001392ed403, p4d=00000001392ed403, pud=00000001392ee403, pmd=0000000000000000
+[    1.171978] Internal error: Oops: 0000000096000046 [#1]  SMP
+[    1.325630] Modules linked in: vmwgfx(+) drm_client_lib drm_ttm_helper ttm virtio_net net_failover failover
+[    1.327733] CPU: 0 UID: 0 PID: 162 Comm: modprobe Tainted: G           O        7.2.12-1.1-aarch64-ARCH #3 PREEMPT(full) 
+[    1.330102] Tainted: [O]=OOT_MODULE
+[    1.330848] Hardware name: StratoVirt Virtual Machine, BIOS  
+[    1.332046] pstate: 21400005 (nzCv daif +PAN -UAO -TCO +DIT -SSBS BTYPE=--)
+[    1.333430] pc : vmw_detect_version+0x40/0x190 [vmwgfx]
+[    1.334491] lr : vmw_detect_version+0x2c/0x190 [vmwgfx]
+[    1.335548] sp : ffff8000839f37a0
+[    1.336208] x29: ffff8000839f37a0 x28: ffff800083081dc0 x27: 0000000000000000
+[    1.337617] x26: 00000000005287d3 x25: 0000000000000000 x24: ffff0000c2a14428
+[    1.339151] x23: ffff800081d0f138 x22: ffff0000c01f30d0 x21: ffff80007b198908
+[    1.340638] x20: 00000000ffffffda x19: ffff0000c7da0000 x18: 000000000000000a
+[    1.342118] x17: 363220736920657a x16: 6973203030303030 x15: 0720072007200720
+[    1.343603] x14: 0720072007200720 x13: 0720072007200720 x12: 0720072007200720
+[    1.345079] x11: ffff800082a124e8 x10: 0000000000000281 x9 : ffff800082a124e8
+[    1.346548] x8 : ffff8000839f36a0 x7 : ffff8000839f3790 x6 : ffff8000839f3760
+[    1.348061] x5 : ffff8000839f36e0 x4 : ffff8000839f4000 x3 : 0000000000000000
+[    1.349647] x2 : 0000000000000000 x1 : ffffffffe0a27100 x0 : ffffffffc0800000
+[    1.351221] Call trace:
+[    1.351733]  vmw_detect_version+0x40/0x190 [vmwgfx] (P)
+[    1.352839]  vmw_driver_load+0x88/0xadc [vmwgfx]
+[    1.353801]  vmw_probe+0x94/0x2e0 [vmwgfx]
+[    1.354652]  pci_device_probe+0xcc/0x1f0
+[    1.355479]  really_probe+0xc0/0x3e0
+[    1.356226]  __driver_probe_device+0x164/0x1bc
+[    1.357146]  driver_probe_device+0x3c/0x118
+[    1.358010]  __driver_attach+0xc8/0x21c
+[    1.358805]  bus_for_each_dev+0x78/0xd8
+[    1.359796]  driver_attach+0x24/0x34
+[    1.360557]  bus_add_driver+0x11c/0x260
+[    1.361289]  driver_register+0x68/0x124
+[    1.362094]  __pci_register_driver+0x40/0x58
+[    1.362995]  vmw_pci_driver_init+0x30/0xfc0 [vmwgfx]
+[    1.364049]  do_one_initcall+0x44/0x3c0
+[    1.364952]  do_init_module+0x54/0x248
+[    1.365930]  load_module+0x810/0x99c
+[    1.366906]  init_module_from_file+0xd8/0xfc
+[    1.367827]  idempotent_init_module+0x1c4/0x2b0
+[    1.368747]  __arm64_sys_finit_module+0x68/0xf0
+[    1.369751]  invoke_syscall.constprop.0+0x40/0x108
+[    1.370764]  el0_svc_common.constprop.0+0x38/0xd8
+[    1.371756]  do_el0_svc+0x1c/0x28
+[    1.372448]  el0_svc+0x38/0x1ec
+[    1.373113]  el0t_64_sync_handler+0xa0/0xe4
+[    1.373995]  el0t_64_sync+0x198/0x19c
+[    1.374774] Code: d50332bf 929fffe0 f2b81000 8b000021 (b900003f) 
+[    1.376072] ---[ end trace 0000000000000000 ]---
+[    1.377102] note: modprobe[162] exited with preempt_count 1
+Segmentation fault
+[probe] modprobe vmwgfx rc=139
+[    1.389183] usb 1-2: New USB device found, idVendor=0627, idProduct=0002, bcdDevice= 0.00
+[    1.389829] usb 1-2: New USB device strings: Mfr=1, Product=2, SerialNumber=4
+[    1.389834] usb 1-2: Product: StratoVirt USB Keyboard
+[    1.389869] usb 1-2: Manufacturer: StratoVirt
+[    1.389978] usb 1-2: SerialNumber: 1-kbd
+[    1.392624] input: StratoVirt StratoVirt USB Keyboard as /devices/pci0000:00/0000:00:03.0/usb1/1-2/1-2:1.0/0003:0627:0002.0001/input/input1
+[    1.459101] hid-generic 0003:0627:0002.0001: input,hidraw0: USB HID v1.11 Keyboard [StratoVirt StratoVirt USB Keyboard] on usb-0000:00:03.0-2/input0
+[    1.570935] usb 1-3: new full-speed USB device number 4 using xhci_hcd
+[    1.694305] usb 1-3: New USB device found, idVendor=0627, idProduct=0004, bcdDevice= 0.00
+[    1.694954] usb 1-3: New USB device strings: Mfr=1, Product=2, SerialNumber=4
+[    1.694961] usb 1-3: Product: StratoVirt USB Tablet Mouse
+[    1.694964] usb 1-3: Manufacturer: StratoVirt
+[    1.694967] usb 1-3: SerialNumber: 2-tablet
+[    1.697889] input: StratoVirt StratoVirt USB Tablet Mouse as /devices/pci0000:00/0000:00:03.0/usb1/1-3/1-3:1.0/0003:0627:0004.0002/input/input2
+[    1.698270] hid-generic 0003:0627:0004.0002: input,hidraw1: USB HID v0.01 Mouse [StratoVirt StratoVirt USB Tablet Mouse] on usb-0000:00:03.0-3/input0
+[    1.809923] usb 1-4: new high-speed USB device number 5 using xhci_hcd
+[    1.933090] usb 1-4: New USB device found, idVendor=b74c, idProduct=0003, bcdDevice= 0.00
+[    1.933718] usb 1-4: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[    1.933723] usb 1-4: Product: StratoVirt USB Storage
+[    1.933725] usb 1-4: Manufacturer: StratoVirt
+[    1.933728] usb 1-4: SerialNumber: 3-unattend
+[    1.935696] usb-storage 1-4:1.0: USB Mass Storage device detected
+[    1.936123] scsi host1: usb-storage 1-4:1.0
+[    2.074557] scsi 0:0:0:0: CD-ROM            STRA     STRA CDROM            PQ: 0 ANSI: 5
+[    2.078461] sr 0:0:0:0: [sr0] scsi3-mmc drive: 0x/0x cd/rw xa/form2 cdda tray
+[    2.079321] cdrom: Uniform CD-ROM driver Revision: 3.20
+[    2.138073] sr 0:0:0:0: Attached scsi CD-ROM sr0
+[    2.138223] sr 0:0:0:0: Attached scsi generic sg0 type 5
+[    2.970583] scsi 1:0:0:0: CD-ROM            STRA     STRA CDROM            PQ: 0 ANSI: 5
+[    2.974415] sr 1:0:0:0: [sr1] scsi3-mmc drive: 0x/0x cd/rw xa/form2 cdda tray
+[    3.033077] sr 1:0:0:0: Attached scsi CD-ROM sr1
+[    3.033210] sr 1:0:0:0: Attached scsi generic sg1 type 5
+[probe] [    0.000000] Kernel command line: BOOT_IMAGE=/Image console=tty0 console=ttyAMA0,115200 earlycon=pl011,mmio32,0x09000000 arm64.hmv_idreg_quirk loglevel=7 probe.vmwgfx=1 vmwgfx.hvm_mmio=1 vmwgfx.hvm_display=2 vmwgfx.msg_enabled=0 vmwgfx.hvm_refresh=120
+[probe] [    1.095712] vmwgfx: loading out-of-tree module taints kernel.
+[probe] [    1.095822] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[probe] [    1.095956] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[probe] [    1.096045] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[probe] [    1.096121] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[probe] [    1.096195] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[probe] [    1.096259] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[probe] [    1.096319] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[probe] [    1.096380] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[probe] [    1.096453] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[probe] [    1.096524] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[probe] [    1.096586] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[probe] [    1.096646] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[probe] [    1.096711] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[probe] [    1.096772] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[probe] [    1.096829] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[probe] [    1.096919] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[probe] [    1.096983] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[probe] [    1.097039] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[probe] [    1.097100] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[probe] [    1.097162] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[probe] [    1.097225] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[probe] [    1.097283] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[probe] [    1.097353] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[probe] [    1.097415] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[probe] [    1.097477] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[probe] [    1.097537] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[probe] [    1.097614] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[probe] [    1.097675] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[probe] [    1.097735] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[probe] [    1.097793] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[probe] [    1.097867] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[probe] [    1.097985] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[probe] [    1.098050] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[probe] [    1.098115] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[probe] [    1.098170] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[probe] [    1.098225] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[probe] [    1.098277] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[probe] [    1.098331] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[probe] [    1.098388] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[probe] [    1.098439] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[probe] [    1.098490] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[probe] [    1.098545] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[probe] [    1.109770] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[probe] [    1.109882] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[probe] [    1.109947] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[probe] [    1.110004] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[probe] [    1.110062] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[probe] [    1.110115] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[probe] [    1.110167] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[probe] [    1.110221] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[probe] [    1.110284] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[probe] [    1.110344] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[probe] [    1.110396] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[probe] [    1.110449] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[probe] [    1.110505] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[probe] [    1.110561] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[probe] [    1.110615] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[probe] [    1.110679] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[probe] [    1.110738] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[probe] [    1.110792] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[probe] [    1.110888] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[probe] [    1.110949] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[probe] [    1.111009] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[probe] [    1.111065] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[probe] [    1.111128] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[probe] [    1.111184] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[probe] [    1.111240] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[probe] [    1.111296] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[probe] [    1.111368] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[probe] [    1.111424] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[probe] [    1.111480] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[probe] [    1.111535] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[probe] [    1.111588] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[probe] [    1.111642] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[probe] [    1.111697] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[probe] [    1.111753] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[probe] [    1.111806] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[probe] [    1.111863] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[probe] [    1.111914] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[probe] [    1.111967] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[probe] [    1.112022] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[probe] [    1.112073] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[probe] [    1.112124] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[probe] [    1.112177] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[probe] [    1.131333] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[probe] [    1.131441] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[probe] [    1.131505] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[probe] [    1.131564] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[probe] [    1.131624] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[probe] [    1.131701] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[probe] [    1.131755] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[probe] [    1.131809] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[probe] [    1.131884] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[probe] [    1.131945] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[probe] [    1.131998] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[probe] [    1.132052] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[probe] [    1.132110] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[probe] [    1.132167] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[probe] [    1.132221] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[probe] [    1.132289] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[probe] [    1.132349] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[probe] [    1.132403] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[probe] [    1.132465] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[probe] [    1.132526] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[probe] [    1.132585] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[probe] [    1.132641] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[probe] [    1.132705] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[probe] [    1.132762] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[probe] [    1.132820] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[probe] [    1.132879] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[probe] [    1.132950] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[probe] [    1.133007] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[probe] [    1.133063] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[probe] [    1.133120] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[probe] [    1.133175] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[probe] [    1.133230] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[probe] [    1.133285] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[probe] [    1.133341] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[probe] [    1.133395] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[probe] [    1.133449] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[probe] [    1.133500] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[probe] [    1.133555] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[probe] [    1.133611] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[probe] [    1.133662] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[probe] [    1.133714] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[probe] [    1.133769] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[probe] [    1.140006] vmwgfx: Unknown symbol ttm_range_man_init_nocheck (err -2)
+[probe] [    1.140087] vmwgfx: Unknown symbol drm_gem_ttm_vunmap (err -2)
+[probe] [    1.140145] vmwgfx: Unknown symbol ttm_bo_vm_close (err -2)
+[probe] [    1.140201] vmwgfx: Unknown symbol drm_fbdev_ttm_driver_fbdev_probe (err -2)
+[probe] [    1.140263] vmwgfx: Unknown symbol ttm_pool_free (err -2)
+[probe] [    1.140317] vmwgfx: Unknown symbol ttm_io_prot (err -2)
+[probe] [    1.140369] vmwgfx: Unknown symbol ttm_pool_alloc (err -2)
+[probe] [    1.140422] vmwgfx: Unknown symbol ttm_bo_vm_reserve (err -2)
+[probe] [    1.140483] vmwgfx: Unknown symbol ttm_range_man_fini_nocheck (err -2)
+[probe] [    1.140543] vmwgfx: Unknown symbol ttm_eu_reserve_buffers (err -2)
+[probe] [    1.140595] vmwgfx: Unknown symbol ttm_resource_manager_evict_all (err -2)
+[probe] [    1.140649] vmwgfx: Unknown symbol ttm_bo_pin (err -2)
+[probe] [    1.140705] vmwgfx: Unknown symbol drm_gem_ttm_mmap (err -2)
+[probe] [    1.140760] vmwgfx: Unknown symbol ttm_bo_kunmap (err -2)
+[probe] [    1.140813] vmwgfx: Unknown symbol ttm_device_swapout (err -2)
+[probe] [    1.140883] vmwgfx: Unknown symbol ttm_eu_backoff_reservation (err -2)
+[probe] [    1.140942] vmwgfx: Unknown symbol ttm_resource_manager_create_debugfs (err -2)
+[probe] [    1.140995] vmwgfx: Unknown symbol ttm_resource_fini (err -2)
+[probe] [    1.141056] vmwgfx: Unknown symbol ttm_bo_vm_fault_reserved (err -2)
+[probe] [    1.141114] vmwgfx: Unknown symbol ttm_eu_fence_buffer_objects (err -2)
+[probe] [    1.141173] vmwgfx: Unknown symbol ttm_tt_init (err -2)
+[probe] [    1.141227] vmwgfx: Unknown symbol ttm_bo_kmap (err -2)
+[probe] [    1.141289] vmwgfx: Unknown symbol drm_client_setup (err -2)
+[probe] [    1.141345] vmwgfx: Unknown symbol ttm_bo_fini (err -2)
+[probe] [    1.141402] vmwgfx: Unknown symbol ttm_bo_unpin (err -2)
+[probe] [    1.141456] vmwgfx: Unknown symbol ttm_bo_init_reserved (err -2)
+[probe] [    1.141524] vmwgfx: Unknown symbol ttm_resource_manager_init (err -2)
+[probe] [    1.141579] vmwgfx: Unknown symbol ttm_device_init (err -2)
+[probe] [    1.141634] vmwgfx: Unknown symbol ttm_bo_validate (err -2)
+[probe] [    1.141690] vmwgfx: Unknown symbol ttm_sg_tt_init (err -2)
+[probe] [    1.141743] vmwgfx: Unknown symbol drm_gem_ttm_dumb_map_offset (err -2)
+[probe] [    1.141797] vmwgfx: Unknown symbol ttm_bo_move_to_lru_tail (err -2)
+[probe] [    1.141855] vmwgfx: Unknown symbol ttm_bo_vm_open (err -2)
+[probe] [    1.141911] vmwgfx: Unknown symbol ttm_resource_init (err -2)
+[probe] [    1.141964] vmwgfx: Unknown symbol ttm_bo_vmap (err -2)
+[probe] [    1.142017] vmwgfx: Unknown symbol ttm_resource_free (err -2)
+[probe] [    1.142069] vmwgfx: Unknown symbol ttm_bo_move_memcpy (err -2)
+[probe] [    1.142122] vmwgfx: Unknown symbol ttm_bo_wait_ctx (err -2)
+[probe] [    1.142177] vmwgfx: Unknown symbol ttm_tt_fini (err -2)
+[probe] [    1.142228] vmwgfx: Unknown symbol ttm_device_fini (err -2)
+[probe] [    1.142279] vmwgfx: Unknown symbol ttm_bo_eviction_valuable (err -2)
+[probe] [    1.142333] vmwgfx: Unknown symbol drm_gem_ttm_print_info (err -2)
+[probe] [    1.171921] vmwgfx 0000:00:04.0: [drm] FIFO at 0x0000000020000000 size is 2048 KiB
+[probe] [    1.171933] vmwgfx 0000:00:04.0: [drm] VRAM at 0x0000000010000000 size is 262144 KiB
+[probe] [    1.325630] Modules linked in: vmwgfx(+) drm_client_lib drm_ttm_helper ttm virtio_net net_failover failover
+[probe] [    1.333430] pc : vmw_detect_version+0x40/0x190 [vmwgfx]
+[probe] [    1.334491] lr : vmw_detect_version+0x2c/0x190 [vmwgfx]
+[probe] [    1.351733]  vmw_detect_version+0x40/0x190 [vmwgfx] (P)
+[probe] [    1.352839]  vmw_driver_load+0x88/0xadc [vmwgfx]
+[probe] [    1.353801]  vmw_probe+0x94/0x2e0 [vmwgfx]
+[probe] [    1.362995]  vmw_pci_driver_init+0x30/0xfc0 [vmwgfx]
+[probe] ready; shell on tty0 and telnet 172.16.100.2:5000
+[   44.207885] random: crng init done

@@ -325,7 +325,20 @@ flow only offers ISOs; the qcow2 import is not reachable from it.
   (a D3D11 texture) never gets the guest's CPU writes. vmwgfx relies on the host
   reading the backing MOB (as VMware does) and only uploads regions that its
   mkwrite-based dirty tracking caught, which kernel-side fbdev writes bypass.
-  Next: upload (`UPDATE_GB_SURFACE`) before each screen-object blit.
+  Uploading the whole surface (`SVGA_3D_CMD_UPDATE_GB_SURFACE`) before every
+  screen-object blit (now in `vmw_kms_sou_do_surface_dirty` under `hvm_mmio`)
+  does not change it: still black. Working guess: the host presents only
+  surfaces that exist as textures on its DX device (all of the Windows driver's
+  screen content is GPU-rendered), and a dumb surface that was only ever written
+  by the CPU has none. Next test: GPU rendering through Mesa's SVGA driver on KMS
+  (kmscube) in the probe.
+
+  ![7.2.12 booting in Oseasy](img/oseasy-mb14-72-boots.jpeg)
+  ![vmwgfx bound: frames presented, black](img/oseasy-mb14-vmwgfx-black.jpeg)
+
+  Raw data: [`oseasy/runs/2026-10-24-probe/`](../oseasy/runs/2026-10-24-probe/)
+  (serial consoles from the host log, the host's SVGA/ohui lines at bind, the
+  guest's dmesg).
 - With BO-backed dumb buffers (`hvm_dumb_bo=1`, GMRFB blits) the host does not
   even switch away from the firmware framebuffer: the window keeps showing the
   last EFI-framebuffer frame, and the host logs nothing.

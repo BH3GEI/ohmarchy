@@ -1,0 +1,7 @@
+2026-10-24T17:30:41.810969843: [43063][43094][devices/src/display/svga/processor_dx/hw_screen.rs:142]:INFO: Surface size=(2100, 1511), origin vm size=(2100, 1511), same scale vm size=(2100, 1511), offset=(0, 0), id is 0
+2026-10-24T17:30:41.815521406: [43063][43094][util/src/ohos_binding/native_window.rs:60]:INFO: get native window success
+2026-10-24T17:30:41.850539375: [43063][43094][devices/src/display/svga/processor_dx/svga_dx_backend.rs:2660]:INFO: define screen w 2100 h 1511
+2026-10-24T17:30:41.861798125: [43063][43094][ui/src/ohui_srv/msg_handle.rs:643]:INFO: GuestScreenInfoEvent { id: 0, width: 2100, height: 1511 }
+2026-10-24T17:30:41.862498437: [43063][43069][ui/src/ohui_srv/msg_handle.rs:773]:INFO: virtualScreen: GuestVirtualScreenInfoEvent { virtual_screen_width: 2100, virtual_screen_height: 1511 }
+2026-10-24T17:30:41.863273750: [43063][43069][ui/src/ohui_srv/msg_handle.rs:836]:INFO: WindowInfoExtensionEvent { surface_width: 2880, surface_height: 1920, rotation: 0, fold_status: 0 }
+2026-10-24T17:31:33.510921875: [43063][43069][ui/src/ohui_srv/msg_handle.rs:535]:INFO: received focus-in event

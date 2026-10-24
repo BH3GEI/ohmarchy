@@ -10,7 +10,7 @@
 #   testvm.sh start DISK   start (DISK: raw image)
 #   testvm.sh status       pid, vCPUs started (host VM log), serial tail
 #   testvm.sh stop         ACPI power button via QMP, then wait; kill after 60 s
-#   testvm.sh net-down     remove the tap device
+#   testvm.sh net-down     remove the tap device and its NAT rule
 D=${TESTVM_DIR:-/data/local/vmtest/run}
 BR=${TESTVM_BRIDGE:-$(ls /sys/class/net | grep '^WVMBr' | head -1)}
 TAP=hmvtest0
@@ -29,7 +29,12 @@ start)
   ip link set $TAP up
   # 鸿融 removes its bridge when its VM stops: then the host side of the
   # guest's 172.16.100.0/24 is the tap itself
-  [ -n "$BR" ] || ip addr add 172.16.100.1/24 dev $TAP 2>/dev/null
+  if [ -z "$BR" ]; then
+    ip addr add 172.16.100.1/24 dev $TAP 2>/dev/null
+    # outbound NAT for the guest (鸿融's own rules go away with its VM)
+    iptables -t nat -C POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null ||
+      iptables -t nat -A POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE
+  fi
   nohup $SV \
     -machine virt,gic-version=3,mem-share=on,accel=hmv \
     -cpu host,pmu=on,kvm-steal-time=on,bti=off -smp 6 -m 8192 \
@@ -60,7 +65,8 @@ stop)
   running || echo stopped
   ;;
 net-down)
-  ip link del $TAP 2>/dev/null; echo "tap removed"
+  iptables -t nat -D POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null
+  ip link del $TAP 2>/dev/null; echo "tap and NAT rule removed"
   ;;
 *) sed -n '2,13p' "$0"; exit 1 ;;
 esac

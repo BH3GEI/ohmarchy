@@ -15,7 +15,7 @@ for d in /sys/bus/pci/devices/*; do
   for r in 0 1 2 3 4 5; do :; done; sed -n '1,6p' $d/resource | sed "s|^|KDSPROBE   res ${d##*/} |"
 done
 for v in /sys/firmware/efi/efivars/SecureBoot-* /sys/firmware/efi/efivars/SetupMode-*; do
-  [ -e "$v" ] && p efivar "${v##*/} $(od -An -tx1 "$v" 2>/dev/null | tr -s ' ')"
+  [ -e "$v" ] && p efivar "${v##*/} $(hexdump -v -e '1/1 "%02x"' "$v" 2>/dev/null || cat "$v" | wc -c)"
 done
 [ -d /sys/firmware/efi ] && p efi yes || p efi no
 ls /sys/firmware/acpi/tables 2>/dev/null | tr '\n' ' ' | sed 's/^/KDSPROBE acpi /'; echo
@@ -25,7 +25,7 @@ ls /sys/class/drm /sys/class/graphics /sys/class/net /sys/class/block 2>/dev/nul
 for f in /sys/class/graphics/fb*/modes /sys/class/graphics/fb*/virtual_size /sys/class/graphics/fb*/name /sys/class/drm/*/modes /sys/class/drm/*/status; do
   [ -e "$f" ] && p sys "$f $(cat $f | tr '\n' ' ')"
 done
-for e in /sys/class/drm/*/edid; do [ -s "$e" ] && p edid "$e $(od -An -tx1 -v $e | tr -d '\n')"; done
+for e in /sys/class/drm/*/edid; do [ -s "$e" ] && p edid "$e $(hexdump -v -e '1/1 "%02x"' $e 2>/dev/null || wc -c < $e)"; done
 dmesg | sed 's/^/KDSPROBE dmesg /'
 p end
 # d-i's busybox has no setsid: a plain shell on tty1 (no job control), and

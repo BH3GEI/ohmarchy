@@ -4,6 +4,7 @@
 # "onset played at" log line, both on CLOCK_MONOTONIC). The display app must be open.
 #   ROUNDS  beeps per kind (default 5);  ARCH_USER  desktop user (default builder)
 here=$(cd "$(dirname "$0")" && pwd)
+"$here/../lib/screen-free.sh" || exit 1
 user=${ARCH_USER:-builder}
 B=${ARCH_BASE:-/data/local/archtest}
 {

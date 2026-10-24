@@ -198,9 +198,10 @@ int Connect()
     }
     // No small SO_RCVBUF: on the host's network stack that stalled the connection
     // (receiver waiting, sender's queue full). The ring bounds the latency instead.
-    // The session always streams (silence too): two quiet seconds mean it is stuck.
+    // The session sends nothing while nothing plays; the timeout lets the renderer
+    // stop then.
     int one = 1;
-    timeval tv{2, 0};
+    timeval tv{0, 500000};
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     return fd;
@@ -222,7 +223,9 @@ void AudioLoop()
         size_t partial = 0;  // bytes of an incomplete frame at the start of buf
         for (;;) {
             ssize_t n = recv(fd, buf.data() + partial, buf.size() - partial, 0);
-            if (n <= 0) {
+            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                n = 0;  // nothing playing: counts as silence below
+            } else if (n <= 0) {
                 if (n < 0) {
                     LOGE("session audio: %{public}s", strerror(errno));
                 }

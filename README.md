@@ -21,15 +21,16 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | Omarchy with its 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app), virgl GPU, 120 Hz EDID, Docker, picture in route D's app | Offline preparation: base script (agent-2a's testvm.sh), 鸿融's GPU/display arguments, a 120 Hz EDID |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 05:25 PDT)
+## Progress (updated hourly; last: 2026-10-24 08:25 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Holding the VM slot until about 20:40 +0800: the Omarchy-only disk is written into the Oseasy VM; next are boot to Hyprland, the packaged `vmwgfx-oseasy`, es2gears/glmark2 and workspace fps | GPU-rendered KMS output shows in the Oseasy window with hardware 3D (Mesa SVGA3D); host panel at 60 Hz |
-| C. 鸿融 VM | Stage 2 after 铠大师: guest network for hand-started VMs (outbound NAT when 鸿融's bridge is gone) and a 1-hour soak | **Omarchy without deepin boots on linux-aarch64 7.2.12**: cold boot plus three warm reboots, about 2 minutes each to `omarchy login:`, no HMV errors in dmesg ([status](docs/hongrong-whole-os.md)) |
-| D. Native | 24 h soak until 17:52 +0800 tomorrow; formal cold-start timing; final A-G acceptance table | Second environment built from nothing in 30 min and reset in 56 s; sound now over an abstract socket limited to the app's uid (no TCP port); GPU broker accepts only the app's uid and drops to the desktop user; Firefox is the default browser (seccomp sandbox works); on-site checklist written |
-| G. 铠大师 VM | After Oseasy: write the Omarchy disk from the 文档 share (sparse, 9 GiB instead of 64 GiB), then check whether the guest's own power-off counts as "install finished" | Staging rule for 文档 (put just before use, remove after) and a cloud-sync check |
-| H. Aetherium on the device | Repairing the last 8 corrupted blocks of the copied disk, then the TCG baseline; HMV permission test queued after 铠大师 | Permission test designed: a non-system probe versus a copy of StratoVirt without its exec label, since root can already start the system StratoVirt on `/dev/hmv` |
+| B. Oseasy VM | Next VM slot (~09:30 PDT): verify the cursor fix lets Hyprland present, then 120 Hz with the vote window, glmark2, a warm reboot | **120 Hz works with a small always-visible window that requests 120 Hz** (`ohmarchy-120`, no permissions): panel 60 → 120 Hz, composer 120 fps. Hyprland stalled on a cursor-plane check (`CURSOR_MAX_DIMENSION` reads 0); the HVM driver no longer registers a cursor plane. No guest agent that impersonates Oseasy's service |
+| C. 鸿融 VM | Making the developer image pass 鸿融's own qcow2 import check; 30-min soak running | **Developer image runs in 鸿融**: 7.2.12, Omarchy desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker (hello-world, postgres, compose), warm reboot. Open: 鸿融's UI import rejects our qcow2; the 120 Hz EDID override is read but its 120 Hz mode is dropped ([status](docs/hongrong-whole-os.md)) |
+| D. Native | 24 h soak (until 02:52 PDT tomorrow); Remote virgl test inside 鸿融 | Formal cold start about 8 s (session 2.0 s + desktop ~6 s); desktop start/restart 12.5 s → 2.45 s; acceptance summary for A-G in [docs/acceptance.md](docs/acceptance.md); Remote virgl prepared (broker `--tcp`, the app itself never touches the network) |
+| G. 铠大师 VM | Concluded | Linux in 铠大师 only lives in an install session that is deleted on power-off; same `svga-pci` path as B ([docs/vm-kaidashi.md](docs/vm-kaidashi.md)) |
+| I. Own VM | Own StratoVirt on `/dev/hmv` with virtio-gpu + virgl, 120 Hz EDID, Docker; slot after B | Shared `testvm.sh` now sets virtio-net iothreads (the likely cause of the dead guest network); the system virglrenderer presents into 鸿融's window via WindowsFusion, so our own VM needs either a stand-in for that library or Remote virgl ([docs/vm-own.md](docs/vm-own.md)) |
+| H. Aetherium on the device | Whether a third-party app can call `@hms:virtService.vmManager` without root (stub SDK and probe HAP); then the TCG baseline | The VM API is a closed HMS partner module; the service checks the caller (`UNTRUSTED_CALLER`, caller and publisher bundle names) ([docs/vm-api.md](docs/vm-api.md)) |
 
 Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel.
 <!-- progress:end -->

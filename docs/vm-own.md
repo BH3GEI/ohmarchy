@@ -104,3 +104,33 @@ through this path; frame rate on screen (HarmonyOS compositor), CPU on both
 sides, and latency. A first check without a VM is possible from route D's own
 session (it shares the host's network: a client there connecting to
 172.16.100.1 comes from the allowed network).
+
+## Where the virgl picture goes (offline, 2026-10-24)
+
+- `vhost-device-gpu` links only `libvirglrenderer.so.1` (the system's, 588 KB).
+  That virglrenderer is patched for OpenHarmony: `virgl_renderer_ohos_set_scanout`
+  / `virgl_renderer_ohos_present` render a scanout into an EGL window surface
+  and `eglSwapBuffers` it ("scanout %d surface created at %dx%d", a 1 s black
+  buffer on resize). It gets the window by `dlopen("libhwf_kits.z.so")` and
+  `dlsym("GetNativeWindow")` (plus `ReleaseNativeWindow`,
+  `OH_NativeWindow_NativeWindowHandleOpt`).
+- `libhwf_kits.z.so`'s `GetNativeWindow(id)` is
+  `OHOS::HmosWindowsFusion::WindowsClient::GetNativeWindow(unsigned)` from
+  `libhwf_agent.z.so`: it asks the system's WindowsFusion service for the window
+  of the VM view that the VM app (鸿融) created ("stratovirt get nativewindow").
+- So a VM we start as root renders on the GPU through the same backend, but
+  there is no VM view to present into. Two ways to put the picture into route
+  D's app, both to agree with agent-53:
+  1. a substitute `libhwf_kits.z.so` (found first through
+     `TESTVM_GPU_LIBPATH`) whose `GetNativeWindow` returns a native window made
+     from the surface of route D's XComponent (shared by surface id), leaving
+     vhost-device-gpu and virglrenderer untouched;
+  2. route D's side serves vhost-user-gpu itself.
+- Refresh: the EGL swap paces with that window's consumer; route D's app
+  already asks the panel for 120 Hz.
+
+`hongrong/pure/testvm.sh` (shared with agent-2a) now takes `TESTVM_GPU=1`
+(vhost-device-gpu + `vhost-user-gpu-pci,virgl=true`), `TESTVM_GPU_LIBPATH`,
+`TESTVM_DISPLAY=ohui`, and gives the NIC 鸿融's rx/tx iothreads, the likely
+fix for "the guest sends but never receives" seen both in that script and in
+铠大师's install session ([vm-kaidashi.md](vm-kaidashi.md)).

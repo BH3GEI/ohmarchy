@@ -11,6 +11,8 @@ user (`ARCH_USER`, default `builder`).
 | `lib/session-py.sh` | run a Python test in the desktop session with its environment |
 | `apps/run.sh` | A1: every app opens a window within 3 s |
 | `core/core_ops.py` | A2: files, clipboard, Chinese input, audio, file chooser |
+| `audio/run.sh` | A3: sound latency to the speaker (the display app must be open) |
+| `audio/avsync.sh` | A3: mpv sound vs picture |
 | `compat/sysv_ipc.c` | SysV IPC on the HongMeng kernel |
 
 The tests only clean up processes they started themselves (the app's own session

@@ -155,3 +155,15 @@ window from route D's app's XComponent surface id
 (`OH_NativeWindow_CreateNativeWindowFromSurfaceId`) and flushes CPU-filled
 buffers into it; if pictures appear, a substitute `libhwf_kits.z.so` can hand
 that window to vhost-device-gpu. Needs the app open (screen.lock).
+
+Result (2026-10-24 08:22 PDT, run by the native-desktop line with route D's
+app open in GPU mode): surface id `8216272437645` from hilog
+("xcomponent surface id"); as root, `swtest 8216272437645 5` →
+`CreateNativeWindowFromSurfaceId = 40001000, window 0`. The surface-id table is
+per process, so another process (root included) cannot get a window for the
+app's surface. **Option A is closed**, and with it `hwf_kits_remote.c`. Still
+open: option B (the app itself becomes the vhost-user-gpu backend) and the
+vtest channel (above; the guest's TCP connection reaches the app, which drops it
+at the start, being debugged on the native-desktop line). Guest side of vtest
+needs `LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=virpipe`, else Mesa takes the
+DRM device's driver.

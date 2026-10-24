@@ -18,15 +18,15 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 04:25 PDT)
+## Progress (updated hourly; last: 2026-10-24 05:25 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Next in the VM slot: stream the Omarchy-only disk into the Oseasy VM, then Hyprland, glmark2/es2gears against 鸿融's virgl, workspace fps, cold-boot time | GPU-rendered KMS output now shows in the Oseasy window (Mesa SVGA3D, GL ES 3.0, hardware 3D); the guest renders 120 fps but the host panel stays at 60 Hz, so 60 reach the screen |
-| C. 鸿融 VM | Stage 1 of the Omarchy-only disk test: three warm reboots over the serial console; network for hand-started VMs next (鸿融 removes its bridge when it stops) | Omarchy-only disk (Omarchy 4.0.6, linux-aarch64 7.2.12 with the HMV patches, pacman-owned modules) cold-boots to `omarchy login:` in under 2 minutes in a headless StratoVirt started by root on `/dev/hmv` |
-| D. Native | One-command install and reset into a second environment (`native/install.sh`, `reset.sh`); Chromium sandbox investigation | Exclusive measurement: workspace switching 119.4 fps; display app idle CPU 1.9% of a core (was 14%); background/foreground 20/20; for the same CPU the native desktop shows about twice the frames of the VM |
-| G. 铠大师 VM | After Oseasy: test whether the installer's own power-off counts as "install finished", so the VM is kept and later starts with a full network | Root cause of the dead guest network: 铠大师's install session uses a hard-coded virtio-net with no `mac` or iothreads; normal starts add both |
-| H. Aetherium on the device | Repairing 37 corrupted 64 MiB blocks of the copied disk in place, then the TCG baseline | Static answers: no virgl/venus and no 120 Hz path in Aetherium's QEMU; HMV create-VM permission probe ready for the VM slot |
+| B. Oseasy VM | Holding the VM slot until about 20:40 +0800: the Omarchy-only disk is written into the Oseasy VM; next are boot to Hyprland, the packaged `vmwgfx-oseasy`, es2gears/glmark2 and workspace fps | GPU-rendered KMS output shows in the Oseasy window with hardware 3D (Mesa SVGA3D); host panel at 60 Hz |
+| C. 鸿融 VM | Stage 2 after 铠大师: guest network for hand-started VMs (outbound NAT when 鸿融's bridge is gone) and a 1-hour soak | **Omarchy without deepin boots on linux-aarch64 7.2.12**: cold boot plus three warm reboots, about 2 minutes each to `omarchy login:`, no HMV errors in dmesg ([status](docs/hongrong-whole-os.md)) |
+| D. Native | 24 h soak until 17:52 +0800 tomorrow; formal cold-start timing; final A-G acceptance table | Second environment built from nothing in 30 min and reset in 56 s; sound now over an abstract socket limited to the app's uid (no TCP port); GPU broker accepts only the app's uid and drops to the desktop user; Firefox is the default browser (seccomp sandbox works); on-site checklist written |
+| G. 铠大师 VM | After Oseasy: write the Omarchy disk from the 文档 share (sparse, 9 GiB instead of 64 GiB), then check whether the guest's own power-off counts as "install finished" | Staging rule for 文档 (put just before use, remove after) and a cloud-sync check |
+| H. Aetherium on the device | Repairing the last 8 corrupted blocks of the copied disk, then the TCG baseline; HMV permission test queued after 铠大师 | Permission test designed: a non-system probe versus a copy of StratoVirt without its exec label, since root can already start the system StratoVirt on `/dev/hmv` |
 
 Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel.
 <!-- progress:end -->

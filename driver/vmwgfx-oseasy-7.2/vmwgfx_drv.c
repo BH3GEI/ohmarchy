@@ -285,6 +285,9 @@ module_param_named(hvm_vblank, vmw_hvm_vblank, bool, 0400);
 bool vmw_hvm_dumb_bo;
 MODULE_PARM_DESC(hvm_dumb_bo, "HVM: back dumb buffers with plain buffer objects (GMRFB blits) instead of surfaces");
 module_param_named(hvm_dumb_bo, vmw_hvm_dumb_bo, bool, 0400);
+bool vmw_hvm_hw_cursor;
+MODULE_PARM_DESC(hvm_hw_cursor, "HVM: expose the cursor plane (the device reports no cursor size limit, so it fails)");
+module_param_named(hvm_hw_cursor, vmw_hvm_hw_cursor, bool, 0400);
 
 
 struct bitmap_name {

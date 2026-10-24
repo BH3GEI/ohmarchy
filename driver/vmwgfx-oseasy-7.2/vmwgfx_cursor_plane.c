@@ -862,6 +862,8 @@ int vmw_kms_cursor_bypass_ioctl(struct drm_device *dev, void *data,
 	if (arg->flags & DRM_VMW_CURSOR_BYPASS_ALL) {
 		list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 			du = vmw_crtc_to_du(crtc);
+			if (!du->cursor.base.state)
+				continue;	/* HVM: no cursor plane */
 			vps = vmw_plane_state_to_vps(du->cursor.base.state);
 			vps->cursor.legacy.hotspot_x = arg->xhot;
 			vps->cursor.legacy.hotspot_y = arg->yhot;
@@ -878,6 +880,10 @@ int vmw_kms_cursor_bypass_ioctl(struct drm_device *dev, void *data,
 	}
 
 	du = vmw_crtc_to_du(crtc);
+	if (!du->cursor.base.state) {
+		ret = -EINVAL;	/* HVM: no cursor plane */
+		goto out;
+	}
 	vps = vmw_plane_state_to_vps(du->cursor.base.state);
 	vps->cursor.legacy.hotspot_x = arg->xhot;
 	vps->cursor.legacy.hotspot_y = arg->yhot;

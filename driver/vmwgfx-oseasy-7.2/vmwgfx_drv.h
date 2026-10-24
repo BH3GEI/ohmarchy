@@ -1548,5 +1548,6 @@ extern int vmw_hvm_display;
 extern int vmw_hvm_refresh;
 extern bool vmw_hvm_vblank;
 extern bool vmw_hvm_dumb_bo;
+extern bool vmw_hvm_hw_cursor;
 
 #endif

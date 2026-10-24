@@ -32,7 +32,7 @@ void vmw_du_cleanup(struct vmw_display_unit *du)
 
 	vmw_vkms_crtc_cleanup(&du->crtc);
 	drm_plane_cleanup(&du->primary);
-	if (vmw_cmd_supported(dev_priv))
+	if (vmw_cmd_supported(dev_priv) && du->cursor.base.dev)
 		drm_plane_cleanup(&du->cursor.base);
 
 	drm_connector_unregister(&du->connector);

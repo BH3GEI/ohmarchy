@@ -847,6 +847,14 @@ static int vmw_sou_init(struct vmw_private *dev_priv, unsigned unit)
 	drm_plane_helper_add(primary, &vmw_sou_primary_plane_helper_funcs);
 	drm_plane_enable_fb_damage_clips(primary);
 
+	/*
+	 * HVM: SVGA_REG_CURSOR_MAX_DIMENSION reads 0 and every cursor fails
+	 * atomic_check with -EINVAL, which fails whole commits (compositors stall
+	 * on their first frame). Without a cursor plane they draw the cursor.
+	 */
+	if (dev_priv->hvm_mmio && !vmw_hvm_hw_cursor)
+		goto no_cursor;
+
 	/* Initialize cursor plane */
 	ret = drm_universal_plane_init(dev, &cursor->base,
 			0, &vmw_sou_cursor_funcs,
@@ -861,6 +869,7 @@ static int vmw_sou_init(struct vmw_private *dev_priv, unsigned unit)
 
 	drm_plane_helper_add(&cursor->base, &vmw_sou_cursor_plane_helper_funcs);
 
+no_cursor:
 	ret = drm_connector_init(dev, connector, &vmw_sou_connector_funcs,
 				 DRM_MODE_CONNECTOR_VIRTUAL);
 	if (ret) {
@@ -888,7 +897,7 @@ static int vmw_sou_init(struct vmw_private *dev_priv, unsigned unit)
 	}
 
 	ret = drm_crtc_init_with_planes(dev, crtc, primary,
-					&cursor->base,
+					cursor->base.dev ? &cursor->base : NULL,
 					&vmw_screen_object_crtc_funcs, NULL);
 	if (ret) {
 		DRM_ERROR("Failed to initialize CRTC\n");

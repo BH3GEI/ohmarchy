@@ -18,15 +18,15 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 02:25 PDT)
+## Progress (updated hourly; last: 2026-10-24 03:25 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Holding the VM slot: the backed-up Windows VM was removed and an Omarchy probe VM is being created to test the 7.2 kernel with `arm64.hmv_idreg_quirk` and `vmwgfx` surface blits | The host panel stays at 60 Hz while the Oseasy window is in front (no switch to 120 Hz); probe disk and ISO built against the 7.2.12 HMV kernel |
-| C. 鸿融 VM | Fourth run of `build-disk.sh` for the Omarchy-only disk, now past the base system, the patched kernel and Omarchy's packages | Fixed on the way: no devtmpfs on HongMeng, chroot root not a mount point, Omarchy's btrfs-only initramfs hook on an ext4 root |
-| D. Native | Performance (B): idle CPU and memory with the screen untouched while another route holds the VM slot | Sound works through OHAudio: 70-113 ms median to the speaker, 0 underruns (not yet heard: host volume is 0); A2 core operations 6/6; idle CPU down from 24% to 14.5% of a core |
-| G. 铠大师 VM | Waiting for the VM slot; meanwhile dissecting the backed-up Oseasy Windows guest (read-only) to see how Windows drives `svga-pci` | Installer ISO with the 7.2.12 kernel that writes a disk streamed from the host; first VM run: `svga-pci` 256 MB, Secure Boot off, no sign-in needed |
-| H. Aetherium on the device | Resumable copy of the stock Omarchy disk to `ohdev` over the tunnel, then a TCG baseline on the unpatched 7.x kernel | HMV is its own ioctl ABI under KVM's 0xAE magic, not KVM-compatible; acceleration would need a new QEMU accel backend |
+| B. Oseasy VM | Testing GPU rendering on KMS (`kmsgl`, Mesa's SVGA driver) to see whether GPU-rendered surfaces reach the Oseasy window | 7.2.12 with `arm64.hmv_idreg_quirk` boots in Oseasy (6 vCPUs, network up), which explains the old ">= 6.5 hangs"; `vmwgfx` binds and offers 2100x1511@120, frames reach the host but CPU-written surfaces show black; the host panel stays at 60 Hz, as it does for Oseasy's own Windows |
+| C. 鸿融 VM | Seventh run of the Omarchy-only disk build (ETA 18:40 +0800), then a 2-hour test slot: cold boot, warm reboots, soak | Six build blockers fixed on HongMeng: devtmpfs, pacman sandbox, chroot root mount, btrfs-only initramfs hook, download timeout, DMI and PCI probes |
+| D. Native | Exclusive measurement window (power proxy, workspace fps, app background/foreground x20) | Sudo now needs a password (Omarchy's narrow rules kept); 100 open/close rounds +0.1% memory; 24 h soak running since 17:52 +0800; network and DNS outages recover in 0.1 s; DPMS off/on 20/20; `tests/run-all.sh` gives one table; idle frame-rate vote drops to 10 Hz |
+| G. 铠大师 VM | Installer that writes the Omarchy disk from 铠大师's virtiofs share; third slot to test it and the guest network | 7.2.12 boots in 铠大师 but the guest receives nothing (its virtio-net has no `mac` or iothreads, unlike Oseasy's and 鸿融's); Oseasy's Windows guest dissected: VirtualBox-based WDDM driver, 60 Hz modes |
+| H. Aetherium on the device | Last 7% of the stock Omarchy disk copy to `ohdev`, then the TCG baseline | Resumable push now has a single-writer lock after two writers overran the file |
 
 VM tests share one HMV hypervisor and the screen; they take turns (one VM at a time).
 <!-- progress:end -->

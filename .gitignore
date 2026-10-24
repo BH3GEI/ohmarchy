@@ -33,3 +33,12 @@ tests/results/
 
 # route H built probe binary (rebuild with device/hmv build line)
 device/hmv/hmvprobe
+# oseasy/vote120 (ohmarchy-120) build outputs and device-bound signing files
+oseasy/vote120/entry/build/
+oseasy/vote120/entry/.cxx/
+oseasy/vote120/.hvigor/
+oseasy/vote120/oh_modules/
+oseasy/vote120/*.hap
+oseasy/vote120/sign/app-chain.pem
+oseasy/vote120/sign/app.p7b
+oseasy/vote120/sign/profile.json

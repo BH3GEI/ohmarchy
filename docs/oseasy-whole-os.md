@@ -544,3 +544,14 @@ and Oseasy never votes, so it stays at the idle default of 60 Hz.
   view is active. Without an Oseasy change, a possible workaround is another
   visible window that votes 120 Hz (the panel follows the highest vote among the
   visible layers); to be measured with the native app's window next to Oseasy's.
+
+`oseasy/vote120/` is **ohmarchy-120** (`com.ohmarchy.vote120`): one small
+transparent window whose XComponent votes `{60, 120, 120}` with
+`OH_NativeXComponent_SetExpectedFrameRateRange` and a frame callback (no
+permissions requested). By default it presents a fully transparent buffer on
+every frame to keep its layer active (`setDraw(false)` stops that), and shows the
+rate its frame callback gets. Window size from want parameters:
+`aa start -b com.ohmarchy.vote120 -a EntryAbility --pi w 64 --pi h 32`.
+`oseasy/vote120/build.sh` builds it with DevEco's hvigor and signs it like the
+native app (SDK test keys, device-bound debug profile). Installed on ohdev; the
+measurement next to the Oseasy window is pending (needs the screen lock).

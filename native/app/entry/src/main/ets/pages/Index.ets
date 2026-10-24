@@ -1,5 +1,7 @@
 // The Linux desktop fills the window: libohdisp.so draws it into the XComponent and
 // handles input. Until the first frame arrives, a status line says what is going on.
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
 interface OhdispModule {
   getStatus(): string;
 }
@@ -9,6 +11,7 @@ interface OhdispModule {
 struct Index {
   @State status: string = 'Connecting to Omarchy…';
   private ohdisp?: OhdispModule;
+  private xc: XComponentController = new XComponentController();
   private timer: number = -1;
 
   aboutToAppear(): void {
@@ -25,9 +28,12 @@ struct Index {
 
   build() {
     Stack() {
-      XComponent({ id: 'ohdisp', type: XComponentType.SURFACE, libraryname: 'ohdisp' })
+      XComponent({ id: 'ohdisp', type: XComponentType.SURFACE, libraryname: 'ohdisp', controller: this.xc })
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
+          // For experiments with presenting into this window from another process
+          // (route I, docs/vm-own.md): its surface id.
+          hilog.info(0x0D0D, 'ohdisp', 'xcomponent surface id %{public}s', this.xc.getXComponentSurfaceId());
         })
         .width('100%')
         .height('100%')

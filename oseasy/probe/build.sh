@@ -53,6 +53,8 @@ install -D -m644 "$M/updates/vmwgfx.ko" "$R/oseasy/vmwgfx.ko"
 install -D -m644 "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/oseasy/vmwgfx-oseasy.conf"
 # added to the installed disk: desktop autostart (Route F's)
 install -D -m755 "$here/../../emulator/guest/desktop-autostart.sh" "$R/oseasy/desktop-autostart.sh"
+install -D -m755 "$here/../guest/boot-diag.sh" "$R/oseasy/boot-diag.sh"
+install -D -m644 "$here/../guest/ohmarchy-boot-diag.service" "$R/oseasy/ohmarchy-boot-diag.service"
 # the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"

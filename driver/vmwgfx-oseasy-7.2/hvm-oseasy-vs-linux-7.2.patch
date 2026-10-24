@@ -649,7 +649,7 @@ diff -ruN a/vmwgfx/vmwgfx_scrn.c b/vmwgfx/vmwgfx_scrn.c
  					&vmw_screen_object_crtc_funcs, NULL);
  	if (ret) {
  		DRM_ERROR("Failed to initialize CRTC\n");
-@@ -1119,6 +1128,26 @@
+@@ -1119,6 +1128,30 @@
  	ret = vmw_validation_prepare(&val_ctx, &dev_priv->cmdbuf_mutex, true);
  	if (ret)
  		goto out_unref;
@@ -658,9 +658,13 @@ diff -ruN a/vmwgfx/vmwgfx_scrn.c b/vmwgfx/vmwgfx_scrn.c
 +	 * HVM keeps its own copy of the surface (a D3D11 texture) and does not
 +	 * read the backing MOB on a blit. CPU writes (fbdev, dumb buffers) must
 +	 * be uploaded first; kernel-side writes bypass the mkwrite-based dirty
-+	 * tracking, so upload the whole surface before every blit.
++	 * tracking, so upload the whole surface before every blit. Only for dumb
++	 * buffers the GPU has not written (as the STDU path does): GPU-rendered
++	 * surfaces are current on the host already, and a 2100x1511 upload per
++	 * frame costs most of the frame budget.
 +	 */
-+	if (dev_priv->hvm_mmio) {
++	if (dev_priv->hvm_mmio && srf->guest_memory_bo &&
++	    srf->guest_memory_bo->is_dumb && !srf->res_dirty) {
 +		struct {
 +			SVGA3dCmdHeader header;
 +			SVGA3dCmdUpdateGBSurface body;

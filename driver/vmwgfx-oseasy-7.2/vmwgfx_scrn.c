@@ -1133,9 +1133,13 @@ int vmw_kms_sou_do_surface_dirty(struct vmw_private *dev_priv,
 	 * HVM keeps its own copy of the surface (a D3D11 texture) and does not
 	 * read the backing MOB on a blit. CPU writes (fbdev, dumb buffers) must
 	 * be uploaded first; kernel-side writes bypass the mkwrite-based dirty
-	 * tracking, so upload the whole surface before every blit.
+	 * tracking, so upload the whole surface before every blit. Only for dumb
+	 * buffers the GPU has not written (as the STDU path does): GPU-rendered
+	 * surfaces are current on the host already, and a 2100x1511 upload per
+	 * frame costs most of the frame budget.
 	 */
-	if (dev_priv->hvm_mmio) {
+	if (dev_priv->hvm_mmio && srf->guest_memory_bo &&
+	    srf->guest_memory_bo->is_dumb && !srf->res_dirty) {
 		struct {
 			SVGA3dCmdHeader header;
 			SVGA3dCmdUpdateGBSurface body;

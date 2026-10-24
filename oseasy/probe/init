@@ -75,6 +75,11 @@ case " $cmd " in
         u=$(awk -F: '$3 == 1000 {print $1}' /mnt/etc/passwd)
         [ -n "$u" ] && chroot /mnt /bin/bash /dev/stdin "$u" < /oseasy/desktop-autostart.sh > /tmp/autostart.txt 2>&1
         log "install: desktop autostart for ${u:-?}: $(tail -1 /tmp/autostart.txt)"
+        # unattended Hyprland diagnostics on every boot (oseasy/guest/boot-diag.sh)
+        install -D -m755 /oseasy/boot-diag.sh /mnt/usr/local/bin/ohmarchy-boot-diag
+        install -D -m644 /oseasy/ohmarchy-boot-diag.service /mnt/etc/systemd/system/ohmarchy-boot-diag.service
+        ln -sf /etc/systemd/system/ohmarchy-boot-diag.service /mnt/etc/systemd/system/multi-user.target.wants/ohmarchy-boot-diag.service
+        log "install: boot diagnostics enabled"
         umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else

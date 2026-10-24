@@ -631,6 +631,31 @@ measurement next to the Oseasy window is pending (needs the screen lock).
   power-off (VM list empty 19 s after). This confirms the reading above (the
   earlier hang was the in-tree vmwgfx). One of the three warm reboots done.
 
+### After the fifth run (offline)
+
+- **The saved Hyprland log is only the start.** Hyprland switches stdout logging
+  off early (`debug.enable_stdout_logs = 0`) and writes the rest to
+  `/run/user/1000/hypr/<instance>/hyprland.log`; the captured part ends right
+  after aquamarine's renderer is created (connectors, modes, `onReady` all
+  normal), before Hyprland's own monitor setup and first frame. So "no commit"
+  is not yet explained; the full log is the first thing to read.
+- **Unattended boot diagnostics** ([`oseasy/guest/boot-diag.sh`](../oseasy/guest/boot-diag.sh),
+  enabled by the install mode as `ohmarchy-boot-diag.service`): with the session
+  started under `AQ_TRACE=1 HYPRLAND_TRACE=1`, and again with `AQ_NO_ATOMIC=1` and
+  with `AQ_NO_MODIFIERS=1`, it waits 60 s and keeps the full Hyprland log, the KMS
+  state, every Hyprland thread's kernel stack, vmwgfx interrupts and 2 s of
+  `drm.debug` (ioctls included) under `/var/log/ohmarchy-boot/`; then modetest's
+  page-flip rate with the session stopped. One-line summaries go to the serial
+  console, so the host sees them in `vmlog` without logging in. A lock slot is then:
+  reinstall, boot, wait about 5 minutes, fetch.
+- **Surface upload only for CPU-written buffers.** The upload added in the first
+  run (`UPDATE_GB_SURFACE` before every screen-object blit) also ran for
+  GPU-rendered surfaces, a 2100x1511 upload per frame for Hyprland's buffers. It
+  now runs only for dumb buffers the GPU has not written (`is_dumb &&
+  !res_dirty`, the condition the STDU path uses for the same problem). Package
+  sha256 `af2411f86ce8f375bb9516059561769220a2e01e9878b1afb5ae74bd0488a100`,
+  install ISO `ab64543d7b08579b1becf6cc1cbe089306b47d8d9885ca8150fc276d6906f5b5`.
+
 ### Decision: no guest agent for Oseasy
 
 Oseasy forgets a VM that is not Windows: once it is off, the app offers only

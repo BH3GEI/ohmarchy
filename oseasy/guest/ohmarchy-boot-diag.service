@@ -1,0 +1,11 @@
+[Unit]
+Description=ohmarchy: Hyprland boot diagnostics for the Oseasy VM (oseasy/guest/boot-diag.sh)
+After=getty@tty1.service systemd-logind.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ohmarchy-boot-diag
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target

@@ -246,3 +246,35 @@ written to the serial port, which ends up in the host's `vmlog`. Boot entries:
 EFI framebuffer only; vmwgfx with surface-backed dumb buffers at 120 Hz
 (default); the same with BO-backed dumb buffers; vmwgfx with `hvm_trace` and
 DRM debug at 60 Hz.
+
+### One VM per app: backup of the Windows VM
+
+The import is the system call `virtualization.importVmDiskImage('com.oseasy1.ohvm',
+srcFilePath, srcFileSHA256, isForceImport)`: the VM name is the bundle name, and
+the kit's errors include `Not support vm multi-instance.` So Oseasy holds one VM,
+and importing Omarchy replaces the Windows 11 VM. The import hashes the qcow2
+(SHA-256) first, may ask for a password or report a missing key (for Oseasy's own
+exports), and then offers a forced import (`openForceImportDialog`,
+`isForceImport`).
+
+Backup taken 2026-10-24 16:07 CST with the VM stopped (no StratoVirt for
+`68eaa5b5`), source read-only, at
+`/data/local/backup/oseasy-win11-20261024/` (`el0/` = the `img/` and
+`snapshot/` directories, `el2/` = `config/`); source and copy hashed file by file,
+identical:
+
+| File | Size | SHA-256 |
+|---|---|---|
+| `el0/com.oseasy1.ohvm/img/vm.qcow2` | 25 260 523 520 | `ebe808fabdb18fa325b46f56d972a31d9b69843e7f65e3bc23fda23452a02347` |
+| `el0/com.oseasy1.ohvm/img/stratovirt-vars` | 4 194 304 | `63838440831f786e9f9d88e686b73166425f23222f27ec51cdfde0b4fbbb0e83` |
+| `el2/com.oseasy1.ohvm/config/version.json` | 111 | `44e5bb91ccc752f8a888b8a66d58cdb8e02802b8834c84a6203c4c064842ad1f` |
+| `el2/com.oseasy1.ohvm/config/vmdevice.json` | 153 | `3ce539f2fb7351160c9badf711efc95fa740caf552d5ab8fa5c2e3e122649586` |
+
+### Measuring frames on screen
+
+`oseasy/measure-fps.sh [SECONDS] [WINDOW]` reports the panel mode, the frame rate
+from RenderService's `composer fps` timestamps (and a window's `fps`), and the
+per-second `DoComposition` / `HwcPresentDisplay` / `NativeWindowFlushBuffer`
+counts from a hitrace capture: the same sources as the native/鸿融 table in
+[native-desktop.md](native-desktop.md), where 鸿融 shows 60 frames/s on screen and
+native 117.

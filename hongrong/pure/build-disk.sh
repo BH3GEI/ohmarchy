@@ -29,7 +29,15 @@ chroot_up() {
   mountpoint -q "$R" || mount --bind "$R" "$R"
   mkdir -p "$R"/{proc,sys,dev,run,tmp,etc}
   mountpoint -q "$R/proc" || mount -t proc proc "$R/proc"
-  mountpoint -q "$R/sys" || mount -t sysfs sys "$R/sys" 2>/dev/null || mount --bind /sys "$R/sys"
+  # /sys is a tmpfs with only the VM's DMI identity: Omarchy's install steps
+  # probe hardware there (under bash -e, a missing /sys/class/dmi aborts them),
+  # and they should see the 鸿融 VM, not the machine building the image.
+  if ! mountpoint -q "$R/sys"; then
+    mount -t tmpfs sys "$R/sys"
+    mkdir -p "$R/sys/class/dmi/id"
+    echo "KVM Virtual Machine" > "$R/sys/class/dmi/id/product_name"
+    : > "$R/sys/class/dmi/id/sys_vendor"; : > "$R/sys/class/dmi/id/product_family"; : > "$R/sys/class/dmi/id/board_name"
+  fi
   mountpoint -q "$R/dev" || mount --bind /dev "$R/dev"
   mountpoint -q "$R/run" || mount -t tmpfs run "$R/run"
   # package cache outside the image, kept across runs

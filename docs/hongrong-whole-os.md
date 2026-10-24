@@ -255,7 +255,8 @@ UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 | GPU | Mesa 26.2.5, `virgl (zink Vulkan 1.2 (Maleoon 916))`; glmark2-es2-wayland fullscreen: **596** |
 | Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`) |
 | Docker | 29.9.2, overlayfs, cgroup v2: `hello-world`, `postgres:16-alpine` (`pg_isready`), `docker compose` with nginx; through registry mirrors |
-| Soak | 30 min, all CPUs busy (results below once done) |
+| Soak | 30 min, all 6 vCPUs busy (load 6.0): `running` throughout, no RCU stall, soft lockup, hung task or Oops |
+| 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) the kernel keeps 2160x1440@120 and the CRTC runs at 120 Hz; frames reaching the 鸿融 screen not measured yet |
 
 **Import through 鸿融's UI fails.** "导入 qcow2" rejects the image with
 "镜像可能在传输过程中损坏，无法完成校验" for every variant tried: zlib-compressed,
@@ -270,8 +271,13 @@ developer cannot do; making the file pass 鸿融's check is the open item.
 **120 Hz:** `hongrong/edid` makes an EDID with a 2160x1440@120 preferred mode;
 with `drm.edid_firmware=Virtual-1:edid/omarchy-120.bin` the kernel reads it
 (`/sys/class/drm/card0-Virtual-1/edid` equals the file) but keeps only the
-60 Hz timing, so Hyprland still runs at 59.955 Hz. Why the 120 Hz timing is
-dropped is not known yet (next: `drm.debug`).
+60 Hz timing when the 120 Hz one is marked preferred: virtio-gpu's
+`conn_mode_valid` deletes a preferred mode whose size differs from the host
+scanout by more than 16 px (found by the Route I line, docs/vm-own.md).
+`mkedid.py` now marks no timing preferred; then the probed modes are
+2160x1440@120 and @60, and the active CRTC mode is the 120 Hz one. Still to
+measure: how many of those frames 鸿融 puts on screen (with and without a
+120 Hz vote window).
 
 ### What is in it
 

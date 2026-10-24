@@ -12,6 +12,9 @@ quirk) in it, and to compare it with 鸿融 (route C) and the native desktop
 **Concluded (2026-10-24): same `svga-pci` path as route B, 60 Hz; tools kept.**
 Outcome (B) of the goal: 铠大师 cannot host Omarchy beyond an install session,
 and where it does run Linux it offers nothing over 鸿融 or route B.
+Yao chose (08:20 PDT, through the supervisor) to close this route here: no
+Windows install, no Microsoft licence accepted on his behalf. Work moves to
+route I ([vm-own.md](vm-own.md)).
 
 What works, on ohdev (MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`, HongMeng
 kernel 1.11.13.0):

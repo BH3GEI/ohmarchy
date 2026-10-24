@@ -295,3 +295,42 @@ Open items:
 - Web apps (Chromium) without a sandbox, see above.
 - The broker and the session init run in the `su` SELinux domain (all-powerful on
   the host); a narrower domain needs policy that cannot be loaded from here.
+
+## On site: what needs someone at the machine
+
+Everything else above runs remotely. These need a person at the HM740; each takes a
+few minutes except the battery test. Commands marked "Mac" run from the
+repository on the machine that drives the host (`ssh ohdev` works there); the
+others are on the HM740 itself. Hold `/data/local/screen.lock` for 1-4 (tell the
+other test lines first).
+
+1. **Hear the sound** (A3). Turn the media volume up to about half. Open
+   "Omarchy (native)". Mac: `tests/audio/run.sh`; you should hear ten short beeps,
+   evenly spaced, no crackle. Then in the native desktop open a terminal and run
+   `mpv --fs` on any video with speech; lips and voice should match. Put the volume
+   back to where it was.
+2. **Screen off and on** (C). With "Omarchy (native)" open and a terminal in it:
+   press the power button, wait 10 s, press it again, unlock. The desktop must
+   come back showing the same windows, and typing in the terminal must work.
+   Do it 20 times (or let the screen time out a few of those times). Note any
+   round where the window stays black or the desktop restarts (the open windows
+   are gone).
+3. **Wi-Fi change** (C). With a page open in Firefox in the native desktop: turn
+   Wi-Fi off for 30 s and on again; then, if there is a second network, switch to
+   it and back. After each, reload the page: it must load within a few seconds.
+   Mac, afterwards: `tests/stability/soak.sh status` to see that the soak noticed
+   nothing.
+4. **Battery power** (B). Charge to at least 80 %, unplug, keep the brightness
+   fixed (auto-brightness off), close other apps. For each state run (Mac)
+   `LABEL="..." MINUTES=30 tests/perf/battery.sh` and leave the machine alone:
+   - HarmonyOS desktop only (native desktop stopped: `ssh ohdev sh
+     /data/local/archtest/bin/omarchy desktop stop`, 鸿融 VM shut down);
+   - "Omarchy (native)" open, idle;
+   - "Omarchy (native)" open, `es2gears_wayland` running in it;
+   - 鸿融 VM open on its Omarchy desktop, idle (native desktop stopped);
+   - 鸿融 VM, `es2gears_wayland` running in it.
+   Record the watts each prints. Plug back in.
+5. **Start at boot** (only with Yao's go-ahead to reboot). Reboot the HM740 and
+   log in. Within about a minute "Omarchy (native)" opened from the dock must show
+   the desktop; `ssh ohdev cat /data/local/archtest/boot-start.log` shows when it
+   started.

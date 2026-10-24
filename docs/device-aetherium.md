@@ -79,6 +79,13 @@ ABI. An `hmv` accel for a non-system VMM (Route I, root) is thus feasible in
 principle; remaining work is reversing the create-VM/vCPU/memslot/register ioctl
 numbers and structs from `stratovirt`/`libhmlibs.so.0`.
 
+**Decision (2026-10-25): not pursued.** Writing a custom `hmv` accel is feasible in
+principle but was deliberately not done: Route I already runs the guest on the
+system's own StratoVirt (network, 120 Hz, GPU/virgl, Docker, memory reclaim all
+working), so a hand-written VMM adds no new capability, and this path needs root —
+unusable by an external developer. It stays recorded here as "feasible in principle,
+not implemented, would require reversing StratoVirt's closed 0xAE ioctl ABI".
+
 ## Can QEMU use HMV? (feasibility)
 
 What would be required, and the blockers in order:

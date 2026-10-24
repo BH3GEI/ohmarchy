@@ -358,3 +358,39 @@ error 0)"`, so `status` shows host RSS instead; the reclaim itself works.
 Lesson for scripts that ssh into the guest inside `ssh ohdev sh -s`: give the
 inner ssh `< /dev/null`, or it reads the rest of the outer script from stdin
 and the outer shell stops early (it cost several truncated runs).
+
+## D's home in the VM at the same path (offline, 2026-10-24 10:00 PDT)
+
+Goal: in D's terminal, `docker run -v $PWD:/w …` and compose bind mounts use
+the current directory. The Docker client sends host paths; dockerd in the VM
+must find them, so D's `/home/builder` is shared into the guest at
+`/home/builder`.
+
+- **Source.** D's terminal is `builder` (uid/gid 60000) in the archtest
+  session; its home exists on the host only as
+  `/proc/<session>/root/home/builder` (archtest's root is `loop0` in the
+  session's own mount namespace). `ohmarchy-vm` resolves that path at start.
+- **virtiofsd** (the system's, 1.13.0) with `--tag builder`, plus
+  `--cmd-socket-path`, which this build requires. StratoVirt gets
+  `-chardev socket,id=fsd_sock,path=…/fs.sock -device
+  vhost-user-fs-pci,id=fsd_dev,chardev=fsd_sock,tag=builder,bus=pcie.0,addr=0x8`
+  (the form 铠大师/Oseasy use). The guest mounts it from `/etc/fstab`
+  (`builder /home/builder virtiofs defaults,nofail,…`, by `guest-provision.sh`).
+- **Ownership.** `--translate-uid host:60000:1000:1` shows builder's files as
+  the guest's yao; `--translate-uid squash-guest:0:60000:4294967295` makes every
+  guest uid write as 60000 on the host, so files that containers create as root
+  still belong to builder in D (same for gid). Not yet checked in a running
+  guest: whether the two rules combine as intended.
+- **Sandbox.** `--sandbox chroot` fails on HongMeng (`Chroot … NotFound`, also
+  on an ordinary bind-mounted path) and `--sandbox namespace` fails
+  (`BindMountSharedDir … Invalid argument`). StratoVirt itself starts
+  virtiofsd for 鸿融 with `--sandbox=none --seccomp=none` (strings in the
+  `stratovirt` binary next to `--shared-dir`, `--mapped-perm`,
+  `--cmd-socket-path`), so this does the same. The cost: virtiofsd runs as root
+  without confinement, so a compromised guest kernel could try to reach host
+  files outside the share, the same exposure as 鸿融's own share.
+- `OVM_SHARE=0` turns it off; `status` prints the guest's mount.
+
+Next slot: mount in the guest, `ls -ln /home/builder`, a file created by yao
+and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then
+`ls -ln` in D for both; `docker compose up` with a bind mount from D.

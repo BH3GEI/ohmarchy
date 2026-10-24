@@ -9,6 +9,8 @@
 # - Docker + compose, enabled, yao in the docker group (docker over ssh as yao),
 #   registry mirrors (Docker Hub direct times out from here)
 # - virtio_balloon loaded at boot, so free page reporting returns idle memory
+# - D's home share (virtiofs tag "builder") mounted at /home/builder, the same
+#   path as in D, so bind mounts given from D's terminal resolve in the VM
 set -eu
 cat > /etc/sudoers.d/zz-ohmarchy-vm <<'S'
 yao ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot
@@ -24,6 +26,12 @@ systemctl enable --now docker.service
 usermod -aG docker yao
 echo virtio_balloon > /etc/modules-load.d/ohmarchy-vm.conf
 modprobe virtio_balloon || true
+mkdir -p /home/builder
+grep -q '^builder ' /etc/fstab ||
+  echo 'builder /home/builder virtiofs defaults,nofail,x-systemd.device-timeout=5s 0 0' >> /etc/fstab
+systemctl daemon-reload
+mount /home/builder 2>/dev/null || true
 echo "sudo: $(cat /etc/sudoers.d/zz-ohmarchy-vm)"
 echo "docker: $(systemctl is-active docker), $(docker version --format '{{.Server.Version}}')"
+echo "home share: $(findmnt -n -o SOURCE,FSTYPE /home/builder || echo 'not mounted (no share this boot?)')"
 echo "balloon: $(lsmod | grep -c virtio_balloon) module, reporting order $(cat /sys/module/page_reporting/parameters/page_reporting_order 2>/dev/null || echo ?)"

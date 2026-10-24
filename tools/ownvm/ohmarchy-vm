@@ -15,6 +15,15 @@
 #   OVM_DIR   run files, disk and key        (/data/local/kaidashi/ownvm)
 #   OVM_DISK  raw disk image                 ($OVM_DIR/omarchy-own.img)
 #   OVM_CPUS  vCPUs (6)   OVM_MEM  MiB (8192)   OVM_GPU=1  virgl GPU (off)
+#   OVM_SHARE=0  no home share (default: share D's /home/builder, see below)
+#
+# Home share: route D's terminal runs as builder (uid/gid 60000) in the
+# archtest session, so D's /home/builder (on the host only as
+# /proc/<session>/root/home/builder) is shared with virtiofsd (tag
+# "builder") and mounted at the same path in the guest. `docker run -v $PWD:…`
+# from D's terminal then finds $PWD in the VM. Ownership: host 60000 shows as
+# the guest's yao (1000), and every guest uid/gid writes as 60000 on the host,
+# so files that containers create as root still belong to builder in D.
 #
 # Network: tap ohmvm0 with 172.16.100.1/24, the guest is 172.16.100.2 (static
 # in the image), outbound NAT. The host's policy routing would send the subnet
@@ -86,6 +95,27 @@ start() {
     gpu="-chardev socket,id=vhost-user-gpu,path=$D/gpu.sock
       -device vhost-user-gpu-pci,id=vhost-user-gpu-id,bus=pcie.0,addr=0x4.0x0,xres=2160,yres=1440,chardev=vhost-user-gpu,virgl=true"
   fi
+  fs=
+  BH=$AR/home/builder
+  if [ "${OVM_SHARE:-1}" = 1 ] && [ -d "$BH" ]; then
+    rm -f $D/fs.sock
+    # no sandbox, as StratoVirt itself starts virtiofsd for 鸿融
+    # (--sandbox=none --seccomp=none): chroot and namespace fail on HongMeng
+    nohup $SVDIR/virtiofsd --shared-dir "$BH" --socket-path $D/fs.sock \
+      --cmd-socket-path $D/fs-cmd.sock --tag builder \
+      --sandbox none --seccomp none --cache auto --announce-submounts \
+      --translate-uid host:60000:1000:1 --translate-uid squash-guest:0:60000:4294967295 \
+      --translate-gid host:60000:1000:1 --translate-gid squash-guest:0:60000:4294967295 \
+      --log-file $D/virtiofsd.log > $D/virtiofsd.out 2>&1 &
+    echo $! > $D/virtiofsd.pid
+    i=0; while [ ! -S $D/fs.sock ] && [ $i -lt 10 ]; do sleep 1; i=$((i+1)); done
+    if [ -S $D/fs.sock ]; then
+      fs="-chardev socket,id=fsd_sock,path=$D/fs.sock
+        -device vhost-user-fs-pci,id=fsd_dev,chardev=fsd_sock,tag=builder,bus=pcie.0,addr=0x8"
+    else
+      echo "virtiofsd did not start (home share off):"; tail -5 $D/virtiofsd.out
+    fi
+  fi
   nohup $SVDIR/stratovirt \
     -machine virt,gic-version=3,mem-share=on,accel=hmv \
     -cpu host,pmu=on,kvm-steal-time=on,bti=off -smp $CPUS -m $MEM \
@@ -96,7 +126,7 @@ start() {
     -object iothread,id=rx-iothread0 -object iothread,id=tx-iothread0 \
     -device virtio-net-pci,netdev=net0,id=nic0,bus=pcie.0,mac=52:54:00:4d:76:01,addr=0x6.0x0,rx-iothread=rx-iothread0,tx-iothread=tx-iothread0 \
     -device virtio-balloon-pci,id=balloon0,bus=pcie.0,addr=0x7.0x0,deflate-on-oom=true,free-page-reporting=true \
-    $gpu \
+    $gpu $fs \
     -device ohos-vhost-vsock-pci,guest-cid=2001,id=vsock0,bus=pcie.0,addr=0xf \
     -qmp unix:$D/qmp.sock,server,nowait \
     -serial socket,path=$D/serial.sock,server,nowait \
@@ -109,7 +139,9 @@ start() {
 }
 
 stop_rest() {
-  [ -f $D/vhost-device-gpu.pid ] && { kill $(cat $D/vhost-device-gpu.pid) 2>/dev/null; rm -f $D/vhost-device-gpu.pid; }
+  for f in vhost-device-gpu virtiofsd; do
+    [ -f $D/$f.pid ] && { kill $(cat $D/$f.pid) 2>/dev/null; rm -f $D/$f.pid; }
+  done
   net_down
   [ "${OHMARCHY_VM_NOLOCK:-0}" != 1 ] && grep -q '^ohmarchy-vm' $LOCK/owner 2>/dev/null && rm -rf $LOCK
   return 0
@@ -138,6 +170,7 @@ status() {
   if SSH true 2>/dev/null; then
     echo "guest: $(SSH 'uname -r; uptime -p' 2>/dev/null | tr '\n' ' ')"
     echo "dockerd: $(SSH 'docker info --format "{{.ServerVersion}}, {{.Containers}} containers ({{.ContainersRunning}} running)"' 2>/dev/null || echo unreachable)"
+    echo "home share: $(SSH 'findmnt -n -o SOURCE,FSTYPE /home/builder' 2>/dev/null || echo none)"
     echo "guest memory: $(SSH "free -m | awk '/^Mem/{print \$3\" MiB used, \"\$7\" MiB available of \"\$2}'" 2>/dev/null)"
   else
     echo "guest: no ssh"

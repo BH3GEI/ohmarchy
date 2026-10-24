@@ -89,6 +89,22 @@ What would be required, and the blockers in order:
 So: a config switch cannot enable HMV; a prototype is conceivable but needs both
 a QEMU port and clearing the permission gate. The permission test is queued.
 
+## Display: 3D and 120 Hz (static answer)
+
+- **No virgl/venus 3D.** Aetherium's QEMU `configure` has no `--enable-opengl`,
+  `--enable-virglrenderer` or `--enable-rutabaga`, and disables the gtk/sdl/spice
+  frontends (only `--enable-vnc --enable-pixman`, `-Dwrap_mode=forcefallback`).
+  The `virtio-gpu-gl` / `virtio-gpu-rutabaga` QOM type names and the
+  `VIRTIO_GPU_F_VIRGL` strings are in `libqemu_full.so` because hw/display always
+  registers them, but with no virglrenderer/opengl linked they cannot provide 3D.
+  So the guest gets 2D `virtio-gpu` (software) or `ramfb` only — matching route F,
+  where Hyprland fell back to llvmpipe (CPU). No venus either.
+- **120 Hz: no hardware path.** `ramfb` has no refresh-rate concept (the guest
+  pushes a fixed-size framebuffer); 2D `virtio-gpu`'s on-screen rate is bounded by
+  the guest's CPU drawing and the HarmonyOS compositor's presentation, not a
+  120 Hz scanout. The on-screen fps (measured with `oseasy/measure-fps.sh`) is
+  pending the run, but a true 120 Hz 3D path is not in this build.
+
 ## Measuring the baseline
 
 Once the VM runs under TCG (criterion 1), numbers are collected with scripts

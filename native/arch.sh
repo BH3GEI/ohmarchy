@@ -13,8 +13,8 @@ PIDF=$B/session.pid
 
 alive() {
     [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ -d "/proc/$P" ] &&
-        tr '\0' ' ' < "/proc/$P/cmdline" | grep -q -e 'arch.sh _session' -e 'catatonit' -e 'arch-init'
-}
+        timeout 2 tr '\0' ' ' < "/proc/$P/cmdline" | grep -q -e 'arch.sh _session' -e 'catatonit' -e 'arch-init'
+}  # timeout: on HongMeng a cmdline read can spin forever if the process exits meanwhile
 
 # losetup -a only lists /dev/loopN nodes; ask each /dev/block/loopN instead.
 attached() {

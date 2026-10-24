@@ -22,7 +22,7 @@ s=$(ins "su - $U -c 'sudo -n true' < /dev/null 2>&1 && echo yes")
 [ "$s" = yes ] && echo "FAIL sudo: $U gets root without a password (wheel NOPASSWD); session root is host root (no user namespaces, context u:r:su:s0)" \
     || echo "PASS sudo: $U needs a password for root"
 for p in $(ps -ef | grep -E "virgl_test_server|vtest-broker|catatonit" | grep -v grep | awk '{print $2}'); do
-    echo "INFO host-context: $(cat /proc/$p/attr/current 2>/dev/null | tr -d '\0') $(stat -c %U /proc/$p) $(tr '\0' ' ' < /proc/$p/cmdline | cut -d' ' -f1 | xargs basename)"
+    echo "INFO host-context: $(cat /proc/$p/attr/current 2>/dev/null | tr -d '\0') $(stat -c %U /proc/$p) $(timeout 2 tr '\0' ' ' < /proc/$p/cmdline | cut -d' ' -f1 | xargs basename)"
 done
 l=$(netstat -ltnp 2>/dev/null | awk '/LISTEN/ {print $4, $7}' | grep -vE "softbus|ohsshd")
 echo "INFO listeners: ${l:-none}"

@@ -5,7 +5,8 @@
 #   sudo             whether the desktop user gets root without a password
 #   host-context     host-side processes of route D and their SELinux context
 #   listeners        TCP ports route D opens on the host
-#   browser-sandbox  whether Chromium runs with its sandbox
+#   browser-sandbox  whether the default browser runs sandboxed (Firefox)
+#   webapp-sandbox   whether Chromium (web apps) runs with its sandbox
 #   seccomp          whether the kernel takes seccomp-bpf filters (for sandboxes)
 here=$(cd "$(dirname "$0")" && pwd)
 B=${ARCH_BASE:-/data/local/archtest}
@@ -27,9 +28,14 @@ done
 l=$(netstat -ltnp 2>/dev/null | awk '/LISTEN/ {print $4, $7}' | grep -vE "softbus|ohsshd")
 echo "INFO listeners: ${l:-none}"
 echo "$l" | grep -qE "^(0\.0\.0\.0|\[?::\]?):" && echo "FAIL listeners: route D listens on all interfaces" || echo "PASS listeners: route D listens on loopback only"
+d=$(ins "su - $U -c 'xdg-settings get default-web-browser' < /dev/null 2>/dev/null")
+case "$d" in
+firefox*) echo "PASS browser-sandbox: the default browser is Firefox (content processes under seccomp-bpf)" ;;
+*) echo "FAIL browser-sandbox: the default browser is ${d:-unknown}" ;;
+esac
 f=$(ins "grep -x -- --no-sandbox /home/$U/.config/chromium-flags.conf")
-[ -n "$f" ] && echo "FAIL browser-sandbox: Chromium runs with --no-sandbox (no user namespaces; the setuid sandbox's zygote fails its handshake)" \
-    || echo "PASS browser-sandbox: Chromium runs sandboxed"
+[ -n "$f" ] && echo "FAIL webapp-sandbox: web apps run in Chromium with --no-sandbox (no user namespaces; its setuid sandbox's zygote fails a check)" \
+    || echo "PASS webapp-sandbox: Chromium runs sandboxed"
 ins "cat > /tmp/seccomp-check.py <<'PY'
 import ctypes, struct
 libc = ctypes.CDLL(None, use_errno=True)

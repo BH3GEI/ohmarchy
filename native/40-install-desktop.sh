@@ -25,6 +25,11 @@ pacman -S --noconfirm libglvnd
 # Missing from Omarchy's set on aarch64, needed by preinstalled entries: qv4l2
 # (libQt6Core5Compat) and Disk Usage (dua).
 pacman -S --noconfirm --needed qt6-5compat dua-cli
+# Default browser: Firefox. Chromium cannot sandbox itself here (no user
+# namespaces; its setuid sandbox's zygote fails a check) and runs with
+# --no-sandbox; Firefox's content processes get their seccomp-bpf sandbox.
+# Web apps (omarchy-launch-webapp) still use Chromium.
+pacman -S --noconfirm --needed firefox
 
 # cmake does not know a "HarmonyOS" system; report Linux to the tools.
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-uname.so "$here/desktop/hongmeng-uname.c" -ldl
@@ -99,6 +104,7 @@ gcc -O2 -o "$prefix/bin/ohime" "$here/desktop/ohime.c" "$build/input-method-unst
 mkdir -p "$prefix/lib"
 clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
+runuser -u "$user" -- xdg-settings set default-web-browser firefox.desktop || true
 # Sound to the display app over an abstract socket, to its uid only
 cc -O2 -o "$prefix/bin/ohmarchy-audio-relay" "$here/desktop/ohmarchy-audio-relay.c"
 # System D-Bus, started and stopped with the desktop (ohmarchy-sysbus): only these

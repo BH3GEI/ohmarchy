@@ -9,31 +9,40 @@ quirk) in it, and to compare it with 鸿融 (route C) and the native desktop
 
 ## Status
 
-Survey done (read-only), on ohdev (MateBook 14 `HM740-001`, HarmonyOS
-`7.0.0.115`, HongMeng kernel 1.11.13.0), 2026-10-24:
+On ohdev (MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`, HongMeng kernel
+1.11.13.0), 2026-10-24:
 
-- 铠大师 3.5.8.14 is installed but has never created a VM on this machine (no
-  `vm_manager` directory for it, no StratoVirt start in the logs).
-- It drives the same system VM service as Oseasy (`@hms:virtService.vmManager`),
-  so `vm_manager` builds the StratoVirt command line; the app chooses only
-  parameters (CPU, memory, disk, firmware vars, Secure Boot keys,
-  `accelerationEnabled`).
-- It only accepts a Windows 11 24H2+ ARM64 ISO, checked from the WIM metadata
-  (below). No override button in the strings, unlike Oseasy.
+- 铠大师 3.5.8.14 drives the same system VM service as Oseasy
+  (`@hms:virtService.vmManager`); `vm_manager` builds the StratoVirt command
+  line, the app only picks CPU, memory and disk size.
+- Its Windows-11-24H2-ARM64-only ISO check reads nothing but the WIM's XML
+  metadata. A Debian 12 netboot ISO with a 2.5 KB fake `sources/install.wim`
+  (`tools/kaidashi/make-fake-wim.sh`) is accepted as 安装版本 WINDOWS 11 PRO.
+- **A VM was created and booted from that ISO** (16:16, during a `vm.lock` slot
+  with 鸿融's VM powered off): UEFI → Debian's shim/GRUB → Debian 6.1 kernel →
+  the probe script. No login, membership or payment was asked for.
+- The VM is Oseasy's machine minus a few devices: `svga-pci` (VMware SVGA II
+  `15ad:0405`, 256 MB VRAM, no `xres`/`yres`), Windows firmware
+  `stratovirt-uefi`, one virtio-net. **Secure Boot is off** on a fresh VM
+  (`secureboot: Secure boot disabled`), so an unsigned GRUB and kernel boot.
+  No EDID (SVGA has none); the firmware framebuffer is 800×600 and the host
+  ignores the SVGA WIDTH/HEIGHT/BPP registers (`Not supported register 2/3/7`)
+  exactly as for Oseasy. Full comparison below.
 - One VM at a time, system-wide (`Not support vm multi-instance`,
   虚拟机启动失败，已有虚拟机在运行中).
 
-- **The ISO check is beaten**: a Debian 12 netboot ISO with a 2.5 KB fake
-  `sources/install.wim` (`tools/kaidashi/make-fake-wim.sh`) is accepted as
-  安装版本 WINDOWS 11 PRO, 2026-10-24 16:07.
-- The wizard (选择镜像 → 配置环境 → 安装系统) offers only name, CPU (6),
-  memory (8 GB) and disk size (256 GB default), plus 自动创建D盘分区 and a
-  desktop card. No display, firmware or Secure Boot options. No login was asked
-  for up to the 开始安装 button (not pressed yet: it creates the VM).
+Decision (goal step 2): 铠大师 gives a Linux guest nothing that 鸿融 does not do
+better today. Its display is Oseasy's `svga-pci`, whose Linux path (vmwgfx)
+does not reach the window yet; that work is route B's
+([oseasy-whole-os.md](oseasy-whole-os.md)), and a fix there applies here
+unchanged (same device, same backend). Without it 铠大师 has only the 800×600
+EFI framebuffer: no 3D, no EDID, no 120 Hz. Route G therefore keeps only what
+is specific to 铠大师 (getting a disk in, Secure Boot, the app's behaviour) and
+waits on route B for the display.
 
-Next: press 开始安装 during a `vm.lock` slot (鸿融's VM has to be off: one VM at
-a time), record the StratoVirt command line, and boot the probe entry to read
-the devices, Secure Boot state and EDID from the serial log.
+Next: boot Omarchy's 7.2.12 kernel (`arm64.hmv_idreg_quirk`) and then the pure
+Omarchy disk in 铠大师 on the EFI framebuffer, so that route B's vmwgfx can be
+dropped in when it works.
 
 ## The app
 
@@ -74,8 +83,43 @@ Nothing in the app starts a VMM. It calls the system kit
 | `virtio-gpu-pci,...,xres=2160,yres=1440,enable_bar0=false[,edid=true]` | Linux guests, 2D |
 | `vhost-user-gpu-pci` + `vhost-device-gpu --gpu-mode virglrenderer` | Linux guests with acceleration (鸿融's VM now) |
 
-all with `-display ohui`. 铠大师 only creates Windows guests, so it should get
-`svga-pci` like Oseasy; to be confirmed from the command line once a VM exists.
+all with `-display ohui`. 铠大师 only creates Windows guests and gets `svga-pci`.
+
+### Its VM, compared with Oseasy's
+
+From `/proc/<pid>/cmdline` of 铠大师's StratoVirt (pid 38867, 2026-10-24 16:16,
+[`kaidashi/runs/2026-10-24-probe/cmdline.txt`](../kaidashi/runs/2026-10-24-probe/cmdline.txt))
+and Oseasy's last `VmConfig` in the same log:
+
+| | 铠大师 3.5.8.14 | Oseasy 3.1.1.7 |
+|---|---|---|
+| Machine | `virt`, GICv3, `accel=hmv`, `mem-share=on`, `-cpu host,pmu=on`, 6 vCPUs | same |
+| Memory | 8 GB, `maxmem=10240`, virtio-mem `requested-size=8192` | same |
+| Firmware | `stratovirt-uefi` (Windows), vars in the app's `img/` | same |
+| Secure Boot | off on a fresh VM (keys bundled in the HAP, not enrolled) | (not checked) |
+| Disk | `vm.qcow2` on virtio-blk, io_uring, discard | same |
+| Install media | the picked ISO **by its original path** (`Docs/Download/kds-probe.iso`) and `Download/com.sanway.ecoengine/server.iso`, both USB storage on xHCI | the ISO and `oetool.iso`, USB storage |
+| Display | `svga-pci,id=svga,bus=pcie.0,addr=0x4.0x0` | same, plus `xres=1600,yres=1200` |
+| Display backend | `-display ohui`, `/dev/shm/hwf/ohui-fb`, D3D11 on DXVK (`/dev/hvgr0`, Maleoon), `/dev/vcodec_vdec` | same |
+| Input | USB kbd + tablet, virtio-multitouch touchpad | plus a virtio-multitouch screen |
+| Audio | `ivshmem-scream`, `record-auth=off` | `record-auth=on` |
+| Network | one virtio-net (tap) | two (tap + host-only) |
+| Sharing | vhost-user-fs `shared_dir` = HarmonyOS 文档 (exported even after 不允许 on the 文档 prompt) | vhost-user-fs, no directory |
+| Other | virtio-serial (6 vendor ports), pvpanic, logdevice, `-serial redirect-to-log`, `-battery` | same |
+
+The guest serial port ends up in `/data/log/hwf_service/vmlog` (root can read
+it), so a guest console on `ttyAMA0` is the debug channel.
+
+What the guest saw (`probe-serial.txt`, `dmesg.txt`): PCI `1b36:0008` host
+bridge, `1b36:0011` pvpanic, `1af4:1042` blk, `1b36:000d` xHCI,
+`15ad:0405` SVGA (BAR0 16 B MMIO at `0x20227100`, BAR1 256 MB VRAM at
+`0x10000000`, BAR2 2 MB FIFO at `0x20000000`), `1af4:1110` ivshmem,
+`1af4:1041` net, `1af4:1043` serial, `1af4:105a` fs, `1af4:1052` input,
+`1af4:1130` mem. ACPI tables `APIC DBG2 DSDT FACP GTDT IORT MCFG PPTT SPCR`
+(`STRATO`), DMI "StratoVirt Virtual Machine". efifb 800×600×32 in SVGA BAR1.
+No DRM device (Debian's d-i initrd has no vmwgfx). Host side: `Svga vram size
+256 Mb`, `DXVK resource passthrough is not supported`, the surface follows
+the window (`HostWindowInfoEvent 2026x1455`, panel surface 2880×1920).
 
 Bundled Secure Boot keys (`resources/rawfile/securityBoot/`), all Microsoft:
 PK "Windows OEM Devices PK", KEK "Microsoft Corporation KEK 2K CA 2023",
@@ -120,6 +164,20 @@ EDID and dmesg as `KDSPROBE` lines, then opens a shell on tty1. StratoVirt sends
 the guest serial port to the hwf_service log (`RedirectToLog`), which root can
 read in `/data/log/hwf_service/vmlog`. Other entries: the Debian rescue
 installer and `fwsetup`.
+
+## Test slot log
+
+| When | What |
+|---|---|
+| 2026-10-24 16:10 | `mkdir /data/local/vm.lock` (owner: kaidashi) |
+| 16:15 | 鸿融's VM powered off from inside the guest (`hl.dsp.exec_cmd("systemctl poweroff")` in its Hyprland session; 鸿融's page showed 已关机 with 关机 greyed out while the VM ran); StratoVirt gone in 6 s |
+| 16:16 | 铠大师 开始安装 with `kds-probe.iso`; one system prompt for the 文档 folder (answered 不允许); StratoVirt pid 38867 |
+| 16:17 | probe output in the host log; 铠大师 window shows the Linux console |
+| 16:18 | 铠大师 VM closed from its window (安装过程异常终止) |
+| 16:19 | 鸿融's VM started again (`tools/hongrong/hrvm start`), virgl GPU as before; at 16:28 its SDDM greeter is up |
+| 16:30 | lock removed |
+
+![鸿融 back on its Omarchy greeter](img/kaidashi/hongrong-restored.jpeg)
 
 ## Sources
 

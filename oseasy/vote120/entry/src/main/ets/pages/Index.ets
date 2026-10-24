@@ -31,6 +31,7 @@ struct Index {
       XComponent({ id: 'vote120', type: XComponentType.SURFACE, libraryname: 'vote120' })
         .onLoad((ctx?: object) => {
           this.vote = ctx as Vote120Module;
+          this.vote.setDraw(AppStorage.get<boolean>('draw') ?? true);
         })
         .width('100%')
         .height('100%')

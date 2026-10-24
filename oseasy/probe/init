@@ -75,6 +75,14 @@ case " $cmd " in
         u=$(awk -F: '$3 == 1000 {print $1}' /mnt/etc/passwd)
         [ -n "$u" ] && chroot /mnt /bin/bash /dev/stdin "$u" < /oseasy/desktop-autostart.sh > /tmp/autostart.txt 2>&1
         log "install: desktop autostart for ${u:-?}: $(tail -1 /tmp/autostart.txt)"
+        # obsidian (Electron) falls back to X11 and exits when started without the
+        # session's ELECTRON_OZONE_PLATFORM_HINT; pin Wayland in its launcher
+        d=/mnt/usr/share/applications/obsidian.desktop
+        if [ -f "$d" ]; then
+            mkdir -p /mnt/usr/local/share/applications
+            sed 's|^\(Exec=[^ ]*\)|\1 --ozone-platform=wayland|' "$d" > /mnt/usr/local/share/applications/obsidian.desktop
+            log "install: obsidian launcher: $(grep -m1 '^Exec=' /mnt/usr/local/share/applications/obsidian.desktop)"
+        fi
         # Hyprland diagnostics (oseasy/guest/boot-diag.sh): installed, enabled only
         # with probe.diag=1 on the install's command line (it restarts the session
         # with tracing for its first minutes, which spoils measurements)

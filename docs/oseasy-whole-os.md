@@ -793,8 +793,14 @@ one), checks every 5 minutes with es2gears and workspace switching.
   through the forward, the banner never comes), `dxvk-submit` stops, the image is
   frozen. On the host all six vCPU threads are at 100 % while the DXVK threads
   sleep: the guest spins rather than waits on the display. Oseasy shows its
-  install-failure prompt (安装过程出现异常 …), its timeout for an install that never
-  reports `install_complete`; whether it is related is not known.
+  install-failure prompt (安装过程出现异常 …). Its own log
+  (`haps/entry/files/applogs/appLog.log`) shows that prompt is a consequence, not
+  the cause: from the VM's start (02:53 +0800) to 03:57 the app only polls
+  `getVmDiskImageFileSize` (plus battery events and serial writes that fail with
+  1005700002); no stop, reset or device call. At 03:57:41 (12:57 PDT, 15 minutes
+  after the hang) it logs `qcow2 size not change too long!` and shows the prompt:
+  it watches the disk image grow, and a hung guest stops writing. The same error
+  appears on earlier sessions (10-24 17:29, 20:02) without a hang.
 - The guest did not take a poweroff, `aa force-stop com.oseasy1.ohvm` left
   StratoVirt running; SIGTERM to Oseasy's StratoVirt (its own VM, not 鸿融's) ended it.
 - No guest console was captured, so the cause is open. Suspects: the 1 ms fence
@@ -814,6 +820,14 @@ one), checks every 5 minutes with es2gears and workspace switching.
 - To try (screen lock needed): ohmarchy-120 shrunk to 1x1 and not presenting
   (`setDraw(false)`, vote kept by the frame callback), placed outside the console,
   so the VM layer can stay on HWC while the vote counts.
+  Prepared: ohmarchy-120 takes `--pi x/y` (position) and `--pi draw 0` (vote
+  through the frame callback, no buffers presented), e.g.
+  `aa start -b com.ohmarchy.vote120 -a EntryAbility --pi w 1 --pi h 1 --pi x 0 --pi y 0 --pi draw 0`;
+  built and signed, not yet installed or measured.
+- obsidian's launcher: the installer now writes
+  `/usr/local/share/applications/obsidian.desktop` with `--ozone-platform=wayland`
+  (copied from the package's, which comes first in `XDG_DATA_DIRS`), in
+  [`oseasy/probe/init`](../oseasy/probe/init).
 
 ### Decision: no guest agent for Oseasy
 

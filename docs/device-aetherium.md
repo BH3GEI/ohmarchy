@@ -48,6 +48,16 @@ Pulled from the device and analysed on a host (no VM started):
   StratoVirt — a closed Huawei branch. The exit model is an "active thread pool"
   plus `wait_next_vmexit`, not KVM's `KVM_RUN` mmap.
 
+`stratovirt` itself issues a large set of ioctls with the `0xAE` magic from its
+closed `hmv/ioctl` module (reconstructed from the disassembly): create/VM/vCPU
+and register traffic — e.g. nr `0x01` (`_IOW`/`_IOWR`), `0x18`/`0x19` (112-byte
+get/set), `0x1a`/`0x1b` (11264-byte get/set, the full vCPU state), and frequent
+per-vcpu ops `0x79` (64-byte, ×8), `0xe1` (24-byte, ×6), `0xb0` (`_IOWR`, ×5).
+These are the HMV equivalents of KVM's create-vm / create-vcpu / get-set-regs,
+with the same magic but HMV-specific nr/size/semantics. The two run-loop
+primitives (`0x08` join-pool, `0x09` wait-vmexit) are the only ones factored out
+into `libhmlibs.so.0`.
+
 **Implication so far:** an HMV accel for QEMU is conceivable (it is an ioctl ABI
 on an fd), but it would mean re-implementing StratoVirt's `hmv/ioctl` set, and
 the gating question is permissions: `/dev/hmv` opens from `su`, but whether the

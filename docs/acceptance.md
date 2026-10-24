@@ -15,7 +15,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | desktop start 6.2 s, launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
-| D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/collect-logs.sh` | log bundle: done. Reset and `-Syu` regression: on a separate environment once the machine is free |
+| D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
 | G. Other devices | | | only one machine so far. The tests take the host, base path and user from `OHOS_HOST`, `ARCH_BASE`, `ARCH_USER`; nothing else names this device |
@@ -253,6 +253,22 @@ Desktop stopped and started on purpose during the soak: 18:29:41/18:29:59 (switc
 the in-app GPU path), 18:47:31 (power baseline) to 18:54:27. The 18:52 run fell into that gap (no desktop: all checks false) and does not count.
 
 ## D. Upgrade and recovery
+
+A second environment, `/data/local/archtest-native`, built from nothing (not a copy
+of the first) with `sh native/install.sh builder <gpu-bin-dir>` (ARCH_BASE set; all
+at nice 19, beside the other work on the machine): Arch Linux ARM download and
+image 19:08, Arch setup 19:11, Omarchy 19:15, sparsecp 19:28, desktop build 19:28;
+done about 19:38 (one stop to fix an unset variable in the last line of
+`40-install-desktop.sh`). 907 packages, 14 GB used in a 64 GB sparse image.
+
+| | How | Result 2026-10-24 |
+|---|---|---|
+| Reset to clean | `sh reset.sh` on the host: stops the desktop and session, puts back `arch-clean.img` (kept by `install.sh` after installing; `reset.sh snapshot` to retake), starts the session | 56 s; a file left in the home directory was gone after, package count back to 907 |
+| After `pacman -Syu` | `sh arch.sh run check-upgrade.sh`: everything in `/opt/ohmarchy` (our patched Hyprland and aquamarine) and the preloaded shims still resolves its libraries, Hyprland runs, the packaged Hyprland version our patches match | pass before and after `-Syu` in the new environment, and in the day-old first one. The new environment had nothing to upgrade yet, so the real regression run (with updates pending) is still to do; if it fails, `40-install-desktop.sh` again rebuilds against the new libraries |
+
+`reset.sh` copies with `bin/sparsecp` (built from `native/sparsecp.c` by
+`install.sh`): the host's toybox `cp` and `dd` write every byte, which would turn the
+14 GB image into 64 GB.
 
 Log bundle: `sh /data/local/archtest/collect-logs.sh [dir]` on the host writes
 one `ohmarchy-logs-<time>.tar.gz` (default in /data/local/tmp): host side (session,

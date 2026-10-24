@@ -1,0 +1,9 @@
+start, writing /var/log/ohmarchy-boot/20261025-010419
+default: Hyprland pid 674, log 5636 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 10, needsFrame true, isPageFlipPending true, frameEventSchedu
+default: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-atomic: Hyprland pid 2718, log 2766 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 10, needsFrame true, isPageFlipPending true, frameEventSchedu
+no-atomic: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-modifiers: Hyprland pid 4786, log 5674 lines, last: TRACE from aquamarine ]: drm: CDRMFB: buffer has drmfb attachment with fb aaab001cfc90
+no-modifiers: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+modetest 40:2100x1511: 
+done

@@ -316,6 +316,58 @@ void vmw_irq_uninstall(struct drm_device *dev)
 	dev_priv->num_irq_vectors = 0;
 }
 
+/*
+ * The HarmonyOS SVGA device (hvm_mmio) never raises an interrupt, so fences
+ * only advanced when the next command submission happened to read the fence
+ * register. A compositor that waits for a page flip before it renders again
+ * then deadlocks against the atomic commit, which waits for the fence of the
+ * frame already rendered. Do the irq thread's work from a timer instead.
+ */
+static void vmw_hvm_poll_work_fn(struct work_struct *work)
+{
+	struct vmw_private *dev_priv =
+		container_of(work, struct vmw_private, hvm_poll_work);
+
+	vmw_fences_update(dev_priv->fman);
+	wake_up_all(&dev_priv->fence_queue);
+	wake_up_all(&dev_priv->fifo_queue);
+	if (dev_priv->cman)
+		vmw_cmdbuf_irqthread(dev_priv->cman);
+}
+
+static enum hrtimer_restart vmw_hvm_poll_timer_fn(struct hrtimer *timer)
+{
+	struct vmw_private *dev_priv =
+		container_of(timer, struct vmw_private, hvm_poll_timer);
+
+	queue_work(system_highpri_wq, &dev_priv->hvm_poll_work);
+	hrtimer_forward_now(timer, us_to_ktime(vmw_hvm_irq_poll_us));
+	return HRTIMER_RESTART;
+}
+
+void vmw_hvm_poll_start(struct vmw_private *dev_priv)
+{
+	if (!dev_priv->hvm_mmio || vmw_hvm_irq_poll_us <= 0)
+		return;
+	INIT_WORK(&dev_priv->hvm_poll_work, vmw_hvm_poll_work_fn);
+	hrtimer_setup(&dev_priv->hvm_poll_timer, vmw_hvm_poll_timer_fn,
+		      CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_start(&dev_priv->hvm_poll_timer,
+		      us_to_ktime(vmw_hvm_irq_poll_us), HRTIMER_MODE_REL);
+	dev_priv->hvm_poll_on = true;
+	drm_info(&dev_priv->drm, "HVM: polling fences every %d us\n",
+		 vmw_hvm_irq_poll_us);
+}
+
+void vmw_hvm_poll_stop(struct vmw_private *dev_priv)
+{
+	if (!dev_priv->hvm_poll_on)
+		return;
+	hrtimer_cancel(&dev_priv->hvm_poll_timer);
+	cancel_work_sync(&dev_priv->hvm_poll_work);
+	dev_priv->hvm_poll_on = false;
+}
+
 /**
  * vmw_irq_install - Install the irq handlers
  *

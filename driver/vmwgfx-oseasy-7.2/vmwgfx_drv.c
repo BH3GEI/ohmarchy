@@ -288,6 +288,9 @@ module_param_named(hvm_dumb_bo, vmw_hvm_dumb_bo, bool, 0400);
 bool vmw_hvm_hw_cursor;
 MODULE_PARM_DESC(hvm_hw_cursor, "HVM: expose the cursor plane (the device reports no cursor size limit, so it fails)");
 module_param_named(hvm_hw_cursor, vmw_hvm_hw_cursor, bool, 0400);
+int vmw_hvm_irq_poll_us = 1000;
+MODULE_PARM_DESC(hvm_irq_poll_us, "HVM: poll fences and command buffers every N us (the device raises no interrupts); 0=off");
+module_param_named(hvm_irq_poll_us, vmw_hvm_irq_poll_us, int, 0400);
 
 
 struct bitmap_name {
@@ -1093,6 +1096,7 @@ static int vmw_driver_load(struct vmw_private *dev_priv, u32 pci_id)
 		ret = -ENOMEM;
 		goto out_no_fman;
 	}
+	vmw_hvm_poll_start(dev_priv);
 
 	ret = ttm_device_init(&dev_priv->bdev, &vmw_bo_driver,
 			      dev_priv->drm.dev,
@@ -1213,6 +1217,7 @@ out_no_kms:
 out_no_vram:
 	ttm_device_fini(&dev_priv->bdev);
 out_no_bdev:
+	vmw_hvm_poll_stop(dev_priv);
 	vmw_fence_manager_takedown(dev_priv->fman);
 out_no_fman:
 	if (dev_priv->capabilities & SVGA_CAP_IRQMASK)
@@ -1257,6 +1262,7 @@ static void vmw_driver_unload(struct drm_device *dev)
 	vmw_vram_manager_fini(dev_priv);
 	ttm_device_fini(&dev_priv->bdev);
 	vmw_release_device_late(dev_priv);
+	vmw_hvm_poll_stop(dev_priv);
 	vmw_fence_manager_takedown(dev_priv->fman);
 	if (dev_priv->capabilities & SVGA_CAP_IRQMASK)
 		vmw_irq_uninstall(&dev_priv->drm);

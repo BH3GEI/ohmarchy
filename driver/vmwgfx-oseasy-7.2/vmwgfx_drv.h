@@ -12,6 +12,8 @@
 #include <linux/suspend.h>
 #include <linux/sync_file.h>
 #include <linux/hashtable.h>
+#include <linux/hrtimer.h>
+#include <linux/workqueue.h>
 
 #include <drm/drm_auth.h>
 #include <drm/drm_device.h>
@@ -468,6 +470,9 @@ struct vmw_private {
 	u32 pci_id;
 	bool hvm_mmio;
 	bool hvm_trace;
+	struct hrtimer hvm_poll_timer;
+	struct work_struct hvm_poll_work;
+	bool hvm_poll_on;
 	resource_size_t io_start;
 	resource_size_t vram_start;
 	resource_size_t vram_size;
@@ -1033,6 +1038,8 @@ bool vmw_cmd_describe(const void *buf, u32 *size, char const **cmd);
 
 extern int vmw_irq_install(struct vmw_private *dev_priv);
 extern void vmw_irq_uninstall(struct drm_device *dev);
+extern void vmw_hvm_poll_start(struct vmw_private *dev_priv);
+extern void vmw_hvm_poll_stop(struct vmw_private *dev_priv);
 extern bool vmw_seqno_passed(struct vmw_private *dev_priv,
 				uint32_t seqno);
 extern int vmw_fallback_wait(struct vmw_private *dev_priv,
@@ -1549,5 +1556,6 @@ extern int vmw_hvm_refresh;
 extern bool vmw_hvm_vblank;
 extern bool vmw_hvm_dumb_bo;
 extern bool vmw_hvm_hw_cursor;
+extern int vmw_hvm_irq_poll_us;
 
 #endif

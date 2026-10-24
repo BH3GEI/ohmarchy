@@ -656,6 +656,35 @@ measurement next to the Oseasy window is pending (needs the screen lock).
   sha256 `af2411f86ce8f375bb9516059561769220a2e01e9878b1afb5ae74bd0488a100`,
   install ISO `ab64543d7b08579b1becf6cc1cbe089306b47d8d9885ca8150fc276d6906f5b5`.
 
+### Sixth run: the stall is a fence nobody signals (10:01-10:08, 2026-10-25)
+
+Reinstall 133 s, Hyprland up 7 s after the reset, then the boot diagnostics ran on
+their own ([`oseasy/runs/2026-10-25-bootdiag/`](../oseasy/runs/2026-10-25-bootdiag/)).
+(agent-a4 killed this VM's virtiofsd by mistake at 10:02; Oseasy restarted it, and
+nothing here uses virtiofs.)
+
+- **Hyprland does commit, and frames do flow at first.** The traced log has 166
+  atomic commits, each answered by a page-flip event (`pf event seq 1753 sec 15`:
+  the timer vblank runs at about 117 Hz). Then one commit is never answered: the
+  last lines are `scheduleFrame … isPageFlipPending true` forever. Same in the
+  three stages (atomic, `AQ_NO_ATOMIC=1`, `AQ_NO_MODIFIERS=1`). The earlier "0
+  commits in 2 s" was measured after the stall.
+- **Why: no interrupts, so fences only move by chance.** vmwgfx signals GPU
+  fences from its interrupt thread; this device raised 0 interrupts in every run.
+  Fences then advanced only when a later command submission read the fence
+  register. A nonblocking atomic commit waits for the fence of the frame it
+  shows; Hyprland waits for that commit's page flip before it renders (and
+  submits) again. Whenever the fence was not yet passed at commit time, both wait
+  forever.
+- **Fix:** with `hvm_mmio`, vmwgfx-oseasy does the interrupt thread's work (update
+  fences, wake fence and FIFO waiters, kick the command-buffer manager) from a
+  1 ms timer (`hvm_irq_poll_us`, 0 turns it off). Package sha256
+  `d3a033b4f31e4150ea6cadd72b15906231c3ff0d0620a6903171229ab0b6eafc`, install ISO
+  `94ae3890b648e01ddf0d7fb10f143cff56fbf9959aae753aa83a74c384bf3719`. The patch
+  file is now regenerated from the sources against the upstream files (recovered
+  by reverse-applying the previous patch).
+- modetest printed no rate (the field came back empty); to look at next time.
+
 ### Decision: no guest agent for Oseasy
 
 Oseasy forgets a VM that is not Windows: once it is off, the app offers only

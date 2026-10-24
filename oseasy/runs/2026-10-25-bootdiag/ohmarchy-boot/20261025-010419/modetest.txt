@@ -1,0 +1,2 @@
+opened device `Linux drm driver for VMware graphics devices` on driver `vmwgfx` (version 2.21.0 at 0)
+setting mode 2100x1511-120.00Hz on connectors 40, crtc 42

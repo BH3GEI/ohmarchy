@@ -1,0 +1,80 @@
+== 2718 Hyprland wchan=ep_poll
+[<0>] ep_poll+0x3f8/0x4c0
+[<0>] do_epoll_wait+0xac/0x108
+[<0>] do_compat_epoll_pwait.part.0+0x10/0xa4
+[<0>] __arm64_sys_epoll_pwait+0x78/0x120
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2732 Hyprland wchan=futex_do_wait
+[<0>] futex_do_wait+0x4c/0x9c
+[<0>] __futex_wait+0x98/0x108
+[<0>] futex_wait+0x78/0x108
+[<0>] do_futex+0x1d0/0x1f0
+[<0>] __arm64_sys_futex+0xf0/0x1c4
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2733 pool-spawner wchan=futex_do_wait
+[<0>] futex_do_wait+0x4c/0x9c
+[<0>] __futex_wait+0x98/0x108
+[<0>] futex_wait+0x78/0x108
+[<0>] do_futex+0x1d0/0x1f0
+[<0>] __arm64_sys_futex+0xf0/0x1c4
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2734 gmain wchan=poll_schedule_timeout.constprop.0
+[<0>] poll_schedule_timeout.constprop.0+0x44/0xa0
+[<0>] do_poll.constprop.0+0x1e4/0x2c0
+[<0>] do_sys_poll+0x208/0x2c8
+[<0>] __arm64_sys_ppoll+0xe0/0x140
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2735 gdbus wchan=poll_schedule_timeout.constprop.0
+[<0>] poll_schedule_timeout.constprop.0+0x44/0xa0
+[<0>] do_poll.constprop.0+0x1e4/0x2c0
+[<0>] do_sys_poll+0x208/0x2c8
+[<0>] __arm64_sys_ppoll+0xe0/0x140
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2743 dconf worker wchan=poll_schedule_timeout.constprop.0
+[<0>] poll_schedule_timeout.constprop.0+0x44/0xa0
+[<0>] do_poll.constprop.0+0x1e4/0x2c0
+[<0>] do_sys_poll+0x208/0x2c8
+[<0>] __arm64_sys_ppoll+0xe0/0x140
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c
+== 2816 [pango] fontcon wchan=futex_do_wait
+[<0>] futex_do_wait+0x4c/0x9c
+[<0>] __futex_wait+0x98/0x108
+[<0>] futex_wait+0x78/0x108
+[<0>] do_futex+0x1d0/0x1f0
+[<0>] __arm64_sys_futex+0xf0/0x1c4
+[<0>] invoke_syscall.constprop.0+0x40/0x108
+[<0>] el0_svc_common.constprop.0+0x38/0xd8
+[<0>] do_el0_svc+0x1c/0x28
+[<0>] el0_svc+0x38/0x1ec
+[<0>] el0t_64_sync_handler+0xa0/0xe4
+[<0>] el0t_64_sync+0x198/0x19c

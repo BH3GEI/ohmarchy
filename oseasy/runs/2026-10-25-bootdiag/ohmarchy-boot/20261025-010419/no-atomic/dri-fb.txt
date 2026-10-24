@@ -1,0 +1,50 @@
+framebuffer[82]:
+	allocated by = Hyprland
+	refcount=2
+	format=XR24 little-endian (0x34325258)
+	modifier=0x0
+	size=2100x1511
+	layers:
+		size[0]=2100x1511
+		pitch[0]=8400
+		offset[0]=0
+		obj[0]:(null)
+framebuffer[81]:
+	allocated by = Hyprland
+	refcount=1
+	format=XR24 little-endian (0x34325258)
+	modifier=0x0
+	size=2100x1511
+	layers:
+		size[0]=2100x1511
+		pitch[0]=8400
+		offset[0]=0
+		obj[0]:(null)
+framebuffer[80]:
+	allocated by = Hyprland
+	refcount=1
+	format=XR24 little-endian (0x34325258)
+	modifier=0x0
+	size=2100x1511
+	layers:
+		size[0]=2100x1511
+		pitch[0]=8400
+		offset[0]=0
+		obj[0]:(null)
+framebuffer[78]:
+	allocated by = [fbcon]
+	refcount=1
+	format=XR24 little-endian (0x34325258)
+	modifier=0x0
+	size=2100x1511
+	layers:
+		size[0]=2100x1511
+		pitch[0]=8400
+		offset[0]=0
+		obj[0]:
+			name=0
+			refcount=3
+			start=00100000
+			size=12693504
+			imported=no
+			placement=(none)

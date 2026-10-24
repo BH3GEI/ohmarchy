@@ -1,6 +1,6 @@
 diff -ruN a/vmwgfx/vmwgfx_cmdbuf.c b/vmwgfx/vmwgfx_cmdbuf.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c
 @@ -307,6 +307,8 @@
  
  	header->cb_header->id = man->id++;
@@ -20,12 +20,14 @@ diff -ruN a/vmwgfx/vmwgfx_cmdbuf.c b/vmwgfx/vmwgfx_cmdbuf.c
  }
  
 diff -ruN a/vmwgfx/vmwgfx_context.c b/vmwgfx/vmwgfx_context.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_context.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_context.c	2026-10-24 01:25:41
-@@ -114,6 +114,20 @@
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_context.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_context.c
+@@ -112,6 +112,20 @@
+ 	.destroy = vmw_dx_context_destroy,
+ 	.bind = vmw_dx_context_bind,
  	.unbind = vmw_dx_context_unbind
- };
- 
++};
++
 +/* HVM creates resident DX contexts with DEFINE_CONTEXT. The EFI-only pixel
 + * test verified rendering with the CB's dxContext selector, while HVM rejects
 + * DX_BIND_CONTEXT. Do not pretend that an unsupported MOB restore succeeded:
@@ -38,11 +40,9 @@ diff -ruN a/vmwgfx/vmwgfx_context.c b/vmwgfx/vmwgfx_context.c
 +	.type_name = "HVM resident dx contexts",
 +	.create = vmw_dx_context_create,
 +	.destroy = vmw_dx_context_destroy,
-+};
-+
+ };
+ 
  /*
-  * Context management:
-  */
 @@ -185,13 +199,13 @@
  	int ret, i;
  	struct vmw_user_context *uctx =
@@ -61,20 +61,20 @@ diff -ruN a/vmwgfx/vmwgfx_context.c b/vmwgfx/vmwgfx_context.c
  	if (unlikely(ret != 0))
  		goto out_err;
  
-@@ -657,6 +671,10 @@
- 
+@@ -658,6 +672,10 @@
  	if (likely(res->id == -1))
  		return 0;
-+
+ 
 +	/* Resident contexts have no MOB unbind callback to scrub their tables. */
 +	if (res->func == &vmw_hvm_dx_context_func)
 +		vmw_dx_context_scrub_cotables(res, false);
- 
++
  	cmd = VMW_CMD_RESERVE(dev_priv, sizeof(*cmd));
  	if (unlikely(cmd == NULL))
+ 		return -ENOMEM;
 diff -ruN a/vmwgfx/vmwgfx_cursor_plane.c b/vmwgfx/vmwgfx_cursor_plane.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_cursor_plane.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_cursor_plane.c	2026-10-24 06:48:44
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_cursor_plane.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_cursor_plane.c
 @@ -862,6 +862,8 @@
  	if (arg->flags & DRM_VMW_CURSOR_BYPASS_ALL) {
  		list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
@@ -96,8 +96,8 @@ diff -ruN a/vmwgfx/vmwgfx_cursor_plane.c b/vmwgfx/vmwgfx_cursor_plane.c
  	vps->cursor.legacy.hotspot_x = arg->xhot;
  	vps->cursor.legacy.hotspot_y = arg->yhot;
 diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c	2026-10-24 06:48:10
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.c
 @@ -254,6 +254,8 @@
  static int vmw_force_coherent;
  static int vmw_restrict_dma_mask;
@@ -107,7 +107,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  
  static int vmw_probe(struct pci_dev *, const struct pci_device_id *);
  static int vmwgfx_pm_notifier(struct notifier_block *nb, unsigned long val,
-@@ -267,6 +269,25 @@
+@@ -267,6 +269,28 @@
  module_param_named(restrict_dma_mask, vmw_restrict_dma_mask, int, 0600);
  MODULE_PARM_DESC(assume_16bpp, "Assume 16-bpp when filtering modes");
  module_param_named(assume_16bpp, vmw_assume_16bpp, int, 0600);
@@ -130,10 +130,13 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
 +bool vmw_hvm_hw_cursor;
 +MODULE_PARM_DESC(hvm_hw_cursor, "HVM: expose the cursor plane (the device reports no cursor size limit, so it fails)");
 +module_param_named(hvm_hw_cursor, vmw_hvm_hw_cursor, bool, 0400);
++int vmw_hvm_irq_poll_us = 1000;
++MODULE_PARM_DESC(hvm_irq_poll_us, "HVM: poll fences and command buffers every N us (the device raises no interrupts); 0=off");
++module_param_named(hvm_irq_poll_us, vmw_hvm_irq_poll_us, int, 0400);
  
  
  struct bitmap_name {
-@@ -422,7 +443,8 @@
+@@ -422,7 +446,8 @@
  
  	dev_priv->enable_state = vmw_read(dev_priv, SVGA_REG_ENABLE);
  	dev_priv->config_done_state = vmw_read(dev_priv, SVGA_REG_CONFIG_DONE);
@@ -143,7 +146,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  
  	vmw_write(dev_priv, SVGA_REG_ENABLE, SVGA_REG_ENABLE_ENABLE |
  		  SVGA_REG_ENABLE_HIDE);
-@@ -430,7 +452,8 @@
+@@ -430,7 +455,8 @@
  	uses_fb_traces = !vmw_cmd_supported(dev_priv) &&
  			 (dev_priv->capabilities & SVGA_CAP_TRACES) != 0;
  
@@ -153,7 +156,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	dev_priv->fifo = vmw_fifo_create(dev_priv);
  	if (IS_ERR(dev_priv->fifo)) {
  		int err = PTR_ERR(dev_priv->fifo);
-@@ -452,9 +475,11 @@
+@@ -452,9 +478,11 @@
  	/*
  	 * Legacy sync
  	 */
@@ -168,7 +171,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  
  	atomic_set(&vmw->last_read_seqno, vmw_fence_read(vmw));
  
-@@ -462,8 +487,8 @@
+@@ -462,8 +490,8 @@
  		  vmw->config_done_state);
  	vmw_write(vmw, SVGA_REG_ENABLE,
  		  vmw->enable_state);
@@ -179,7 +182,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  
  	vmw_fifo_destroy(vmw);
  }
-@@ -496,6 +521,11 @@
+@@ -496,6 +524,11 @@
  		if (ret) {
  			struct vmw_cmdbuf_man *man = dev_priv->cman;
  
@@ -191,7 +194,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  			dev_priv->cman = NULL;
  			vmw_cmdbuf_man_destroy(man);
  		}
-@@ -516,7 +546,10 @@
+@@ -516,7 +549,10 @@
  	vmw_fence_fifo_up(dev_priv->fman);
  	dev_priv->cman = vmw_cmdbuf_man_create(dev_priv);
  	if (IS_ERR(dev_priv->cman)) {
@@ -202,7 +205,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  		dev_priv->sm_type = VMW_SM_LEGACY;
  	}
  
-@@ -540,9 +573,11 @@
+@@ -540,9 +576,11 @@
  		ttm_resource_manager_evict_all(&dev_priv->bdev, man);
  		vmw_otables_takedown(dev_priv);
  	}
@@ -216,7 +219,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	vmw_fence_fifo_down(dev_priv->fman);
  	vmw_device_fini(dev_priv);
  	return ret;
-@@ -720,6 +755,15 @@
+@@ -720,6 +758,15 @@
  		return ret;
  
  	dev->pci_id = pci_id;
@@ -232,7 +235,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	if (pci_id == VMWGFX_PCI_ID_SVGA3) {
  		rmmio_start = pci_resource_start(pdev, 0);
  		rmmio_size = pci_resource_len(pdev, 0);
-@@ -738,6 +782,22 @@
+@@ -738,6 +785,22 @@
  			return -ENOMEM;
  		}
  	} else if (pci_id == VMWGFX_PCI_ID_SVGA2) {
@@ -255,7 +258,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  		dev->io_start = pci_resource_start(pdev, 0);
  		dev->vram_start = pci_resource_start(pdev, 1);
  		dev->vram_size = pci_resource_len(pdev, 1);
-@@ -868,6 +928,11 @@
+@@ -868,6 +931,11 @@
  	dev_priv->assume_16bpp = !!vmw_assume_16bpp;
  
  	dev_priv->capabilities = vmw_read(dev_priv, SVGA_REG_CAPABILITIES);
@@ -267,7 +270,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	vmw_print_bitmap(&dev_priv->drm, "Capabilities",
  			 dev_priv->capabilities,
  			 cap1_names, ARRAY_SIZE(cap1_names));
-@@ -958,6 +1023,16 @@
+@@ -958,6 +1026,16 @@
  		dev_priv->texture_max_height = 8192;
  		dev_priv->max_primary_mem = dev_priv->vram_size;
  	}
@@ -284,15 +287,51 @@ diff -ruN a/vmwgfx/vmwgfx_drv.c b/vmwgfx/vmwgfx_drv.c
  	drm_info(&dev_priv->drm,
  		 "Legacy memory limits: VRAM = %llu KiB, FIFO = %llu KiB, surface = %u KiB\n",
  		 (u64)dev_priv->vram_size / 1024,
+@@ -1018,6 +1096,7 @@
+ 		ret = -ENOMEM;
+ 		goto out_no_fman;
+ 	}
++	vmw_hvm_poll_start(dev_priv);
+ 
+ 	ret = ttm_device_init(&dev_priv->bdev, &vmw_bo_driver,
+ 			      dev_priv->drm.dev,
+@@ -1138,6 +1217,7 @@
+ out_no_vram:
+ 	ttm_device_fini(&dev_priv->bdev);
+ out_no_bdev:
++	vmw_hvm_poll_stop(dev_priv);
+ 	vmw_fence_manager_takedown(dev_priv->fman);
+ out_no_fman:
+ 	if (dev_priv->capabilities & SVGA_CAP_IRQMASK)
+@@ -1182,6 +1262,7 @@
+ 	vmw_vram_manager_fini(dev_priv);
+ 	ttm_device_fini(&dev_priv->bdev);
+ 	vmw_release_device_late(dev_priv);
++	vmw_hvm_poll_stop(dev_priv);
+ 	vmw_fence_manager_takedown(dev_priv->fman);
+ 	if (dev_priv->capabilities & SVGA_CAP_IRQMASK)
+ 		vmw_irq_uninstall(&dev_priv->drm);
 diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h	2026-10-24 06:48:10
-@@ -466,11 +466,14 @@
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_drv.h
+@@ -12,6 +12,8 @@
+ #include <linux/suspend.h>
+ #include <linux/sync_file.h>
+ #include <linux/hashtable.h>
++#include <linux/hrtimer.h>
++#include <linux/workqueue.h>
+ 
+ #include <drm/drm_auth.h>
+ #include <drm/drm_device.h>
+@@ -466,11 +468,17 @@
  	struct ttm_device bdev;
  
  	u32 pci_id;
 +	bool hvm_mmio;
 +	bool hvm_trace;
++	struct hrtimer hvm_poll_timer;
++	struct work_struct hvm_poll_work;
++	bool hvm_poll_on;
  	resource_size_t io_start;
  	resource_size_t vram_start;
  	resource_size_t vram_size;
@@ -302,7 +341,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  	u32 *fifo_mem;
  	resource_size_t fifo_mem_size;
  	uint32_t fb_max_width;
-@@ -659,7 +662,14 @@
+@@ -659,7 +667,14 @@
  static inline void vmw_write(struct vmw_private *dev_priv,
  			     unsigned int offset, uint32_t value)
  {
@@ -318,7 +357,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  		iowrite32(value, dev_priv->rmmio + offset);
  	} else {
  		spin_lock(&dev_priv->hw_lock);
-@@ -674,7 +684,14 @@
+@@ -674,7 +689,14 @@
  {
  	u32 val;
  
@@ -334,7 +373,16 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  		val = ioread32(dev_priv->rmmio + offset);
  	} else {
  		spin_lock(&dev_priv->hw_lock);
-@@ -1350,6 +1367,7 @@
+@@ -1016,6 +1038,8 @@
+ 
+ extern int vmw_irq_install(struct vmw_private *dev_priv);
+ extern void vmw_irq_uninstall(struct drm_device *dev);
++extern void vmw_hvm_poll_start(struct vmw_private *dev_priv);
++extern void vmw_hvm_poll_stop(struct vmw_private *dev_priv);
+ extern bool vmw_seqno_passed(struct vmw_private *dev_priv,
+ 				uint32_t seqno);
+ extern int vmw_fallback_wait(struct vmw_private *dev_priv,
+@@ -1350,6 +1374,7 @@
  
  /* Host messaging -vmwgfx_msg.c: */
  void vmw_disable_backdoor(void);
@@ -342,7 +390,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  int vmw_host_get_guestinfo(const char *guest_info_param,
  			   char *buffer, size_t *length);
  __printf(1, 2) int vmw_host_printf(const char *fmt, ...);
-@@ -1485,7 +1503,9 @@
+@@ -1485,7 +1510,9 @@
  static inline u32 vmw_irq_status_read(struct vmw_private *vmw)
  {
  	u32 status;
@@ -353,7 +401,7 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  		status = vmw_read(vmw, SVGA_REG_IRQ_STATUS);
  	else
  		status = inl(vmw->io_start + SVGA_IRQSTATUS_PORT);
-@@ -1495,7 +1515,10 @@
+@@ -1495,7 +1522,10 @@
  static inline void vmw_irq_status_write(struct vmw_private *vmw,
  					uint32 status)
  {
@@ -365,21 +413,21 @@ diff -ruN a/vmwgfx/vmwgfx_drv.h b/vmwgfx/vmwgfx_drv.h
  		vmw_write(vmw, SVGA_REG_IRQ_STATUS, status);
  	else
  		outl(status, vmw->io_start + SVGA_IRQSTATUS_PORT);
-@@ -1520,5 +1543,11 @@
- 		max_allowed = SVGA3D_SHADERTYPE_DX10_MAX;
+@@ -1521,4 +1551,11 @@
  	return shader_type >= SVGA3D_SHADERTYPE_MIN && shader_type < max_allowed;
  }
-+
+ 
 +extern int vmw_hvm_display;
 +extern int vmw_hvm_refresh;
 +extern bool vmw_hvm_vblank;
 +extern bool vmw_hvm_dumb_bo;
 +extern bool vmw_hvm_hw_cursor;
- 
++extern int vmw_hvm_irq_poll_us;
++
  #endif
 diff -ruN a/vmwgfx/vmwgfx_execbuf.c b/vmwgfx/vmwgfx_execbuf.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c
 @@ -1896,12 +1896,31 @@
  					 struct vmw_sw_context *sw_context,
  					 SVGA3dCmdHeader *header)
@@ -415,9 +463,73 @@ diff -ruN a/vmwgfx/vmwgfx_execbuf.c b/vmwgfx/vmwgfx_execbuf.c
  }
  
  /**
+diff -ruN a/vmwgfx/vmwgfx_irq.c b/vmwgfx/vmwgfx_irq.c
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_irq.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_irq.c
+@@ -314,8 +314,60 @@
+ 
+ 	pci_free_irq_vectors(pdev);
+ 	dev_priv->num_irq_vectors = 0;
++}
++
++/*
++ * The HarmonyOS SVGA device (hvm_mmio) never raises an interrupt, so fences
++ * only advanced when the next command submission happened to read the fence
++ * register. A compositor that waits for a page flip before it renders again
++ * then deadlocks against the atomic commit, which waits for the fence of the
++ * frame already rendered. Do the irq thread's work from a timer instead.
++ */
++static void vmw_hvm_poll_work_fn(struct work_struct *work)
++{
++	struct vmw_private *dev_priv =
++		container_of(work, struct vmw_private, hvm_poll_work);
++
++	vmw_fences_update(dev_priv->fman);
++	wake_up_all(&dev_priv->fence_queue);
++	wake_up_all(&dev_priv->fifo_queue);
++	if (dev_priv->cman)
++		vmw_cmdbuf_irqthread(dev_priv->cman);
++}
++
++static enum hrtimer_restart vmw_hvm_poll_timer_fn(struct hrtimer *timer)
++{
++	struct vmw_private *dev_priv =
++		container_of(timer, struct vmw_private, hvm_poll_timer);
++
++	queue_work(system_highpri_wq, &dev_priv->hvm_poll_work);
++	hrtimer_forward_now(timer, us_to_ktime(vmw_hvm_irq_poll_us));
++	return HRTIMER_RESTART;
+ }
+ 
++void vmw_hvm_poll_start(struct vmw_private *dev_priv)
++{
++	if (!dev_priv->hvm_mmio || vmw_hvm_irq_poll_us <= 0)
++		return;
++	INIT_WORK(&dev_priv->hvm_poll_work, vmw_hvm_poll_work_fn);
++	hrtimer_setup(&dev_priv->hvm_poll_timer, vmw_hvm_poll_timer_fn,
++		      CLOCK_MONOTONIC, HRTIMER_MODE_REL);
++	hrtimer_start(&dev_priv->hvm_poll_timer,
++		      us_to_ktime(vmw_hvm_irq_poll_us), HRTIMER_MODE_REL);
++	dev_priv->hvm_poll_on = true;
++	drm_info(&dev_priv->drm, "HVM: polling fences every %d us\n",
++		 vmw_hvm_irq_poll_us);
++}
++
++void vmw_hvm_poll_stop(struct vmw_private *dev_priv)
++{
++	if (!dev_priv->hvm_poll_on)
++		return;
++	hrtimer_cancel(&dev_priv->hvm_poll_timer);
++	cancel_work_sync(&dev_priv->hvm_poll_work);
++	dev_priv->hvm_poll_on = false;
++}
++
+ /**
+  * vmw_irq_install - Install the irq handlers
+  *
 diff -ruN a/vmwgfx/vmwgfx_kms.c b/vmwgfx/vmwgfx_kms.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c	2026-10-24 06:48:23
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
 @@ -32,7 +32,7 @@
  
  	vmw_vkms_crtc_cleanup(&du->crtc);
@@ -450,7 +562,7 @@ diff -ruN a/vmwgfx/vmwgfx_kms.c b/vmwgfx/vmwgfx_kms.c
  	}
  	BUILD_BUG_ON(ARRAY_SIZE(display_unit_names) != (vmw_du_max + 1));
  	drm_info(&dev_priv->drm, "%s display unit initialized\n",
-@@ -1218,9 +1225,22 @@
+@@ -1218,8 +1225,21 @@
  		vmw_fifo_mem_write(vmw_priv, SVGA_FIFO_PITCHLOCK, pitch);
  	vmw_write(vmw_priv, SVGA_REG_WIDTH, width);
  	vmw_write(vmw_priv, SVGA_REG_HEIGHT, height);
@@ -458,7 +570,7 @@ diff -ruN a/vmwgfx/vmwgfx_kms.c b/vmwgfx/vmwgfx_kms.c
 +	if ((vmw_priv->capabilities & SVGA_CAP_8BIT_EMULATION) != 0 ||
 +	    vmw_priv->hvm_mmio)
  		vmw_write(vmw_priv, SVGA_REG_BITS_PER_PIXEL, bpp);
- 
++
 +	if (vmw_priv->hvm_mmio) {
 +		u32 host_depth = vmw_read(vmw_priv, SVGA_REG_DEPTH);
 +		u32 host_bpl = vmw_read(vmw_priv, SVGA_REG_BYTES_PER_LINE);
@@ -470,10 +582,9 @@ diff -ruN a/vmwgfx/vmwgfx_kms.c b/vmwgfx/vmwgfx_kms.c
 +		if (host_depth == 0 || host_depth == depth)
 +			return 0;
 +	}
-+
+ 
  	if (vmw_read(vmw_priv, SVGA_REG_DEPTH) != depth) {
  		DRM_ERROR("Invalid depth %u for %u bpp, host expects %u\n",
- 			  depth, bpp, vmw_read(vmw_priv, SVGA_REG_DEPTH));
 @@ -1352,6 +1372,11 @@
  	struct vmw_display_unit *du = vmw_connector_to_du(connector);
  
@@ -499,8 +610,8 @@ diff -ruN a/vmwgfx/vmwgfx_kms.c b/vmwgfx/vmwgfx_kms.c
  
  
 diff -ruN a/vmwgfx/vmwgfx_mob.c b/vmwgfx/vmwgfx_mob.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_mob.c
 @@ -205,19 +205,37 @@
  		return;
  
@@ -552,8 +663,8 @@ diff -ruN a/vmwgfx/vmwgfx_mob.c b/vmwgfx/vmwgfx_mob.c
  	if (bo) {
  		int ret;
 diff -ruN a/vmwgfx/vmwgfx_msg.c b/vmwgfx/vmwgfx_msg.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_msg.c
 @@ -66,7 +66,14 @@
  #define MAX_USER_MSG_LENGTH	PAGE_SIZE
  
@@ -615,8 +726,8 @@ diff -ruN a/vmwgfx/vmwgfx_msg.c b/vmwgfx/vmwgfx_msg.c
  		return -EINVAL;
  
 diff -ruN a/vmwgfx/vmwgfx_scrn.c b/vmwgfx/vmwgfx_scrn.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c	2026-10-24 06:48:10
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
 @@ -847,6 +847,14 @@
  	drm_plane_helper_add(primary, &vmw_sou_primary_plane_helper_funcs);
  	drm_plane_enable_fb_damage_clips(primary);
@@ -649,11 +760,10 @@ diff -ruN a/vmwgfx/vmwgfx_scrn.c b/vmwgfx/vmwgfx_scrn.c
  					&vmw_screen_object_crtc_funcs, NULL);
  	if (ret) {
  		DRM_ERROR("Failed to initialize CRTC\n");
-@@ -1119,6 +1128,30 @@
- 	ret = vmw_validation_prepare(&val_ctx, &dev_priv->cmdbuf_mutex, true);
+@@ -1120,6 +1129,30 @@
  	if (ret)
  		goto out_unref;
-+
+ 
 +	/*
 +	 * HVM keeps its own copy of the surface (a D3D11 texture) and does not
 +	 * read the backing MOB on a blit. CPU writes (fbdev, dumb buffers) must
@@ -677,12 +787,13 @@ diff -ruN a/vmwgfx/vmwgfx_scrn.c b/vmwgfx/vmwgfx_scrn.c
 +			vmw_cmd_commit(dev_priv, sizeof(*ucmd));
 +		}
 +	}
- 
++
  	sdirty.base.fifo_commit = vmw_sou_surface_fifo_commit;
  	sdirty.base.clip = vmw_sou_surface_clip;
+ 	sdirty.base.dev_priv = dev_priv;
 diff -ruN a/vmwgfx/vmwgfx_so.c b/vmwgfx/vmwgfx_so.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_so.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_so.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_so.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_so.c
 @@ -316,6 +316,7 @@
  		 size_t cmd_size,
  		 struct list_head *list)
@@ -691,11 +802,10 @@ diff -ruN a/vmwgfx/vmwgfx_so.c b/vmwgfx/vmwgfx_so.c
  	static const size_t vmw_view_define_sizes[] = {
  		[vmw_view_sr] = sizeof(SVGA3dCmdDXDefineShaderResourceView),
  		[vmw_view_rt] = sizeof(SVGA3dCmdDXDefineRenderTargetView),
-@@ -338,6 +339,26 @@
- 	if (!vmw_view_id_ok(user_key, view_type)) {
+@@ -339,7 +340,27 @@
  		VMW_DEBUG_USER("Illegal view add view id.\n");
  		return -EINVAL;
-+	}
+ 	}
 +
 +	if (dev_priv->hvm_trace && view_type == vmw_view_ds &&
 +	    atomic_inc_return(&hvm_trace_count) <= 32) {
@@ -703,7 +813,7 @@ diff -ruN a/vmwgfx/vmwgfx_so.c b/vmwgfx/vmwgfx_so.c
 +			(const void *)((const SVGA3dCmdHeader *)cmd + 1);
 +		const struct vmw_surface_metadata *meta =
 +			&vmw_res_to_srf(srf)->metadata;
-+
+ 
 +		drm_info(&dev_priv->drm,
 +			 "HVM DS ctx=%d view=%u sid=%d format=%u dimension=%u mip=%u first=%u array=%u flags=%u\n",
 +			 ctx->id, ds->depthStencilViewId, srf->id, ds->format,
@@ -715,16 +825,20 @@ diff -ruN a/vmwgfx/vmwgfx_so.c b/vmwgfx/vmwgfx_so.c
 +			 meta->base_size.width, meta->base_size.height,
 +			 meta->base_size.depth, meta->mip_levels[0],
 +			 meta->array_size, meta->multisample_count);
- 	}
- 
++	}
++
  	size = offsetof(struct vmw_view, cmd) + cmd_size;
+ 
+ 	view = kmalloc(size, GFP_KERNEL);
 diff -ruN a/vmwgfx/vmwgfx_stdu.c b/vmwgfx/vmwgfx_stdu.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c	2026-10-24 01:25:41
-@@ -1696,6 +1696,18 @@
- 	if (!(dev_priv->capabilities & SVGA_CAP_GBOBJECTS))
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+@@ -1694,7 +1694,19 @@
  		return -ENOSYS;
  
+ 	if (!(dev_priv->capabilities & SVGA_CAP_GBOBJECTS))
++		return -ENOSYS;
++
 +	/*
 +	 * HVM advertises GB objects but reports no screen-target dimensions
 +	 * and rejects DEFINE/BIND_GB_SCREENTARGET. Use the existing display
@@ -734,15 +848,14 @@ diff -ruN a/vmwgfx/vmwgfx_stdu.c b/vmwgfx/vmwgfx_stdu.c
 +	if (dev_priv->hvm_mmio &&
 +	    (!dev_priv->stdu_max_width || !dev_priv->stdu_max_height)) {
 +		drm_info(dev, "HVM has no screen targets; trying screen objects\n");
-+		return -ENOSYS;
+ 		return -ENOSYS;
 +	}
-+
+ 
  	dev_priv->active_display_unit = vmw_du_screen_target;
  
- 	for (i = 0; i < VMWGFX_NUM_DISPLAY_UNITS; ++i) {
 diff -ruN a/vmwgfx/vmwgfx_surface.c b/vmwgfx/vmwgfx_surface.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c	2026-10-24 02:38:10
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_surface.c
 @@ -1118,6 +1118,7 @@
   */
  static int vmw_gb_surface_create(struct vmw_resource *res)
@@ -808,8 +921,8 @@ diff -ruN a/vmwgfx/vmwgfx_surface.c b/vmwgfx/vmwgfx_surface.c
  		if (ret)
  			return ret;
 diff -ruN a/vmwgfx/vmwgfx_vkms.c b/vmwgfx/vmwgfx_vkms.c
---- a/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c	2026-10-24 06:50:23
-+++ b/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c	2026-10-24 01:25:41
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_vkms.c
 @@ -205,8 +205,12 @@
  
  	vmw->vkms_enabled = false;

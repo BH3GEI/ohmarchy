@@ -21,18 +21,18 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | headless backend for D: Docker + full kernel. Omarchy's 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app); D's terminal uses its dockerd over ssh | First run: network both ways, 120 Hz mode, virgl on the Maleoon GPU, Docker + compose; service `ohmarchy-vm` written, D's docker context set up, waiting for a slot |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 09:46 PDT)
+## Progress (updated hourly; last: 2026-10-24 10:20 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Next VM slot (~10:20 PDT): unattended boot diagnostics for Hyprland (three aquamarine modes, full logs to disk) | Warm reboot fixed (it was the in-tree `vmwgfx` oopsing at probe); cursor-plane fix in place, but Hyprland still makes no KMS commit; GPU-rendered surfaces no longer re-uploaded every frame. 120 Hz works with the `ohmarchy-120` vote window |
-| C. 鸿融 VM | Next: 鸿融's own "import qcow2" with a StratoVirt-shaped qcow2 header; on-screen fps at 120 Hz with the vote window | Developer image passes in a real 鸿融 VM: desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker, warm reboot, 30-min soak; **CRTC at 120 Hz** with an EDID whose 120 Hz mode is not marked preferred |
-| D. Native | 24 h soak (until 02:52 PDT); Docker from the desktop through route I | Security checks 6/6: Omarchy's web apps open in a sandboxed Firefox; sound latency back to 72 ms warm; Remote virgl trial: transport works, but resource ids collide in the shared renderer (on hold) |
-| I. Own VM | Next slot (~10:40 PDT): run the service, Docker from D, port publishing, balloon measurement | **Own headless VM on `/dev/hmv` works**: network both ways, 120 Hz CRTC, 3D on the Maleoon GPU (zink), Docker + compose. Repositioned as D's backend for Docker and a full kernel (`ohmarchy-vm` service, docker context `ohmarchy`) |
-| H. Aetherium on the device | TCG baseline with the stock Omarchy image | **No-root VMs are closed to third parties**: the VM service requires `ohos.permission.MANAGE_VM` and an `appIdentifier` from a hard-coded allowlist of 8 apps (Oseasy and 铠大师 are on it) ([docs/vm-api.md](docs/vm-api.md)) |
+| B. Oseasy VM | Next VM slot (~10:40 PDT, 25 min): reinstall with the fence-polling fix, then measure on screen (es2gears, workspace switch, app launch, glmark2, warm reboots) | **Hyprland freeze explained**: 166 frames go through, then a commit waits on a GPU fence that never signals, because the device raises no interrupts and `vmwgfx` only advances fences from its IRQ thread. Fix: under HVM a 1 ms timer does the IRQ thread's work (`hvm_irq_poll_us`, 060fc92); not yet tested |
+| C. 鸿融 VM | Waiting for a slot: 鸿融's own "import qcow2" with the StratoVirt-shaped header (`-sv`), on-screen fps at 120 Hz | Developer image passes in a real 鸿融 VM: desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker, warm reboot, 30-min soak; CRTC at 120 Hz |
+| D. Native | Final A1 rerun (78 entries); 24 h soak until 2026-10-25 17:52 PDT | **Docker from the native desktop** through route I's VM: `docker run`, compose and lazydocker work (1d70b74). Tests now close windows by address, so Firefox no longer sees a crash (a3c8c89). Last rerun: 74 pass, 0 fail |
+| I. Own VM | Next slot (~11:05 PDT): home directory shared into the VM, ownership both ways, bind-mount compose, symlink escape check | **Backend verified** (ec76d4b): start/stop service, Docker from D over ssh, port publishing, free page reporting returns ~3 GiB in ~6 s (8 GiB VM idles at ~1.2 GiB on the host). D's `/home/builder` is shared at the same path over virtiofs (ba66705, 74d3b4b) |
+| H. Aetherium on the device | TCG baseline with the stock Omarchy image (now, both locks): create, 4 GB boot, boot time, fps, refresh, host CPU/temperature | Root can open `/dev/hmv` with no SELinux gate; the only barrier to a custom VMM is StratoVirt's closed ioctl ABI, deliberately not pursued (0d27517, 740663d). No-root VMs stay closed to third parties ([docs/vm-api.md](docs/vm-api.md)) |
 | G. 铠大师 VM | Concluded | Same `svga-pci` path as B; Linux only lives in an install session |
 
-Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel.
+Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel. Starting or killing processes on the device also needs `vm.lock` (after a test killed another VM's virtiofsd at 10:02; no harm done).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

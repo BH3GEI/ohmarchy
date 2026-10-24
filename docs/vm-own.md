@@ -22,10 +22,12 @@ Offline preparation, 2026-10-24:
   鸿融's UEFI, virtio-blk/net, vsock, tap + NAT) and its verified
   `omarchy-pure.img` (linux-aarch64 7.2.12-1.1, cold boot + 3 warm reboots).
 - The GPU part to add is 鸿融's own (below).
-- 120 Hz: `tools/ownvm/mkedid.py` writes an EDID with 2160×1440 @ 120 Hz
-  (CVT-RB2, 409.9 MHz), 1920×1280 @ 120 Hz and 2160×1440 @ 60 Hz, to load in the
-  guest with `drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin`
-  (`CONFIG_DRM_LOAD_EDID_FIRMWARE=y` in 7.2.12).
+- 120 Hz: agent-2a's EDID (`hongrong/edid/omarchy-120.bin`: 2160×1440 at
+  119.983 Hz first, 59.955 Hz second) with the preferred-timing bit cleared by
+  `tools/ownvm/edid-nopref.py` (see "Why 120 Hz was dropped"), loaded with
+  `drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin`
+  (`CONFIG_DRM_LOAD_EDID_FIRMWARE=y` in 7.2.12). The test boot also has
+  `drm.debug=0x5`.
 - Docker prerequisites are in the 7.2.12 config: overlayfs, bridge, veth,
   NAT/MASQUERADE, addrtype match (modules), cgroups and memcg (built in).
 
@@ -167,3 +169,40 @@ vtest channel (above; the guest's TCP connection reaches the app, which drops it
 at the start, being debugged on the native-desktop line). Guest side of vtest
 needs `LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=virpipe`, else Mesa takes the
 DRM device's driver.
+
+## Why 120 Hz was dropped (offline, 2026-10-24)
+
+In 鸿融 (253ec06) the kernel read agent-2a's EDID but kept only its 59.955 Hz
+timing. The EDID is valid (checksum, range 59–121 Hz, max clock 430 MHz ≥
+424.5 MHz). What drops the mode is virtio-gpu's `mode_valid`
+([virtgpu_display.c](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/virtio/virtgpu_display.c)):
+
+```c
+if (!(mode->type & DRM_MODE_TYPE_PREFERRED))
+        return MODE_OK;
+if (mode->hdisplay == XRES_DEF && mode->vdisplay == YRES_DEF)
+        return MODE_OK;
+if (mode->hdisplay <= width  && mode->hdisplay >= width - 16 &&
+    mode->vdisplay <= height && mode->vdisplay >= height - 16)
+        return MODE_OK;
+DRM_DEBUG("del mode: %dx%d\n", mode->hdisplay, mode->vdisplay);
+return MODE_BAD;
+```
+
+`width`/`height` are the host's scanout size from GET_DISPLAY_INFO. Only the
+*preferred* mode is checked, and
+[drm_edid.c](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/drm_edid.c)
+`add_detailed_modes` marks the first detailed timing preferred when an EDID 1.3
+has feature bit 0x02 (the file has features `0x0a`). The 120 Hz timing is the
+first one, so whenever the host scanout is not 2144–2160 × 1424–1440 (a
+different window size, or 0×0 while the output is disabled) it is deleted and
+the second, non-preferred 59.955 Hz timing survives, which matches 鸿融's
+59.955 Hz exactly.
+
+Fix without a kernel change: clear bit 0x02 (`edid-nopref.py`, features
+`0x08`). No mode is preferred, every mode passes, and `drm_mode_sort`
+([drm_modes.c](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/drm_modes.c))
+orders same-size modes by refresh, so 119.983 Hz comes first. The boot check:
+`drm.debug=0x5` prints `output 0: WxH+0+0` (the host size) and any
+`del mode:` line; `/sys/class/drm/card0-Virtual-1/modes` lists names only, so
+the refresh is read with `modetest -c` or `hyprctl monitors`.

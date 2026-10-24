@@ -3,7 +3,8 @@
 # copy of agent-2a's verified omarchy-pure.img with a 120 Hz EDID for the
 # virtio-gpu connector and the kernel argument that loads it.
 #   perl -e 'alarm 3600; exec @ARGV' ssh ohdev sh -s [SRC [DST]] < tools/ownvm/prep-disk.sh
-# Needs next to DST: ohmarchy-120.bin (tools/ownvm/mkedid.py) and edid.cpio
+# Needs next to DST: ohmarchy-120.bin (tools/ownvm/edid-nopref.py applied to
+# hongrong/edid/omarchy-120.bin) and edid.cpio
 # (a newc cpio holding usr/lib/firmware/edid/ohmarchy-120.bin), and optionally
 # authorized_keys (installed for yao, so the guest takes ssh keys; the disk has
 # none). Docker is installed later inside the running guest.
@@ -46,17 +47,12 @@ DBG() { $LD $R/usr/bin/debugfs "$@" $L; }
 ARG='drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin'
 T=$DIR/grub.cfg.tmp
 DBG -R 'cat /boot/grub/grub.cfg' > $T 2>/dev/null
-if grep -q "$ARG" $T; then
-  echo "grub.cfg already has the EDID argument"
-else
-  sed -i "/^[[:space:]]*linux[[:space:]]/s|\$| $ARG|; /^[[:space:]]*initrd[[:space:]]/s|\$| /boot/ohmarchy-edid.cpio|" $T
-  cat > $DIR/debugfs.cmds <<EOF
+# the EDID files are always (re)written, grub.cfg only once
+echo 'FILES+=(/usr/lib/firmware/edid/ohmarchy-120.bin)' > $DIR/ohmarchy-edid.conf
+cat > $DIR/debugfs.cmds <<EOF
 cd /boot
 rm ohmarchy-edid.cpio
 write $DIR/edid.cpio ohmarchy-edid.cpio
-cd /boot/grub
-rm grub.cfg
-write $T grub.cfg
 mkdir /usr/lib/firmware/edid
 cd /usr/lib/firmware/edid
 rm ohmarchy-120.bin
@@ -66,9 +62,13 @@ cd /etc/mkinitcpio.conf.d
 rm ohmarchy-edid.conf
 write $DIR/ohmarchy-edid.conf ohmarchy-edid.conf
 EOF
-  echo 'FILES+=(/usr/lib/firmware/edid/ohmarchy-120.bin)' > $DIR/ohmarchy-edid.conf
-  DBG -w -f $DIR/debugfs.cmds 2>&1 | grep -vE '^debugfs [0-9]|^debugfs: (cd|mkdir)' | grep -v 'File not found by ext2_lookup' | head -20
+if grep -q "$ARG" $T; then
+  echo "grub.cfg already has the EDID argument"
+else
+  sed -i "/^[[:space:]]*linux[[:space:]]/s|\$| $ARG|; /^[[:space:]]*initrd[[:space:]]/s|\$| /boot/ohmarchy-edid.cpio|" $T
+  printf '%s\n' 'cd /boot/grub' 'rm grub.cfg' "write $T grub.cfg" >> $DIR/debugfs.cmds
 fi
+DBG -w -f $DIR/debugfs.cmds 2>&1 | grep -vE '^debugfs [0-9]|^debugfs: (cd|mkdir)' | grep -v 'File not found by ext2_lookup' | head -20
 if [ -r $DIR/authorized_keys ]; then
   U=$(DBG -R 'stat /home/yao' 2>/dev/null | grep -oE 'User: +[0-9]+' | grep -oE '[0-9]+')
   G=$(DBG -R 'stat /home/yao' 2>/dev/null | grep -oE 'Group: +[0-9]+' | grep -oE '[0-9]+')

@@ -23,7 +23,9 @@ ps -ef | grep -e stratovirt -e vhost-device -e vm_manager | grep -v grep | cut -
 echo "== processes holding /dev/hmv"
 ls -l /dev/hmv
 for p in /proc/[0-9]*; do
-  ls -l $p/fd 2>/dev/null | grep -q /dev/hmv && echo "${p#/proc/} $(tr '\0' ' ' < $p/cmdline | cut -c1-120)"
+  # a dead process's cmdline can block forever on HongMeng: check, then bound the read
+  [ -d $p ] && ls -l $p/fd 2>/dev/null | grep -q /dev/hmv &&
+    echo "${p#/proc/} $(timeout 3 tr '\0' ' ' < $p/cmdline | cut -c1-120)"
 done
 
 echo "== per-app VM directories (app id -> bundle)"

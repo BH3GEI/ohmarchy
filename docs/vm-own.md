@@ -80,8 +80,24 @@ What the VM's desktop needs, for the app to show it at 120 Hz: route D's patched
 Hyprland (headless output, present marker) instead of its normal DRM one, with
 `GALLIUM_DRIVER=virpipe`; the VM's Arch has the same Hyprland 0.56.2 and
 aquamarine 0.15.1 as route D's session, so `/opt/ohmarchy` from it can be used.
-Input: the app sends input over `@ohmarchy-display`, which only reaches the host;
-a VM desktop needs that bridged too (not done).
+Input (design, not built): the app sends input over `@ohmarchy-display`, the
+socket the patched aquamarine listens on; 16-byte packets (pointer, button, axis,
+key) from the app, frame headers back. On the in-app GPU path the app does not use
+the exported frames (the renderer has the window), so the frame headers' dmabuf
+fds, which cannot cross TCP, can be dropped. A plain byte relay is enough:
+
+- in the guest, `socat TCP-LISTEN:7791,bind=172.16.100.2,fork
+  ABSTRACT-CONNECT:ohmarchy-display` next to the patched Hyprland;
+- on the host, a relay like `ohmarchy-audio-relay` that serves an abstract socket
+  only to the display app's uid and connects to the guest's port;
+- the app takes the socket name to connect to from a setting instead of the fixed
+  `ohmarchy-display` (route D's own desktop keeps that name).
+
+What the first VM test measures, and what not: es2gears in the guest's normal
+session with `GALLIUM_DRIVER=virpipe` renders on the host through this path, but
+its frames go back to the guest (copied over TCP) and its own Hyprland shows them
+in 鸿融's window at 60 Hz. That checks the transport and its cost; the 120 Hz
+picture in route D's app needs the patched Hyprland in the guest.
 
 To measure (needs the screen and a running VM): es2gears and glmark2 in the VM
 through this path; frame rate on screen (HarmonyOS compositor), CPU on both

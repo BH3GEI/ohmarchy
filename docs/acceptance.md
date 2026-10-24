@@ -250,7 +250,7 @@ window opens and closes, clipboard, file write, sound into PipeWire, system bus,
 desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
 Desktop restarts by the tests themselves (cold start) are logged in the results.
 Desktop stopped and started on purpose during the soak: 18:29:41/18:29:59 (switch to
-the in-app GPU path), 18:47:31 (power baseline) to 18:54:27.
+the in-app GPU path), 18:47:31 (power baseline) to 18:54:27. The 18:52 run fell into that gap (no desktop: all checks false) and does not count.
 
 ## D. Upgrade and recovery
 

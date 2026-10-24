@@ -440,3 +440,24 @@ the runs above unless marked pending.
 | es2gears / glmark2 | pending | | |
 | Workspace switching on screen | pending (60 at most) | 59-60 | 109-115 |
 | 3 warm reboots, 1 h soak | pending | | |
+
+### Commits (MateBook 14 work)
+
+- [`5df801d`](https://github.com/BH3GEI/ohmarchy/commit/5df801d) Oseasy on the MateBook 14: app 3.1.1.7, VMM and SVGA backend survey
+- [`b092518`](https://github.com/BH3GEI/ohmarchy/commit/b092518) Route B: name the MateBook 14 dev machine; Oseasy's guest display driver is VirtualBox VMSVGA
+- [`0db08f7`](https://github.com/BH3GEI/ohmarchy/commit/0db08f7) Route B: vmwgfx for the HarmonyOS SVGA device ported to 7.2.12, with refresh/vblank parameters; package script; VM lock helper
+- [`a017fb6`](https://github.com/BH3GEI/ohmarchy/commit/a017fb6) Route B: boot probe (ISO and GPT disk) for the SVGA display experiments
+- [`a3abfc4`](https://github.com/BH3GEI/ohmarchy/commit/a3abfc4) vmwgfx-oseasy 7.2: builds against linux-aarch64-headers 7.2.11 (format fix); package version follows the kernel
+- [`f5431ee`](https://github.com/BH3GEI/ohmarchy/commit/f5431ee) Route B: Windows VM backed up (sha256 verified) before the import; one VM per app; frame counter script
+- [`499d369`](https://github.com/BH3GEI/ohmarchy/commit/499d369) Route B probe: skip .sig files, robust kernel image lookup, gzip initramfs
+- [`b6bcca8`](https://github.com/BH3GEI/ohmarchy/commit/b6bcca8) Route B: probe built against the 7.2.12-1.1 HMV kernel; hashes
+- [`3363034`](https://github.com/BH3GEI/ohmarchy/commit/3363034) Route B: 7.2 boots in Oseasy; vmwgfx binds at 120 Hz; frames reach the window but CPU writes do not reach the host's surface copy
+- [`95f82be`](https://github.com/BH3GEI/ohmarchy/commit/95f82be) Route B: vmwgfx uploads the surface before screen-object blits (still black); run data and screenshots
+- [`ed2a0b7`](https://github.com/BH3GEI/ohmarchy/commit/ed2a0b7) Route B probe: kmsgl (GPU rendering on KMS through Mesa's SVGA driver), vmwgfx reloaded with command-line options
+- [`21dd140`](https://github.com/BH3GEI/ohmarchy/commit/21dd140) Route B: present path analysis; VirtualBox paging commands as the likely upload path; kmsgl probe recorded
+- [`b15cf1f`](https://github.com/BH3GEI/ohmarchy/commit/b15cf1f) Route B: GPU-rendered KMS output (Mesa SVGA3D) shows in the Oseasy window; guest at 120 frames/s, panel at 60 Hz
+- [`941950d`](https://github.com/BH3GEI/ohmarchy/commit/941950d) Route B probe: install mode (disk image over the VM network, vmwgfx-oseasy added), host push script
+- [`60e7e23`](https://github.com/BH3GEI/ohmarchy/commit/60e7e23) Route B: comparison table skeleton with the figures so far
+- [`d90b935`](https://github.com/BH3GEI/ohmarchy/commit/d90b935) Route B: guest benchmark script (renderer, es2gears, glmark2, workspace switching, app launch)
+
+Related Route G commits: [`07528eb`](https://github.com/BH3GEI/ohmarchy/commit/07528eb) (Oseasy's Windows guest and svga-pci).

@@ -122,6 +122,32 @@ already in the repo plus `device/baseline.sh`:
 
 These feed the comparison table against C (鸿融), D (native), B/G.
 
+### Comparison table
+
+Routes on ohdev (MateBook 14, HM740, Kirin X90, HarmonyOS 7.0). C and D numbers
+are from [docs/native-desktop.md](native-desktop.md) (all counted on-screen by
+HarmonyOS's compositor, `hidumper -s RenderService`); H is pending its TCG run.
+
+| Metric | C. 鸿融 VM | D. Native | B. Oseasy VM | G. 铠大师 VM | H. Aetherium TCG |
+|---|---|---|---|---|---|
+| Virtualization | HMV (system VMM) | none (HongMeng kernel) | HMV (system VMM) | HMV (system VMM) | TCG (software, in-app QEMU) |
+| GPU path | virgl (zink, Maleoon) | Maleoon via host virgl | SVGA (not displayed yet) | survey only | 2D virtio-gpu / llvmpipe (no 3D) |
+| Omarchy desktop | yes (SDDM→Hyprland) | yes | not displayed yet | no VM created | pending |
+| Kernel | linux-aarch64 7.2 + HMV quirk | HongMeng (host) | Debian 6.1 (route B) | n/a | Omarchy stock 7.2.3 (unpatched) |
+| Display refresh | 60 Hz (VM EDID) | 120 Hz (panel) | — | — | pending (no 120 Hz path) |
+| es2gears on-screen, 1920x1280 | 60 fps | 117–120 fps | — | — | pending |
+| Workspace anim on-screen, 1920x1280 | 60 fps | 115–116 fps | — | — | pending |
+| es2gears on-screen, 2160x1440 | 60 fps | 117–118 fps | — | — | pending |
+| HwcPresentDisplay/s (es2gears 1920x1280) | ~40 | ~120 | — | — | pending |
+| Cold boot to desktop | see route C | n/a (native) | — | — | pending |
+| Host CPU while running | — | — | — | — | pending (device/baseline.sh) |
+| Host temperature | — | — | — | — | pending (device/baseline.sh) |
+
+H's pending cells are filled from the TCG run (criterion 1). Expectation from
+route F (same stack on the emulator): desktop reaches Hyprland on llvmpipe but
+slowly; on-screen fps far below C/D and no 120 Hz.
+
+
 ## Status
 
 In progress. Static HMV analysis done (above). TCG baseline and the on-device

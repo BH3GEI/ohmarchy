@@ -341,7 +341,20 @@ docker 29.9.2 and docker-compose 5.6.1 clients; context `ohmarchy` =
 `authorized_keys` on the disk, the guest host key in builder's `known_hosts`.
 dockerd is not exposed on TCP.
 
-**Next slot:** provision; D runs `tests/compat/docker.sh` (hello-world +
-compose); port 8080 from the guest itself and from D (`docker -H` side:
-`curl 172.16.100.2:8080`), with `iptables -t nat -S`/`nft list ruleset` in
-the guest; balloon: idle guest, host RSS before/after free page reporting.
+**Run as a service (2026-10-24 09:52–09:55 PDT, vm.lock):**
+
+| Item | Result |
+|---|---|
+| `ohmarchy-vm start` | guest ssh up 5 s after StratoVirt started (cold boot); rules 10500/10501 and the lock added |
+| Provision | narrow sudo rule (`sudo -n systemctl --version` refused), Docker active, `virtio_balloon` bound, page reporting order 9 |
+| D → VM Docker | from D's terminal (archtest, `builder`, context `ohmarchy` over ssh), run by the native-desktop line: `hello-world` PASS (1.2 s), compose PASS |
+| Port 8080 | `docker run -p 8080:80 nginx:alpine`: 200 from the guest (127.0.0.1, 172.16.100.2, localhost) and from the host. The first run's `000` was a race, not the port mapping: nginx listens a moment after compose reports "Started", and the first request is reset; `guest-setup.sh` now retries |
+| Balloon (free page reporting) | host RSS of StratoVirt: 1151 MiB idle → 4109 MiB with 3000 MiB written to `/dev/shm` in the guest → **1161 MiB within ~6 s** after deleting it. Idle: ~1.17 GiB host RSS for an 8 GiB guest |
+| `ohmarchy-vm stop` | power-off from inside the guest in ~10 s; rules, tap and lock removed |
+
+StratoVirt's `query-balloon` answers `GenericError "No error information (os
+error 0)"`, so `status` shows host RSS instead; the reclaim itself works.
+
+Lesson for scripts that ssh into the guest inside `ssh ohdev sh -s`: give the
+inner ssh `< /dev/null`, or it reads the rest of the outer script from stdin
+and the outer shell stops early (it cost several truncated runs).

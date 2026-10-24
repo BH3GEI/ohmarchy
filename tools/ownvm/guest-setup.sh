@@ -52,7 +52,10 @@ services:
     command: sh -c "sleep 3; wget -qO- http://web/ | head -4"
 EOF
   (cd $d && docker compose up -d web >/dev/null 2>&1
-   curl -s -o /dev/null -w 'host port 8080: %{http_code}\n' --retry 5 --retry-connrefused http://127.0.0.1:8080/ || true
+   # nginx listens a moment after "Started": the first request is reset
+   for i in 1 2 3 4 5 6 7 8 9 10; do
+     c=$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/); [ "$c" = 200 ] && break; sleep 1
+   done; echo "host port 8080: $c (try $i)"
    docker compose run --rm probe > $d/probe.out 2>&1; rc=$?
    grep -E 'Welcome|error|Error' $d/probe.out | head -3; echo "compose probe exit $rc"
    docker compose down -v >/dev/null 2>&1)

@@ -192,6 +192,16 @@ the launch window), so the exact denial is inferred from the crash site, not pro
 AVC line; it is the only cause consistent with a `tcg_region_init` exit that is independent
 of vCPU/memory.
 
+**Alternative considered and declined (root + TCG outside the HAP):** QEMU's TCG could
+likely be made to initialize by running it as a root process in the `su` domain (which can
+allocate executable memory), e.g. a small launcher that `dlopen`s `libqemu_full.so`. This was
+**deliberately not pursued** (supervisor decision): Route H's question is specifically whether
+it works *without root*, and the answer is no; with root, Route I already runs Omarchy with
+HMV hardware acceleration (network, 120 Hz, GPU, Docker), so a root + software-TCG run would
+only produce numbers far slower than Route I that nobody would use, for hours of extra
+reverse-engineering. So criterion 1's numbers are not obtainable on ohdev, and that is the
+result.
+
 **Why route F (the emulator) is unaffected:** the DevEco emulator image runs the same
 Aetherium but allows JIT/executable memory, so TCG initializes there and Omarchy boots to
 Hyprland (see [emulator-aetherium.md](emulator-aetherium.md)). On the real device it does

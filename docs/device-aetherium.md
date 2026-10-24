@@ -89,6 +89,23 @@ What would be required, and the blockers in order:
 So: a config switch cannot enable HMV; a prototype is conceivable but needs both
 a QEMU port and clearing the permission gate. The permission test is queued.
 
+## Measuring the baseline
+
+Once the VM runs under TCG (criterion 1), numbers are collected with scripts
+already in the repo plus `device/baseline.sh`:
+
+- **Frame rate and refresh:** `oseasy/measure-fps.sh [SECS] [WINDOW]` — panel
+  `activeMode` (refresh), on-screen `composer fps` from RenderService, the
+  Aetherium window's own `fps`, and `hitrace graphic` frame counts, while the
+  guest runs es2gears and workspace switching with its window in front.
+- **Host CPU and temperature:** `device/baseline.sh [SECS]` — overall/again
+  per-core CPU busy from `/proc/stat`, top consumers, and
+  `/sys/class/thermal/thermal_zone*` before/after, read-only.
+- **Boot time:** wall time from the Aetherium "start" tap to the Hyprland
+  desktop appearing (serial/VNC watch), as in route F.
+
+These feed the comparison table against C (鸿融), D (native), B/G.
+
 ## Status
 
 In progress. Static HMV analysis done (above). TCG baseline and the on-device

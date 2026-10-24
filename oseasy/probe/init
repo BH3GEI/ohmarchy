@@ -2,8 +2,16 @@
 # Oseasy VM boot probe (initramfs /init). Reports to the serial port, which
 # StratoVirt writes to /data/log/hwf_service/vmlog on the host, and to tty0.
 /bin/busybox --install -s /bin
+# kmod, not busybox, for module loading (busybox ignores updates/ and .ko.zst deps)
+rm -f /bin/modprobe /bin/insmod /bin/rmmod /bin/lsmod /bin/depmod /bin/modinfo
 export PATH=/usr/bin:/bin
 mount -t proc proc /proc; mount -t sysfs sys /sys; mount -t devtmpfs dev /dev
+echo /usr/bin/modprobe > /proc/sys/kernel/modprobe
+# module options from the kernel command line (vmwgfx.x=y), for kmod
+mkdir -p /etc/modprobe.d
+for a in $(cat /proc/cmdline); do
+    case $a in vmwgfx.*=*) o=${a#vmwgfx.}; echo "options vmwgfx $o" >> /etc/modprobe.d/cmdline.conf ;; esac
+done
 mkdir -p /dev/pts; mount -t devpts devpts /dev/pts
 log() { echo "[probe] $*" > /dev/ttyAMA0 2>/dev/null; echo "[probe] $*" > /dev/tty0 2>/dev/null; }
 cmd=$(cat /proc/cmdline)

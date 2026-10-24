@@ -45,6 +45,8 @@ cp -a "$M"/modules.order "$M"/modules.builtin* "$R/lib/modules/$kver/"
     kernel/drivers/block/virtio_blk.ko* kernel/drivers/input kernel/drivers/hid \
     kernel/drivers/usb kernel/fs/fat kernel/fs/nls kernel/lib "$R/lib/modules/$kver/" 2>/dev/null || true)
 cp -a "$M/updates" "$R/lib/modules/$kver/"
+# only the patched vmwgfx: the kernel's own autoload would otherwise pick the in-tree one
+rm -rf "$R/lib/modules/$kver/kernel/drivers/gpu/drm/vmwgfx"
 cp "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/"
 # the probe chooses the options on the kernel command line; drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"

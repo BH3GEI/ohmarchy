@@ -1120,6 +1120,26 @@ int vmw_kms_sou_do_surface_dirty(struct vmw_private *dev_priv,
 	if (ret)
 		goto out_unref;
 
+	/*
+	 * HVM keeps its own copy of the surface (a D3D11 texture) and does not
+	 * read the backing MOB on a blit. CPU writes (fbdev, dumb buffers) must
+	 * be uploaded first; kernel-side writes bypass the mkwrite-based dirty
+	 * tracking, so upload the whole surface before every blit.
+	 */
+	if (dev_priv->hvm_mmio) {
+		struct {
+			SVGA3dCmdHeader header;
+			SVGA3dCmdUpdateGBSurface body;
+		} *ucmd = VMW_CMD_RESERVE(dev_priv, sizeof(*ucmd));
+
+		if (ucmd) {
+			ucmd->header.id = SVGA_3D_CMD_UPDATE_GB_SURFACE;
+			ucmd->header.size = sizeof(ucmd->body);
+			ucmd->body.sid = srf->id;
+			vmw_cmd_commit(dev_priv, sizeof(*ucmd));
+		}
+	}
+
 	sdirty.base.fifo_commit = vmw_sou_surface_fifo_commit;
 	sdirty.base.clip = vmw_sou_surface_clip;
 	sdirty.base.dev_priv = dev_priv;

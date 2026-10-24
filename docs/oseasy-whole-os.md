@@ -293,3 +293,42 @@ Built 2026-10-24 16:25 against agent-2a's `linux-aarch64` 7.2.12-1.1 (HMV patche
 
 The ISO and the qcow2 are also in the Download folder (下载), owned
 `20001006:file_manager`, mode 640, like the other images there.
+
+### First run on the MateBook 14 (vm.lock slot 16:38-18:38, 2026-10-24)
+
+鸿融's main VM powered off from inside the guest (16:42), Oseasy's Windows VM shut
+down from its Start menu and deleted in Oseasy (backup above, its SHA-256
+re-checked just before), then a new VM from `oseasy-probe.iso` through
+立即创建 → 从U盘或本地导入 → 镜像不符合要求 (系统架构: 未知) → 下一步 → 继续安装 →
+仍要安装 → 6 cores / 8 GB / 256 GB → 开始安装. In this app version the create
+flow only offers ISOs; the qcow2 import is not reachable from it.
+
+- **Linux 7.2.12 boots in Oseasy** with `arm64.hmv_idreg_quirk` (all 6 vCPUs up,
+  initramfs shell, NIC as `172.16.100.2`, telnet from the host works). The
+  "every kernel >= 6.5 hangs" finding from the Fold was the same HMV ID-register
+  problem as in 鸿融.
+- The guest's serial console lands in `/data/log/hwf_service/vmlog` as
+  `chardev.rs:207` lines: the whole boot log is readable on the host.
+- The kernel's own module autoload went through busybox `modprobe`, which ignores
+  `updates/`, so the in-tree vmwgfx loaded first and crashed on the MMIO BAR used
+  as an I/O port (`vmw_detect_version`, address `PCI_IOBASE + 0x20227100`). The
+  probe now points `/proc/sys/kernel/modprobe` at kmod and leaves the in-tree
+  vmwgfx out.
+- vmwgfx-oseasy 7.2 binds: SVGA 2, 3D, DX, SM4, GB objects, screen objects,
+  VKMS vblank; `card0` + `renderD128`; preferred mode `2100x1511` at **120.00 Hz**
+  (the host window size). The host logs `define screen w 2100 h 1511` and DXVK
+  creates a `2100x1511` mailbox swapchain.
+- With fbdev on a surface-backed dumb buffer the window turns **black but is
+  being presented**: while the guest writes to `/dev/fb0` in a loop, the host
+  composes 58 frames/s and the VM window receives 54 buffers/s
+  (`NativeWindowFlushBuffer`). The blits arrive; the host's copy of the surface
+  (a D3D11 texture) never gets the guest's CPU writes. vmwgfx relies on the host
+  reading the backing MOB (as VMware does) and only uploads regions that its
+  mkwrite-based dirty tracking caught, which kernel-side fbdev writes bypass.
+  Next: upload (`UPDATE_GB_SURFACE`) before each screen-object blit.
+- With BO-backed dumb buffers (`hvm_dumb_bo=1`, GMRFB blits) the host does not
+  even switch away from the firmware framebuffer: the window keeps showing the
+  last EFI-framebuffer frame, and the host logs nothing.
+- While Oseasy shows a VM, the host panel stays at 60 Hz (`activeMode`), with the
+  Windows guest too.
+- Unloading vmwgfx crashes in this setup; reboot the guest (`sysrq b`) instead.

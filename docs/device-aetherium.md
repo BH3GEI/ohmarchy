@@ -61,9 +61,23 @@ into `libhmlibs.so.0`.
 **Implication so far:** an HMV accel for QEMU is conceivable (it is an ioctl ABI
 on an fd), but it would mean re-implementing StratoVirt's `hmv/ioctl` set, and
 the gating question is permissions: `/dev/hmv` opens from `su`, but whether the
-create-VM/run ioctls succeed outside the `ohsw_stratovirt` domain / without
-`MANAGE_VM` is not yet tested (it needs the VM lock and the 鸿融 VM stopped).
-More ioctl numbers decoded from `stratovirt` and the permission test: pending.
+create-VM/run ioctls succeed outside the `ohsw_stratovirt` domain was tested
+directly (`device/hmv-permtest.sh`, VM lock held, 鸿融 stopped).
+
+**Permission test result (2026-10-25 — no SELinux/permission gate on `/dev/hmv`):**
+A root process in the `su` domain running an unlabeled binary from
+`/data/local/tmp` (`device/hmv/hmvcreate.c`) **opens `/dev/hmv` successfully**, and
+its create-VM ioctls return `ENOSYS`/`EINVAL` — **not `EPERM`/`EACCES`**. So neither
+the `dev_hmv_file` label nor `MANAGE_VM` blocks a non-system root caller from the
+device or its ioctls; the calls fail only because the guessed ioctl number/arg
+struct is wrong (the real ABI is undocumented). A `/data` **copy of `stratovirt`**
+(which loses the `ohsw_stratovirt_exec` label and stays in the `su` domain) runs as
+far as StratoVirt's own **config precheck** ("VmConfig is unhealthy" — from minimal
+`-machine` args, not a permission error). So the gate for a root-side custom VMM is
+**not** permissions/SELinux/domain — it is knowing StratoVirt's closed `0xAE` ioctl
+ABI. An `hmv` accel for a non-system VMM (Route I, root) is thus feasible in
+principle; remaining work is reversing the create-VM/vCPU/memslot/register ioctl
+numbers and structs from `stratovirt`/`libhmlibs.so.0`.
 
 ## Can QEMU use HMV? (feasibility)
 

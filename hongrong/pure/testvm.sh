@@ -43,6 +43,12 @@ start)
     # outbound NAT for the guest (鸿融's own rules go away with its VM)
     iptables -t nat -C POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null ||
       iptables -t nat -A POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE
+    # the host's policy routing sends 172.16.100.0/24 out wlan0 (rule 16000:
+    # fwmark 0 -> table 2009) and forwarded guest packets find no default
+    # route in main: route the subnet to the tap, and the guest's traffic
+    # through table 2009 (the Wi-Fi default route)
+    ip rule show pref 10500 | grep -q . || ip rule add to 172.16.100.0/24 lookup main pref 10500
+    ip rule show pref 10501 | grep -q . || ip rule add iif $TAP lookup 2009 pref 10501
   fi
   gpu=
   if [ "${TESTVM_GPU:-0}" = 1 ]; then
@@ -95,6 +101,7 @@ stop)
   ;;
 net-down)
   iptables -t nat -D POSTROUTING -s 172.16.100.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null
+  ip rule del pref 10500 2>/dev/null; ip rule del pref 10501 2>/dev/null
   ip link del $TAP 2>/dev/null; echo "tap and NAT rule removed"
   ;;
 *) sed -n '2,13p' "$0"; exit 1 ;;

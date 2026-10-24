@@ -247,3 +247,42 @@ gives glmark2 933 at 640x480 and es2gears at its display's 60 Hz.
 
 Not the main route yet: the transport and security parts are in place, the
 protocol limit needs the proxy pair.
+
+## First run (2026-10-24 09:07–09:40 PDT, vm.lock, headless)
+
+`tools/ownvm/ownvm.sh` on `omarchy-own.img` (agent-2a's `omarchy-pure.img`
+plus the no-preferred 120 Hz EDID), StratoVirt on HMV, 6 vCPUs, 8 GiB,
+vhost-device-gpu (virglrenderer) + `vhost-user-gpu-pci,virgl=true`, NIC with
+rx/tx iothreads, no display. Linux 7.2.12-1.1 with `arm64.hmv_idreg_quirk`.
+
+| Check | Result |
+|---|---|
+| Network | ping, ssh, DNS, HTTPS (`archlinux.org` 200 in 1.7 s), `pacman -S` all work |
+| Host scanout | `output 0: 2160x1440+0+0` |
+| 120 Hz | probed modes `"2160x1440": 120 424500 …` first, then 60; active CRTC (`dri/0/state`) `"2160x1440": 120 424500 2160 2208 2240 2320 1440 1443 1453 1525` |
+| GPU | `virgl (zink Vulkan 1.2(Maleoon 916 (ARM_PROPRIETARY)))`: 3D on the host GPU, through Zink |
+| Docker | 29.9.2, overlayfs, cgroup v2, systemd driver; `hello-world` and a compose project (nginx + a client container: `Welcome to nginx!`, exit 0) through registry mirrors (`docker.m.daocloud.io`, `docker.1ms.run` in `/etc/docker/daemon.json`); Docker Hub direct times out |
+| Open | published port 8080 not reachable from the guest itself (`curl 127.0.0.1:8080` → 000); not looked into |
+| Not done | anything on screen: option A is closed, vtest needs a shm proxy |
+
+What it took:
+
+- **Host routing.** With 鸿融's bridge gone the guest's subnet sits on the tap,
+  but the host's policy routing sends `172.16.100.2` out `wlan0` (rule 16000,
+  `fwmark 0/0xffff iif lo` → table 2009, before main), and forwarded guest
+  packets look up main, which has no default route. Two rules fix both
+  directions (now in `testvm.sh start`, removed by `net-down`):
+  `ip rule add to 172.16.100.0/24 lookup main pref 10500` and
+  `ip rule add iif hmvtest0 lookup 2009 pref 10501`. With those and the NIC
+  iothreads the guest receives and the host reaches it. The tap counters
+  already showed traffic in both directions before the rules, so whether the
+  iothreads alone were needed is not separated by this run.
+- **Guest access.** ohdev's sshd does not forward (`unsupported channel type`),
+  so the guest is reached by ssh from the host with a host-only key
+  (`ownvm.sh g`). ohdev's sshd also mangles quoting in a command argument, so
+  everything goes through `sh -s` on stdin.
+- **sudo.** The password comes from an environment variable, never a file;
+  sudo's timestamp then covers the rest of that ssh session. A rule written
+  offline with debugfs was lost: the guest had been killed (QMP powerdown does
+  not stop it), and the journal replayed on the next boot. Power the guest off
+  from inside (`sudo systemctl poweroff`).

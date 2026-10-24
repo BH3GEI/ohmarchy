@@ -6,8 +6,8 @@
 #   ownvm.sh start        testvm.sh start with TESTVM_GPU=1 on omarchy-own.img
 #   ownvm.sh wait [SECS]  wait for the guest's sshd (default 240 s)
 #   ownvm.sh g CMD...     run CMD in the guest as yao (stdin passed through)
-#   ownvm.sh sudo-setup   once per disk: passwordless sudo for yao, the password
-#                         read from $D/.pw (host only, never in the repo)
+#   ownvm.sh sudo-setup   once per disk: passwordless sudo for yao; the password
+#                         comes only from the environment (OWNVM_PW), never a file
 #   ownvm.sh stop         power the guest off, stop vhost-device-gpu, tap down
 #   ownvm.sh release      remove the lock (only ours)
 # The guest is reached from the host only: ohdev's sshd does not forward.
@@ -43,8 +43,8 @@ wait)
   ;;
 g) shift; G "$@" ;;
 sudo-setup)
-  [ -r $D/.pw ] || { echo "no $D/.pw"; exit 1; }
-  cat $D/.pw | G 'sudo -S -p "" sh -c "echo \"yao ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/90-ownvm-test && chmod 440 /etc/sudoers.d/90-ownvm-test" && sudo -n true && echo sudo ok'
+  [ -n "$OWNVM_PW" ] || { echo "set OWNVM_PW"; exit 1; }
+  printf '%s\n' "$OWNVM_PW" | G 'sudo -S -p "" sh -c "echo \"yao ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/zz-ownvm-test && chmod 440 /etc/sudoers.d/zz-ownvm-test" && sudo -n true && echo sudo ok'
   ;;
 stop)
   sh $TV stop; sh $TV net-down

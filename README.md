@@ -15,6 +15,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **E. Bare metal**: (no doc yet) | Linux directly on the HarmonyOS PC's hardware, with no HarmonyOS underneath | Not started; nothing in this repo yet |
 | **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 | **G. Whole OS in the 铠大师 VM**: [docs/vm-kaidashi.md](docs/vm-kaidashi.md) | The complete Omarchy AArch64 disk (UEFI + GRUB, linux-aarch64 7.2 with the HMV ID-register quirk) in sanway's Windows-on-ARM VM app `com.sanway.ecoengine` | Survey done: same system VM service as Oseasy (StratoVirt on HMV, `svga-pci` expected), one VM at a time; its Windows-11-24H2-ARM64-only ISO check is passed by a fake `install.wim`; no VM created yet |
+| **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
 
 <!-- progress:start -->
 ## Progress (updated hourly; last: 2026-10-24 01:10 PDT)
@@ -151,3 +152,19 @@ tools/kaidashi/hap-survey.sh work/kaidashi   # static look at the HAP on a host
 ```
 
 Details and status: [docs/vm-kaidashi.md](docs/vm-kaidashi.md).
+
+## Route H quick start
+
+On a host with `ssh ohdev` (HarmonyOS device, root), DevEco Studio and `python3`.
+Coordinated and TCG-only for now (HMV acceleration is under investigation):
+
+```sh
+device/sign-hap.sh                 # sign the route-F patched Aetherium with the device debug profile
+device/push-inputs.sh              # gzip the HAP and the Omarchy qcow2 to ohdev (one transfer at a time)
+device/install.sh                  # bm install the signed HAP as root
+# create the VM and run it from the Aetherium window (see docs/device-aetherium.md)
+```
+
+Static HMV analysis uses `device/hmv/` and `device/ohsh` (run a script on the
+device as root). Details and the acceleration findings:
+[docs/device-aetherium.md](docs/device-aetherium.md).

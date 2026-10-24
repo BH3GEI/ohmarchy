@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ohsh [-t SECS] SCRIPT_FILE|-   run a shell script on ohdev as root (route H helper).
+# ohsshd mangles quotes and backslashes in command lines, so the script travels as a file
+# (stdin -> /data/local/tmp/routeh/cmd.$$.sh) and runs with `sh`. Every ssh has a hard timeout.
+set -euo pipefail
+T=120
+[ "${1:-}" = -t ] && { T=$2; shift 2; }
+: "${OHDEV:=ohdev}"
+R=/data/local/tmp/routeh/cmd.$$.sh
+to() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+src=${1:--}; [ "$src" = - ] && src=/dev/stdin
+to 60 ssh -o ConnectTimeout=20 "$OHDEV" "mkdir -p /data/local/tmp/routeh; cat > $R" < "$src"
+to "$T" ssh -tt -o ConnectTimeout=20 "$OHDEV" "sh $R; rm -f $R" 2>&1 | tr -d '\r' | grep -v '^Connection to .* closed\.$'

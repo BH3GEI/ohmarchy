@@ -30,3 +30,6 @@ native/app/sign/app.p7b
 native/app/sign/profile.json
 # raw results of tests/ runs
 tests/results/
+
+# route H built probe binary (rebuild with device/hmv build line)
+device/hmv/hmvprobe

@@ -62,7 +62,9 @@ int main(void)
         capture = fork();
         if (capture == 0) {
             dup2(c, 1);
-            execlp("pw-record", "pw-record", "--raw", "--target", "ohmarchy-out", "-P",
+            // unbuffered: pw-record writes through stdio, which buffers a non-tty
+            // stdout; that added 50-100 ms
+            execlp("stdbuf", "stdbuf", "-o0", "pw-record", "--raw", "--target", "ohmarchy-out", "-P",
                    "{ stream.capture.sink = true node.passive = true node.name = ohmarchy-app-out }",
                    "--latency", "5ms", "--rate", "48000", "--channels", "2", "--format", "s16", "-", (char *)NULL);
             perror("pw-record");

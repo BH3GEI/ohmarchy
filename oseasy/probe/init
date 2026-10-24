@@ -1,0 +1,52 @@
+#!/bin/busybox sh
+# Oseasy VM boot probe (initramfs /init). Reports to the serial port, which
+# StratoVirt writes to /data/log/hwf_service/vmlog on the host, and to tty0.
+/bin/busybox --install -s /bin
+export PATH=/usr/bin:/bin
+mount -t proc proc /proc; mount -t sysfs sys /sys; mount -t devtmpfs dev /dev
+mkdir -p /dev/pts; mount -t devpts devpts /dev/pts
+log() { echo "[probe] $*" > /dev/ttyAMA0 2>/dev/null; echo "[probe] $*" > /dev/tty0 2>/dev/null; }
+cmd=$(cat /proc/cmdline)
+log "up: $(uname -r)"
+log "cmdline: $cmd"
+for d in /sys/bus/pci/devices/*; do
+    log "pci $(basename $d) $(cat $d/vendor):$(cat $d/device) class $(cat $d/class)"
+done
+
+# network: the HarmonyOS side of the bridge is 172.16.100.1, no DHCP
+modprobe virtio_net 2>/dev/null
+i=0; while [ $i -lt 20 ] && ! ls /sys/class/net | grep -qv '^lo$'; do sleep 0.5; i=$((i+1)); done
+IF=$(ls /sys/class/net | grep -v '^lo$' | head -1)
+ip link set lo up
+if [ -n "$IF" ]; then
+    ip link set "$IF" up
+    ip addr add 172.16.100.2/24 dev "$IF"
+    ip route add default via 172.16.100.1
+    telnetd -p 5000 -l /bin/sh
+    log "net: $IF 172.16.100.2/24, telnet root shell on port 5000"
+else
+    log "net: no interface"
+fi
+
+case " $cmd " in
+*" probe.vmwgfx=1 "*)
+    log "loading vmwgfx"
+    modprobe vmwgfx; log "modprobe vmwgfx rc=$?"
+    sleep 2
+    dmesg | grep -i -e vmwgfx -e '\[drm' | while read -r l; do log "$l"; done
+    if [ -e /dev/dri/card0 ]; then
+        modetest -M vmwgfx -c > /tmp/connectors.txt 2>&1
+        conn=$(awk '/\tconnected\t/{print $1; exit}' /tmp/connectors.txt)
+        mode=$(awk '/\tconnected\t/{f=1; next} f && /^  #0 /{print $2; exit}' /tmp/connectors.txt)
+        log "connector $conn mode $mode"
+        grep -A3 '^  #0 ' /tmp/connectors.txt | while read -r l; do log "mode: $l"; done
+        # test pattern with page flips for 30 s; modetest prints the flip rate
+        timeout 30 modetest -M vmwgfx -s "$conn:$mode" -v > /tmp/modetest.txt 2>&1
+        grep -i -e freq -e fail -e error /tmp/modetest.txt | tail -5 | while read -r l; do log "modetest: $l"; done
+        dmesg | grep -i -e vmwgfx -e '\[drm' | tail -20 | while read -r l; do log "after: $l"; done
+    fi
+    ;;
+esac
+log "ready; shell on tty0 and telnet 172.16.100.2:5000"
+setsid cttyhack sh -c 'exec sh </dev/tty0 >/dev/tty0 2>&1' &
+while :; do sleep 3600; done

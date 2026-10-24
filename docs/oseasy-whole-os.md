@@ -231,3 +231,18 @@ in the build environment); it puts the module in `updates/` and the options in
 `linux-aarch64` package with the HMV patches.
 
 `oseasy/vmlock.sh take|show|drop` handles the host's one-VM lock.
+
+### Boot probe
+
+`oseasy/probe/build.sh OUTDIR KERNEL.pkg VMWGFX.pkg` (as root in Arch Linux
+ARM; tools are fetched with `pacman -Sw` and unpacked, nothing installed) makes
+`oseasy-probe.iso` (El Torito) and `oseasy-probe.img` (GPT, for a qcow2 import)
+with the same ESP: standalone GRUB, the 7.2 kernel, an initramfs with busybox,
+kmod, modetest and the vmwgfx-oseasy module. [`init`](../oseasy/probe/init)
+reports the PCI devices, brings the NIC up as `172.16.100.2/24`, serves a telnet
+root shell on port 5000, and for the vmwgfx entries loads the module and runs
+`modetest -v` for 30 s (test pattern plus page-flip rate). Everything is also
+written to the serial port, which ends up in the host's `vmlog`. Boot entries:
+EFI framebuffer only; vmwgfx with surface-backed dumb buffers at 120 Hz
+(default); the same with BO-backed dumb buffers; vmwgfx with `hvm_trace` and
+DRM debug at 60 Hz.

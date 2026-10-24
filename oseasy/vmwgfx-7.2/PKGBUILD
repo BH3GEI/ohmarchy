@@ -16,7 +16,7 @@ source=()
 
 build() {
   rm -rf src && cp -r "${VMWGFX_SRC:-$startdir/../../driver/vmwgfx-oseasy-7.2}" src
-  make -C "${KDIR:?}" M="$srcdir/src" CONFIG_DRM_VMWGFX=m modules
+  make -C "${KDIR:?}" M="$srcdir/src" CONFIG_DRM_VMWGFX=m -j${JOBS:-2} modules
 }
 
 package() {

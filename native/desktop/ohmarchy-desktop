@@ -21,6 +21,11 @@ start)
     # has run, count it as done so its notifications are not repeated.
     [ -s ~/.local/state/omarchy/first-run.log ] && omarchy-done mark first-run-user > /dev/null 2>&1
     [ -S "$R/bus" ] || dbus-daemon --session --fork --address="$DBUS_SESSION_BUS_ADDRESS" > /dev/null
+    # Sound: PipeWire with its Pulse server, out to the display app (ohmarchy-audio.conf)
+    for d in pipewire wireplumber pipewire-pulse; do
+        pgrep -u "$(id -u)" -x "$d" > /dev/null || setsid "$d" < /dev/null >> "$R/$d.log" 2>&1 &
+        [ $d = pipewire ] && for _ in $(seq 30); do [ -S "$R/pipewire-0" ] && break; sleep 0.1; done
+    done
     setsid start-hyprland --path /opt/ohmarchy/bin/Hyprland -- -c ~/.config/hypr/ohdisplay.lua < /dev/null > "$LOG" 2>&1 &
     for _ in $(seq 50); do ss -ltn 2>/dev/null | grep -q '127.0.0.1:5900 ' && break; sleep 0.2; done
     running && echo "started (log: $LOG)" || { echo "failed:"; tail -5 "$LOG"; exit 1; }
@@ -29,6 +34,9 @@ stop)
     # start-hyprland restarts Hyprland when it dies, so stop the watchdog first.
     pkill -u "$(id -u)" -f '^start-hyprland'
     pkill -u "$(id -u)" -x wayvnc
+    pkill -u "$(id -u)" -x pipewire-pulse
+    pkill -u "$(id -u)" -x wireplumber
+    pkill -u "$(id -u)" -x pipewire
     pkill -u "$(id -u)" -x Hyprland
     for _ in $(seq 50); do running || break; sleep 0.1; done
     running && pkill -9 -u "$(id -u)" -x Hyprland

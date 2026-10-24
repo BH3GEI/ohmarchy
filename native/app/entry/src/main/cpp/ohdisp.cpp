@@ -29,6 +29,7 @@
 #include <thread>
 #include <vector>
 
+#include "audio.h"
 #include "gpu.h"
 
 #undef LOG_DOMAIN
@@ -528,6 +529,7 @@ void StartOnce()
     if (g_started.compare_exchange_strong(expected, true)) {
         std::thread(FrameLoop).detach();
         std::thread(RfbLoop).detach();
+        AudioStart();
     }
 }
 

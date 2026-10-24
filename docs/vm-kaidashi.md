@@ -357,7 +357,13 @@ for an empty disk is "Write Omarchy disk from the Documents share": it loads
 `fuse`/`virtiofs`, mounts `shared_dir` and writes `ohmarchy-kds-disk.img.gz`
 (or `.img`) to `/dev/vda`. `tools/kaidashi/stage-disk.sh put IMAGE` puts the
 gzip-compressed image there, `stage-disk.sh remove` takes it away right after
-(文档 is the owner's personal folder).
+(文档 is the owner's personal folder). `stage-disk.sh putraw IMAGE` makes a
+sparse copy instead of compressing (`wininspect/slice.py`): route G's 64 GiB
+Omarchy disk (9.0 GiB of data) takes 11 s. Stage it only inside the lock
+slot and remove it right after the write: ohdev runs `cloudfiledaemon` and
+has the CloudDrive/CloudSync capabilities; whether 文档 is synced could not be
+told from the device read-only (`hmdfs/cloud` holds 559 KB), so a large file
+there might be uploaded.
 
 On the host, `tools/kaidashi/push-disk.sh IMAGE` streams the raw image with
 toybox `nc`. The VM's disk has `detect-zeroes=unmap`, so the zero runs of a

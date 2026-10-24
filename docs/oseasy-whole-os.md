@@ -419,3 +419,24 @@ first, so the patched module wins over the in-tree one). On the host,
 [`oseasy/push-disk.sh`](../oseasy/push-disk.sh) streams the image read-only:
 `sh push-disk.sh /data/local/vmtest/omarchy-pure.img`. Then reboot the guest;
 the firmware boots the disk before the ISO.
+
+### Comparison: Oseasy vs 鸿融 vs native (filling in)
+
+Same machine (MateBook 14 HM740, panel 2880x1920, modes 120/80/60/48 Hz). 鸿融 and
+native figures are from [native-desktop.md](native-desktop.md); Oseasy figures from
+the runs above unless marked pending.
+
+| | Oseasy (Route B) | 鸿融 (Route C) | Native (Route D) |
+|---|---|---|---|
+| Guest display device | `svga-pci` (VMware SVGA II, VirtualBox VMSVGA-style), vmwgfx-oseasy | `vhost-user-gpu-pci` (virtio-gpu, virgl) | none (HarmonyOS window) |
+| Modes offered to the guest | driver-made; `2100x1511@120` with `hvm_refresh=120` (no EDID) | EDID, 60 Hz only | `@120` |
+| Guest frame rate (KMS page flips) | 120.0 (kmsgl, modetest) | 114-120 (es2gears, reported) | 114-120 |
+| Frames the host window receives | 120/s (`NativeWindowFlushBuffer`, kmsgl) | 112-123/s | 116-118/s |
+| Frames on screen | 60 (panel stays at 60 Hz while Oseasy shows a VM) | 60 | 117-120 |
+| GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
+| Runs next to another VM | no: the system VM kit refuses (`Not support vm multi-instance`); not exercised (rule: one VM at a time) | no (same kit) | yes (no VM) |
+| Cold start to desktop | pending | | |
+| App launch times | pending | | |
+| es2gears / glmark2 | pending | | |
+| Workspace switching on screen | pending (60 at most) | 59-60 | 109-115 |
+| 3 warm reboots, 1 h soak | pending | | |

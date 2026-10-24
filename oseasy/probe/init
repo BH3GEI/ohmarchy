@@ -10,7 +10,7 @@ echo /usr/bin/modprobe > /proc/sys/kernel/modprobe
 # module options from the kernel command line (vmwgfx.x=y), for kmod
 mkdir -p /etc/modprobe.d
 for a in $(cat /proc/cmdline); do
-    case $a in vmwgfx.*=*) o=${a#vmwgfx.}; echo "options vmwgfx $o" >> /etc/modprobe.d/cmdline.conf ;; esac
+    case $a in (vmwgfx.*=*) o=${a#vmwgfx.}; echo "options vmwgfx $o" >> /etc/modprobe.d/cmdline.conf ;; esac
 done
 mkdir -p /dev/pts; mount -t devpts devpts /dev/pts
 log() { echo "[probe] $*" > /dev/ttyAMA0 2>/dev/null; echo "[probe] $*" > /dev/tty0 2>/dev/null; }
@@ -38,8 +38,12 @@ fi
 
 case " $cmd " in
 *" probe.vmwgfx=1 "*)
-    log "loading vmwgfx"
-    modprobe vmwgfx; log "modprobe vmwgfx rc=$?"
+    # vmwgfx may already be loaded without options by an early autoload: reload
+    # it with the vmwgfx.* options from the kernel command line
+    opts=$(for a in $cmd; do case $a in (vmwgfx.*=*) printf '%s ' "${a#vmwgfx.}" ;; esac; done)
+    log "loading vmwgfx $opts"
+    modprobe -r vmwgfx 2>/dev/null
+    modprobe vmwgfx $opts; log "modprobe vmwgfx rc=$?"
     sleep 2
     dmesg | grep -i -e vmwgfx -e '\[drm' | while read -r l; do log "$l"; done
     if [ -e /dev/dri/card0 ]; then
@@ -48,6 +52,11 @@ case " $cmd " in
         mode=$(awk '/\tconnected\t/{f=1; next} f && /^  #0 /{print $2; exit}' /tmp/connectors.txt)
         log "connector $conn mode $mode"
         grep -A3 '^  #0 ' /tmp/connectors.txt | while read -r l; do log "mode: $l"; done
+        # GPU rendering on KMS for 20 s (fps, renderer, centre pixel)
+        if [ -x /usr/bin/kmsgl ]; then
+            timeout 25 kmsgl 20 > /tmp/kmsgl.txt 2>&1
+            while read -r l; do log "$l"; done < /tmp/kmsgl.txt
+        fi
         # test pattern with page flips for 30 s; modetest prints the flip rate
         timeout 30 modetest -M vmwgfx -s "$conn:$mode" -v > /tmp/modetest.txt 2>&1
         grep -i -e freq -e fail -e error /tmp/modetest.txt | tail -5 | while read -r l; do log "modetest: $l"; done

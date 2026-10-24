@@ -48,7 +48,7 @@ cp -a "$M/updates" "$R/lib/modules/$kver/"
 # only the patched vmwgfx: the kernel's own autoload would otherwise pick the in-tree one
 rm -rf "$R/lib/modules/$kver/kernel/drivers/gpu/drm/vmwgfx"
 cp "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/"
-# the probe chooses the options on the kernel command line; drop the package's line
+# the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"
 # dynamic tools with their libraries (kmod reads .ko.zst; busybox modprobe cannot)
@@ -58,6 +58,14 @@ copy_bin() {
         cp -nL "$l" "$R/usr/lib/" 2>/dev/null || true
     done
 }
+# GPU rendering test on KMS (Mesa's SVGA gallium driver through GBM/EGL)
+gcc -O2 -o "$W/kmsgl" "$here/kmsgl.c" $(pkg-config --cflags --libs libdrm gbm egl glesv2) -lm
+copy_bin "$W/kmsgl"
+for l in /usr/lib/dri/vmwgfx_dri.so /usr/lib/gbm/dri_gbm.so /usr/lib/libEGL_mesa.so.0; do
+    install -D -m755 "$(readlink -f "$l")" "$R$l"
+    ldd "$l" | awk '/=> \//{print $3}' | while read -r d; do cp -nL "$d" "$R/usr/lib/" 2>/dev/null || true; done
+done
+install -D -m644 /usr/share/glvnd/egl_vendor.d/50_mesa.json "$R/usr/share/glvnd/egl_vendor.d/50_mesa.json"
 copy_bin /usr/bin/kmod
 copy_bin /usr/bin/modetest
 copy_bin /usr/bin/kmsprint 2>/dev/null || true

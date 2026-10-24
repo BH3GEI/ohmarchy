@@ -107,3 +107,67 @@ so the guest always listens:
 - `write-esp.sh` rewrites only the ESP from the ISO and keeps the root
   filesystem. It needs the installer booted again.
 - To reset the app completely: `hdc shell bm clean -n com.oseasy1.ohvm -d`.
+
+## MateBook 14 (ohdev), 2026-10-24
+
+Second device: HUAWEI MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`
+(OpenHarmony 7.0.0.120), HongMeng kernel 1.11.13.0. Survey script:
+[`oseasy/probe.sh`](../oseasy/probe.sh) (read-only).
+
+### What Oseasy is
+
+- `com.oseasy1.ohvm` **3.1.1.7** (versionCode 3110007), vendor 武汉噢易云计算股份有限公司,
+  `appDistributionType: app_gallery`, `installSource: pre-installed`, compiled
+  with SDK 6.1.1.125. The HAP is 290 MB, of which 227 MB is
+  `resources/rawfile/oetool.iso` (the Windows guest tools). Native code is only
+  `libentry.so`/`libcommon.so`; the app does not run a VMM itself.
+- It asks for no virtualization permission of its own. The VM is described to
+  the system `@ohos.virtualization` kit (strings in `ets/modules.abc`:
+  `cpuNum memorySize diskSize biosPath graphicDevice xres yres
+  accelerationEnabled storageDevice networkDevice …`,
+  `virtualization.on('vmMemoryChange')`), and `vm_manager` (uid `hwf_service`)
+  starts StratoVirt for it. Its VM lives next to 鸿融's under
+  `/data/service/el0/virt_service/100/vm_manager/<appid>/com.oseasy1.ohvm/img/`
+  (`vm.qcow2` + `stratovirt-vars`); here the app id is `68eaa5b5` and the disk
+  holds a Windows 11 install from 2026-10-23.
+- Image intake (resource strings): a Windows 11 ARM ISO (download from Microsoft
+  or local file), **or an imported `.qcow2`** (导入虚拟机镜像 / 自动查找 .qcow2 镜像,
+  with the warning 请您确保当前qcow2文件是ARM架构Windows虚拟机文件). Nothing in
+  the strings points at a signature or checksum on the image; the ISO check is
+  an architecture probe (`iso_validate_result`, 系统架构: 未知 on the Fold) that
+  can be overridden. Licensing: a one-time trial per device, then purchase
+  (每台终端仅1次试用机会).
+- The app also carries a small agent client for Linux guests: it connects to
+  `tcp://172.16.100.2` and speaks a length/tag framed protocol with the commands
+  `heartbeat shutdown reboot stop-linux stopvm-async install_complete
+  auth_confirm` (`initLinuxSupport` / `removeLinuxSupport`).
+
+### The VMM
+
+Oseasy's last start (`/data/log/hwf_service/vmlog4`, 2026-10-23 09:38, pid 15337):
+
+- `stratovirt` (`/system/bin/virt_service/vm_engine/stratovirt/stratovirt`),
+  `hypervisor: Hmv` (it holds `/dev/hmv`, `crw-rw---- root:hwf_service 10,232`,
+  like 鸿融's StratoVirt), 6 vCPUs, 8 GB, `mem_share`.
+- Firmware: `/system/opt/virt_service/virtualized_hwf/stratovirt-uefi` (鸿融's
+  Linux VM uses `stratovirt-uefi-linux`), vars in the app's `img/`.
+- Disks: `vm.qcow2` on virtio-blk (io_uring, discard), the install ISO and
+  `oetool.iso` as USB storage on xHCI.
+- Display: `svga-pci` plus `-display ohui`. Its backend is
+  `devices/src/display/svga/processor_dx/*`: SVGA3D guest-backed surfaces,
+  VGPU10 (DX10/SM4) command and DXBC shader parsing, executed on D3D11 through
+  DXVK on Vulkan (`stratovirt_d3d11.log`: `D3D_FEATURE_LEVEL_11_1`, presenter
+  `VK_PRESENT_MODE_MAILBOX_KHR`, 5 images), plus a DXVA2 video decoder. The guest
+  surface follows the host window (`HostWindowInfoEvent 2100x1511` →
+  `update surface size`). 鸿融 gives Linux guests virgl (`vhost-device-gpu`,
+  zink on Maleoon) instead.
+- Other devices: USB keyboard and tablet, virtio-multitouch, virtio-net (tap,
+  2 queues), `ivshmem-scream` audio, virtio-serial ports for the vendor agent,
+  vhost-user-fs, balloon, pvpanic, a log device. The serial console is
+  `RedirectToLog`.
+- In this log only Oseasy's VM runs (鸿融's VMs were created later the same
+  day), so whether both apps can run at once is not answered yet.
+
+Sources: [Oseasy launch coverage, mydrivers](https://news.mydrivers.com/1/1048/1048600.htm),
+[unwire.hk hands-on (ISO install)](https://unwire.hk/2025/05/12/harmonyos-windows11/notebook/),
+[ithome](https://www.ithome.com/0/940/942.htm).

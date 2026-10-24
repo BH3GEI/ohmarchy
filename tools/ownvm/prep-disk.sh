@@ -4,8 +4,9 @@
 # virtio-gpu connector and the kernel argument that loads it.
 #   perl -e 'alarm 3600; exec @ARGV' ssh ohdev sh -s [SRC [DST]] < tools/ownvm/prep-disk.sh
 # Needs next to DST: ohmarchy-120.bin (tools/ownvm/mkedid.py) and edid.cpio
-# (a newc cpio holding usr/lib/firmware/edid/ohmarchy-120.bin). Docker is
-# installed later inside the running guest (pacman needs the guest).
+# (a newc cpio holding usr/lib/firmware/edid/ohmarchy-120.bin), and optionally
+# authorized_keys (installed for yao, so the guest takes ssh keys; the disk has
+# none). Docker is installed later inside the running guest.
 #
 # The host cannot mount this ext4: HongMeng's driver rejects its incompat
 # features (0x22c2: "has unsupported incompat features"), so the root is edited
@@ -67,6 +68,19 @@ write $DIR/ohmarchy-edid.conf ohmarchy-edid.conf
 EOF
   echo 'FILES+=(/usr/lib/firmware/edid/ohmarchy-120.bin)' > $DIR/ohmarchy-edid.conf
   DBG -w -f $DIR/debugfs.cmds 2>&1 | grep -vE '^debugfs [0-9]|^debugfs: (cd|mkdir)' | grep -v 'File not found by ext2_lookup' | head -20
+fi
+if [ -r $DIR/authorized_keys ]; then
+  U=$(DBG -R 'stat /home/yao' 2>/dev/null | grep -oE 'User: +[0-9]+' | grep -oE '[0-9]+')
+  G=$(DBG -R 'stat /home/yao' 2>/dev/null | grep -oE 'Group: +[0-9]+' | grep -oE '[0-9]+')
+  printf '%s\n' 'mkdir /home/yao/.ssh' 'cd /home/yao/.ssh' 'rm authorized_keys' \
+    "write $DIR/authorized_keys authorized_keys" \
+    "set_inode_field /home/yao/.ssh uid $U" "set_inode_field /home/yao/.ssh gid $G" \
+    'set_inode_field /home/yao/.ssh mode 040700' \
+    "set_inode_field /home/yao/.ssh/authorized_keys uid $U" \
+    "set_inode_field /home/yao/.ssh/authorized_keys gid $G" \
+    'set_inode_field /home/yao/.ssh/authorized_keys mode 0100600' > $DIR/ak.cmds
+  DBG -w -f $DIR/ak.cmds > /dev/null 2>&1; rm -f $DIR/ak.cmds
+  echo "authorized_keys for yao ($U:$G)"
 fi
 echo "== check"
 DBG -R 'cat /boot/grub/grub.cfg' 2>/dev/null | grep -nE '^[[:space:]]*(linux|initrd)'

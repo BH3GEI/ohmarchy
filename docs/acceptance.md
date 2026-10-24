@@ -14,7 +14,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Soak, screen and network: pending |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Screen off/on: pending. Real Wi-Fi switch: needs someone on site |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
@@ -186,6 +186,29 @@ Result 2026-10-24 17:30-17:48 (load around 20): 100 of 100 opened (slowest 1.28 
 memory 714.3 MB before, 715.2 MB after (+0.1 %; every 10 rounds within 712-715 MB);
 nothing had to be killed. 15 rounds left a process after the window closed: all
 Nautilus, which stays resident by design and exits on SIGTERM.
+
+### C2. Network loss
+
+`tests/stability/network.sh`. The session uses the host's network, and the ssh
+link to the host must not drop, so the host's Wi-Fi is not touched; the outages are
+narrow instead:
+
+| Outage (30 s) | How | Result 2026-10-24 18:10 |
+|---|---|---|
+| One site unreachable | `ip rule ... priority 100 blackhole` for www.baidu.com's addresses only (the host routes by policy rules, so a route in the main table has no effect); removed after, and by a timer should the test die | pass: down during, back 0.1 s after |
+| DNS unreachable | the session's own `/etc/resolv.conf` points to 192.0.2.1, then restored | pass: names fail during, back 0.1 s after |
+
+Measured with curl (a new connection each time). Not done: a long-running browser
+across the outage, and a real Wi-Fi switch or disconnect (needs someone at the
+machine: if the host's Wi-Fi did not come back, the machine would be out of reach).
+
+### C3. Soak
+
+`tests/stability/soak.sh start` runs `smoke.py` every hour for 24 h on the host
+(detached), in the desktop session: Hyprland's pid (a change means a restart), a
+window opens and closes, clipboard, file write, sound into PipeWire, system bus,
+desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
+Desktop restarts by the tests themselves (cold start) are logged in the results.
 
 ## E. Security
 

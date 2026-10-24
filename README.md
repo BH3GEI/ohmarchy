@@ -18,15 +18,15 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-24 01:10 PDT)
+## Progress (updated hourly; last: 2026-10-24 01:25 PDT)
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Patching the 7.2 `vmwgfx` driver (refresh/vblank parameters) so the Hyprland desktop reaches the Oseasy window; then a qcow2 import with the 7.2 kernel and `arm64.hmv_idreg_quirk` | Oseasy 3.1.1.7 surveyed on the MateBook 14: StratoVirt on HMV, VMSVGA with a DXVK backend, qcow2 import with no signature check |
-| C. 鸿融 VM | Packaging linux-aarch64 7.2.12 with the HMV ID-register patches (fakeroot hangs on HongMeng, worked around), then an Omarchy-only disk without deepin, tested in its own StratoVirt instance | 7.2.11 + quirk booted to the Hyprland desktop once; the root cause of the >=6.9 and >=6.17 hangs is in [docs/hmv-idreg-report.md](docs/hmv-idreg-report.md) |
-| D. Native | Acceptance suite ([docs/acceptance.md](docs/acceptance.md)): A2 core operations next (files, clipboard, Chinese input, audio, file picker) | A1: 78 apps, 72 open within 3 s (P95 1.4 s), 0 failures, 6 unsupported with root causes; SysV `msgrcv` wake-up bug found and worked around with a preload |
-| G. 铠大师 VM | Building a Windows-11-looking probe ISO that boots GRUB, to see the real StratoVirt command line | Survey: same system VM service as Oseasy, WIM metadata check only |
-| H. Aetherium on the device | Installing the patched Aetherium on `ohdev` and moving the Omarchy disk over; checking whether QEMU can use the HMV hypervisor instead of TCG | Plan agreed; Route F issues filed upstream (AetheriumSimulator/qemu-hmos #49-#53) |
+| B. Oseasy VM | Building the boot probe with the patched 7.2.12 kernel, then queueing for the VM slot to test whether `vmwgfx` surface blits refresh the Oseasy window | `vmwgfx` for the HarmonyOS SVGA device ported to 7.2 with refresh/vblank parameters and packaged; Oseasy holds one VM per app, so the existing Windows VM was backed up (sha256-verified) before any import |
+| C. 鸿融 VM | Building an Omarchy-only disk (no deepin) with the new package, then testing it in a separate StratoVirt instance while the main VM is shut down | linux-aarch64 7.2.12 with the HMV ID-register patches packaged ([PKGBUILD](hongrong/kernel/)); earlier build kills traced to the native app-launch test cleaning up the build user's processes |
+| D. Native | Sound: PipeWire to the HarmonyOS app's OHAudio renderer (code in, device test next); then performance (B) | A1 re-run with a system D-Bus (udisks2, polkit, upower only): 73 pass, 0 failed; A2 core operations: files, clipboard, Chinese input and the file chooser pass, sound pending |
+| G. 铠大师 VM | First probe VM run: recording the real StratoVirt command line and devices, then restoring the 鸿融 main VM | The fake Windows 11 ISO passes 铠大师's check and boots a Linux console (efifb); no sign-in was needed |
+| H. Aetherium on the device | Copying the Omarchy disk to `ohdev`; the patched Aetherium is installed | HMV decoded: its own ioctl ABI under KVM's 0xAE magic, not KVM-compatible; Aetherium's QEMU is TCG-only, so HMV acceleration would need a new QEMU accel backend ([feasibility](docs/device-aetherium.md)) |
 
 VM tests share one HMV hypervisor and take turns (one VM at a time).
 <!-- progress:end -->

@@ -18,6 +18,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 | **G. Whole OS in the 铠大师 VM**: [docs/vm-kaidashi.md](docs/vm-kaidashi.md) | The complete Omarchy AArch64 disk (UEFI + GRUB, linux-aarch64 7.2 with the HMV ID-register quirk) in sanway's Windows-on-ARM VM app `com.sanway.ecoengine` | Concluded: same svga-pci path as B, 60 Hz; tools kept. A Linux ISO boots (fake `install.wim`, no login, Secure Boot off), but every VM is an install session that 铠大师 deletes on power-off; details in the doc |
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
+| **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | Omarchy with its 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app), virgl GPU, 120 Hz EDID, Docker, picture in route D's app | Offline preparation: base script (agent-2a's testvm.sh), 鸿融's GPU/display arguments, a 120 Hz EDID |
 
 <!-- progress:start -->
 ## Progress (updated hourly; last: 2026-10-24 05:25 PDT)
@@ -173,3 +174,7 @@ device/install.sh                  # bm install the signed HAP as root
 Static HMV analysis uses `device/hmv/` and `device/ohsh` (run a script on the
 device as root). Details and the acceleration findings:
 [docs/device-aetherium.md](docs/device-aetherium.md).
+
+## Route I quick start
+
+Not runnable yet. `tools/ownvm/mkedid.py OUT.bin` writes the 120 Hz EDID. Details: [docs/vm-own.md](docs/vm-own.md).

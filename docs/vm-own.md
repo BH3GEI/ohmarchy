@@ -286,3 +286,62 @@ What it took:
   offline with debugfs was lost: the guest had been killed (QMP powerdown does
   not stop it), and the journal replayed on the next boot. Power the guest off
   from inside (`sudo systemctl poweroff`).
+
+## Route I as D's background Linux (decided 2026-10-24 09:50 PDT)
+
+The supervisor's decision after the first run: no on-screen picture for this
+VM (no shm proxy, no vhost-user-gpu backend in the app). Root users already
+have D's native 120 Hz desktop; what D lacks is Docker and a full kernel. So
+route I is a headless VM that D's desktop uses in the background.
+
+**Service.** `tools/ownvm/ohmarchy-vm` (installed in `/data/local/kaidashi/bin`):
+`start` (idempotent; returns when the guest's ssh answers, about a minute),
+`stop` (power-off from inside the guest via a sudo rule limited to
+`systemctl poweroff|reboot`, QMP and kill as fallbacks), `status` (VM,
+guest, dockerd, guest memory, `query-balloon`, host RSS), `ssh`, `balloon MiB`,
+`net-up`/`net-down`. Settings: `OVM_CPUS` (6), `OVM_MEM` (8192 MiB), `OVM_GPU=1`
+(virgl, off by default for a Docker backend), or `$OVM_DIR/config`.
+Differences from `testvm.sh`: its own tap `ohmvm0` and run directory
+(`ownvm/svc`), the host routing rules added and removed by the script
+(idempotent, `net-down` deletes every copy of pref 10500/10501),
+`virtio-balloon-pci,deflate-on-oom=true,free-page-reporting=true`, and
+the guest's host key pinned (`tools/ownvm/known_hosts`, `SHA256:4zK0cQ3DUJ7/aUSTr22zV/GdwiYBRIAua9y7MihSuLE`).
+While other HMV users share the host it takes `vm.lock` (owner
+`ohmarchy-vm`) and refuses to start next to any other StratoVirt (鸿融 uses
+the same subnet).
+
+The routing rules change host routing for everyone: with them a host process
+reaching `172.16.100.1` gets source `172.16.100.1` instead of
+`7.247.135.16`, which matters to route D's `vtest-broker` allowlist (harmless
+there: it accepts only on `172.16.100.1` and remote virgl is off by default).
+HarmonyOS's rules are `uidrange 0-65534`; apps (uid ≈ 20020165) use other
+per-app rules, untested and not needed (only root processes reach the VM).
+
+**Start at boot (optional, not installed).** `tools/ownvm/ohmarchy-vm.cfg`
+is an init service in the format of route D's `native/boot/ohmarchy-desktop.cfg`
+(after `bootevent.boot.completed`, `once`). It runs `ohmarchy-vm-boot.sh`,
+which waits for D's session (its ssh client) and starts the VM. Install by
+copying the cfg into `/mnt/overlay/usr/upper/etc/init/`. Not installed while
+鸿融 and the other routes share HMV, and only a reboot can verify it.
+
+**Guest.** `tools/ownvm/guest-provision.sh`, run once as root in the guest:
+the narrow sudo rule (and removal of the broad `zz-ownvm-test` used in the
+first run), Docker + compose enabled, yao in the docker group, registry
+mirrors, `virtio_balloon` loaded at boot. The guest kernel has what Docker and
+the balloon need (from the image's `build/.config` and module tree):
+`CONFIG_PAGE_REPORTING=y`, `VIRTIO_BALLOON=m`, `NF_TABLES`, `NFT_COMPAT`,
+`IP_NF_NAT`, `NETFILTER_XT_MATCH_ADDRTYPE`, `XT_TARGET_MASQUERADE`,
+`BRIDGE`, `BRIDGE_NETFILTER`, `VETH` (all modules present). StratoVirt's help
+text lists `virtio-balloon-pci,…,deflate-on-oom=…,free-page-reporting=…`.
+
+**D's side** (native-desktop line, in `native/40-install-desktop.sh`): D's
+terminal runs in the archtest session as `builder` (uid 60000), with Omarchy's
+docker 29.9.2 and docker-compose 5.6.1 clients; context `ohmarchy` =
+`ssh://yao@172.16.100.2` as the default, builder's key in yao's
+`authorized_keys` on the disk, the guest host key in builder's `known_hosts`.
+dockerd is not exposed on TCP.
+
+**Next slot:** provision; D runs `tests/compat/docker.sh` (hello-world +
+compose); port 8080 from the guest itself and from D (`docker -H` side:
+`curl 172.16.100.2:8080`), with `iptables -t nat -S`/`nft list ruleset` in
+the guest; balloon: idle guest, host RSS before/after free page reporting.

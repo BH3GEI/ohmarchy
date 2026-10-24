@@ -18,7 +18,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 | **G. Whole OS in the 铠大师 VM**: [docs/vm-kaidashi.md](docs/vm-kaidashi.md) | The complete Omarchy AArch64 disk (UEFI + GRUB, linux-aarch64 7.2 with the HMV ID-register quirk) in sanway's Windows-on-ARM VM app `com.sanway.ecoengine` | Concluded: same svga-pci path as B, 60 Hz; tools kept. A Linux ISO boots (fake `install.wim`, no login, Secure Boot off), but every VM is an install session that 铠大师 deletes on power-off; details in the doc |
 | **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
-| **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | Omarchy with its 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app), virgl GPU, 120 Hz EDID, Docker, picture in route D's app | Offline preparation: base script (agent-2a's testvm.sh), 鸿融's GPU/display arguments, a 120 Hz EDID |
+| **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | headless backend for D: Docker + full kernel. Omarchy's 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app); D's terminal uses its dockerd over ssh | First run: network both ways, 120 Hz mode, virgl on the Maleoon GPU, Docker + compose; service `ohmarchy-vm` written, D's docker context set up, waiting for a slot |
 
 <!-- progress:start -->
 ## Progress (updated hourly; last: 2026-10-24 08:25 PDT)
@@ -29,7 +29,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | C. 鸿融 VM | Making the developer image pass 鸿融's own qcow2 import check; 30-min soak running | **Developer image runs in 鸿融**: 7.2.12, Omarchy desktop, network, virgl on the Maleoon GPU (glmark2 596), Docker (hello-world, postgres, compose), warm reboot. Open: 鸿融's UI import rejects our qcow2; the 120 Hz EDID override is read but its 120 Hz mode is dropped ([status](docs/hongrong-whole-os.md)) |
 | D. Native | 24 h soak (until 02:52 PDT tomorrow); Remote virgl test inside 鸿融 | Formal cold start about 8 s (session 2.0 s + desktop ~6 s); desktop start/restart 12.5 s → 2.45 s; acceptance summary for A-G in [docs/acceptance.md](docs/acceptance.md); Remote virgl prepared (broker `--tcp`, the app itself never touches the network) |
 | G. 铠大师 VM | Concluded | Linux in 铠大师 only lives in an install session that is deleted on power-off; same `svga-pci` path as B ([docs/vm-kaidashi.md](docs/vm-kaidashi.md)) |
-| I. Own VM | Own StratoVirt on `/dev/hmv` with virtio-gpu + virgl, 120 Hz EDID, Docker; slot after B | Shared `testvm.sh` now sets virtio-net iothreads (the likely cause of the dead guest network); the system virglrenderer presents into 鸿融's window via WindowsFusion, so our own VM needs either a stand-in for that library or Remote virgl ([docs/vm-own.md](docs/vm-own.md)) |
+| I. Own VM | headless backend for D: Docker + full kernel | `tools/ownvm/ohmarchy-vm` (start/stop/status, host routing rules, virtio-balloon with free page reporting); D's `docker` context `ohmarchy` = ssh://yao@172.16.100.2; next slot: provision, D's hello-world/compose, port 8080, balloon measurement ([docs/vm-own.md](docs/vm-own.md)) |
 | H. Aetherium on the device | Whether a third-party app can call `@hms:virtService.vmManager` without root (stub SDK and probe HAP); then the TCG baseline | Not without being a Huawei VM partner: the service requires `ohos.permission.MANAGE_VM` **and** that the caller’s appIdentifier be one of 8 hardcoded in `libvm_manager.z.so` (OSEasy and 铠大师 among them). Compile/install/module-load/IPC all pass, but a non-partner app is denied at the identity check ([docs/vm-api.md](docs/vm-api.md)) |
 
 Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel.
@@ -178,4 +178,11 @@ device as root). Details and the acceleration findings:
 
 ## Route I quick start
 
-Not runnable yet. `tools/ownvm/mkedid.py OUT.bin` writes the 120 Hz EDID. Details: [docs/vm-own.md](docs/vm-own.md).
+On the host, as root, with `omarchy-own.img` prepared (`tools/ownvm/prep-disk.sh`):
+
+    sh /data/local/kaidashi/bin/ohmarchy-vm start     # returns when the guest's ssh answers
+    sh /data/local/kaidashi/bin/ohmarchy-vm status    # VM, guest, dockerd, balloon, host RSS
+    sh /data/local/kaidashi/bin/ohmarchy-vm stop
+
+In D's terminal: `docker run --rm hello-world` (context `ohmarchy`). Details:
+[docs/vm-own.md](docs/vm-own.md).

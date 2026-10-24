@@ -1,0 +1,158 @@
+#!/system/bin/sh
+# ohmarchy-vm: route I as a service, a headless Omarchy VM that is the
+# background Linux kernel for route D's desktop (Docker and anything else that
+# needs a full kernel). Root on the HarmonyOS host. docs/vm-own.md.
+#   ohmarchy-vm start      start the VM (idempotent: does nothing if running)
+#   ohmarchy-vm stop       power off from inside the guest, QMP/kill as fallback
+#   ohmarchy-vm status     VM, guest ssh, dockerd, balloon
+#   ohmarchy-vm ssh [CMD]  ssh into the guest as yao (host-only key)
+#   ohmarchy-vm balloon MiB   set the guest's memory target (QMP balloon)
+#   ohmarchy-vm net-up | net-down   only the host network part (idempotent)
+# While other HMV users share the host, start takes /data/local/vm.lock (owner
+# "ohmarchy-vm") and stop removes it; OHMARCHY_VM_NOLOCK=1 skips that.
+#
+# Settings (environment, or $OVM_DIR/config sourced as shell):
+#   OVM_DIR   run files, disk and key        (/data/local/kaidashi/ownvm)
+#   OVM_DISK  raw disk image                 ($OVM_DIR/omarchy-own.img)
+#   OVM_CPUS  vCPUs (6)   OVM_MEM  MiB (8192)   OVM_GPU=1  virgl GPU (off)
+#
+# Network: tap ohmvm0 with 172.16.100.1/24, the guest is 172.16.100.2 (static
+# in the image), outbound NAT. The host's policy routing would send the subnet
+# out wlan0 (rule 16000: fwmark 0 -> table 2009) and forwarded guest packets
+# find no default route in main, so two rules: to the subnet -> main (10500),
+# from the tap -> table 2009 (10501). 鸿融 uses the same subnet on its own
+# bridge, so this refuses to start while any other StratoVirt runs.
+OVM_DIR=${OVM_DIR:-/data/local/kaidashi/ownvm}
+[ -r $OVM_DIR/config ] && . $OVM_DIR/config
+DISK=${OVM_DISK:-$OVM_DIR/omarchy-own.img}
+CPUS=${OVM_CPUS:-6}; MEM=${OVM_MEM:-8192}
+D=$OVM_DIR/svc
+TAP=ohmvm0; NET=172.16.100; GUEST=$NET.2
+LOCK=/data/local/vm.lock
+FW=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi-linux
+SVDIR=/system/bin/virt_service/vm_engine/stratovirt
+pidf=$D/stratovirt.pid
+running() { [ -f $pidf ] && [ -d /proc/$(cat $pidf) ] && grep -q stratovirt /proc/$(cat $pidf)/cmdline 2>/dev/null; }
+# ssh comes from route D's Arch root (archtest) until the host has its own
+AR=/proc/$(cat /data/local/archtest/session.pid 2>/dev/null)/root
+SSH() {
+  "$AR/usr/lib/ld-linux-aarch64.so.1" --library-path "$AR/usr/lib" "$AR/usr/bin/ssh" \
+    -i $OVM_DIR/hostkey -o UserKnownHostsFile=$OVM_DIR/known_hosts -o StrictHostKeyChecking=yes \
+    -o LogLevel=ERROR -o ConnectTimeout=5 -o BatchMode=yes yao@$GUEST "$@"
+}
+qmp() {  # one command per write: StratoVirt's parser takes one JSON object at a time
+  { sleep 0.5; echo '{"execute":"qmp_capabilities"}'; sleep 0.5; echo "$1"; sleep 1; } |
+    timeout 5 toybox nc -U $D/qmp.sock 2>/dev/null | tail -1
+}
+rule() {  # rule PREF ARGS...: add once
+  ip rule show pref $1 | grep -q . || { p=$1; shift; ip rule add "$@" pref $p; }
+}
+
+net_up() {
+  ip link show $TAP >/dev/null 2>&1 || ip tuntap add dev $TAP mode tap
+  ip addr show dev $TAP | grep -q "$NET.1/24" || ip addr add $NET.1/24 dev $TAP
+  ip link set $TAP up
+  iptables -t nat -C POSTROUTING -s $NET.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null ||
+    iptables -t nat -A POSTROUTING -s $NET.0/24 ! -o $TAP -j MASQUERADE
+  rule 10500 to $NET.0/24 lookup main
+  rule 10501 iif $TAP lookup 2009
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+}
+net_down() {
+  while ip rule show pref 10500 | grep -q .; do ip rule del pref 10500; done
+  while ip rule show pref 10501 | grep -q .; do ip rule del pref 10501; done
+  while iptables -t nat -D POSTROUTING -s $NET.0/24 ! -o $TAP -j MASQUERADE 2>/dev/null; do :; done
+  ip link del $TAP 2>/dev/null
+  return 0
+}
+
+start() {
+  running && { echo "running, pid $(cat $pidf)"; return 0; }
+  pidof stratovirt >/dev/null && { echo "another StratoVirt VM runs (鸿融?); not starting"; return 1; }
+  if [ "${OHMARCHY_VM_NOLOCK:-0}" != 1 ]; then
+    mkdir $LOCK 2>/dev/null || { grep -q '^ohmarchy-vm' $LOCK/owner 2>/dev/null ||
+      { echo "vm.lock held:"; head -2 $LOCK/owner; return 1; }; }
+    printf 'ohmarchy-vm (route I backend for D, agent-a4)\nstart: %s\n' "$(toybox date '+%F %T %z')" > $LOCK/owner
+  fi
+  mkdir -p $D; rm -f $D/qmp.sock $D/serial.sock
+  net_up
+  gpu=
+  if [ "${OVM_GPU:-0}" = 1 ]; then
+    rm -f $D/gpu.sock
+    VHOST_LOG_PATH=$D/vhost-device-gpu.log nohup $SVDIR/vhost-device-gpu \
+      --socket-path $D/gpu.sock --gpu-mode virglrenderer --use-gles false > $D/vhost-device-gpu.out 2>&1 &
+    echo $! > $D/vhost-device-gpu.pid
+    i=0; while [ ! -S $D/gpu.sock ] && [ $i -lt 10 ]; do sleep 1; i=$((i+1)); done
+    gpu="-chardev socket,id=vhost-user-gpu,path=$D/gpu.sock
+      -device vhost-user-gpu-pci,id=vhost-user-gpu-id,bus=pcie.0,addr=0x4.0x0,xres=2160,yres=1440,chardev=vhost-user-gpu,virgl=true"
+  fi
+  nohup $SVDIR/stratovirt \
+    -machine virt,gic-version=3,mem-share=on,accel=hmv \
+    -cpu host,pmu=on,kvm-steal-time=on,bti=off -smp $CPUS -m $MEM \
+    -drive file=$FW,if=pflash,unit=0,readonly=true \
+    -drive id=disk0,file=$DISK,format=raw,readonly=off,direct=on,aio=io_uring \
+    -device virtio-blk-pci,drive=disk0,id=blk0,bus=pcie.0,addr=0x2.0x0 \
+    -netdev tap,id=net0,ifname=$TAP \
+    -object iothread,id=rx-iothread0 -object iothread,id=tx-iothread0 \
+    -device virtio-net-pci,netdev=net0,id=nic0,bus=pcie.0,mac=52:54:00:4d:76:01,addr=0x6.0x0,rx-iothread=rx-iothread0,tx-iothread=tx-iothread0 \
+    -device virtio-balloon-pci,id=balloon0,bus=pcie.0,addr=0x7.0x0,deflate-on-oom=true,free-page-reporting=true \
+    $gpu \
+    -device ohos-vhost-vsock-pci,guest-cid=2001,id=vsock0,bus=pcie.0,addr=0xf \
+    -qmp unix:$D/qmp.sock,server,nowait \
+    -serial socket,path=$D/serial.sock,server,nowait \
+    -D $D/stratovirt.log -disable-seccomp > $D/stdout.log 2>&1 &
+  echo $! > $pidf; sleep 2
+  running || { echo "StratoVirt exited:"; tail -20 $D/stdout.log; stop_rest; return 1; }
+  echo "started pid $(cat $pidf); waiting for the guest"
+  i=0; while [ $i -lt 180 ]; do SSH true 2>/dev/null && { echo "guest up after ${i}s"; return 0; }; sleep 5; i=$((i+5)); done
+  echo "guest ssh not up after 180 s (serial: toybox nc -U $D/serial.sock)"
+}
+
+stop_rest() {
+  [ -f $D/vhost-device-gpu.pid ] && { kill $(cat $D/vhost-device-gpu.pid) 2>/dev/null; rm -f $D/vhost-device-gpu.pid; }
+  net_down
+  [ "${OHMARCHY_VM_NOLOCK:-0}" != 1 ] && grep -q '^ohmarchy-vm' $LOCK/owner 2>/dev/null && rm -rf $LOCK
+  return 0
+}
+stop() {
+  if running; then
+    # the guest's sudoers allows yao exactly this (guest-provision.sh)
+    SSH 'sudo -n /usr/bin/systemctl poweroff' >/dev/null 2>&1
+    i=0; while running && [ $i -lt 60 ]; do sleep 2; i=$((i+2)); done
+    running && { qmp '{"execute":"system_powerdown"}' >/dev/null; sleep 20; }
+    running && { echo "no clean power-off; killing"; kill $(cat $pidf); sleep 2; }
+    running && kill -9 $(cat $pidf)
+    echo "stopped"
+  else
+    echo "not running"
+  fi
+  stop_rest
+}
+
+status() {
+  if running; then
+    echo "VM: pid $(cat $pidf), ${CPUS} vCPUs, ${MEM} MiB"
+  else
+    echo "VM: not running"; return 3
+  fi
+  if SSH true 2>/dev/null; then
+    echo "guest: $(SSH 'uname -r; uptime -p' 2>/dev/null | tr '\n' ' ')"
+    echo "dockerd: $(SSH 'docker info --format "{{.ServerVersion}}, {{.Containers}} containers ({{.ContainersRunning}} running)"' 2>/dev/null || echo unreachable)"
+    echo "guest memory: $(SSH "free -m | awk '/^Mem/{print \$3\" MiB used, \"\$7\" MiB available of \"\$2}'" 2>/dev/null)"
+  else
+    echo "guest: no ssh"
+  fi
+  echo "balloon: $(qmp '{"execute":"query-balloon"}')"
+  echo "host RSS of the VM: $(awk '/VmRSS/{print $2/1024 " MiB"}' /proc/$(cat $pidf)/status)"
+}
+
+case "$1" in
+start) start ;;
+stop) stop ;;
+status) status ;;
+ssh) shift; SSH "$@" ;;
+balloon) qmp "{\"execute\":\"balloon\",\"arguments\":{\"value\":$((${2:?MiB} * 1048576))}}" ;;
+net-up) net_up ;;
+net-down) net_down ;;
+*) sed -n '2,12p' "$0"; exit 1 ;;
+esac

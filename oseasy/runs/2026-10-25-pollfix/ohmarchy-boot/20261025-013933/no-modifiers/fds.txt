@@ -1,0 +1,94 @@
+total 0
+lr-x------ 1 yao yao 64 Oct 25 01:42 0 -> /dev/null
+lrwx------ 1 yao yao 64 Oct 25 01:42 1 -> socket:[25623]
+lr-x------ 1 yao yao 64 Oct 25 01:42 10 -> anon_inode:inotify
+lrwx------ 1 yao yao 64 Oct 25 01:42 11 -> socket:[26656]
+lrwx------ 1 yao yao 64 Oct 25 01:42 12 -> socket:[26656]
+lrwx------ 1 yao yao 64 Oct 25 01:42 13 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 14 -> socket:[26662]
+lrwx------ 1 yao yao 64 Oct 25 01:42 15 -> anon_inode:[pidfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 16 -> socket:[26663]
+lrwx------ 1 yao yao 64 Oct 25 01:42 17 -> anon_inode:[eventpoll]
+lrwx------ 1 yao yao 64 Oct 25 01:42 18 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:41 19 -> socket:[26666]
+lrwx------ 1 yao yao 64 Oct 25 01:42 2 -> socket:[25623]
+lrwx------ 1 yao yao 64 Oct 25 01:41 20 -> /dev/dri/renderD128
+lrwx------ 1 yao yao 64 Oct 25 01:42 21 -> /dev/input/event1
+lrwx------ 1 yao yao 64 Oct 25 01:41 22 -> /dev/input/event3
+lrwx------ 1 yao yao 64 Oct 25 01:41 23 -> /dev/input/event2
+lrwx------ 1 yao yao 64 Oct 25 01:41 24 -> /dev/input/event0
+lrwx------ 1 yao yao 64 Oct 25 01:41 25 -> /dev/dri/card0
+lrwx------ 1 yao yao 64 Oct 25 01:41 26 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:41 27 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:41 28 -> /dev/dri/card0
+lrwx------ 1 yao yao 64 Oct 25 01:42 29 -> /dev/dri/card0
+l-wx------ 1 yao yao 64 Oct 25 01:42 3 -> /run/user/1000/hypr/efb50993780079460b0cbed1363e2166a2de1d9f_1792863707_321989920/hyprland.log
+lrwx------ 1 yao yao 64 Oct 25 01:42 30 -> /dev/dri/card0
+lrwx------ 1 yao yao 64 Oct 25 01:42 31 -> /run/user/1000/wayland-1.lock
+lrwx------ 1 yao yao 64 Oct 25 01:42 32 -> socket:[22827]
+lrwx------ 1 yao yao 64 Oct 25 01:42 33 -> /dev/dri/renderD128
+lrwx------ 1 yao yao 64 Oct 25 01:42 34 -> /dev/dri/renderD128
+lrwx------ 1 yao yao 64 Oct 25 01:42 35 -> /dev/dri/renderD128
+lrwx------ 1 yao yao 64 Oct 25 01:42 36 -> socket:[22827]
+lrwx------ 1 yao yao 64 Oct 25 01:42 37 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 38 -> socket:[22831]
+lrwx------ 1 yao yao 64 Oct 25 01:42 39 -> socket:[22831]
+l-wx------ 1 yao yao 64 Oct 25 01:42 4 -> pipe:[25632]
+lrwx------ 1 yao yao 64 Oct 25 01:42 40 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 41 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 42 -> socket:[22832]
+lrwx------ 1 yao yao 64 Oct 25 01:42 43 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 44 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 45 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 46 -> socket:[26675]
+lrwx------ 1 yao yao 64 Oct 25 01:42 47 -> socket:[26676]
+lrwx------ 1 yao yao 64 Oct 25 01:42 48 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 49 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 5 -> anon_inode:[eventpoll]
+lrwx------ 1 yao yao 64 Oct 25 01:42 50 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 51 -> /dev/dri/renderD128
+lr-x------ 1 yao yao 64 Oct 25 01:42 52 -> anon_inode:sync_file
+lrwx------ 1 yao yao 64 Oct 25 01:42 53 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 54 -> socket:[26690]
+lr-x------ 1 yao yao 64 Oct 25 01:42 55 -> /dev/shm/86836942-a80d-4cf8-b825-6e0367590514 (deleted)
+lrwx------ 1 yao yao 64 Oct 25 01:42 56 -> anon_inode:[timerfd]
+lr-x------ 1 yao yao 64 Oct 25 01:42 57 -> anon_inode:inotify
+lrwx------ 1 yao yao 64 Oct 25 01:42 58 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 59 -> /dev/dri/card0
+lrwx------ 1 yao yao 64 Oct 25 01:42 6 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 60 -> anon_inode:[eventfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 61 -> socket:[26662]
+lrwx------ 1 yao yao 64 Oct 25 01:42 62 -> socket:[26663]
+lrwx------ 1 yao yao 64 Oct 25 01:42 63 -> anon_inode:[eventpoll]
+lrwx------ 1 yao yao 64 Oct 25 01:42 64 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 65 -> socket:[26688]
+lr-x------ 1 yao yao 64 Oct 25 01:42 66 -> /dev/shm/58257a02-4873-4c28-845b-ba709c3dff38 (deleted)
+lr-x------ 1 yao yao 64 Oct 25 01:42 67 -> /dev/shm/d21a2fcf-fc27-4b58-acea-34e94df7c233 (deleted)
+lr-x------ 1 yao yao 64 Oct 25 01:42 68 -> /dev/shm/326e2db7-735a-48a9-970b-b7c06844bbe3 (deleted)
+lrwx------ 1 yao yao 64 Oct 25 01:42 69 -> socket:[26689]
+lrwx------ 1 yao yao 64 Oct 25 01:42 7 -> anon_inode:[eventfd]
+lr-x------ 1 yao yao 64 Oct 25 01:42 70 -> /dev/shm/51fc7052-c13f-4dce-91de-d1b53af17e41 (deleted)
+lrwx------ 1 yao yao 64 Oct 25 01:42 71 -> socket:[26690]
+lrwx------ 1 yao yao 64 Oct 25 01:42 72 -> socket:[26691]
+lrwx------ 1 yao yao 64 Oct 25 01:42 73 -> socket:[26688]
+lrwx------ 1 yao yao 64 Oct 25 01:42 74 -> socket:[26756]
+lrwx------ 1 yao yao 64 Oct 25 01:42 75 -> socket:[27670]
+lrwx------ 1 yao yao 64 Oct 25 01:42 76 -> /memfd:wayland-cursor (deleted)
+lrwx------ 1 yao yao 64 Oct 25 01:42 77 -> socket:[27670]
+lrwx------ 1 yao yao 64 Oct 25 01:42 78 -> socket:[26756]
+lrwx------ 1 yao yao 64 Oct 25 01:42 79 -> socket:[25812]
+lrwx------ 1 yao yao 64 Oct 25 01:42 8 -> anon_inode:[signalfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 80 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 81 -> socket:[25812]
+lrwx------ 1 yao yao 64 Oct 25 01:42 82 -> socket:[26798]
+lrwx------ 1 yao yao 64 Oct 25 01:42 83 -> /dmabuf:
+lrwx------ 1 yao yao 64 Oct 25 01:42 84 -> socket:[26798]
+lrwx------ 1 yao yao 64 Oct 25 01:42 85 -> socket:[27672]
+lrwx------ 1 yao yao 64 Oct 25 01:42 86 -> socket:[27672]
+lrwx------ 1 yao yao 64 Oct 25 01:42 87 -> /memfd:wayland-cursor (deleted)
+lrwx------ 1 yao yao 64 Oct 25 01:42 88 -> /dmabuf:
+lr-x------ 1 yao yao 64 Oct 25 01:42 89 -> anon_inode:sync_file
+lrwx------ 1 yao yao 64 Oct 25 01:42 9 -> anon_inode:[timerfd]
+lrwx------ 1 yao yao 64 Oct 25 01:42 90 -> /dmabuf:
+lr-x------ 1 yao yao 64 Oct 25 01:42 91 -> anon_inode:sync_file
+lr-x------ 1 yao yao 64 Oct 25 01:42 93 -> anon_inode:sync_file

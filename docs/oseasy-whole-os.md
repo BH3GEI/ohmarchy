@@ -437,9 +437,9 @@ the runs above unless marked pending.
 | Runs next to another VM | no: the system VM kit refuses (`Not support vm multi-instance`); not exercised (rule: one VM at a time) | no (same kit) | yes (no VM) |
 | Cold start to desktop | pending | | |
 | App launch times | pending | | |
-| es2gears / glmark2 | pending | | |
+| es2gears / glmark2 | glmark2-es2-wayland 1280x720: 1083 (SVGA3D); es2gears pending | | |
 | Workspace switching on screen | pending (60 at most) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | 1 warm reboot OK (22 s to Hyprland); soak pending | | |
+| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); soak pending | | |
 
 ### Commits (MateBook 14 work)
 
@@ -684,6 +684,31 @@ nothing here uses virtiofs.)
   file is now regenerated from the sources against the upstream files (recovered
   by reverse-applying the previous patch).
 - modetest printed no rate (the field came back empty); to look at next time.
+
+### Seventh run: fence polling in; measurements spoiled by the wrong window in front (10:36-10:48)
+
+Log: [`oseasy/runs/2026-10-25-pollfix/slot.log`](../oseasy/runs/2026-10-25-pollfix/slot.log).
+
+- Reinstall 142 s, Hyprland 7 s after the reset.
+- **Traced sessions still stop** after about 160 commits (9 s), in all three
+  diagnostic stages, exactly as before the fix.
+- **The plain session (no `AQ_TRACE`/`HYPRLAND_TRACE`) runs**: glmark2-es2-wayland
+  completed with **score 1083** on `SVGA3D; build: RELEASE; LLVM;`. A Wayland
+  client that swaps with interval 1 cannot finish without Hyprland's frame
+  callbacks, so the compositor kept presenting. Before the fix (run 5) the plain
+  session stopped too. Not yet confirmed with counted frames (below).
+- **Warm reboots 2 and 3**: `reboot: Restarting system`, Hyprland back in 21 s
+  each. With run 5's: **3 of 3 warm reboots OK**.
+- **The frame counts of this run are not valid.** After the reset the Oseasy
+  app's own window (an intro carousel) was in front of the VM console, and the
+  system-wide `NativeWindowFlushBuffer` count included ohmarchy-120's own 121
+  presents/s. `measure-fps.sh` now splits the flushes per thread, and the next
+  run brings the console window to the front and checks a screenshot first.
+
+  ![Oseasy's intro carousel in front of the VM console](img/oseasy-mb14-carousel-in-front.jpeg)
+
+- Launch times: Omarchy's image has neither alacritty nor ghostty (its terminal
+  is something else), and `bc` is missing; to redo with the right app list.
 
 ### Decision: no guest agent for Oseasy
 

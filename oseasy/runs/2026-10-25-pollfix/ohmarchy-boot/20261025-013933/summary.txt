@@ -1,0 +1,9 @@
+start, writing /var/log/ohmarchy-boot/20261025-013933
+default: Hyprland pid 678, log 5623 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 6, needsFrame false, isPageFlipPending true, frameEventSchedu
+default: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-atomic: Hyprland pid 2726, log 2705 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 6, needsFrame true, isPageFlipPending true, frameEventSchedul
+no-atomic: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-modifiers: Hyprland pid 4729, log 5457 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 10, needsFrame true, isPageFlipPending true, frameEventSchedu
+no-modifiers: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+modetest 40:2100x1511: 
+done

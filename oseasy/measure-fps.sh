@@ -7,7 +7,10 @@
 # keeps the timestamps of the last frames composed for the screen; counted over
 # the last SECONDS, default 8, capped by how many it keeps); the same for
 # WINDOW's `fps` if given; and per-second counts of DoComposition /
-# HwcPresentDisplay / NativeWindowFlushBuffer from a hitrace capture of SECONDS.
+# HwcPresentDisplay / NativeWindowFlushBuffer from a hitrace capture of SECONDS,
+# and the flushes per thread (task-pid as hitrace names it): other windows that
+# present (ohmarchy-120, the Oseasy app's own animations) must not be counted
+# as the guest's frames.
 set -eu
 secs=${1:-8}; win=${2:-}
 perl -e 'alarm shift; exec @ARGV' $((secs * 2 + 90)) ssh -o BatchMode=yes ohdev sh -s <<EOF
@@ -28,4 +31,7 @@ for k in RSMainThread::DoComposition HwcPresentDisplay NativeWindowFlushBuffer; 
   c=\$(grep -c "H:\$k" \$T.trace 2>/dev/null || true)
   echo "\$k: \${c:-0} total, \$(( \${c:-0} / $secs ))/s"
 done
+echo "== NativeWindowFlushBuffer per thread (/s)"
+grep "H:NativeWindowFlushBuffer" \$T.trace 2>/dev/null | awk '{print \$1}' | sort | uniq -c | sort -rn | head -6 |
+  awk -v w=$secs '{ printf "  %-40s %d\\n", \$2, \$1 / w }'
 EOF

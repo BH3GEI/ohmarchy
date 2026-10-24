@@ -1,0 +1,84 @@
+TAKEN
+oseasy (OSEasy line, Claude session cdcaac74) fence-poll fix + measurements, <= 30 min
+start: 2026-10-24 10:36 PDT
+expected end: 2026-10-24 11:36 PDT
+TAKEN
+oseasy (OSEasy line, Claude session cdcaac74) fence-poll fix + measurements, <= 30 min
+start: 2026-10-24 10:36 PDT
+expected end: 2026-10-24 11:36 PDT
+running: [] 10:36:22
+vms: [] 10:36:26
+armed
+tapped 946,419 on com.oseasy1.ohvm
+[probe] install: waiting for a disk image on tcp/5003, writing /dev/vda
+[probe] install: dd: 68719476736 bytes (69 GB, 64 GiB) copied, 91.8418 s, 748 MB/s
+[probe] install: vmwgfx-oseasy added for 7.2.12-1.1-aarch64-ARCH; modinfo -> /lib/modules/7.2.12-1.1-aarch64-ARCH/updates/vmwgfx.ko
+[probe] install: mkinitcpio rc=0; initramfs vmwgfx: etc/modprobe.d/vmwgfx-oseasy.conf usr/lib/modules/7.2.12-1.1-aarch64-ARCH/updates/vmwgfx.ko 
+[probe] install: desktop autostart for yao: done: reboot to start the desktop on tty1
+[probe] install: boot diagnostics enabled
+[probe] install: INSTALL_DONE
+install 142 s
+Hyprland [yao] 7 s after reset
+start, writing /var/log/ohmarchy-boot/20261025-013933
+default: Hyprland pid 678, log 5623 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 6, needsFrame false, isPageFlipPending true, frameEventSchedu
+default: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-atomic: Hyprland pid 2726, log 2705 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 6, needsFrame true, isPageFlipPending true, frameEventSchedul
+no-atomic: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+no-modifiers: Hyprland pid 4729, log 5457 lines, last: TRACE from aquamarine ]: CDRMOutput::scheduleFrame: reason 10, needsFrame true, isPageFlipPending true, frameEventSchedu
+no-modifiers: commits in 2 s 0, vmwgfx irqs 0, main thread ep_poll
+modetest 40:2100x1511: 
+done
+Oct 25 01:39:31 omarchy kernel: ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+Oct 25 01:39:31 omarchy kernel: ACPI Warning: \_SB.BAT0._STA: Expected return object of type Integer (20260408/nspredef-249)
+Oct 25 01:39:31 omarchy kernel: ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+Oct 25 01:39:31 omarchy kernel: ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+Oct 25 01:39:31 omarchy kernel: ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+Monitor Virtual-1 (ID 0):
+	2100x1511@120.00000 at 0x0
+	availableModes: 2100x1511@120.00Hz 4096x2160@60.00Hz 4096x2160@59.94Hz 2560x1600@59.99Hz 2560x1600@59.97Hz 1920x1440@60.00Hz 1856x1392@59.99Hz 1792x1344@60.00Hz 2048x1152@60.00Hz 1920x1200@59.88Hz 1920x1200@59.95Hz 1920x1080@60.00Hz 1600x1200@60.00Hz 1680x1050@59.95Hz 1680x1050@59.88Hz 1400x1050@59.98Hz 1400x1050@59.95Hz 1600x900@60.00Hz 1280x1024@60.02Hz 1440x900@59.89Hz 1440x900@59.90Hz 1280x960@60.00Hz 1366x768@59.79Hz 1366x768@60.00Hz 1360x768@60.02Hz 1280x800@59.81Hz 1280x800@59.91Hz 1280x768@59.87Hz 1280x768@59.99Hz 1280x720@60.00Hz 1024x768@60.00Hz 800x600@60.32Hz 800x600@56.25Hz 848x480@60.00Hz 640x480@59.94Hz 
+yao            01:21
+BOOT_IMAGE=/boot/Image root=UUID=814b3fa7-d73a-4d9f-85b8-8050d8db48a2 rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200
+== gears
+fragment shader info: 
+info: 
+== A: Oseasy alone
+== composer fps: 19.7 frames/s (78 frames over 3.90 s)
+== hitrace 6 s
+RSMainThread::DoComposition: 225 total, 37/s
+HwcPresentDisplay: 95 total, 15/s
+NativeWindowFlushBuffer: 75 total, 12/s
+== B: Oseasy + ohmarchy-120
+== composer fps: 120.0 frames/s (384 frames over 3.19 s)
+== hitrace 6 s
+RSMainThread::DoComposition: 305 total, 50/s
+HwcPresentDisplay: 314 total, 52/s
+NativeWindowFlushBuffer: 613 total, 102/s
+fragment shader info: 
+info: 
+pkill: pattern that searches for process name longer than 15 characters will result in zero matches
+Try `pkill -f' option to match against the complete command line.
+== workspaces (vote visible)
+== composer fps: 120.0 frames/s (384 frames over 3.19 s)
+== hitrace 8 s
+RSMainThread::DoComposition: 312 total, 39/s
+HwcPresentDisplay: 317 total, 39/s
+NativeWindowFlushBuffer: 625 total, 78/s
+== launch
+alacritty: not installed
+ghostty: not installed
+/tmp/launch.sh: line 16: bc: command not found
+nautilus:  s timeout
+/tmp/launch.sh: line 16: bc: command not found
+chromium:  s 
+== glmark2
+    GL_RENDERER:    SVGA3D; build: RELEASE;  LLVM;
+                                  glmark2 Score: 1083 
+== warm reboot 2 10:46:41
+after warm reboot 2: Hyprland [yao] in 21 s
+[  452.685316] reboot: Restarting system
+== warm reboot 3 10:47:16
+after warm reboot 3: Hyprland [yao] in 21 s
+[   30.184017] reboot: Restarting system
+== power off 10:47:51
+vms after poweroff: [] 10:48:08
+slot end 10:48:08

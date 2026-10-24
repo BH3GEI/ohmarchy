@@ -1,0 +1,22 @@
+Selected compositor ID: hyprland.desktop
+          Command Line: /usr/bin/start-hyprland
+      Plugin/binary ID: start_hyprland
+ Initial Desktop Names: Hyprland
+                  Name: Hyprland
+           Description: An intelligent dynamic tiling Wayland compositor
+
+Created dir "/run/user/1000/systemd/user/"
+Created unit subdir "wayland-wm-env@hyprland.desktop.service.d/" (run).
+Created "wayland-wm-env@hyprland.desktop.service.d/50_custom.conf" (run).
+Created unit subdir "wayland-wm@hyprland.desktop.service.d/" (run).
+Created "wayland-wm@hyprland.desktop.service.d/50_custom.conf" (run).
+Created unit subdir "app-@autostart.service.d/" (run).
+Created "app-@autostart.service.d/slice-tweak.conf" (run).
+Created unit subdir "app-flatpak-.scope.d/" (run).
+Created "app-flatpak-.scope.d/order-tweak.conf" (run).
+Created unit subdir "plasma-xdg-desktop-portal-kde.service.d/" (run).
+Created "plasma-xdg-desktop-portal-kde.service.d/order-tweak.conf" (run).
+Reloading systemd user manager.
+Starting hyprland.desktop and waiting while it is running...
+Starting wayland-session-envelope@hyprland.desktop.target...
+Forked systemctl, PID 4670.

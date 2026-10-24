@@ -3,7 +3,8 @@
 # GRUB entry of kds-installer.iso, or close the VM. Needs tools/ohdev/ohui and the
 # ohdev ssh alias; take /data/local/vm.lock first (and power off 鸿融's VM).
 #   tools/kaidashi/kds-run.sh start ROW ENTRY   ROW: the ISO's row in the picker's
-#                                               下载 list (1 = top), ENTRY: GRUB entry (0 = first)
+#                                               下载 list (1 = top), ENTRY: GRUB entry (0 = first;
+#                                               - = leave the ISO's own default, e.g. other ISOs)
 #   tools/kaidashi/kds-run.sh close
 #   tools/kaidashi/kds-run.sh serial [PATTERN]  guest serial lines of the running VM
 # Coordinates are for the 1440-wide screenshots of ohui on the MateBook 14
@@ -34,6 +35,7 @@ start)
   U tap 1043 691; sleep 3; U tap 1043 695; sleep 3    # 推荐配置 → 下一步
   U tap 1043 698; sleep 4                             # 开始安装
   U tap 719 577                                       # 文档 folder sheet: 确定 without enabling it
+  [ "$entry" = - ] && { sleep 5; echo "started (pid $(vm_pid))"; exit 0; }
   for _ in $(seq 1 60); do
     n=$(printf 'p=$(pidof stratovirt); [ -n "$p" ] && grep -a "\\[$p\\]" /data/log/hwf_service/vmlog | grep -ac "Boot the installed Omarchy"\n' | R 15 2>/dev/null || true)
     [ "${n:-0}" -gt 0 ] 2>/dev/null && break; sleep 1

@@ -114,7 +114,12 @@ start() {
     # a copy of the system virtiofsd: uid 60000 may not execute the one under
     # /system (exec gives EACCES although the mode is 755)
     # plain cp: -p keeps the system file's security label, and exec fails again
-    [ -x /data/local/kaidashi/bin/virtiofsd ] || cp $SVDIR/virtiofsd /data/local/kaidashi/bin/virtiofsd
+    # refreshed whenever the system binary changes (a system update)
+    if ! cmp -s $SVDIR/virtiofsd /data/local/kaidashi/bin/virtiofsd; then
+      cp $SVDIR/virtiofsd /data/local/kaidashi/bin/virtiofsd.new &&
+        chmod 755 /data/local/kaidashi/bin/virtiofsd.new &&
+        mv /data/local/kaidashi/bin/virtiofsd.new /data/local/kaidashi/bin/virtiofsd
+    fi
     run_as="/data/local/kaidashi/bin/dropuid 60000 60000"
     [ "${OVM_FS_ROOT:-0}" = 1 ] && run_as=   # diagnostic: virtiofsd as root
     $run_as /data/local/kaidashi/bin/virtiofsd --shared-dir $MB --socket-path $FD/fs.sock \

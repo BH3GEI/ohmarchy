@@ -444,3 +444,16 @@ What it took, beyond the offline plan:
   tap and the lock while the VM ran. The lock was retaken at once (same slot,
   nobody else waiting), and the VM was restarted. `cmdline()` now converts with
   `tr` first; kills check the pid's command line names our disk or directory.
+
+**Binaries outside the repo (2026-10-24 11:10 PDT).** sha256 of the system
+virtiofsd and of its copy:
+`22def14ca62b64a69d74b051422de825df7d6c259c4ecbda395ed022bf2d063a`
+(`/system/bin/virt_service/vm_engine/stratovirt/virtiofsd`, 2 900 008 bytes,
+dated 2024-06-06, HarmonyOS 7.0.0.115; the copy in `/data/local/kaidashi/bin`
+is identical). `ohmarchy-vm start` compares the two (`cmp`) and refreshes the
+copy when a system update changes the original. `dropuid` (built from
+`tools/ownvm/dropuid.c` with the OpenHarmony NDK):
+`27fd5f3bd5fcb147a77927e5cd20b5c3da3fb7193fac267e9224319f43ccabf1`; it now
+sets umask 022 before exec, for the 0660 files (HongMeng's root shells start
+with umask 007). To verify in the next slot: `Umask` in virtiofsd's
+`/proc/PID/status` and a container's new file being 0644 in D.

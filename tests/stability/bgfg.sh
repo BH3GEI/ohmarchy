@@ -6,7 +6,7 @@
 # app's surface (RenderService "ohdispSurface fps" timestamps after the switch).
 # Also records whether the app process and Hyprland survived. Needs the screen.
 here=$(cd "$(dirname "$0")" && pwd)
-"$here/../lib/screen-free.sh" || [ -n "$HOLD_LOCK" ] || exit 1
+"$here/../lib/screen-free.sh" || exit 1
 B=${ARCH_BASE:-/data/local/archtest}
 user=${ARCH_USER:-builder}
 {

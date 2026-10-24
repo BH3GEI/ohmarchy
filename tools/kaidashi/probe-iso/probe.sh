@@ -28,4 +28,6 @@ done
 for e in /sys/class/drm/*/edid; do [ -s "$e" ] && p edid "$e $(od -An -tx1 -v $e | tr -d '\n')"; done
 dmesg | sed 's/^/KDSPROBE dmesg /'
 p end
-while :; do setsid sh -c 'exec sh </dev/tty1 >/dev/tty1 2>&1' ; sleep 1; done
+# d-i's busybox has no setsid: a plain shell on tty1 (no job control), and
+# the same over the serial log for whoever reads it.
+while :; do sh </dev/tty1 >/dev/tty1 2>&1; sleep 1; done

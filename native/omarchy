@@ -5,7 +5,7 @@
 #   omarchy [root] -c CMD..  run CMD (remaining words joined) in a login shell
 #   omarchy -g APP [ARG..]   start a Wayland app, shown as a window in the
 #                            鸿融 VM's Hyprland (route C) through waypipe
-#   omarchy desktop [start|stop|status]
+#   omarchy desktop [start|stop|restart|status]
 #                            Omarchy's Hyprland desktop rendered natively for the
 #                            HarmonyOS display app (com.ohmarchy.display)
 #   omarchy start|stop|status
@@ -16,6 +16,12 @@ user=${ARCH_USER:-builder}
 
 case "$1" in
 start|stop|status) exec sh "$B/arch.sh" "$1" ;;
+esac
+if [ "$1" = desktop ] && [ "$2" = restart ]; then
+    sh "$0" desktop stop > /dev/null 2>&1
+    exec sh "$0" desktop start
+fi
+case "$1" in
 root) user=root; shift ;;
 esac
 cmd= gui=
@@ -39,7 +45,9 @@ desktop)
             pkill -f "$B/bin/v[it][re]" 2>/dev/null   # the other server
             sleep 0.3
             case $vtest in
-            *broker) nsenter -t "$P" -m -- "$vtest" "$sock" < /dev/null > "$B/vtest.log" 2>&1 & ;;
+            # opening the display app (re)starts the desktop for it
+            *broker) nsenter -t "$P" -m -- "$vtest" --on-app "sh $B/bin/omarchy desktop restart" "$sock" \
+                         < /dev/null > "$B/vtest.log" 2>&1 & ;;
             *) nsenter -t "$P" -m -- "$vtest" --use-egl-surfaceless --socket-path "$sock" < /dev/null > "$B/vtest.log" 2>&1 & ;;
             esac
             i=0; while [ $i -lt 30 ] && ! nsenter -t "$P" -m -- test -S "$sock"; do sleep 0.1; i=$((i+1)); done

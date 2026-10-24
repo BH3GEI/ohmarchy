@@ -3,7 +3,11 @@
 // runs the renderer in its own process and presents frames into its window.
 // The app connects to the abstract socket @<name> and receives client fds over it
 // (one byte plus SCM_RIGHTS each); clients wait in a queue until it is there.
-//   vtest-broker <socket path> [name]   (default name: ohmarchy-vtest)
+// With --on-app CMD, each newly connected app runs CMD (through /system/bin/sh,
+// at most every 10 s): `omarchy desktop restart`, so opening the app brings the
+// desktop up, and reopening it after it was closed gives it a fresh Hyprland (the
+// old one lost its GPU with the app and came back in safe mode).
+//   vtest-broker [--on-app CMD] <socket path> [name]   (default name: ohmarchy-vtest)
 #include <errno.h>
 #include <poll.h>
 #include <stddef.h>
@@ -12,6 +16,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <time.h>
 #include <unistd.h>
 
 #define MAX_PENDING 16
@@ -53,12 +60,30 @@ static int send_fd(int sock, int fd)
     return sendmsg(sock, &msg, MSG_NOSIGNAL) == 1 ? 0 : -1;
 }
 
+static void run_detached(const char *cmd)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        setsid();
+        execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
+        _exit(127);
+    }
+}
+
 int main(int argc, char **argv)
 {
+    const char *on_app = NULL;
+    time_t last_hook = 0;
+    if (argc > 2 && strcmp(argv[1], "--on-app") == 0) {
+        on_app = argv[2];
+        argv += 2;
+        argc -= 2;
+    }
     if (argc < 2) {
-        fprintf(stderr, "usage: %s <socket path> [name]\n", argv[0]);
+        fprintf(stderr, "usage: %s [--on-app CMD] <socket path> [name]\n", argv[0]);
         return 2;
     }
+    signal(SIGCHLD, SIG_IGN); /* no zombies from --on-app */
     int clients = listen_on(argv[1], NULL);
     int apps = listen_on(NULL, argc > 2 ? argv[2] : "ohmarchy-vtest");
     if (clients < 0 || apps < 0)
@@ -80,6 +105,11 @@ int main(int argc, char **argv)
                     close(app);
                 app = fd;
                 printf("app connected\n");
+                if (on_app && time(NULL) - last_hook >= 10) {
+                    last_hook = time(NULL);
+                    printf("running: %s\n", on_app);
+                    run_detached(on_app);
+                }
             }
         }
         if (app >= 0 && (p[2].revents & (POLLIN | POLLHUP | POLLERR))) {

@@ -50,10 +50,17 @@ if [ $SRC = virtiofs ]; then
   f=; for c in /mnt/ohmarchy-kds-disk.img.gz /mnt/ohmarchy-kds-disk.img; do [ -f $c ] && f=$c && break; done
   if [ -z "$f" ]; then p error "no ohmarchy-kds-disk.img[.gz] in the share"
   else
-    p writing "$f ($(wc -c < $f) bytes)"
-    case $f in *.gz) gunzip -c $f | dd of=/dev/vda bs=4M 2>/tmp/dd.err ;; *) dd if=$f of=/dev/vda bs=4M 2>/tmp/dd.err ;; esac
-    rc=$?; sync
-    p written rc=$rc "$(tail -1 /tmp/dd.err)"
+    p writing "$(ls -l $f)"
+    # sparsecp (no libc, built from sparsecp.c) skips holes and zero blocks:
+    # 9 GiB of data move instead of 64 GiB; the fresh vm.qcow2 reads as zeros.
+    case $f in
+      *.gz) gunzip -c $f | /kds/sparsecp - /dev/vda 2>&1 | sed 's/^/KDSINST /' ;;
+      *) /kds/sparsecp $f /dev/vda 2>&1 | sed 's/^/KDSINST /' ;;
+    esac
+    rc=0
+    [ "$(dd if=/dev/vda bs=1 skip=512 count=8 2>/dev/null)" = "EFI PART" ] || { rc=1; p error "no GPT header on vda after the write"; }
+    sync
+    p written rc=$rc
     p head "$(dd if=/dev/vda bs=64 count=1 2>/dev/null | tr -cd '[:print:]')"
     if [ $rc = 0 ] && ! grep -q kds_novmwgfx /proc/cmdline; then prep_root; fi
     [ $rc = 0 ] && p done "boot 'the installed Omarchy disk' from the GRUB menu next"
@@ -84,9 +91,9 @@ p disk "/dev/vda $(cat /sys/block/vda/size) sectors"
 while :; do
   p ready "listening on $IP:9000 (gzip=$GZ)"
   if [ $GZ = 1 ]; then
-    nc -l -p 9000 | gunzip -c | dd of=/dev/vda bs=4M 2>/tmp/dd.err
+    nc -l -p 9000 | gunzip -c | /kds/sparsecp - /dev/vda 2>/tmp/dd.err
   else
-    nc -l -p 9000 | dd of=/dev/vda bs=4M 2>/tmp/dd.err
+    nc -l -p 9000 | /kds/sparsecp - /dev/vda 2>/tmp/dd.err
   fi
   rc=$?; sync
   p written rc=$rc "$(tail -1 /tmp/dd.err)"

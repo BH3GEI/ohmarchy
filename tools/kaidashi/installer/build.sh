@@ -5,7 +5,7 @@
 # four modules the installer needs + write-disk.sh and probe.sh.
 #   tools/kaidashi/installer/build.sh WORKDIR KERNEL_PKG  -> WORKDIR/kds-installer.iso
 # Secure Boot is off in a fresh 铠大师 VM, so nothing needs signing.
-# Needs curl, xorriso, wimlib-imagex, bsdtar, cpio, gzip.
+# Needs curl, xorriso, wimlib-imagex, bsdtar, cpio, gzip, clang + lld (aarch64 target).
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 W=${1:?workdir}; PKG=${2:?linux-aarch64 package}
@@ -20,6 +20,9 @@ bsdtar -xf "$PKG" -C "$W/k" boot/Image 'usr/lib/modules/*/kernel/net/core/failov
   'usr/lib/modules/*/kernel/fs/fuse/virtiofs.ko'
 find "$W/k/usr" -name '*.ko' -exec cp {} "$W/inst-root/kmod/" \;
 cp "$here/write-disk.sh" "$here/../probe-iso/probe.sh" "$W/inst-root/"
+mkdir -p "$W/inst-root/kds"
+clang --target=aarch64-linux-gnu -O2 -ffreestanding -fno-builtin -fno-stack-protector \
+  -nostdlib -static -fuse-ld=lld -o "$W/inst-root/kds/sparsecp" "$here/sparsecp.c"
 # Route B's patched vmwgfx for this kernel (VMWGFX_KO, e.g. extracted from
 # oseasy-probe.iso's initramfs) and its packaged options, written into the
 # Omarchy root after the disk write.

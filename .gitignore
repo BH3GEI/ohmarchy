@@ -28,3 +28,5 @@ native/app/entry/.cxx/
 native/app/sign/app-chain.pem
 native/app/sign/app.p7b
 native/app/sign/profile.json
+# raw results of tests/ runs
+tests/results/

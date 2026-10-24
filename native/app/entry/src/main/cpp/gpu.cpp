@@ -113,8 +113,39 @@ void *VtestThread(void *)
     return nullptr;
 }
 
+// vtest reports through stdout and stderr, which go nowhere in an app: forward
+// them to hilog, one line each (tag ohdisp-vtest).
+void *LogPump(void *arg)
+{
+    FILE *in = fdopen(static_cast<int>(reinterpret_cast<intptr_t>(arg)), "r");
+    char line[512];
+    while (in != nullptr && fgets(line, sizeof(line), in) != nullptr) {
+        line[strcspn(line, "\n")] = '\0';
+        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, "ohdisp-vtest", "%{public}s", line);
+    }
+    return nullptr;
+}
+
+void StartLogPump()
+{
+    int fds[2];
+    pthread_t t;
+    if (pipe(fds) != 0) {
+        return;
+    }
+    dup2(fds[1], 1);
+    dup2(fds[1], 2);
+    close(fds[1]);
+    setvbuf(stdout, nullptr, _IOLBF, 0);
+    setvbuf(stderr, nullptr, _IOLBF, 0);
+    if (pthread_create(&t, nullptr, LogPump, reinterpret_cast<void *>(static_cast<intptr_t>(fds[0]))) == 0) {
+        pthread_detach(t);
+    }
+}
+
 void *Supervisor(void *)
 {
+    StartLogPump();
     for (;;) {
         if (pthread_create(&g_vtestThread, nullptr, VtestThread, nullptr) == 0) {
             pthread_join(g_vtestThread, nullptr);

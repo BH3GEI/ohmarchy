@@ -9,7 +9,8 @@
 #                            Omarchy's Hyprland desktop rendered natively for the
 #                            HarmonyOS display app (com.ohmarchy.display)
 #                            OHMARCHY_VTEST_TCP=172.16.100.1:PORT also serves vtest
-#                            clients from the 鸿融 VM's network (remote virgl)
+#                            clients from the 鸿融 VM's network (remote virgl);
+#                            OHMARCHY_VTEST_TCP_ALLOW=NET/BITS (tests: 127.0.0.0/8)
 #   omarchy start|stop|status
 # The session is started on demand.
 B=${ARCH_BASE:-$(cd "$(dirname "$0")/.." && pwd)}
@@ -74,7 +75,8 @@ desktop)
             *broker) ug=$(grep "^$user:" "/proc/$P/root/etc/passwd" | cut -d: -f3,4)
                      nsenter -t "$P" -m -- "$vtest" --on-app "sh $B/bin/omarchy desktop restart" \
                          ${app_uid:+--app-uid "$app_uid"} ${ug:+--user "$ug"} \
-                         ${OHMARCHY_VTEST_TCP:+--tcp "$OHMARCHY_VTEST_TCP"} "$sock" \
+                         ${OHMARCHY_VTEST_TCP:+--tcp "$OHMARCHY_VTEST_TCP"} \
+                         ${OHMARCHY_VTEST_TCP_ALLOW:+--tcp-allow "$OHMARCHY_VTEST_TCP_ALLOW"} "$sock" \
                          < /dev/null > "$B/vtest.log" 2>&1 & ;;
             *) nsenter -t "$P" -m -- "$vtest" --use-egl-surfaceless --socket-path "$sock" < /dev/null > "$B/vtest.log" 2>&1 & ;;
             esac

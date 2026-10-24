@@ -312,6 +312,14 @@ ext4, vfat and simplefb are built in). GRUB menu:
 | Write Omarchy disk from the network | `rdinit=/write-disk.sh arm64.hmv_idreg_quirk`: eth0 = 172.16.100.3/24 on the Windows-VM bridge (`WVMBr…`, host 172.16.100.1), `nc -l -p 9000 \| dd of=/dev/vda` |
 | Probe with 7.2.12 | `probe.sh` on the 7.2.12 kernel |
 
+Second channel, no network: 铠大师 always exports the HarmonyOS 文档 folder
+to the VM as virtiofs tag `shared_dir` (even after 不允许). The default entry
+for an empty disk is "Write Omarchy disk from the Documents share": it loads
+`fuse`/`virtiofs`, mounts `shared_dir` and writes `ohmarchy-kds-disk.img.gz`
+(or `.img`) to `/dev/vda`. `tools/kaidashi/stage-disk.sh put IMAGE` puts the
+gzip-compressed image there, `stage-disk.sh remove` takes it away right after
+(文档 is the owner's personal folder).
+
 On the host, `tools/kaidashi/push-disk.sh IMAGE` streams the raw image with
 toybox `nc`. The VM's disk has `detect-zeroes=unmap`, so the zero runs of a
 sparse image stay holes in `vm.qcow2`. The ISO is small and the 64 GB disk never

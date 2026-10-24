@@ -4,6 +4,9 @@
 # Brings up the NIC as 172.16.100.3/24 (the Windows-VM bridge, host 172.16.100.1)
 # and writes what arrives on TCP 9000 to /dev/vda (raw; gzip with kds_gz=1):
 #   on the host: tools/kaidashi/push-disk.sh IMAGE
+# With kds_src=virtiofs it instead mounts the VM's virtiofs share (tag
+# shared_dir: the host's 文档 folder, which 铠大师 always exports) and writes
+# ohmarchy-kds-disk.img or ohmarchy-kds-disk.img.gz from there.
 # Progress goes to tty0 and to the serial port (the host's hwf_service vmlog).
 export PATH=/sbin:/usr/sbin:/bin:/usr/bin
 mount -t proc proc /proc; mount -t sysfs sys /sys; mount -t devtmpfs dev /dev 2>/dev/null
@@ -14,10 +17,27 @@ case $(uname -r) in
   6.1.*) modprobe virtio_net && p modprobe virtio_net ;;   # d-i's own modules
   *) for m in failover net_failover virtio_net; do insmod /kmod/$m.ko && p insmod $m; done ;;
 esac
-IP=172.16.100.3 GZ=0
+IP=172.16.100.3 GZ=0 SRC=net
 for a in $(cat /proc/cmdline); do
-  case $a in kds_ip=*) IP=${a#kds_ip=};; kds_gz=1) GZ=1;; esac
+  case $a in kds_ip=*) IP=${a#kds_ip=};; kds_gz=1) GZ=1;; kds_src=*) SRC=${a#kds_src=};; esac
 done
+if [ $SRC = virtiofs ]; then
+  for m in fuse virtiofs; do insmod /kmod/$m.ko && p insmod $m; done
+  mkdir -p /mnt && mount -t virtiofs shared_dir /mnt && p mounted shared_dir
+  ls -la /mnt | sed 's/^/KDSINST   /'
+  f=; for c in /mnt/ohmarchy-kds-disk.img.gz /mnt/ohmarchy-kds-disk.img; do [ -f $c ] && f=$c && break; done
+  if [ -z "$f" ]; then p error "no ohmarchy-kds-disk.img[.gz] in the share"
+  else
+    p writing "$f ($(wc -c < $f) bytes)"
+    case $f in *.gz) gunzip -c $f | dd of=/dev/vda bs=4M 2>/tmp/dd.err ;; *) dd if=$f of=/dev/vda bs=4M 2>/tmp/dd.err ;; esac
+    rc=$?; sync
+    p written rc=$rc "$(tail -1 /tmp/dd.err)"
+    p head "$(dd if=/dev/vda bs=64 count=1 2>/dev/null | tr -cd '[:print:]')"
+    [ $rc = 0 ] && p done "boot 'the installed Omarchy disk' from the GRUB menu next"
+  fi
+  umount /mnt
+  while :; do sh </dev/tty1 >/dev/tty1 2>&1; sleep 1; done
+fi
 sleep 2
 ip link set lo up
 ip link set eth0 up && ip addr add $IP/24 dev eth0 && p net eth0 $IP

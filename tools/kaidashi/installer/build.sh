@@ -16,7 +16,8 @@ MINI_URL=https://deb.debian.org/debian/dists/bookworm/main/installer-arm64/curre
 rm -rf "$W/k" "$W/inst-root"; mkdir -p "$W/k" "$W/inst-root/kmod"
 bsdtar -xf "$PKG" -C "$W/k" boot/Image 'usr/lib/modules/*/kernel/net/core/failover.ko' \
   'usr/lib/modules/*/kernel/drivers/net/net_failover.ko' 'usr/lib/modules/*/kernel/drivers/net/virtio_net.ko' \
-  'usr/lib/modules/*/kernel/fs/isofs/isofs.ko'
+  'usr/lib/modules/*/kernel/fs/isofs/isofs.ko' 'usr/lib/modules/*/kernel/fs/fuse/fuse.ko' \
+  'usr/lib/modules/*/kernel/fs/fuse/virtiofs.ko'
 find "$W/k/usr" -name '*.ko' -exec cp {} "$W/inst-root/kmod/" \;
 cp "$here/write-disk.sh" "$here/../probe-iso/probe.sh" "$W/inst-root/"
 (cd "$W/inst-root" && find . | cpio -o -H newc 2>/dev/null | gzip -9 > "$W/installer.cpio.gz")

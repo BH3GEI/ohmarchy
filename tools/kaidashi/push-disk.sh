@@ -7,6 +7,6 @@
 img=${1:?image}; ip=${2:-172.16.100.3}
 [ -r "$img" ] || { echo "no $img"; exit 1; }
 echo "sending $img ($(ls -l "$img" | awk '{print $5}') bytes) to $ip:9000"
-start=$(date +%s)
+start=$(toybox date +%s)
 toybox nc -q 5 $ip 9000 < "$img" || toybox nc $ip 9000 < "$img"
-echo "nc rc=$? after $(( $(date +%s) - start )) s"
+echo "nc rc=$? after $(( $(toybox date +%s) - start )) s"

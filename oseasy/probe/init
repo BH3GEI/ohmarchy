@@ -42,8 +42,15 @@ case " $cmd " in
     #   toybox nc 172.16.100.2 5003 < disk.img.zst   (oseasy/push-disk.sh)
     modprobe virtio_blk 2>/dev/null; sleep 1
     log "install: waiting for a disk image on tcp/5003, writing /dev/vda"
-    # -w 30: busybox nc -l does not exit when the sender closes; stop after 30 s idle
-    nc -l -p 5003 -w 30 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    # busybox nc -l does not exit when the sender closes (and -w also bounds the wait
+    # for the connection): a watchdog ends it once dd has seen no input for 20 s
+    ( last=-1; while sleep 10; do
+        p=$(pidof dd); [ -n "$p" ] || continue
+        n=$(awk '/^rchar/ {print $2}' /proc/$p/io 2>/dev/null)
+        [ "$n" = "$last" ] && [ "${n:-0}" -gt 0 ] && { kill $(pidof nc) 2>/dev/null; break; }
+        last=$n
+      done ) &
+    nc -l -p 5003 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     log "install: dd: $(tail -1 /tmp/dd.txt)"
     blockdev --rereadpt /dev/vda; sleep 2
     root=$(ls /dev/vda2 2>/dev/null)
@@ -64,6 +71,15 @@ case " $cmd " in
         log "install: vmwgfx-oseasy added for $kv; modinfo -> $(chroot /mnt /usr/bin/modinfo -k "$kv" -n vmwgfx)"
         chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
         log "install: mkinitcpio rc=$?; initramfs vmwgfx: $(chroot /mnt /usr/bin/lsinitcpio /boot/initramfs-linux.img | grep vmwgfx | tr '\n' ' ')"
+        # boot straight into Hyprland (tty1 autologin + uwsm; SDDM's greeter exits
+        # here) and record Oseasy's guest channel
+        u=$(awk -F: '$3 == 1000 {print $1}' /mnt/etc/passwd)
+        [ -n "$u" ] && chroot /mnt /bin/bash /dev/stdin "$u" < /oseasy/desktop-autostart.sh > /tmp/autostart.txt 2>&1
+        log "install: desktop autostart for ${u:-?}: $(tail -1 /tmp/autostart.txt)"
+        install -D -m755 /oseasy/oseasy-agent.py /mnt/usr/local/lib/oseasy/oseasy-agent.py
+        install -D -m644 /oseasy/oseasy-agent.service /mnt/etc/systemd/system/oseasy-agent.service
+        chroot /mnt /usr/bin/systemctl enable oseasy-agent.service > /dev/null 2>&1
+        log "install: oseasy-agent $(chroot /mnt /usr/bin/systemctl is-enabled oseasy-agent.service)"
         umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else

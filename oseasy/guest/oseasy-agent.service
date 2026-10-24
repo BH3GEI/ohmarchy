@@ -1,0 +1,11 @@
+[Unit]
+Description=Oseasy Linux-guest channel (recorder)
+After=network-online.target nftables.service ufw.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/lib/oseasy/oseasy-agent.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

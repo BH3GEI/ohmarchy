@@ -51,6 +51,10 @@ cp "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/"
 # for the install mode: the module and its options, copied into the written disk
 install -D -m644 "$M/updates/vmwgfx.ko" "$R/oseasy/vmwgfx.ko"
 install -D -m644 "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/oseasy/vmwgfx-oseasy.conf"
+# guest pieces added to the installed disk: desktop autostart (Route F's) and the Oseasy agent
+install -D -m755 "$here/../../emulator/guest/desktop-autostart.sh" "$R/oseasy/desktop-autostart.sh"
+install -D -m755 "$here/../guest/oseasy-agent.py" "$R/oseasy/oseasy-agent.py"
+install -D -m644 "$here/../guest/oseasy-agent.service" "$R/oseasy/oseasy-agent.service"
 # the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"

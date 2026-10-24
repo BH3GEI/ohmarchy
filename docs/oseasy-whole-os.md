@@ -586,3 +586,25 @@ measurement next to the Oseasy window is pending (needs the screen lock).
   1x1 and floating variants: next run.
 
   ![ohmarchy-120 next to the Oseasy window](img/oseasy-mb14-vote120.jpeg)
+
+### Fixes after the fourth run (offline)
+
+- **No cursor plane on HVM.** `vmw_cursor_plane_atomic_check()` compares the
+  cursor size with `SVGA_REG_CURSOR_MAX_DIMENSION`, which this device reports as
+  0, so every cursor update fails with `-EINVAL`. With atomic KMS that fails the
+  whole commit (no page flip, no frame events: Hyprland stops after its first
+  frame and clients get no frame callbacks); with `AQ_NO_ATOMIC=1` it shows as
+  `legacy drm: cursor drmIoctl failed: Invalid argument`. vmwgfx-oseasy now
+  registers no cursor plane when `hvm_mmio` is set (compositors draw the cursor;
+  `hvm_hw_cursor=1` restores the plane), and the cursor-bypass ioctl and the
+  display-unit cleanup cope with its absence. (The native desktop line, which runs
+  aquamarine headless, had the same reading of the log.) Package sha256
+  `3ba67341b3209035067cda385a12b60273948e3270a3a6600e8e785e22750df0`, install ISO
+  `652afa8e3ce602880eb8d1f8f1726c0a966d90a58df3c0f6fad3643b07f0c2ca`.
+- **The warm-reboot hang, re-read.** The boot that hung had the in-tree vmwgfx,
+  which oopsed while probing the MMIO BAR as I/O ports during boot, inside the PCI
+  probe, with the device lock held. `device_shutdown()` takes each device's lock,
+  so `systemctl reboot` deadlocked there, before the kernel's `reboot: Restarting
+  system`. The later boot with vmwgfx-oseasy powered off cleanly through the same
+  `device_shutdown()` path (reboot and power-off share it up to the final PSCI
+  call). Expected: warm reboots work with the right module; to confirm.

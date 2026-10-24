@@ -1,5 +1,7 @@
 # ohmarchy: Omarchy on HarmonyOS
 
+English | [中文](README.zh-CN.md)
+
 Running [Omarchy](https://omarchy.org) (Arch Linux + Hyprland) on a HarmonyOS PC,
 driven from a Linux host over `hdc` (route D: from a root shell on the
 machine; route F: on a Mac, with no HarmonyOS hardware). Developed on a HUAWEI MateBook Fold (HarmonyOS 7.0) with the

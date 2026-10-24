@@ -57,12 +57,45 @@ in them, yet both create VMs, so the VM (`vmManager`) path is **not** gated by
 that static allowlist. The caller check is in `libvm_manager` itself
 (`GetAppIdByCallingUid`, `caller identity validation failed`).
 
-## Gate so far, and what's left to test
+## Reverse-engineered API surface (from OSEasy's `ets/modules.abc`)
 
-Build-time gate confirmed: the VM API is a closed HMS partner module absent from
-the public SDK. Remaining question (runtime): with a stub `.d.ts` to compile
-against and the real module resolved on-device at runtime, does the vmManager
-service accept a debug-signed third-party caller, or reject it by signature /
-appId / entitlement? That empirical test (build a minimal HAP, debug-sign,
-install, call `createVm`, read the error and hilog) is next; booting a created VM
-would need `/data/local/vm.lock`.
+`strings` on `com.oseasy1.ohvm`'s `ets/modules.abc` gives the real call shape:
+
+- module specifier **`@hms:virtService.vmManager`** (compiled form of `@hms.virtService.vmManager`)
+- a **`virtualization`** namespace: `createVm(bundleName, config)`, `startVm(bundleName, …)`,
+  `stopVm`, `pauseVm`, `resumeVm`, `destroyVm(bundleName)`, `getVmAvailableCpuNumRange()`,
+  `getVmDiskSize`/`setVmDiskSize`, `mountUSBToVm`/`unmountUSBFromVm`, `addSharedFolder`,
+  `sendDataToVm`, `on/off('vmViewStateChange'|'vmMemoryChange')`
+- plus `createVmApplicationForm('entry','VmFormAbility','VmForm')` for the VM form card.
+
+Crucially the abc also contains the constants **`UNTRUSTED_CALLER` / `untrusted_caller`**,
+`callerBundleName`, `publisherBundleName`, `hasPermissions` — so the VM service **validates
+the calling app's identity** and has a dedicated "untrusted caller" rejection.
+
+## Runtime test (option A): build a stub, debug-sign, install, call `createVm`
+
+Supervisor-approved 2-hour empirical test. Minimal probe app `com.ohmarchy.vmtest`
+(`native/vmtest/`): `EntryAbility.onCreate` calls `virtualization.getVmAvailableCpuNumRange()`
+then `virtualization.createVm('com.ohmarchy.vmtest', …)` — **create only, never `startVm`**
+(the device's `vm_manager` is simultaneously running the 鸿融 main VM), and `destroyVm` to
+clean up if a VM is actually created.
+
+Gates cleared so far:
+
+1. **Build-time gate — PASSED with a stub.** The public DevEco SDK ships no
+   `@hms.virtService.vmManager` (195 `@hms.*` d.ts, none virt/vm). Dropping a hand-written
+   stub `.d.ts` (`native/vmtest/stub/`, reverse-engineered from the abc) into
+   `sdk/default/hms/ets/api/` lets hvigor resolve the import and the HAP compiles. So the
+   closed SDK is **not** an absolute barrier — a third party can compile against the API
+   with a stub.
+2. **Install gate — PASSED.** The HAP, signed with the OpenHarmony **test** keys + a debug
+   provisioning profile bound to the device UDID (not an AppGallery cert), installs via
+   `bm install -r`: `appProvisionType=debug`, `appDistributionType=none`. Declaring/importing
+   the VM API does not block install.
+
+Remaining (the real question): **does the runtime `vm_manager` service accept this
+debug-signed, non-AppGallery caller, or reject it** (expected: `UNTRUSTED_CALLER`, i.e. a
+signature/appId gate)? Launch the probe, read `hilog` for the `VMPROBE` verdict and any
+`vm_manager`/`virt_service` rejection reason. Launch foregrounds a window briefly, so it
+waits for `/data/local/screen.lock`; create-only needs no `vm.lock`. Result pending.
+

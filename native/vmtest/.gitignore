@@ -1,0 +1,8 @@
+entry/build/
+*.hap
+oh_modules/
+.hvigor/
+.cxx/
+sign/profile.json
+sign/app.p7b
+sign/app-chain.pem

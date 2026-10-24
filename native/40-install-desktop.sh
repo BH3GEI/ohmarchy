@@ -30,6 +30,10 @@ grep -q libhongmeng-uname /etc/ld.so.preload 2>/dev/null || echo /usr/local/lib/
 # Global, because glycin starts its loaders with an empty environment.
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-statx.so "$here/desktop/hongmeng-statx.c"
 grep -q libhongmeng-statx /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-statx.so >> /etc/ld.so.preload
+# A msgrcv already blocked is never woken by a later msgsnd (fakeroot, so makepkg,
+# hangs); poll instead (desktop/hongmeng-msgrcv.c).
+gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-msgrcv.so "$here/desktop/hongmeng-msgrcv.c" -ldl
+grep -q libhongmeng-msgrcv /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-msgrcv.so >> /etc/ld.so.preload
 
 build=/var/tmp/ohmarchy-build
 rm -rf "$build" && mkdir -p "$build" "$prefix"

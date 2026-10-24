@@ -108,6 +108,7 @@ The root causes behind most ❌ rows:
 
 | Feature | Works | Notes |
 |---|---|---|
+| SysV IPC (`tests/compat/sysv_ipc.c`) | ⚠️ | Shared memory and semaphores work. Message queues: a `msgrcv` that is already blocked is never woken by a later `msgsnd` (the message is queued; a non-blocking `msgrcv` reads it), so fakeroot, hence makepkg, hangs. Fix: preloaded `libhongmeng-msgrcv.so` polls instead (below); with it all three pass and `fakeroot chown` works. |
 | Session D-Bus | ✅ | Started with the desktop. Activation works for services with an `Exec=` (portals, gvfs, keyring, fcitx5). |
 | System D-Bus | ❌ | No `/run/dbus`. Everything on the system bus is missing (below). |
 | Audio | ❌ | No `/dev/snd`. PipeWire isn't started (no systemd --user). It can be started by hand but has no sink. No path to HarmonyOS audio. |

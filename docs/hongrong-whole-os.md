@@ -238,6 +238,62 @@ The scripts follow the ISO's order: repositories and keys, packages,
   `OMARCHY_SETUP_CONTEXT=provision-owner` it falls back to `mise` over the
   network (npmmirror).
 
+## Developer image
+
+A ready-made Omarchy disk for the 鸿融 app: download one qcow2 file, import it
+in 鸿融, start it. No root on the HarmonyOS PC, no deepin, no build step.
+
+**Status (2026-10-24): being verified.** The disk boots in a 鸿融-style VM
+(cold boot and three warm reboots pass, see [Omarchy alone, without
+deepin](#omarchy-alone-without-deepin)). Not yet verified: import through
+鸿融's own UI, network, Docker, a long run.
+
+### What is in it
+
+- Arch Linux ARM and Omarchy 4.0.6 (Hyprland, SDDM), nothing else.
+- `linux-aarch64` 7.2.12 with the 鸿融 patches
+  ([hongrong/kernel](../hongrong/kernel)), booted with
+  `arm64.hmv_idreg_quirk`; pacman owns the kernel, so `pacman -Syu` keeps
+  working as long as the package keeps the patches (see the PKGBUILD).
+- One partition layout: 512 MiB EFI system partition with GRUB at the
+  removable-media path, ext4 root. 64 GiB virtual size, about 4 GiB to
+  download (compressed qcow2).
+- Built from scratch by [hongrong/pure/build-disk.sh](../hongrong/pure/build-disk.sh).
+
+### Import
+
+1. Copy `omarchy-dev-7.2.12.qcow2` into the HarmonyOS file manager's
+   Downloads folder.
+2. In 鸿融: if a VM exists, it has to go first (1.1.1.103 holds exactly one
+   VM; back up its disk if it matters). Choose 本地文件 → the qcow2 file, then
+   start it.
+3. Log in as `yao` (the password is given with the download, not here);
+   change it with `passwd`.
+
+### Network
+
+Static address 172.16.100.2/24, gateway and DNS through 172.16.100.1 (鸿融's
+bridge has no DHCP). `ssh yao@172.16.100.2` works from the HarmonyOS shell.
+
+### Docker
+
+```sh
+sudo pacman -S docker docker-compose
+sudo systemctl enable --now docker
+```
+
+Docker Hub is slow or unreachable from mainland China; the image ships
+`/etc/docker/daemon.json` with registry mirrors (to be verified).
+
+### Known limits
+
+- 60 Hz: 鸿融's virtual display offers only 60 Hz modes.
+- One VM: 鸿融 1.1.1.103 holds one VM at a time.
+- AppGallery updates 鸿融 on its own, and has replaced a newer sideloaded
+  build with 1.1.1.103; turn off automatic updates for 鸿融 to keep a version.
+- The kernel needs `arm64.hmv_idreg_quirk` until Huawei's hypervisor reads
+  unknown ID registers as zero ([report](hmv-idreg-report.md)).
+
 ## Toward Omarchy's own kernel
 
 Goal: boot Omarchy's `linux-aarch64` with a small, documented patch set on top,

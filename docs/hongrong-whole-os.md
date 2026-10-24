@@ -243,10 +243,35 @@ The scripts follow the ISO's order: repositories and keys, packages,
 A ready-made Omarchy disk for the 鸿融 app: download one qcow2 file, import it
 in 鸿融, start it. No root on the HarmonyOS PC, no deepin, no build step.
 
-**Status (2026-10-24): being verified.** The disk boots in a 鸿融-style VM
-(cold boot and three warm reboots pass, see [Omarchy alone, without
-deepin](#omarchy-alone-without-deepin)). Not yet verified: import through
-鸿融's own UI, network, Docker, a long run.
+**Status (2026-10-24, 08:00–08:45 PDT): runs in 鸿融 1.1.1.103; one-click
+import still blocked.** The image, booted as 鸿融's own VM (started from the 鸿融
+UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
+
+| Check | Result |
+|---|---|
+| Boot | linux-aarch64 7.2.12-1.1, 6 vCPUs, systemd `running`; warm reboot from the guest works |
+| Desktop | SDDM → Hyprland (Omarchy 4.0.6) as `yao` on the 鸿融 screen |
+| Network | 172.16.100.2 on 鸿融's bridge; `pacman -Sy` from the mirrors works |
+| GPU | Mesa 26.2.5, `virgl (zink Vulkan 1.2 (Maleoon 916))`; glmark2-es2-wayland fullscreen: **596** |
+| Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`) |
+| Docker | 29.9.2, overlayfs, cgroup v2: `hello-world`, `postgres:16-alpine` (`pg_isready`), `docker compose` with nginx; through registry mirrors |
+| Soak | 30 min, all CPUs busy (results below once done) |
+
+**Import through 鸿融's UI fails.** "导入 qcow2" rejects the image with
+"镜像可能在传输过程中损坏，无法完成校验" for every variant tried: zlib-compressed,
+uncompressed 64 GiB, uncompressed resized to 256 GiB. 鸿融's bytecode shows a
+structural check (magic, version, cluster_bits, virtual size, L1/L2/refcount
+tables and data clusters within the file) before a SHA-256 pass; it logs
+nothing a root shell can read, so which check fails is not known yet. A qcow2
+that 鸿融 itself created (from an earlier VM) imports fine. The test above put
+the image in place of such an imported VM's disk from a root shell, which a
+developer cannot do; making the file pass 鸿融's check is the open item.
+
+**120 Hz:** `hongrong/edid` makes an EDID with a 2160x1440@120 preferred mode;
+with `drm.edid_firmware=Virtual-1:edid/omarchy-120.bin` the kernel reads it
+(`/sys/class/drm/card0-Virtual-1/edid` equals the file) but keeps only the
+60 Hz timing, so Hyprland still runs at 59.955 Hz. Why the 120 Hz timing is
+dropped is not known yet (next: `drm.debug`).
 
 ### What is in it
 

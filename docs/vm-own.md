@@ -134,3 +134,24 @@ session (it shares the host's network: a client there connecting to
 `TESTVM_DISPLAY=ohui`, and gives the NIC 鸿融's rx/tx iothreads, the likely
 fix for "the guest sends but never receives" seen both in that script and in
 铠大师's install session ([vm-kaidashi.md](vm-kaidashi.md)).
+
+## Disk (offline, 2026-10-24)
+
+`tools/ownvm/prep-disk.sh` makes `/data/local/kaidashi/ownvm/omarchy-own.img`:
+a sparse copy of agent-2a's `omarchy-pure.img` (sha256 `d2c7150e…`, 64 GiB,
+9.0 GiB of data; the source is only read), then edits its root with
+`debugfs -w` because the host cannot mount it (HongMeng's ext4 driver:
+"has unsupported incompat features(22c2)"). Added: `/boot/ohmarchy-edid.cpio`
+(the EDID as an extra initrd, so the initramfs needs no rebuild), the EDID in
+`/usr/lib/firmware/edid/`, an `/etc/mkinitcpio.conf.d/ohmarchy-edid.conf`
+for later rebuilds, and in both GRUB entries
+`drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin` plus the extra initrd.
+`e2fsck -fn` is clean. Docker goes in from inside the running guest.
+
+## Option A test tool
+
+`tools/ownvm/swtest.c` (NDK build, runs as root on the host): creates a native
+window from route D's app's XComponent surface id
+(`OH_NativeWindow_CreateNativeWindowFromSurfaceId`) and flushes CPU-filled
+buffers into it; if pictures appear, a substitute `libhwf_kits.z.so` can hand
+that window to vhost-device-gpu. Needs the app open (screen.lock).

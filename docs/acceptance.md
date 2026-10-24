@@ -16,7 +16,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | | pending |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | | pending |
-| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | | pending; open items listed under E below |
+| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user: pass. Open: passwordless sudo (session root is host root), Chromium without sandbox, host GPU server as root |
 | F. Regression | `tests/run-all.sh`, one table | | pending |
 | G. Other devices | | | to do: only one machine so far |
 
@@ -171,7 +171,22 @@ Found while measuring, fixed:
 Open: the display app's own idle CPU (about 14 % of a core with nothing changing on
 screen; likely its 120 Hz frame callback running with no new frames).
 
-## E. Security: open items
+## E. Security
+
+`tests/security/check.sh`, 2026-10-24 17:50:
+
+| Check | Result |
+|---|---|
+| Desktop processes (Hyprland, Omarchy shell, Xwayland, sound, input method) run as the ordinary desktop user | pass |
+| Root in the session | only udisksd and upowerd (system bus services, as on any Linux), plus whatever someone runs as root (a package build's pacman during the check) |
+| Desktop user gets root without a password | fail: `builder` is in `wheel`, which has `NOPASSWD: ALL`. That matters more here than on a normal Linux: there are no user namespaces, so root in the session is root on the HarmonyOS host, in the `u:r:su:s0` context |
+| Host side | the session's init and the host GPU server (`OHMARCHY_GPU=host`) run as root in `u:r:su:s0`; with the in-app GPU path the renderer runs inside the display app (an ordinary app sandbox) and only the broker is root |
+| Listeners | pass: only 127.0.0.1:4714 (sound, below) |
+| Browser sandbox | fail: Chromium runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Ruled out: PID and network namespaces work as root, seccomp-bpf works, and turning Chromium's seccomp policy off does not help |
+| seccomp-bpf | pass: the kernel takes filters (so a working setuid sandbox would get both layers) |
+
+Open items:
+
 
 - Sound: protocol-simple listens on 127.0.0.1:4714 in the host's network
   namespace, so any process on the HarmonyOS host can connect and receive the

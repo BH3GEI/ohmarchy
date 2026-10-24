@@ -1,0 +1,135 @@
+pgrep: pattern that searches for process name longer than 15 characters will result in zero matches
+Try `pgrep -f' option to match against the complete command line.
+== t+0 min 12:02:24
+Hyprland up 06:55, es2gears up 04:17
+00:06; load 1.22 0.77 0.36; mem avail 6853 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+== t+5 min 12:07:24
+Hyprland up 11:56, es2gears up 09:18
+05:06; load 1.14 1.00 0.58; mem avail 6860 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+== t+10 min 12:12:24
+Hyprland up 16:56, es2gears up 14:18
+10:06; load 1.07 1.06 0.74; mem avail 6865 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+== t+15 min 12:17:24
+Hyprland up 21:56, es2gears up 19:18
+15:06; load 1.12 1.09 0.85; mem avail 6866 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+== t+20 min 12:22:24
+Hyprland up 26:57, es2gears up 24:18
+20:07; load 1.11 1.13 0.95; mem avail 6868 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+  RSUniRenderThre-2792                     0
+== t+25 min 12:27:24
+Hyprland up 31:55, es2gears up 29:17
+25:05; load 1.34 1.16 1.02; mem avail 6862 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+== t+30 min 12:32:24
+Hyprland up 36:55, es2gears up 34:17
+30:06; load 1.11 1.14 1.04; mem avail 6866 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+== t+35 min 12:37:24
+Hyprland up 41:56, es2gears up 39:18
+35:06; load 1.07 1.12 1.06; mem avail 6868 MB
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-41880                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-41880                        120
+== t+40 min 12:42:24
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 12: 66230 Alarm clock: 14         GS_T=20 $G 'echo "Hyprland up $(ps -o etime= -C Hyprland | tr -d " "), es2gears up $(ps -o etime= -C es2gears_wayland | tr -d " "); load $(cut -d" " -f1-3 /proc/loadavg); mem avail $(awk "/MemAvailable/ {print int(\$2/1024)}" /proc/meminfo) MB"'
+guest: no answer
+-- es2gears
+== composer fps: nan frames/s (1 frames over 0.00 s)
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+-- es2gears + workspace switching
+== composer fps: nan frames/s (1 frames over 0.00 s)
+  RSUniRenderThre-2792                     0
+== t+45 min 12:47:24
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 12: 72225 Alarm clock: 14         GS_T=20 $G 'echo "Hyprland up $(ps -o etime= -C Hyprland | tr -d " "), es2gears up $(ps -o etime= -C es2gears_wayland | tr -d " "); load $(cut -d" " -f1-3 /proc/loadavg); mem avail $(awk "/MemAvailable/ {print int(\$2/1024)}" /proc/meminfo) MB"'
+guest: no answer
+-- es2gears
+== composer fps: nan frames/s (1 frames over 0.00 s)
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+-- es2gears + workspace switching
+== composer fps: 0.4 frames/s (3 frames over 5.26 s)
+== t+50 min 12:52:24
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 12: 77901 Alarm clock: 14         GS_T=20 $G 'echo "Hyprland up $(ps -o etime= -C Hyprland | tr -d " "), es2gears up $(ps -o etime= -C es2gears_wayland | tr -d " "); load $(cut -d" " -f1-3 /proc/loadavg); mem avail $(awk "/MemAvailable/ {print int(\$2/1024)}" /proc/meminfo) MB"'
+guest: no answer
+-- es2gears
+== composer fps: nan frames/s (1 frames over 0.00 s)
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+-- es2gears + workspace switching
+== composer fps: nan frames/s (1 frames over 0.00 s)
+  RSUniRenderThre-2792                     0
+== t+55 min 12:57:24
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 12: 83704 Alarm clock: 14         GS_T=20 $G 'echo "Hyprland up $(ps -o etime= -C Hyprland | tr -d " "), es2gears up $(ps -o etime= -C es2gears_wayland | tr -d " "); load $(cut -d" " -f1-3 /proc/loadavg); mem avail $(awk "/MemAvailable/ {print int(\$2/1024)}" /proc/meminfo) MB"'
+guest: no answer
+-- es2gears
+== composer fps: 60.0 frames/s (14 frames over 0.22 s)
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+-- es2gears + workspace switching
+== composer fps: nan frames/s (1 frames over 0.00 s)
+  RSUniRenderThre-2792                     0
+== t+60 min 13:02:24
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 12: 89638 Alarm clock: 14         GS_T=20 $G 'echo "Hyprland up $(ps -o etime= -C Hyprland | tr -d " "), es2gears up $(ps -o etime= -C es2gears_wayland | tr -d " "); load $(cut -d" " -f1-3 /proc/loadavg); mem avail $(awk "/MemAvailable/ {print int(\$2/1024)}" /proc/meminfo) MB"'
+guest: no answer
+-- es2gears
+== composer fps: 0.3 frames/s (2 frames over 3.03 s)
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+-- es2gears + workspace switching
+== composer fps: nan frames/s (1 frames over 0.00 s)
+  RSUniRenderThre-2792                     0
+Connection timed out during banner exchange
+Connection to UNKNOWN port 65535 timed out
+== power off 13:03:49
+/private/tmp/claude-501/-Users-yao-Desktop-code-agent/cdcaac74-36af-444c-a689-e52ee36a8a23/scratchpad/os/soak2.sh: line 23: 91342 Alarm clock: 14         GS_T=20 $G "(sleep 1; echo $GS_PW | sudo -S -p '' systemctl poweroff) >/dev/null 2>&1 &"
+vms after poweroff: [41851] 13:06:02

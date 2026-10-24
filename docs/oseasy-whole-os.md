@@ -436,10 +436,10 @@ the runs above unless marked pending.
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
 | Runs next to another VM | no: the system VM kit refuses (`Not support vm multi-instance`); not exercised (rule: one VM at a time) | no (same kit) | yes (no VM) |
 | Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app's own start not timed | | |
-| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s; obsidian no window within 20 s | | |
+| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | | |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | | |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); soak pending | | |
+| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak **failed**: guest hung after 38 min (all vCPUs spinning), cause open | | |
 
 ### Commits (MateBook 14 work)
 
@@ -773,9 +773,47 @@ client refused it only measured an idle desktop.
   60 Hz, and the voting window only counts while it has the focus; with it, the
   system compositor reaches only 40-51 compositions/s with the two layers.
 - **Apps open** (first mapped window): foot 0.07-0.08 s, nautilus 0.60-0.90 s,
-  chromium 0.81-1.17 s; obsidian did not map a window within 20 s.
+  chromium 0.81-1.17 s; obsidian 0.66-0.67 s with `--ozone-platform=wayland` (started
+  from ssh without the Wayland hint it picks X11 and exits; Omarchy's session sets
+  `ELECTRON_OZONE_PLATFORM_HINT=wayland`, so it is not a GPU-process problem).
 - Workspace switching (Lua dispatch `hl.dsp.focus({ workspace = "2" })`, Omarchy 4
   configures Hyprland in Lua): 60 on screen with es2gears running.
+
+### Tenth run: GPU-load soak, guest hangs after 38 minutes (12:02-13:09, 2026-10-25)
+
+Log: [`oseasy/runs/2026-10-25-pollfix/soak2-gpu.log`](../oseasy/runs/2026-10-25-pollfix/soak2-gpu.log),
+screen at the end: [`soak2-hang.jpeg`](../oseasy/runs/2026-10-25-pollfix/soak2-hang.jpeg).
+Driver and ISO of the ninth run. Two es2gears ran (the soak script's `pgrep -x
+es2gears_wayland` never matches a name over 15 characters, so it started a second
+one), checks every 5 minutes with es2gears and workspace switching.
+
+- t+0 to t+35 min: every check 120/s from `dxvk-submit`, 60.0 fps on screen, load
+  about 1.1, MemAvailable flat (6866-6890 MB).
+- From t+40 min (12:42 PDT): the guest's sshd no longer answers (TCP connects
+  through the forward, the banner never comes), `dxvk-submit` stops, the image is
+  frozen. On the host all six vCPU threads are at 100 % while the DXVK threads
+  sleep: the guest spins rather than waits on the display. Oseasy shows its
+  install-failure prompt (安装过程出现异常 …), its timeout for an install that never
+  reports `install_complete`; whether it is related is not known.
+- The guest did not take a poweroff, `aa force-stop com.oseasy1.ohvm` left
+  StratoVirt running; SIGTERM to Oseasy's StratoVirt (its own VM, not 鸿融's) ended it.
+- No guest console was captured, so the cause is open. Suspects: the 1 ms fence
+  poll timer added today (`hvm_irq_poll_us`), the GEM_CLOSE fallback, or two GPU
+  clients at once. Next: boot with `softlockup_panic=1 hung_task_panic=1` and a
+  console that survives, and repeat once with `hvm_irq_poll_us=0`.
+
+### 120 Hz: what holds composition at 40-51/s (offline findings)
+
+- Oseasy never asks for a frame rate: its ArkTS (`ets/modules.abc`) only reads
+  `display.getDefaultDisplaySync().refreshRate`; `libentry.so` / `libcommon.so`
+  have no frame-rate calls. There is no switch of its own to turn on.
+- Oseasy alone: the VM's layer goes to the display hardware directly
+  (`HwcPresentDisplay` about 111/s, no RenderService GPU work). With ohmarchy-120
+  on screen as well, `RSUniRenderThread` starts compositing on the GPU and reaches
+  only 40-51/s.
+- To try (screen lock needed): ohmarchy-120 shrunk to 1x1 and not presenting
+  (`setDraw(false)`, vote kept by the frame callback), placed outside the console,
+  so the VM layer can stay on HWC while the vote counts.
 
 ### Decision: no guest agent for Oseasy
 

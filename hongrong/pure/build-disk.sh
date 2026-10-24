@@ -6,7 +6,8 @@
 # standalone GRUB at the removable-media path so the VM's UEFI finds it without
 # boot entries. Nothing is mounted except bind mounts for the chroot: the
 # filesystems are made from directories (mkfs.ext4 -d, mtools) and placed at
-# their partition offsets.
+# their partition offsets. pacstrap and arch-chroot are not used: they mount
+# devtmpfs, which the HongMeng kernel does not have; /dev is bind-mounted.
 #
 # Runs as root in an Arch Linux ARM environment with network access (e.g. the
 # native Arch environment on the HarmonyOS host, via arch.sh run).
@@ -21,10 +22,28 @@ disk_gib=${DISK_GIB:-64} esp_mib=${ESP_MIB:-512}
 cmdline=${CMDLINE:-"rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200"}
 R=$W/root
 
-pacman -S --needed --noconfirm arch-install-scripts mtools dosfstools e2fsprogs grub >/dev/null
+pacman -S --needed --noconfirm mtools dosfstools e2fsprogs grub >/dev/null
 mkdir -p "$W" "$R"
-mountpoint -q "$R" || mount --bind "$R" "$R"
-trap 'umount -R "$R" 2>/dev/null || true' EXIT
+chroot_up() {
+  # / must be a mount point in the chroot, or pacman cannot check free space
+  mountpoint -q "$R" || mount --bind "$R" "$R"
+  mkdir -p "$R"/{proc,sys,dev,run,tmp,etc}
+  mountpoint -q "$R/proc" || mount -t proc proc "$R/proc"
+  mountpoint -q "$R/sys" || mount -t sysfs sys "$R/sys" 2>/dev/null || mount --bind /sys "$R/sys"
+  mountpoint -q "$R/dev" || mount --bind /dev "$R/dev"
+  mountpoint -q "$R/run" || mount -t tmpfs run "$R/run"
+  cp -L /etc/resolv.conf "$R/etc/resolv.conf"
+  # the build environment's HongMeng shims (ld.so.preload), for programs run in
+  # the chroot; removed before the filesystem image is made
+  if [ -s /etc/ld.so.preload ] && [ -d "$R/usr/lib" ]; then
+    mkdir -p "$R/usr/local/lib/hmbuild"
+    for l in $(cat /etc/ld.so.preload); do cp -f "$l" "$R/usr/local/lib/hmbuild/"; done
+    for l in $(cat /etc/ld.so.preload); do echo "/usr/local/lib/hmbuild/$(basename "$l")"; done > "$R/etc/ld.so.preload"
+  fi
+}
+chroot_down() { for m in run dev sys proc; do umount -l "$R/$m" 2>/dev/null || true; done; umount -l "$R" 2>/dev/null || true; }
+in_root() { chroot "$R" /usr/bin/env -i HOME=/root TERM=xterm-256color LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin "$@"; }
+trap chroot_down EXIT
 
 root_uuid=$(cat /proc/sys/kernel/random/uuid)
 esp_id=$(od -An -N4 -tx4 /dev/urandom | tr -d ' ' | tr a-f A-F)
@@ -32,13 +51,21 @@ esp_uuid="${esp_id:0:4}-${esp_id:4:4}"
 
 # 1. Base system, the patched kernel, Omarchy's prerequisites. The [omarchy]
 #    repository needs its key in the target first; 20-install-omarchy.sh adds it.
-awk '/^\[omarchy\]/{skip=1; next} /^\[/{skip=0} !skip' "$here/etc/pacman.conf" > "$W/pacman-base.conf"
-pacstrap -C "$W/pacman-base.conf" -K "$R" base archlinuxarm-keyring sudo openssh networkmanager mkinitcpio grub efibootmgr git curl
-arch-chroot "$R" pacman-key --populate archlinuxarm >/dev/null
+# pacman's download sandbox (user alpm, Landlock) cannot be set up on the
+# HongMeng kernel: DisableSandbox while building, removed from the result.
+awk '/^\[omarchy\]/{skip=1; next} /^\[/{skip=0} !skip' "$here/etc/pacman.conf" |
+  sed 's/^\[options\]$/[options]\nDisableSandbox/' > "$W/pacman-base.conf"
+mkdir -p "$R/var/lib/pacman" "$R/var/cache/pacman/pkg"
+chroot_up
+# packages are verified with the build environment's keyring
+pacman --root "$R" --config "$W/pacman-base.conf" --cachedir "$R/var/cache/pacman/pkg" \
+  -Sy --noconfirm base archlinuxarm-keyring sudo openssh networkmanager mkinitcpio grub efibootmgr git curl
+chroot_up
+in_root bash -c 'pacman-key --init && pacman-key --populate archlinuxarm' >/dev/null
 cp "${pkgs[@]}" "$R/tmp/"
 # mkinitcpio in a chroot would autodetect the build host's modules
 sed -i 's/^HOOKS=(\(.*\)autodetect \(.*\))/HOOKS=(\1\2)/' "$R/etc/mkinitcpio.conf"
-arch-chroot "$R" bash -c 'pacman -U --noconfirm /tmp/*.pkg.tar.* && rm /tmp/*.pkg.tar.*'
+in_root bash -c 'pacman -U --noconfirm /tmp/*.pkg.tar.* && rm /tmp/*.pkg.tar.*'
 install -m 644 "$here/etc/mirrorlist" "$R/etc/pacman.d/mirrorlist"
 
 # 2. Identity, user, network, ssh
@@ -48,7 +75,7 @@ UUID=$root_uuid  /          ext4  rw,relatime  0 1
 UUID=$esp_uuid   /boot/efi  vfat  rw,relatime,umask=0077  0 2
 FSTAB
 mkdir -p "$R/boot/efi"
-arch-chroot "$R" bash -c "
+in_root bash -c "
   ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
   sed -i 's/^#\(en_US.UTF-8\|zh_CN.UTF-8\)/\1/' /etc/locale.gen && locale-gen >/dev/null
   echo LANG=en_US.UTF-8 > /etc/locale.conf
@@ -59,13 +86,23 @@ arch-chroot "$R" bash -c "
 "
 install -D -m 600 "$here/etc/lan.nmconnection" "$R/etc/NetworkManager/system-connections/lan.nmconnection"
 
-# 3. Omarchy, the same way as on the deepin-based VM
+# 3. Omarchy, the same way as on the deepin-based VM. omarchy-settings adds
+#    mkinitcpio.conf.d/omarchy_hooks.conf with btrfs-overlayfs (for btrfs
+#    snapshots; this root is ext4 and has no such hook) and autodetect (which
+#    in a chroot picks the build host's modules). conf.d is read in order, so a
+#    later file overrides HOOKS.
+install -D -m 644 /dev/stdin "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf" <<'HOOKS'
+# 鸿融 VM (ohmarchy hongrong/pure/build-disk.sh): ext4 root, no btrfs-overlayfs;
+# no autodetect so the image does not depend on where it was generated.
+HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block encrypt filesystems fsck)
+HOOKS
 mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
-arch-chroot "$R" bash /root/hongrong/20-install-omarchy.sh "$user"
+sed -i 's/^\[options\]$/[options]\nDisableSandbox/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
+in_root bash /root/hongrong/20-install-omarchy.sh "$user"
 rm -rf "$R/root/hongrong"
 # omarchy-apply-system may regenerate the initramfs with autodetect again
 sed -i 's/^HOOKS=(\(.*\)autodetect \(.*\))/HOOKS=(\1\2)/' "$R/etc/mkinitcpio.conf"
-arch-chroot "$R" mkinitcpio -P
+in_root mkinitcpio -P
 
 # 4. GRUB: a standalone EFI image that finds the root by UUID
 mkdir -p "$R/boot/grub" "$W/esp/EFI/BOOT"
@@ -92,7 +129,10 @@ grub-mkstandalone -O arm64-efi -o "$W/esp/EFI/BOOT/BOOTAA64.EFI" \
   "boot/grub/grub.cfg=$W/grub-early.cfg"
 
 # 5. Filesystem images and the disk
-umount -R "$R"; trap - EXIT
+in_root pacman -Scc --noconfirm >/dev/null || true
+chroot_down; trap - EXIT
+rm -f "$R/etc/resolv.conf" "$R/etc/ld.so.preload"; rm -rf "$R/usr/local/lib/hmbuild"
+sed -i '/^DisableSandbox$/d' "$R/etc/pacman.conf"
 rm -f "$W/esp.img" "$W/root.img" "$W/omarchy-pure.img"
 root_mib=$(( disk_gib * 1024 - esp_mib - 2 ))
 truncate -s ${esp_mib}M "$W/esp.img"

@@ -95,6 +95,32 @@ with `pci=nomsi` and with Debian's 6.1 kernel, counters every 10 s), then
 write the pure Omarchy disk and boot it on the EFI framebuffer, ready for
 route B's vmwgfx.
 
+## Untried: Linux boot entry on a real Windows install
+
+The goal's step 3 also names "add a Linux boot entry in its Windows disk". By
+everything found above this would most likely get past the layer that stops
+route G, but it was not run:
+
+1. Install a real Windows 11 24H2 ARM64 in 铠大师 and let its own guest service
+   (`setup.exe /oobe` from `server.iso`, run by the autounattend) report the
+   install as finished, so the VM is kept (`HandleVmStateCallback`, "install
+   finished need stop vm").
+2. From then on the VM starts through `GetOHStartVmCmd`: the NIC has a MAC and
+   rx/tx iothreads (working network), no install ISO; 铠大师 can attach an ISO
+   to the running VM (`mountIsoToVmForced` / `mountCDDriveToVm`).
+3. Boot our installer ISO from the firmware and write Omarchy onto that disk
+   (whole disk, or a shrunken C: plus a Linux partition and a GRUB entry), or
+   push the image over the now working network; display with route B's
+   vmwgfx-oseasy, which drives the same `svga-pci`.
+
+Why it was not done (decision of the supervising session, agent-75,
+2026-10-24): Windows setup accepts Microsoft's licence terms through 铠大师's
+autounattend, which the project does not do on the owner's behalf; it needs
+about 100 minutes of the host's single VM slot (both locks), the scarcest
+resource; and its outcome would repeat route B's, since 铠大师 and Oseasy share
+the same `vm_manager` and `svga-pci` stack. Also, the Windows 11 ISO that Oseasy
+had used was no longer on the device when this was considered.
+
 ## The app
 
 | | |

@@ -130,6 +130,13 @@ socket through pkexec, so route D's override (`/opt/ohmarchy/overrides`) runs it
 directly when the current context is remote. Needs the VM running
 (`ohmarchy-vm start`, about a minute).
 
+Bind mounts (`tests/compat/docker-mount.sh`, 10:58): the VM shares the desktop
+user's home at the same path (virtiofs, its daemon as that user), so `docker run
+-v $PWD:/w` and a compose `.:/w` volume work from anywhere under the home
+directory: the container read a file written in route D, and files it wrote show
+up here owned by the desktop user (uid 60000). They come out as mode 0660, not the
+usual 0644. Paths outside the home directory are not shared.
+
 ### A2. Core operations
 
 `tests/lib/session-py.sh core tests/core/core_ops.py` runs `tests/core/core_ops.py`

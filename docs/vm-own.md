@@ -27,7 +27,7 @@ Offline preparation, 2026-10-24:
   "Why 120 Hz was dropped"), copied to the disk as `ohmarchy-120.bin`, loaded with
   `drm.edid_firmware=Virtual-1:edid/ohmarchy-120.bin`
   (`CONFIG_DRM_LOAD_EDID_FIRMWARE=y` in 7.2.12). The test boot also has
-  `drm.debug=0x5`.
+  `drm.debug=0x7`.
 - Docker prerequisites are in the 7.2.12 config: overlayfs, bridge, veth,
   NAT/MASQUERADE, addrtype match (modules), cgroups and memcg (built in).
 
@@ -202,7 +202,11 @@ the second, non-preferred 59.955 Hz timing survives, which matches 鸿融's
 Fix without a kernel change: clear bit 0x02 (features `0x08`; agent-2a's
 `mkedid.py` does this by default since e9d1672, `--preferred` sets it). No mode is preferred, every mode passes, and `drm_mode_sort`
 ([drm_modes.c](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/drm_modes.c))
-orders same-size modes by refresh, so 119.983 Hz comes first. The boot check:
-`drm.debug=0x5` prints `output 0: WxH+0+0` (the host size) and any
-`del mode:` line; `/sys/class/drm/card0-Virtual-1/modes` lists names only, so
+orders same-size modes by refresh, so 119.983 Hz comes first. Confirmed in 鸿融 by agent-2a (08:50 PDT, real app VM, vhost-user-gpu virgl,
+7.2.12, `drm.debug=0x5`): with the no-preferred EDID both timings survive,
+`Probed mode: 2160x1440: 120 424500 2160 2208 2240 2320 1440 1443 1453 1525`
+first, and the active CRTC (`debugfs dri/0/state`, SDDM's Hyprland) is
+`"2160x1440": 120`. On-screen fps of the 鸿融 window is not measured yet.
+`output 0: WxH+0+0` (the host size) and `del mode:` are in the DRIVER
+category, so they need `drm.debug` with 0x2 (0x7 on route I's disk); `/sys/class/drm/card0-Virtual-1/modes` lists names only, so
 the refresh is read with `modetest -c` or `hyprctl monitors`.

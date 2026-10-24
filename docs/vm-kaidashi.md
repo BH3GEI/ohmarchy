@@ -185,6 +185,8 @@ installer and `fwsetup`.
 - [Xinhua: 铠大师虚拟机 on AppGallery with the HarmonyOS PC, 2025-05-20](https://www.news.cn/tech/20250520/b808f567fee140b5b7746be18bd1e842/c.html)
 - [Toutiao: 铠大师 at the HarmonyOS PC sales start](https://www.toutiao.com/zixun/7546784896979732543/)
 - [CSDN: 铠大师 install walkthrough (needs the official Windows 11 ISO)](https://gitcode.csdn.net/6aa0e30f1a35784c8420a73c.html)
+- [Debian 12 arm64 netboot mini.iso](https://deb.debian.org/debian/dists/bookworm/main/installer-arm64/current/images/netboot/) (shim, GRUB, d-i initrd used by the ISOs)
+- [wimlib](https://wimlib.net/) (`wimlib-imagex info --image-property` writes the WIM XML fields); WIM XML layout: [Microsoft, Windows image file format](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/wim-vs-ffu-image-file-formats)
 - Route B findings on the same machine: [oseasy-whole-os.md](oseasy-whole-os.md#matebook-14-ohdev-2026-10-24)
 - HMV ID-register quirk: [hmv-idreg-report.md](hmv-idreg-report.md)
 
@@ -192,6 +194,40 @@ Scripts: [`tools/kaidashi/probe.sh`](../tools/kaidashi/probe.sh) (read-only, on
 the device), [`tools/kaidashi/hap-survey.sh`](../tools/kaidashi/hap-survey.sh)
 (static, on a host).
 
+## Getting a disk in
+
+铠大师 offers no import of a foreign disk: the UI only exports and restores its
+own VM (`sanway_*.qcow2` with a password; the system kit's
+`importVmDiskImage`/`isSupportImportVmDisk` is wired to that), and the VM's
+`vm.qcow2` sits under `vm_manager/`, which this project does not touch. So the
+disk is written from inside the guest.
+
+`tools/kaidashi/installer/build.sh WORKDIR linux-aarch64-7.2.12-*.pkg.tar.xz`
+builds `kds-installer.iso` (190 MB): Debian's `mini.iso` for GRUB and the d-i
+initrd (busybox `nc`, `ip`, `dd`, `gunzip`), the fake `install.wim`, the
+7.2.12 HMV-quirk kernel `Image` and four of its modules (`failover`,
+`net_failover`, `virtio_net`, `isofs`; virtio-pci/blk, xHCI, usb-storage,
+ext4, vfat and simplefb are built in). GRUB menu:
+
+| Entry | Does |
+|---|---|
+| Boot the installed Omarchy disk | chainloads `EFI/BOOT/BOOTAA64.EFI` from the virtio disk |
+| Write Omarchy disk from the network | `rdinit=/write-disk.sh arm64.hmv_idreg_quirk`: eth0 = 172.16.100.3/24 on the Windows-VM bridge (`WVMBr…`, host 172.16.100.1), `nc -l -p 9000 \| dd of=/dev/vda` |
+| Probe with 7.2.12 | `probe.sh` on the 7.2.12 kernel |
+
+On the host, `tools/kaidashi/push-disk.sh IMAGE` streams the raw image with
+toybox `nc`. The VM's disk has `detect-zeroes=unmap`, so the zero runs of a
+sparse image stay holes in `vm.qcow2`. The ISO is small and the 64 GB disk never
+has to cross the Mac–ohdev link.
+
 ## Commits
 
-(each push is listed here)
+| Commit | What |
+|---|---|
+| [b36c6b4](https://github.com/BH3GEI/ohmarchy/commit/b36c6b4) | read-only survey: app, VMM path, ISO check |
+| [6c49ccf](https://github.com/BH3GEI/ohmarchy/commit/6c49ccf) | fake Win11 24H2 ARM64 `install.wim`, Debian-based probe ISO |
+| [291bedc](https://github.com/BH3GEI/ohmarchy/commit/291bedc) | 铠大师 accepts the probe ISO; wizard options |
+| [f135f2f](https://github.com/BH3GEI/ohmarchy/commit/f135f2f) | first VM: command line, devices, Secure Boot off |
+| [1d49551](https://github.com/BH3GEI/ohmarchy/commit/1d49551) | probe ISO with the 7.2.12 kernel |
+| [a724e53](https://github.com/BH3GEI/ohmarchy/commit/a724e53) | StratoVirt fds and libraries of the first run |
+| [ca5836d](https://github.com/BH3GEI/ohmarchy/commit/ca5836d) | installer ISO that writes a disk streamed from the host |

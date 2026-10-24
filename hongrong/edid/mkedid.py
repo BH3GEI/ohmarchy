@@ -3,7 +3,12 @@
 preferred mode, to load with drm.edid_firmware=Virtual-1:edid/<name>.bin.
 Timings use CVT reduced blanking (CVT-RB v1): hblank 160, hsync 32,
 hfront 48, vfront 3, vsync 10 (for 3:2), min vblank 460 us.
-Usage: mkedid.py OUT.bin [WxH@HZ ...]   (first mode is preferred)"""
+No timing is marked preferred (feature bit 0x02 clear): virtio-gpu deletes a
+preferred mode whose size is not within 16 px of the host's scanout size
+(conn_mode_valid), which dropped the 120 Hz mode; unmarked, every mode passes
+and drm sorts the same-size 120 Hz mode first. (Found by the Route I line,
+docs/vm-own.md.) --preferred sets the bit anyway.
+Usage: mkedid.py [--preferred] OUT.bin [WxH@HZ ...]   (first mode first)"""
 import sys, math
 
 def cvt_rb(w, h, hz):
@@ -45,7 +50,8 @@ def edid(modes):
     e[10:12] = (0x0120).to_bytes(2, "little"); e[12:16] = (1).to_bytes(4, "little")
     e[16] = 43; e[17] = 36                     # week 43, 2026
     e[18], e[19] = 1, 3                        # EDID 1.3
-    e[20] = 0x80; e[21] = 29; e[22] = 19; e[23] = 120; e[24] = 0x0a  # digital, 29x19 cm, gamma 2.2, RGB, preferred timing
+    e[20] = 0x80; e[21] = 29; e[22] = 19; e[23] = 120
+    e[24] = 0x0a if PREFERRED else 0x08   # RGB colour; 0x02 = first DTD is the preferred timing
     e[25:35] = bytes([0xee, 0x91, 0xa3, 0x54, 0x4c, 0x99, 0x26, 0x0f, 0x50, 0x54])  # sRGB-ish chromaticity
     e[35:38] = bytes([0, 0, 0])
     e[38:54] = bytes([1, 1] * 8)
@@ -59,8 +65,11 @@ def edid(modes):
     e[127] = (-sum(e[:127])) & 0xff
     return bytes(e)
 
-out = sys.argv[1]
-specs = sys.argv[2:] or ["2160x1440@120", "2160x1440@60"]
+args = sys.argv[1:]
+PREFERRED = "--preferred" in args
+args = [a for a in args if a != "--preferred"]
+out = args[0]
+specs = args[1:] or ["2160x1440@120", "2160x1440@60"]
 modes = []
 for s in specs:
     wh, hz = s.split("@"); w, h = wh.split("x")

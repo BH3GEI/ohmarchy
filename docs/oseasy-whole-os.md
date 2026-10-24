@@ -439,7 +439,7 @@ the runs above unless marked pending.
 | App launch times | pending | | |
 | es2gears / glmark2 | pending | | |
 | Workspace switching on screen | pending (60 at most) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | pending | | |
+| 3 warm reboots, 1 h soak | 1 warm reboot OK (22 s to Hyprland); soak pending | | |
 
 ### Commits (MateBook 14 work)
 
@@ -608,6 +608,28 @@ measurement next to the Oseasy window is pending (needs the screen lock).
   system`. The later boot with vmwgfx-oseasy powered off cleanly through the same
   `device_shutdown()` path (reboot and power-off share it up to the final PSCI
   call). Expected: warm reboots work with the right module; to confirm.
+
+### Fifth run: cursor fix in place, Hyprland still idle; warm reboot works (08:55-09:06, 2026-10-25)
+
+- **Reinstall in 147 s** with the cursor-fixed vmwgfx-oseasy (`3ba67341…`).
+  `hvm_hw_cursor=N`; the KMS state shows no cursor plane and the primary plane
+  holding a Hyprland framebuffer on `Virtual-1 2100x1511@120`.
+- **Hyprland still presents nothing new.** Same picture as the fourth run (dark
+  background, cursor, no updates; es2gears gets no frame callbacks). With
+  `drm.debug` on for 2 s: 0 atomic commits, 0 vmwgfx interrupts; Hyprland's main
+  thread waits in `ep_poll`. So the cursor plane was a real bug but not the one
+  that stops Hyprland: it is not a failing commit, Hyprland never tries one.
+  Suspects, to try offline and in the next slot: a fence that never signals
+  (explicit sync / EGL native fence fds from Mesa's SVGA driver), the 8 virtual
+  connectors vmwgfx exposes (limit to one display unit under HVM), aquamarine's
+  frame scheduling (`misc:vfr=false`, `render:direct_scanout=0`). Separately,
+  modetest page-flips at only 5 frames/s on the Omarchy disk (120 in the probe):
+  check whether every dirty blit uploads the whole surface.
+  Log: [`oseasy/runs/2026-10-25-hyprland/hyprland.log`](../oseasy/runs/2026-10-25-hyprland/hyprland.log).
+- **Warm reboot works.** `systemctl reboot` reached `reboot: Restarting system`,
+  the 7.2.12-1.1 kernel booted again and Hyprland was up 22 s later; then a clean
+  power-off (VM list empty 19 s after). This confirms the reading above (the
+  earlier hang was the in-tree vmwgfx). One of the three warm reboots done.
 
 ### Decision: no guest agent for Oseasy
 

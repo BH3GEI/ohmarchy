@@ -1,0 +1,207 @@
+vmwgfx irqs in 2s: 0
+DEBUG ]: Old rlimit: soft -> 65536, hard -> 524288
+DEBUG ]: New rlimit: soft -> 524288, hard -> 524288
+DEBUG ]: Creating the EventLoopManager!
+DEBUG ]: Creating the KeybindManager!
+DEBUG ]: Creating the AnimationManager!
+DEBUG ]: Creating the DynamicPermissionManager!
+DEBUG ]: Creating the MonitorState!
+DEBUG ]: Creating the WorkspaceState!
+DEBUG ]: Creating the ConfigManager!
+DEBUG ]: [cfg] Regular config at /home/yao/.config/hypr/hyprland.lua
+DEBUG ]: [cfg] Using lua config found at /home/yao/.config/hypr/hyprland.lua
+DEBUG ]: Creating the Error Overlay!
+DEBUG ]: Creating the LayoutManager!
+DEBUG ]: Creating the TokenManager!
+DEBUG ]: Creating the EventManager!
+DEBUG ]: Disabling stdout logs (debug.enable_stdout_logs = 0). Further logs will be written to /run/user/1000/hypr/efb50993780079460b0cbed1363e2166a2de1d9f_1792857580_1505374324/hyprland.log
+DEBUG ]: Creating the PointerManager!
+DEBUG ]: Creating the AsyncResourceGatherer!
+DEBUG from aquamarine ]: Creating an Aquamarine backend!
+DEBUG from aquamarine ]: [libseat] [libseat/backend/seatd.c:64] Could not connect to socket /run/seatd.sock: No such file or directory
+DEBUG from aquamarine ]: [libseat] [libseat/libseat.c:76] Backend 'seatd' failed to open seat, skipping
+DEBUG from aquamarine ]: [libseat] [libseat/libseat.c:73] Seat opened with backend 'logind'
+DEBUG from aquamarine ]: [libinput] event1  - StratoVirt StratoVirt USB Keyboard: is tagged by udev as: Keyboard
+DEBUG from aquamarine ]: [libinput] event1  - StratoVirt StratoVirt USB Keyboard: device is a keyboard
+DEBUG from aquamarine ]: [libinput] event3  - StratoVirt StratoVirt USB Tablet Mouse: is tagged by udev as: Mouse
+DEBUG from aquamarine ]: [libinput] event3  - StratoVirt StratoVirt USB Tablet Mouse: device is a pointer
+DEBUG from aquamarine ]: [libinput] event2  - StratoVirt Virtio Multitouch: is tagged by udev as: Touchpad
+DEBUG from aquamarine ]: [libinput] event2  - thumb: enabled thumb detection (area)
+DEBUG from aquamarine ]: [libinput] event2  - StratoVirt Virtio Multitouch: device is a touchpad
+DEBUG from aquamarine ]: [libinput] event0  - Power Button: is tagged by udev as: Keyboard
+DEBUG from aquamarine ]: [libinput] event0  - Power Button: device is a keyboard
+DEBUG from aquamarine ]: drm: Enumerated device /sys/devices/pci0000:00/0000:00:04.0/drm/card0
+DEBUG from aquamarine ]: libseat: Device /dev/dri/card0 supports kms
+DEBUG from aquamarine ]: drm: Found 1 GPUs
+DEBUG from aquamarine ]: drm: Starting backend for /dev/dri/card0, with driver vmwgfx
+DEBUG from aquamarine ]: drm: Registered gpu /dev/dri/card0
+DEBUG from aquamarine ]: drm: Atomic supported, using atomic for modesetting
+DEBUG from aquamarine ]: drm: drmProps.supportsAsyncCommit: false
+DEBUG from aquamarine ]: drm: drmProps.supportsAddFb2Modifiers: true
+DEBUG from aquamarine ]: drm: drmProps.supportsTimelines: false
+DEBUG from aquamarine ]: drm: found 8 CRTCs
+DEBUG from aquamarine ]: drm: Plane 38 has type 1
+DEBUG from aquamarine ]: drm: Plane 38 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 43 has type 1
+DEBUG from aquamarine ]: drm: Plane 43 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 48 has type 1
+DEBUG from aquamarine ]: drm: Plane 48 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 53 has type 1
+DEBUG from aquamarine ]: drm: Plane 53 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 58 has type 1
+DEBUG from aquamarine ]: drm: Plane 58 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 63 has type 1
+DEBUG from aquamarine ]: drm: Plane 63 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 68 has type 1
+DEBUG from aquamarine ]: drm: Plane 68 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Plane 73 has type 1
+DEBUG from aquamarine ]: drm: Plane 73 has 4 formats
+DEBUG from aquamarine ]: drm: Plane: checking for modifiers
+DEBUG from aquamarine ]: drm: Basic init pass for gpu /dev/dri/card0
+DEBUG from aquamarine ]: drm: Scanning connectors for /dev/dri/card0
+DEBUG from aquamarine ]: drm: Scanning connector id 40
+DEBUG from aquamarine ]: drm: Initializing connector id 40
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-1
+DEBUG from aquamarine ]: drm: Connector 40 connection state: 1
+DEBUG from aquamarine ]: drm: Scanning connector id 45
+DEBUG from aquamarine ]: drm: Initializing connector id 45
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-2
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 45 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 50
+DEBUG from aquamarine ]: drm: Initializing connector id 50
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-3
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 50 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 55
+DEBUG from aquamarine ]: drm: Initializing connector id 55
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-4
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 55 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 60
+DEBUG from aquamarine ]: drm: Initializing connector id 60
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-5
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 60 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 65
+DEBUG from aquamarine ]: drm: Initializing connector id 65
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-6
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 65 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 70
+DEBUG from aquamarine ]: drm: Initializing connector id 70
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-7
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 70 connection state: 2
+DEBUG from aquamarine ]: drm: Scanning connector id 75
+DEBUG from aquamarine ]: drm: Initializing connector id 75
+DEBUG from aquamarine ]: drm: Connector gets name Virtual-8
+ERR from aquamarine ]: drm: getCurrentCRTC: No CRTC 0
+DEBUG from aquamarine ]: drm: Connector 75 connection state: 2
+DEBUG from aquamarine ]: drm: Rechecking CRTCs
+DEBUG from aquamarine ]: drm: Skipping connector Virtual-1, has crtc 42 and is connected
+DEBUG from aquamarine ]: drm: connector Virtual-2, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-3, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-4, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-5, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-6, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-7, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: connector Virtual-8, has crtc -1, will be rechecked
+DEBUG from aquamarine ]: drm: slot 0 crtc 42 taken by Virtual-1, skipping
+DEBUG from aquamarine ]: drm: slot 1 crtc 47 unassigned
+DEBUG from aquamarine ]: drm: slot 2 crtc 52 unassigned
+DEBUG from aquamarine ]: drm: slot 3 crtc 57 unassigned
+DEBUG from aquamarine ]: drm: slot 4 crtc 62 unassigned
+DEBUG from aquamarine ]: drm: slot 5 crtc 67 unassigned
+DEBUG from aquamarine ]: drm: slot 6 crtc 72 unassigned
+DEBUG from aquamarine ]: drm: slot 7 crtc 77 unassigned
+DEBUG from aquamarine ]: drm: Connector Virtual-1 connected
+DEBUG from aquamarine ]: drm: Connecting connector Virtual-1, CRTC ID 42
+DEBUG from aquamarine ]: drm: Dumping detected modes:
+DEBUG from aquamarine ]: drm: Mode 0: 2100x1511@120.00Hz  (preferred)
+DEBUG from aquamarine ]: drm: Mode 1: 4096x2160@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 2: 4096x2160@59.94Hz 
+DEBUG from aquamarine ]: drm: Mode 3: 2560x1600@59.99Hz 
+DEBUG from aquamarine ]: drm: Mode 4: 2560x1600@59.97Hz 
+DEBUG from aquamarine ]: drm: Mode 5: 1920x1440@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 6: 1856x1392@59.99Hz 
+DEBUG from aquamarine ]: drm: Mode 7: 1792x1344@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 8: 2048x1152@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 9: 1920x1200@59.88Hz 
+DEBUG from aquamarine ]: drm: Mode 10: 1920x1200@59.95Hz 
+DEBUG from aquamarine ]: drm: Mode 11: 1920x1080@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 12: 1600x1200@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 13: 1680x1050@59.95Hz 
+DEBUG from aquamarine ]: drm: Mode 14: 1680x1050@59.88Hz 
+DEBUG from aquamarine ]: drm: Mode 15: 1400x1050@59.98Hz 
+DEBUG from aquamarine ]: drm: Mode 16: 1400x1050@59.95Hz 
+DEBUG from aquamarine ]: drm: Mode 17: 1600x900@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 18: 1280x1024@60.02Hz 
+DEBUG from aquamarine ]: drm: Mode 19: 1440x900@59.89Hz 
+DEBUG from aquamarine ]: drm: Mode 20: 1440x900@59.90Hz 
+DEBUG from aquamarine ]: drm: Mode 21: 1280x960@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 22: 1366x768@59.79Hz 
+DEBUG from aquamarine ]: drm: Mode 23: 1366x768@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 24: 1360x768@60.02Hz 
+DEBUG from aquamarine ]: drm: Mode 25: 1280x800@59.81Hz 
+DEBUG from aquamarine ]: drm: Mode 26: 1280x800@59.91Hz 
+DEBUG from aquamarine ]: drm: Mode 27: 1280x768@59.87Hz 
+DEBUG from aquamarine ]: drm: Mode 28: 1280x768@59.99Hz 
+DEBUG from aquamarine ]: drm: Mode 29: 1280x720@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 30: 1024x768@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 31: 800x600@60.32Hz 
+DEBUG from aquamarine ]: drm: Mode 32: 800x600@56.25Hz 
+DEBUG from aquamarine ]: drm: Mode 33: 848x480@60.00Hz 
+DEBUG from aquamarine ]: drm: Mode 34: 640x480@59.94Hz 
+DEBUG from aquamarine ]: drm: Physical size [Vector2D: x: 0, y: 0] (mm)
+ERR from aquamarine ]: drm: failed to parse edid
+DEBUG from aquamarine ]: drm: Description    (Virtual-1)
+DEBUG from aquamarine ]: drm: connector Virtual-1 crtc is incapable of vrr: props.vrr_capable -> 0, crtc->props.vrr_enabled -> 25
+DEBUG from aquamarine ]: drm: Explicit sync unsupported
+DEBUG from aquamarine ]: drm: connector Virtual-1 crtc doesn't support CTM
+DEBUG from aquamarine ]: drm: connector Virtual-1 crtc doesn't support HDR (0)
+DEBUG from aquamarine ]: drm: connector Virtual-1 crtc doesn't support Colorspace (0)
+DEBUG from aquamarine ]: drm: gpu /dev/dri/card0 becomes primary drm
+DEBUG from aquamarine ]: DRM Dumb: created a dumb allocator
+DEBUG from aquamarine ]: Starting the Aquamarine backend!
+DEBUG from aquamarine ]: Starting the Wayland backend!
+ERR from aquamarine ]: Wayland backend cannot start: wl_display_connect failed (is a wayland compositor running?)
+ERR from aquamarine ]: Requested backend (wayland) could not start, enabling fallbacks
+ERR from aquamarine ]: Implementation wayland failed, erasing.
+DEBUG from aquamarine ]: Created a GBM allocator with drm fd 28
+DEBUG from aquamarine ]: drm: Connectors size2 8
+DEBUG from aquamarine ]: Created a GBM allocator with drm fd 31
+DEBUG from aquamarine ]: Supported EGL client extensions: (16) EGL_EXT_device_base EGL_EXT_device_enumeration EGL_EXT_device_query EGL_EXT_platform_base EGL_KHR_client_get_all_proc_addresses EGL_EXT_client_extensions EGL_KHR_debug EGL_EXT_platform_device EGL_EXT_explicit_device EGL_EXT_platform_wayland EGL_KHR_platform_wayland EGL_EXT_platform_x11 EGL_KHR_platform_x11 EGL_EXT_platform_xcb EGL_MESA_platform_gbm EGL_KHR_platform_gbm EGL_MESA_platform_surfaceless
+DEBUG from aquamarine ]: CDRMRenderer(drm): Using device /dev/dri/card0
+DEBUG from aquamarine ]: CDRMRenderer: Using KHR_context_flush_control
+ERR from aquamarine ]: [EGL] Command eglCreateContext errored out with EGL_BAD_MATCH (0x12297): dri2_create_context
+ERR from aquamarine ]: CDRMRenderer: eglCreateContext failed with GLES 3.2, retrying GLES 3.0
+DEBUG from aquamarine ]: Creating CDRMRenderer on gpu /dev/dri/renderD128
+DEBUG from aquamarine ]: Using: OpenGL ES 3.0 Mesa 26.2.5-arch1.1
+DEBUG from aquamarine ]: Vendor: VMware, Inc.
+DEBUG from aquamarine ]: Renderer: SVGA3D; build: RELEASE;  LLVM;
+DEBUG from aquamarine ]: Supported context extensions: (98) GL_EXT_blend_minmax GL_EXT_multi_draw_arrays GL_EXT_texture_filter_anisotropic GL_EXT_texture_compression_s3tc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_format_BGRA8888 GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth24 GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_mapbuffer GL_OES_rgb8_rgba8 GL_OES_standard_derivatives GL_OES_stencil8 GL_OES_texture_3D GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_vertex_half_float GL_EXT_draw_instanced GL_EXT_texture_sRGB_decode GL_OES_EGL_image GL_OES_depth_texture GL_OES_packed_depth_stencil GL_EXT_texture_type_2_10_10_10_REV GL_NV_conditional_render GL_OES_get_program_binary GL_APPLE_texture_max_level GL_EXT_discard_framebuffer GL_EXT_read_format_bgra GL_EXT_texture_storage GL_NV_pack_subimage GL_EXT_frag_depth GL_NV_fbo_color_attachments GL_OES_EGL_image_external GL_OES_EGL_sync GL_OES_vertex_array_object GL_ANGLE_pack_reverse_row_order GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_EXT_occlusion_query_boolean GL_EXT_sRGB GL_EXT_texture_rg GL_EXT_unpack_subimage GL_NV_draw_buffers GL_NV_read_buffer GL_NV_read_depth GL_NV_read_depth_stencil GL_NV_read_stencil GL_APPLE_sync GL_EXT_draw_buffers GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_EXT_shadow_samplers GL_KHR_debug GL_KHR_texture_compression_astc_ldr GL_NV_generate_mipmap_sRGB GL_NV_pixel_buffer_object GL_OES_depth_texture_cube_map GL_OES_required_internalformat GL_OES_surfaceless_context GL_EXT_color_buffer_float GL_EXT_debug_label GL_EXT_sRGB_write_control GL_EXT_separate_shader_objects GL_EXT_shader_integer_mix GL_EXT_compressed_ETC1_RGB8_sub_texture GL_EXT_copy_image GL_EXT_draw_elements_base_vertex GL_EXT_render_snorm GL_EXT_texture_border_clamp GL_KHR_context_flush_control GL_NV_shader_noperspective_interpolation GL_OES_copy_image GL_OES_draw_elements_base_vertex GL_OES_texture_border_clamp GL_EXT_blend_func_extended GL_EXT_float_blend GL_KHR_no_error GL_KHR_texture_compression_astc_sliced_3d GL_OES_EGL_image_external_essl3 GL_EXT_conservative_depth GL_EXT_disjoint_timer_query GL_EXT_texture_compression_s3tc_srgb GL_MESA_shader_integer_functions GL_EXT_color_buffer_half_float GL_EXT_texture_mirror_clamp_to_edge GL_KHR_parallel_shader_compile GL_EXT_EGL_image_storage GL_MESA_framebuffer_flip_y GL_EXT_depth_clamp GL_MESA_sampler_objects GL_EXT_EGL_image_storage_compression GL_EXT_texture_storage_compression GL_MESA_bgra 
+DEBUG from aquamarine ]: drm: onReady: connector 40
+DEBUG from aquamarine ]: drm: onReady: connector 40 has output name Virtual-1
+DEBUG from aquamarine ]: Swapchain: Clearing
+DEBUG from aquamarine ]: drm: onReady: connector 45
+DEBUG from aquamarine ]: drm: onReady: connector 50
+DEBUG from aquamarine ]: drm: onReady: connector 55
+DEBUG from aquamarine ]: drm: onReady: connector 60
+DEBUG from aquamarine ]: drm: onReady: connector 65
+DEBUG from aquamarine ]: drm: onReady: connector 70
+DEBUG from aquamarine ]: drm: onReady: connector 75
+DEBUG from aquamarine ]: Supported EGL client extensions: (16) EGL_EXT_device_base EGL_EXT_device_enumeration EGL_EXT_device_query EGL_EXT_platform_base EGL_KHR_client_get_all_proc_addresses EGL_EXT_client_extensions EGL_KHR_debug EGL_EXT_platform_device EGL_EXT_explicit_device EGL_EXT_platform_wayland EGL_KHR_platform_wayland EGL_EXT_platform_x11 EGL_KHR_platform_x11 EGL_EXT_platform_xcb EGL_MESA_platform_gbm EGL_KHR_platform_gbm EGL_MESA_platform_surfaceless
+DEBUG from aquamarine ]: CDRMRenderer(drm): Using device /dev/dri/card0
+DEBUG from aquamarine ]: CDRMRenderer: Using KHR_context_flush_control
+ERR from aquamarine ]: [EGL] Command eglCreateContext errored out with EGL_BAD_MATCH (0x12297): dri2_create_context
+ERR from aquamarine ]: CDRMRenderer: eglCreateContext failed with GLES 3.2, retrying GLES 3.0
+DEBUG from aquamarine ]: Creating CDRMRenderer on gpu /dev/dri/renderD128
+DEBUG from aquamarine ]: Using: OpenGL ES 3.0 Mesa 26.2.5-arch1.1

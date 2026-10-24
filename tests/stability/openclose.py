@@ -110,9 +110,9 @@ def one(i, cmd):
     time.sleep(0.5)
     # close the way a user does (the window's close), then make sure
     if win:
-        focus = 'hl.dispatch(hl.dsp.focus({ window = "address:' + win["address"] + '" }))'
-        sh(f"hyprctl eval {shlex.quote(focus)}", 5)
-        sh(f"hyprctl eval {shlex.quote('hl.dispatch(hl.dsp.window.close())')}", 5)
+        # by address: without input yet, focusing does not take and a plain close hits nothing
+        close = 'hl.dispatch(hl.dsp.window.close({ window = "address:' + win["address"] + '" }))'
+        sh(f"hyprctl eval {shlex.quote(close)}", 5)
     for _ in range(30):
         if not any(c["address"] == (win or {}).get("address") for c in clients()) and not own_pids(marker):
             break

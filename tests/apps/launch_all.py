@@ -183,12 +183,32 @@ def frame_check(win):
 
 
 def close(new_clients, new_pids):
+    # Close the windows the way a user does (Hyprland's close, as SUPER+W): a
+    # signal makes some apps count a crash (Firefox then offers Troubleshoot Mode
+    # at its next start). Signals only for what is still there after that.
+    # (by address: without input yet, focusing a window does not take, so a plain
+    # close would hit nothing)
     for c in new_clients:
+        sh(f"hyprctl eval {shlex.quote('hl.dispatch(hl.dsp.window.close({ window = \"address:' + c['address'] + '\" }))')}", 5)
+    for _ in range(30):
+        open_now = {c["address"] for c in hypr("clients") or []}
+        if not any(c["address"] in open_now for c in new_clients):
+            break
+        time.sleep(0.1)
+    open_now = {c["address"] for c in hypr("clients") or []}
+    for c in new_clients:
+        if c["address"] not in open_now:
+            continue
         try:
             os.kill(c["pid"], signal.SIGTERM)
         except (ProcessLookupError, PermissionError):
             pass
-    time.sleep(1.5)
+    # an app may take a while to shut down after its last window (Firefox writes its
+    # session): give it up to 5 s before signalling what is left
+    for _ in range(50):
+        if not any(os.path.exists(f"/proc/{p}") for p in new_pids):
+            break
+        time.sleep(0.1)
     left = [p for p in new_pids if os.path.exists(f"/proc/{p}")]
     for p in left:
         try:

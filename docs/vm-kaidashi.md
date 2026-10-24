@@ -236,14 +236,14 @@ display.exe` (`agent_service.log`). Windows' saved display configurations
 
 **What Oseasy installs** (`C:\ProgramData\VMAgent`, from `oetool.iso`):
 
-| Service / file | Role |
-|---|---|
-| `vmagent` → `VMAgent\agent_service.exe` (auto) | host link over virtio-serial: capability handshake with the host (`Proc host capset: peer cap N`), time zone, app lists, shutdown, DFX events |
-| `vmgtsrv` → `VMAgent\driver1\viogpu\vmgtsrv.exe` (auto) | "VMGT service", built 2026-09-10 from virtio-win's `viogpusc`; starts `vmgtsharemgr.exe` in the user session (clipboard on vioserial port 3, FUSE file sharing on port 4) |
-| `OETool` → `Program Files\oetool\OETool.exe` (auto), `MessagesExchangeTools.exe`, `display.exe` | user-session tools; `display.exe` sets the resolution only when the SVGA driver is absent |
-| `oyService` → `Program Files\oseasy\appstore\oysvc.exe` | Oseasy app store |
-| `AudioSession\audio_session.exe` + `Scream.sys` | audio over `ivshmem-scream` |
-| drivers (`driver1`, `driver2`) | virtio-win `viostor`, `netkvm`, `viofs`, `vioinput`/`viohidkmdf`, `vioser`, `viomem`, `balloon`, `pvpanic`, `viogpudo` (installed but unused here), plus `ivshmem`, `hwfs`, `app_filter_driver`, `VDeskMou` |
+| Service / file | Role | Linux counterpart |
+|---|---|---|
+| `vmagent` → `VMAgent\agent_service.exe` (auto) | host link over virtio-serial: capability handshake with the host (`Proc host capset: peer cap N`), time zone, app lists, shutdown, DFX events | virtio-serial ports `winbox_serial0/1` and `additions_vioser0/1` show up as `/dev/vport*`; the protocol is Oseasy's own (capset handshake), so a Linux side would be a small daemon modelled on `agent_service.exe`. Not needed to boot or display |
+| `vmgtsrv` → `VMAgent\driver1\viogpu\vmgtsrv.exe` (auto) | "VMGT service", built 2026-09-10 from virtio-win's `viogpusc`; starts `vmgtsharemgr.exe` in the user session (clipboard on vioserial port 3, FUSE file sharing on port 4) | clipboard: a small virtio-serial bridge to `wl-copy`/`wl-paste` on port 3 (spice-vdagent does not speak this protocol); files: the VM's `vhost-user-fs` tag `shared_dir` mounts directly (`mount -t virtiofs shared_dir /mnt`) |
+| `OETool` → `Program Files\oetool\OETool.exe` (auto), `MessagesExchangeTools.exe`, `display.exe` | user-session tools; `display.exe` sets the resolution only when the SVGA driver is absent | resolution follows the window in the kernel driver (resize IRQ, above), so nothing in user space; notifications and app lists have no counterpart |
+| `oyService` → `Program Files\oseasy\appstore\oysvc.exe` | Oseasy app store | none (vendor app store) |
+| `AudioSession\audio_session.exe` + `Scream.sys` | audio over `ivshmem-scream` | `ivshmem-scream` is the [Scream](https://github.com/duncanthrax/scream) ivshmem transport; a Linux guest needs a PipeWire/ALSA sink that writes Scream's ring buffer into the ivshmem BAR (Scream ships only the Windows sender and Linux receivers) |
+| drivers (`driver1`, `driver2`) | virtio-win `viostor`, `netkvm`, `viofs`, `vioinput`/`viohidkmdf`, `vioser`, `viomem`, `balloon`, `pvpanic`, `viogpudo` (installed but unused here), plus `ivshmem`, `hwfs`, `app_filter_driver`, `VDeskMou` | in-tree `virtio_blk`, `virtio_net`, `virtiofs`, `virtio_input`, `virtio_console`, `virtio_mem`, `virtio_balloon`, `pvpanic-pci`; the display is route B's vmwgfx |
 
 Install order (`VMAgent\log\setup.log`): copy drivers and agent, install the
 signed drivers (`wddm\SVGAMPWDDM.inf` first), then `display`, then `driver2`.

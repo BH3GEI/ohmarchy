@@ -439,7 +439,7 @@ the runs above unless marked pending.
 | App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | | |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | | |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak **failed**: guest hung after 38 min (all vCPUs spinning), cause open | | |
+| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak **failed** twice (hang after 38 and 51 min): use-after-free of command buffer headers, fixed, re-test running | | |
 
 ### Commits (MateBook 14 work)
 
@@ -818,6 +818,43 @@ one), checks every 5 minutes with es2gears and workspace switching.
   softlockup detector, but no hardlockup detector: a CPU spinning with interrupts
   off would not be reported, only the heartbeat stopping. Same ISO and driver as
   the hang, same load (two es2gears).
+
+### Eleventh run: the hang captured, a use-after-free of command buffer headers (13:19-14:41, 2026-10-25)
+
+Logs: [`soak3.log`](../oseasy/runs/2026-10-25-pollfix/soak3.log),
+[`soak3-netconsole.log`](../oseasy/runs/2026-10-25-pollfix/soak3-netconsole.log)
+(the guest kernel's log over netconsole, [`hang-capture.sh`](../oseasy/guest/hang-capture.sh)).
+After the SIGTERM of run ten Oseasy had forgotten the VM; it was created again
+(立即创建 → 点击选择 ISO → `oseasy-probe.iso` → 继续安装 → 仍要安装 → 6 cores / 8 GB /
+256 GB → 开始安装; the 导入 suggestion picks a Windows ISO from Oseasy's own
+download folder instead). Same ISO and driver as run ten, same load.
+
+- netconsole works through Oseasy's NAT to a `toybox nc -u -l` bound to the host's
+  wlan0 address. Checks every 5 minutes normal until t+45 min.
+- At 3054 s guest uptime (about 51 min) a kernel oops in `kworker/u24:2`
+  (`events_unbound commit_work`): `dma_pool_alloc+0x48` ← `vmw_cmdbuf_alloc` ←
+  `vmw_cmdbuf_reserve` ← `vmw_cmd_ctx_reserve` ← `vmw_du_helper_plane_update` ←
+  `vmw_sou_*` ← `drm_atomic_helper_commit_planes`, reading `019ba00cc6528000`.
+  The worker died holding the DMA pool's spinlock with interrupts off; the other
+  CPUs spun on it (the six vCPUs at 100 % of run ten) and at 3167 s the kernel
+  panicked with `RCU Stall`. The heartbeat ran for a minute after the oops.
+- The bad pointer is the pool's free-list link (`next_block`, the first 8 bytes
+  of a free block): the low half `c6528000` is a kernel address, the high half
+  garbage. Bytes 4-7 of `SVGACBHeader` are `errorOffset`, written by the device.
+  So the device wrote into a header that the guest had already given back to the
+  pool. Explanation: with the 1 ms poll (run 9) the guest sees `status ==
+  COMPLETED` and frees the header at once, possibly before the host has finished
+  writing it; the interrupt path ran only after the host raised the interrupt.
+- **Fix** (`vmwgfx_cmdbuf.c`): with HVM polling on, completed buffers wait on a
+  `retired` list for 5 ms before their header goes back to the pool (freed from
+  `vmw_cmdbuf_man_process`, drained before the pool and the manager go away). To
+  prove the cause rather than only avoid it, a retired header is compared with a
+  copy taken at completion on every pass; a change is logged once per buffer as
+  `vmwgfx: late device write #N ...: offset, old -> new, X us after completion`.
+  Package `e9e308908f8c71a443709d5eb0334554fba58b6a0a78add58a35fc3a4d938b88`,
+  ISO `d52909fa1559b2c1422b45128f396d50ffe86ddfd940dd91a3af3add5cf850c4`
+  (also carries the obsidian launcher). Pass: over 60 minutes, no oops, and the
+  late writes counted.
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

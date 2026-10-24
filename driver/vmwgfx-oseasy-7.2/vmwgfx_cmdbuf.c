@@ -30,6 +30,7 @@
 
 #include <drm/ttm/ttm_bo.h>
 
+#include <linux/delay.h>
 #include <linux/dmapool.h>
 #include <linux/pci.h>
 
@@ -107,6 +108,9 @@ struct vmw_cmdbuf_context {
  * @size: The size of the command buffer space. Immutable.
  * @id: Monotonically increasing ID of the last cmdbuf submitted.
  * @num_contexts: Number of contexts actually enabled.
+ * @retired: Completed command buffers not yet freed (HVM polling, see
+ * vmw_cmdbuf_retire()). Oldest first. Protected by @lock.
+ * @late_writes: Retired buffers whose header the device changed. @lock.
  */
 struct vmw_cmdbuf_man {
 	struct mutex cur_mutex;
@@ -135,6 +139,8 @@ struct vmw_cmdbuf_man {
 	size_t size;
 	u64 id;
 	u32 num_contexts;
+	struct list_head retired;
+	u64 late_writes;
 };
 
 /**
@@ -151,6 +157,9 @@ struct vmw_cmdbuf_man {
  * @size: Size of the command buffer space of this buffer.
  * @reserved: Reserved space of this buffer.
  * @inline_space: Whether inline command buffer space is used.
+ * @retired: When the buffer was seen completed, if it waits on man::retired.
+ * @snap: The device header as it was then, to catch late device writes.
+ * @late: A late write has been reported for this buffer.
  */
 struct vmw_cmdbuf_header {
 	struct vmw_cmdbuf_man *man;
@@ -163,6 +172,9 @@ struct vmw_cmdbuf_header {
 	size_t size;
 	size_t reserved;
 	bool inline_space;
+	ktime_t retired;
+	SVGACBHeader snap;
+	bool late;
 };
 
 /**
@@ -272,6 +284,57 @@ static void __vmw_cmdbuf_header_free(struct vmw_cmdbuf_header *header)
 		dma_pool_free(man->headers, header->cb_header,
 			      header->handle);
 	kfree(header);
+}
+
+/*
+ * With HVM polling (Oseasy) a completed command buffer can be seen before the
+ * device has finished writing its header: the device's late write of
+ * errorOffset then lands in a header already back in the DMA pool, on the
+ * pool's free-list pointer, and the next dma_pool_alloc() faults with the pool
+ * lock held. So completed buffers wait on man::retired for this long first,
+ * and a header that changes meanwhile is reported (offset, old and new word,
+ * how long after completion it was seen).
+ */
+#define VMW_CMDBUF_RETIRE_US 5000
+
+static void vmw_cmdbuf_retire(struct vmw_cmdbuf_man *man,
+			      struct vmw_cmdbuf_header *header)
+{
+	header->retired = ktime_get();
+	memcpy(&header->snap, header->cb_header, sizeof(header->snap));
+	header->late = false;
+	list_add_tail(&header->list, &man->retired);
+}
+
+/* Free retired buffers, all of them or those retired long enough ago. */
+static void vmw_cmdbuf_free_retired(struct vmw_cmdbuf_man *man, bool all)
+{
+	struct vmw_cmdbuf_header *entry, *next;
+	ktime_t limit = ktime_sub_us(ktime_get(), VMW_CMDBUF_RETIRE_US);
+
+	lockdep_assert_held_once(&man->lock);
+
+	list_for_each_entry_safe(entry, next, &man->retired, list) {
+		const u32 *old = (const u32 *)&entry->snap;
+		const u32 *cur = (const u32 *)entry->cb_header;
+		unsigned int i;
+
+		for (i = 0; !entry->late && i < sizeof(entry->snap) / 4; i++) {
+			if (READ_ONCE(cur[i]) == old[i])
+				continue;
+			entry->late = true;
+			man->late_writes++;
+			pr_warn_ratelimited("vmwgfx: late device write #%llu to cmdbuf header id %llu: offset %u 0x%08x -> 0x%08x, %lld us after completion\n",
+					    man->late_writes,
+					    (unsigned long long)entry->snap.id, i * 4, old[i],
+					    READ_ONCE(cur[i]),
+					    ktime_us_delta(ktime_get(), entry->retired));
+		}
+		if (!all && ktime_after(entry->retired, limit))
+			continue;
+		list_del(&entry->list);
+		__vmw_cmdbuf_header_free(entry);
+	}
 }
 
 /**
@@ -401,7 +464,10 @@ static void vmw_cmdbuf_ctx_process(struct vmw_cmdbuf_man *man,
 		ctx->num_hw_submitted--;
 		switch (status) {
 		case SVGA_CB_STATUS_COMPLETED:
-			__vmw_cmdbuf_header_free(entry);
+			if (man->dev_priv->hvm_poll_on)
+				vmw_cmdbuf_retire(man, entry);
+			else
+				__vmw_cmdbuf_header_free(entry);
 			break;
 		case SVGA_CB_STATUS_COMMAND_ERROR:
 			WARN_ONCE(true, "Command buffer error.\n");
@@ -445,6 +511,7 @@ static void vmw_cmdbuf_man_process(struct vmw_cmdbuf_man *man)
 	struct vmw_cmdbuf_context *ctx;
 	int i;
 
+	vmw_cmdbuf_free_retired(man, false);
 retry:
 	notempty = 0;
 	for_each_cmdbuf_ctx(man, i, ctx)
@@ -1332,6 +1399,7 @@ struct vmw_cmdbuf_man *vmw_cmdbuf_man_create(struct vmw_private *dev_priv)
 		vmw_cmdbuf_ctx_init(ctx);
 
 	INIT_LIST_HEAD(&man->error);
+	INIT_LIST_HEAD(&man->retired);
 	spin_lock_init(&man->lock);
 	mutex_init(&man->cur_mutex);
 	mutex_init(&man->space_mutex);
@@ -1380,6 +1448,10 @@ void vmw_cmdbuf_remove_pool(struct vmw_cmdbuf_man *man)
 	man->has_pool = false;
 	man->default_size = VMW_CMDBUF_INLINE_SIZE;
 	(void) vmw_cmdbuf_idle(man, false, 10*HZ);
+	usleep_range(VMW_CMDBUF_RETIRE_US, 2 * VMW_CMDBUF_RETIRE_US);
+	spin_lock(&man->lock);
+	vmw_cmdbuf_free_retired(man, true);
+	spin_unlock(&man->lock);
 	if (man->using_mob)
 		vmw_bo_unreference(&man->cmd_space);
 	else
@@ -1405,6 +1477,10 @@ void vmw_cmdbuf_man_destroy(struct vmw_cmdbuf_man *man)
 	vmw_generic_waiter_remove(man->dev_priv, SVGA_IRQFLAG_ERROR,
 				  &man->dev_priv->error_waiters);
 	(void) cancel_work_sync(&man->work);
+	usleep_range(VMW_CMDBUF_RETIRE_US, 2 * VMW_CMDBUF_RETIRE_US);
+	spin_lock(&man->lock);
+	vmw_cmdbuf_free_retired(man, true);
+	spin_unlock(&man->lock);
 	dma_pool_destroy(man->dheaders);
 	dma_pool_destroy(man->headers);
 	mutex_destroy(&man->cur_mutex);

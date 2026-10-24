@@ -16,7 +16,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | desktop start 6.2 s, launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
-| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
+| E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser (Firefox) sandboxed: pass. Open: web apps in Chromium without sandbox; broker and session init in the `su` SELinux domain |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
 | G. Other devices | | | only one machine so far. The tests take the host, base path and user from `OHOS_HOST`, `ARCH_BASE`, `ARCH_USER`; nothing else names this device |
 
@@ -278,23 +278,20 @@ package versions, disk, test results). No passwords or user files.
 
 ## E. Security
 
-`tests/security/check.sh`, 2026-10-24 17:50:
+`tests/security/check.sh`, 2026-10-24 17:50, updated 20:15:
 
 | Check | Result |
 |---|---|
 | Desktop processes (Hyprland, Omarchy shell, Xwayland, sound, input method) run as the ordinary desktop user | pass |
 | Root in the session | only udisksd and upowerd (system bus services, as on any Linux), plus whatever someone runs as root (a package build's pacman during the check) |
 | Desktop user gets root without a password | pass since 17:50 (was: fail). `builder` was in `wheel` with `NOPASSWD: ALL`, which matters more here than on a normal Linux: without user namespaces root in the session is root on the HarmonyOS host (`u:r:su:s0`). Now `/etc/sudoers.d/10-wheel` asks for the password (set per internal convention); Omarchy's own narrow NOPASSWD rules (DNS, timezone, browser theme policy) sort after it and still work without one (checked with `sudo -l`). `native/40-install-desktop.sh` does this as its last step (the install itself still runs passwordless); the old sudoers are backed up in the session's `/root/sudoers-backup-*` |
-| Host side | the session's init and the host GPU server (`OHMARCHY_GPU=host`) run as root in `u:r:su:s0`; with the in-app GPU path the renderer runs inside the display app (an ordinary app sandbox) and only the broker is root |
-| Listeners | pass: only 127.0.0.1:4714 (sound, below) |
-| Browser sandbox | fail: Chromium runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Under strace (as root, `-u` the desktop user, so the helper keeps setuid) the zygote stops on a `brk` trap (SIGTRAP, TRAP_BRKPT) early in its startup: a Chromium `CHECK` fails; which one needs symbols. Ruled out, each tested on its own: PID and network namespaces (root), chroot into `/proc/self/fdinfo` (the helper's chroot), SCM_RIGHTS and SCM_CREDENTIALS over SOCK_SEQPACKET (the pid is translated correctly across PID namespaces), `capset` dropping all capabilities, seccomp-bpf (and Chromium's seccomp policy off does not help) |
+| Host side | the session's init runs as root in `u:r:su:s0`. The GPU broker (default, in-app GPU path) binds its sockets as root, then handles everything as the desktop user (uid 60000); a root parent stays only to run the desktop restart when the app connects. It hands the desktop's GPU connections only to the display app's uid (SO_PEERCRED; before, any host process could have connected as "the app"; refusal of uid 0 tested). Both still in the `su` domain: a domain of its own needs SELinux policy we cannot load. The host GPU server (`OHMARCHY_GPU=host`, for tests) still runs as root |
+| Listeners | pass: no TCP ports. Sound now goes over the abstract socket `@ohmarchy-audio`, served by `ohmarchy-audio-relay` only to the display app's uid (SO_PEERCRED; refusals of uid 60000 and 0 tested); the app in turn plays only from a server with the compositor's uid. Before, PipeWire's protocol-simple listened on 127.0.0.1:4714, where any host process could listen in |
+| Browser sandbox | default browser: pass. Firefox is now Omarchy's default browser (`40-install-desktop.sh`): its tab, media, socket and utility processes run under seccomp-bpf (`Seccomp: 2`) with its file broker; tested headless, the page rendered. Web apps: fail: Chromium (Omarchy's web apps) runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Under strace (as root, `-u` the desktop user, so the helper keeps setuid) the zygote stops on a `brk` trap (SIGTRAP, TRAP_BRKPT) early in its startup: a Chromium `CHECK` fails; which one needs symbols. Ruled out, each tested on its own: PID and network namespaces (root), chroot into `/proc/self/fdinfo` (the helper's chroot), SCM_RIGHTS and SCM_CREDENTIALS over SOCK_SEQPACKET (the pid is translated correctly across PID namespaces), `capset` dropping all capabilities, seccomp-bpf (and Chromium's seccomp policy off does not help) No debug symbols for ALARM's Chromium (debuginfod.archlinux.org: 404; ALARM has no debuginfod), so the failing check is not identified |
 | seccomp-bpf | pass: the kernel takes filters (so a working setuid sandbox would get both layers) |
 
 Open items:
 
-
-- Sound: protocol-simple listens on 127.0.0.1:4714 in the host's network
-  namespace, so any process on the HarmonyOS host can connect and receive the
-  session's sound output (not send to it). To do: an abstract Unix socket relayed
-  like the GPU's vtest-broker, or a peer-uid check. If the port is taken, PipeWire
-  fails to load the module rather than picking another port.
+- Web apps (Chromium) without a sandbox, see above.
+- The broker and the session init run in the `su` SELinux domain (all-powerful on
+  the host); a narrower domain needs policy that cannot be loaded from here.

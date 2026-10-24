@@ -40,9 +40,20 @@ EFI framebuffer: no 3D, no EDID, no 120 Hz. Route G therefore keeps only what
 is specific to 铠大师 (getting a disk in, Secure Boot, the app's behaviour) and
 waits on route B for the display.
 
-Next: boot Omarchy's 7.2.12 kernel (`arm64.hmv_idreg_quirk`) and then the pure
-Omarchy disk in 铠大师 on the EFI framebuffer, so that route B's vmwgfx can be
-dropped in when it works.
+- **The 7.2.12 HMV-quirk kernel boots in 铠大师** (2026-10-24 17:54, from
+  `kds-installer.iso`): all 6 vCPUs up, console on simplefb, virtio-blk
+  (`/dev/vda`, 256 GiB), both install media on usb-storage, `virtio_net` binds.
+  ![7.2.12 console in 铠大师](img/kaidashi/k72-console.jpeg)
+- **Guest networking does not receive.** eth0 is up as 172.16.100.3, but the
+  host cannot reach it: no ARP entry, and the tap's counters show the host
+  sending (tx rising) while the guest sent 12 packets after boot and nothing
+  after (two boots, same result). Route B's 7.2.12 guest on Oseasy's NIC
+  does have network, so the difference is 铠大师's NIC (below).
+
+Next: tell apart a 7.2/MSI problem from 铠大师's NIC setup (installer entries
+with `pci=nomsi` and with Debian's 6.1 kernel, counters every 10 s), then
+write the pure Omarchy disk and boot it on the EFI framebuffer, ready for
+route B's vmwgfx.
 
 ## The app
 
@@ -106,6 +117,21 @@ and Oseasy's last `VmConfig` in the same log:
 | Network | one virtio-net (tap) | two (tap + host-only) |
 | Sharing | vhost-user-fs `shared_dir` = HarmonyOS 文档 (exported even after 不允许 on the 文档 prompt) | vhost-user-fs, no directory |
 | Other | virtio-serial (6 vendor ports), pvpanic, logdevice, `-serial redirect-to-log`, `-battery` | same |
+
+**Network.** Each VM gets its own bridge: 铠大师's tap `WVMTap14571594` sits
+on `WVMBr14571594` (172.16.100.1/24, `MASQUERADE` for 172.16.100.0/24,
+`FORWARD` accepted both ways); Oseasy's was `WVMBr14204819` with the same
+address. Both taps are opened with `queues: 2`. The difference is the device:
+
+| | 铠大师 | Oseasy |
+|---|---|---|
+| `-device virtio-net-pci` | `netdev=net0,id=nic0,bus=pcie.0,addr=0x6.0x0` | `…,mac=02:9f:…,addr=0x6.0x0,rx-iothread=rx-iothread0,tx-iothread=tx-iothread0` |
+| MAC in the guest | `52:54:00:12:34:56` (StratoVirt's default; the app's `vmdevice.json` MAC `c2:82:96:65:29:d0` is not passed) | the configured one |
+
+Same PCI address, so the same ITS device ID; the "Devices Table too large,
+reduce ids 32->19" line is not the difference. Untested idea: with a two-queue
+tap and a single-queue device without its rx iothread, frames the host kernel
+puts on the second tap queue may never be read.
 
 The guest serial port ends up in `/data/log/hwf_service/vmlog` (root can read
 it), so a guest console on `ttyAMA0` is the debug channel.
@@ -241,8 +267,14 @@ host surface size, (2) provide its own EDID/modes (the device has none),
 | 16:18 | 铠大师 VM closed from its window (安装过程异常终止) |
 | 16:19 | 鸿融's VM started again (`tools/hongrong/hrvm start`), virgl GPU as before; at 16:28 its SDDM greeter is up |
 | 16:30 | lock removed |
+| 17:50 | lock (second slot, 30 min budget): 鸿融 powered off from the guest with `sudo poweroff` |
+| 17:53 | 铠大师 VM from `kds-installer.iso` (pid 16476): 7.2.12 boots, eth0 up, host ping fails ([`runs/2026-10-24-k72`](../kaidashi/runs/2026-10-24-k72/)) |
+| 18:06 | second VM (pid 34450), same result; a GRUB command-line retry with `pci=nomsi` missed the menu |
+| 18:10 | 铠大师 VM closed, 鸿融 started; its SDDM greeter at 18:11 |
+| 18:12 | lock removed |
 
 ![鸿融 back on its Omarchy greeter](img/kaidashi/hongrong-restored.jpeg)
+![鸿融 after the second slot](img/kaidashi/hongrong-restored-2.jpeg)
 
 ## Sources
 
@@ -296,3 +328,7 @@ has to cross the Mac–ohdev link.
 | [1d49551](https://github.com/BH3GEI/ohmarchy/commit/1d49551) | probe ISO with the 7.2.12 kernel |
 | [a724e53](https://github.com/BH3GEI/ohmarchy/commit/a724e53) | StratoVirt fds and libraries of the first run |
 | [ca5836d](https://github.com/BH3GEI/ohmarchy/commit/ca5836d) | installer ISO that writes a disk streamed from the host |
+| [2f01b87](https://github.com/BH3GEI/ohmarchy/commit/2f01b87) | installer documented, sources, this list |
+| [ac28f8f](https://github.com/BH3GEI/ohmarchy/commit/ac28f8f) | installer GRUB defaults to the installed disk |
+| [07528eb](https://github.com/BH3GEI/ohmarchy/commit/07528eb) | how Oseasy's Windows guest drives `svga-pci` |
+| [edaf00f](https://github.com/BH3GEI/ohmarchy/commit/edaf00f) | second slot: 7.2.12 boots, network receives nothing; installer diagnostics |

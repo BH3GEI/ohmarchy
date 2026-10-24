@@ -14,7 +14,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 
 | Item | Status | What | Evidence |
 |---|---|---|---|
-| A1 every app opens in 3 s | pass | 73 of 78 pass, 0 failed, 4 unsupported (no camera, no systemd, no container runtime), 1 skip (foot-server); P95 1.22 s. Since 2026-10-24 09:53 Docker works through route I's VM (`docker run`, `docker compose`, lazydocker), so 3 unsupported remain | [73ce712](https://github.com/BH3GEI/ohmarchy/commit/73ce712), [3735447](https://github.com/BH3GEI/ohmarchy/commit/3735447) |
+| A1 every app opens in 3 s | pass | 2026-10-24 10:28: 74 of 78 pass, 0 failed, 3 unsupported (no camera; systemd user units and timers), 1 skip (foot-server); P95 1.13 s. Docker works through route I's VM (A1b) | [dc65767](https://github.com/BH3GEI/ohmarchy/commit/dc65767), [1d70b74](https://github.com/BH3GEI/ohmarchy/commit/1d70b74) |
 | A2 core operations | pass | files (LibreOffice, Neovim), clipboard, Chinese input, sound, file chooser: 6 of 6 | [83432cf](https://github.com/BH3GEI/ohmarchy/commit/83432cf), [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5) |
 | A3 sound | pass, plus on site | over the app-only socket (23:45): first sound median 101 ms (max 133), during playback median 72 ms (max 77); A/V within 100 ms; not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
 | B cold start <= 10 s | pass | about 8 s (session 2.0 s + desktop 5.7-6.1 s) | [68e71a7](https://github.com/BH3GEI/ohmarchy/commit/68e71a7) |
@@ -39,7 +39,7 @@ Detail by area:
 
 | Area | Criterion | Test | Status |
 |---|---|---|---|
-| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
+| A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 74 of 78 open within 3 s (P95 1.13 s), 3 unsupported, 0 failed. A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | cold start about 8 s (session 2.0 s + desktop 5.7-6.1 s), launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
 | C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
@@ -98,6 +98,15 @@ entry now opens its terminal UI in 0.3 s, but there is still no Docker daemon. i
 failed once because the test opened the theme background from the old
 `~/.config/omarchy/current`; this Omarchy keeps it in `~/.local/state/omarchy/current`
 (fixed; passes).
+
+Re-run 2026-10-24 10:28 (Firefox the default browser and web apps in it, Docker
+through route I's VM, windows now closed by address so apps shut down cleanly):
+74 pass, 1 skip (foot-server), 3 unsupported, 0 failed; median 0.58 s, P95
+1.13 s; nothing left behind. 78 entries: Firefox's entry is new, and an invented
+"menu.docker" item (not an Omarchy menu entry) is gone. On the way: closing by
+focus did not take without input, so apps had been ended by signal; Firefox then
+offered Troubleshoot Mode on its next start. And the speed test panels were not
+hidden after their test (their layers are not named after their plugin ids).
 
 Unsupported, with the reason (reported as such by the test, not as failures):
 

@@ -9,6 +9,13 @@ set -uo pipefail
 L=$1 R=$2 CH=${3:-32}
 [ -f "$L" ] || { echo "no local file: $L" >&2; exit 1; }
 total=$(stat -f%z "$L" 2>/dev/null || stat -c%s "$L")
+# single-writer lock: two concurrent appends to the same remote file corrupt it
+LOCK="${TMPDIR:-/tmp}/ohmarchy-push-$(echo "$R" | tr -c 'A-Za-z0-9' _).lock"
+if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
+    echo "another push is already running for $R (pid $(cat "$LOCK")); refusing" >&2; exit 1
+fi
+echo $$ > "$LOCK"
+trap 'rm -f "$LOCK"' EXIT
 
 rsize() {  # echo remote size, or nothing on failure
     to 40 ssh -o ConnectTimeout=15 -o ServerAliveInterval=8 -o ServerAliveCountMax=3 "$OHDEV" \

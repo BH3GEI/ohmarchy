@@ -13,8 +13,8 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | Area | Criterion | Test | Status |
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 73 of 78 open within 3 s (P95 1.2 s), 4 unsupported, 0 failed (with the system D-Bus). A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
-| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | preliminary (machine under load): desktop start 6.2 s, launch P95 1.2 s, idle 0.5 % CPU / 1.0 GB without the app; fps and app-open idle to re-measure; power needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: pending. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
+| B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | desktop start 6.2 s, launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/collect-logs.sh` | log bundle: done. Reset and `-Syu` regression: on a separate environment once the machine is free |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, loopback-only listeners: pass. Open: Chromium without sandbox, host GPU server as root, sound port readable by host processes |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
@@ -155,9 +155,9 @@ nothing that shows the display app ran). Official numbers when the machine is id
 |---|---|---|---|
 | Desktop cold start: `omarchy desktop start` until the Omarchy bar and background are up (session already running) | `tests/perf/coldstart.sh` | 6.0-6.3 s (3 rounds; Hyprland answers at 4.1-4.4 s, bar 4.7-5.1 s) | <= 10 s |
 | App launch | `tests/apps/run.sh` (A1) | median 0.67 s, P95 1.22 s | P95 <= 3 s |
-| Workspace switch | Phase 2 measurement (HarmonyOS composer fps, in-app GPU path) | 115-116 fps at 1920x1280 | >= 110 fps; to re-run as a script |
-| Idle CPU and memory, desktop processes only | `tests/perf/idle.sh` | display app closed: 0.5 % of one core, 1.0 GB (PSS; Omarchy shell 430 MB, Hyprland 140 MB, fcitx5 67 MB). Display app open: about 14 % of one core more, in the app itself | recorded |
-| Power vs the HarmonyOS desktop | | not measured: on mains with a full battery the battery reports 0 current; needs a run on battery | |
+| Workspace switch | `tests/perf/workspace.sh` (HarmonyOS compositor frame timestamps while switching every 0.45 s for 10 s, in-app GPU path) | 119.4 fps (2026-10-24 18:35, machine quiet) | >= 110 fps |
+| Idle CPU and memory, desktop processes only | `tests/perf/idle.sh` | display app closed: 0.5 % of one core, 1.0 GB (PSS; Omarchy shell 430 MB, Hyprland 140 MB, fcitx5 67 MB). Display app open, idle: 1.9 % of one core in the app (`tests/perf/app-threads.sh`; was about 14 % before its frame-rate vote dropped to 10 Hz when nothing changes) | recorded |
+| Power vs the HarmonyOS desktop | `tests/perf/power.sh` (below) | proxy only: see the table below. Battery drain needs a run on battery (on mains with a full battery it reports 0 current) | |
 
 Found while measuring, fixed:
 
@@ -168,8 +168,32 @@ Found while measuring, fixed:
   (about 80 MB each): on HongMeng it is not told its client went away.
   `omarchy desktop stop` now ends them.
 
-Open: the display app's own idle CPU (about 14 % of a core with nothing changing on
-screen; likely its 120 Hz frame callback running with no new frames).
+- The display app's frame callback, needed to ask for 120 Hz, ran on every vsync
+  even with nothing changing: about 14 % of a core. Its vote now drops to 10 Hz after
+  a second without frames and goes back up with the first new one: 1.9 %.
+
+Power proxy, 2026-10-24 18:39-18:54, in a window with the machine to ourselves (no
+builds or transfers; screen and hypervisor locks held). 60 s each, whole machine,
+sampled every 0.5 s: CPU busy in % of all 20 cores. Each half measured with the
+other one off (the 鸿融 VM powered off from the guest for the native runs, the
+native desktop stopped for the VM runs). The CPU and GPU clocks stayed at the same
+values in every state (CPU clusters 2.0-2.3 GHz, GPU 850 MHz: on mains the governors
+hold them), so they do not tell the states apart; CPU time does.
+
+| State | CPU busy | Over baseline |
+|---|---|---|
+| Baseline: native desktop and VM both off, HarmonyOS desktop | 7.1 % | |
+| Native desktop idle, display app in front | 6.5 % | none (within noise) |
+| Native, es2gears running (in-app GPU path; it shows 117-120 fps, Phase 2) | 15.5 % | +8.4 points |
+| 鸿融 VM idle, its Omarchy desktop in front | 7.2 % | none (within noise) |
+| 鸿融 VM, es2gears running (60 fps on screen, Phase 2) | 16.0 % | +8.9 points |
+
+So for the same CPU the native desktop puts twice the frames on screen. HarmonyOS's
+own per-app energy accounting (XpowerManager, `dubai.db` `hourly_app_energy`) does
+not help here: it books only the display app's process to the app (the Linux
+session's processes are root, outside any app), and flushes about every half hour.
+A real power comparison needs the machine on battery.
+
 
 ## C. Stability
 
@@ -213,7 +237,10 @@ HarmonyOS's own screen off cannot be tested remotely: the only command-line
 switch, `power-shell suspend`, suspends the whole machine, which could leave it out
 of reach. Needs someone at the machine. The closest remote stand-in, sending the
 display app to the background and back (HarmonyOS destroys and recreates its
-surface, as at screen off), is scheduled for a window with the screen to itself.
+surface, as at screen off): `tests/stability/bgfg.sh` brings Settings to the front,
+then the display app again, makes the desktop draw and checks that new frames reach
+the app's surface. 2026-10-24 18:37: 20 of 20; the app and Hyprland kept running
+throughout.
 
 ### C3. Soak
 
@@ -222,6 +249,8 @@ surface, as at screen off), is scheduled for a window with the screen to itself.
 window opens and closes, clipboard, file write, sound into PipeWire, system bus,
 desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
 Desktop restarts by the tests themselves (cold start) are logged in the results.
+Desktop stopped and started on purpose during the soak: 18:29:41/18:29:59 (switch to
+the in-app GPU path), 18:47:31 (power baseline) to 18:56.
 
 ## D. Upgrade and recovery
 

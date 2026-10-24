@@ -7,7 +7,11 @@ warnings, so it can run a complete Omarchy AArch64 install.
 
 ## Status
 
-Verified on a MateBook Fold, HarmonyOS 7.0.0.111, Oseasy 3.1.0:
+Verified on a MateBook Fold, HarmonyOS 7.0.0.111, Oseasy 3.1.0. The current
+development machine (`ohdev`) is a MateBook 14 HM740, HarmonyOS 7.0.0.115; see
+[MateBook 14 (ohdev)](#matebook-14-ohdev-2026-10-24) below.
+
+On the Fold:
 
 - The Omarchy disk image installs from a remastered Debian installer ISO.
 - The Limine menu shows in the VM window and boots the 6.1 entries.
@@ -161,6 +165,22 @@ Oseasy's last start (`/data/log/hwf_service/vmlog4`, 2026-10-23 09:38, pid 15337
   surface follows the host window (`HostWindowInfoEvent 2100x1511` →
   `update surface size`). 鸿融 gives Linux guests virgl (`vhost-device-gpu`,
   zink on Maleoon) instead.
+- The Windows display driver in `oetool.iso` (`driver.zip` → `driver1/wddm/`) is
+  VirtualBox's VMSVGA WDDM stack: `SVGAMPWDDM.sys` with the user-mode
+  `VBoxDX`, `VBoxGL`, `VboxSVGA`, `VboxNine`, `VboxDispD3D` DLLs (ARM64EC and
+  Win32), dated 2026-10-09. StratoVirt's command table also carries VirtualBox's
+  `VBSVGA_3D_CMD_*` extensions. So the device follows VirtualBox's VMSVGA (whose
+  DX11 backend also runs on DXVK), not VMware's; Linux guests on VirtualBox
+  drive VMSVGA with `vmwgfx`. The rest of `driver.zip` is virtio-win
+  (viostor, netkvm, viofs, vioinput, vioserial, pvpanic, balloon, viogpudo).
+- Host state the presenter checks (StratoVirt strings): `in_svga_stage`,
+  `need_refresh_frame`, `need_change_resolution_list`, `last_blit_surface`;
+  messages `svga driver not ready, avoid present`, `has no last blit surface`,
+  `Set resolution end, send irq to guest driver to refresh resolution list`.
+  The screen is presented from a surface the guest blits
+  (`dxvk_IDXGISwapChain2_PresentEXT`, `BlitResourceEXT1`), which matches what
+  the Fold saw: enabling SVGA mode turns off the VRAM framebuffer path, and
+  nothing reaches the window until the guest blits to a screen.
 - Other devices: USB keyboard and tablet, virtio-multitouch, virtio-net (tap,
   2 queues), `ivshmem-scream` audio, virtio-serial ports for the vendor agent,
   vhost-user-fs, balloon, pvpanic, a log device. The serial console is

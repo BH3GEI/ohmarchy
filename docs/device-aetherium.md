@@ -65,6 +65,30 @@ create-VM/run ioctls succeed outside the `ohsw_stratovirt` domain / without
 `MANAGE_VM` is not yet tested (it needs the VM lock and the 鸿融 VM stopped).
 More ioctl numbers decoded from `stratovirt` and the permission test: pending.
 
+## Can QEMU use HMV? (feasibility)
+
+What would be required, and the blockers in order:
+
+1. **Aetherium's QEMU has no hardware accel at all.** Its CI builds
+   `--target-list=aarch64-softmmu --disable-kvm` (QEMU_FEATURES.md: "KVM
+   support: NO"), and the app only probes `/dev/kvm` (`kvmSupported()`), falling
+   back to `tcg,thread=multi`. There is no HMV code path. So any acceleration
+   means a **rebuilt libqemu with a new `accel/hmv` backend**, not a config flag.
+2. **That backend must re-implement StratoVirt's closed HMV ABI** — the `0xAE`
+   create-vm/vcpu/memslot/register ioctls above, plus the `libhmlibs.so.0`
+   run-loop primitives (`hmv_join_actvpool_thread`, `hmv_wait_next_vmexit`) and
+   its active-thread-pool exit model (not KVM's `KVM_RUN` mmap). Doable in
+   principle (the shim is decoded, stratovirt is the reference), but a large port.
+3. **Permission gate — the make-or-break unknown.** The system VMM runs in
+   SELinux domain `ohsw_stratovirt` with `ohos.permission.MANAGE_VM`; `/dev/hmv`
+   is `dev_hmv_file` 0660 `root:hwf_service`. A `su`-domain process *opens*
+   `/dev/hmv`, but whether the create-vm/create-vcpu ioctls succeed outside the
+   `ohsw_stratovirt` domain is untested. This is the one test that needs the VM
+   lock and the 鸿融 VM stopped; it decides prototype-vs-impossible.
+
+So: a config switch cannot enable HMV; a prototype is conceivable but needs both
+a QEMU port and clearing the permission gate. The permission test is queued.
+
 ## Status
 
 In progress. Static HMV analysis done (above). TCG baseline and the on-device

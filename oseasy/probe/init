@@ -71,15 +71,10 @@ case " $cmd " in
         log "install: vmwgfx-oseasy added for $kv; modinfo -> $(chroot /mnt /usr/bin/modinfo -k "$kv" -n vmwgfx)"
         chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
         log "install: mkinitcpio rc=$?; initramfs vmwgfx: $(chroot /mnt /usr/bin/lsinitcpio /boot/initramfs-linux.img | grep vmwgfx | tr '\n' ' ')"
-        # boot straight into Hyprland (tty1 autologin + uwsm; SDDM's greeter exits
-        # here) and record Oseasy's guest channel
+        # boot straight into Hyprland (tty1 autologin + uwsm; SDDM's greeter exits here)
         u=$(awk -F: '$3 == 1000 {print $1}' /mnt/etc/passwd)
         [ -n "$u" ] && chroot /mnt /bin/bash /dev/stdin "$u" < /oseasy/desktop-autostart.sh > /tmp/autostart.txt 2>&1
         log "install: desktop autostart for ${u:-?}: $(tail -1 /tmp/autostart.txt)"
-        install -D -m755 /oseasy/oseasy-agent.py /mnt/usr/local/lib/oseasy/oseasy-agent.py
-        install -D -m644 /oseasy/oseasy-agent.service /mnt/etc/systemd/system/oseasy-agent.service
-        chroot /mnt /usr/bin/systemctl enable oseasy-agent.service > /dev/null 2>&1
-        log "install: oseasy-agent $(chroot /mnt /usr/bin/systemctl is-enabled oseasy-agent.service)"
         umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else

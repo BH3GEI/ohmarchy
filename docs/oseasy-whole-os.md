@@ -608,3 +608,15 @@ measurement next to the Oseasy window is pending (needs the screen lock).
   system`. The later boot with vmwgfx-oseasy powered off cleanly through the same
   `device_shutdown()` path (reboot and power-off share it up to the final PSCI
   call). Expected: warm reboots work with the right module; to confirm.
+
+### Decision: no guest agent for Oseasy
+
+Oseasy forgets a VM that is not Windows: once it is off, the app offers only
+再次安装 (recreate the disk) or 取消 (delete the VM). The app has a channel for a
+Linux guest agent (`tcp://172.16.100.2`, `install_complete`, `heartbeat`, …). We
+do **not** implement it: answering as the vendor's guest service and signalling a
+finished install would bypass the commercial app's own install and checks. The
+recorder that was prepared for it was never deployed and has been removed, and the
+install mode adds nothing for it. For development the VM is reinstalled (about
+2 minutes); a product needs Oseasy to support Linux guests itself, or our own VM
+(Route I).

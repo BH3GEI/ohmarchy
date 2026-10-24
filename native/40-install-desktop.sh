@@ -22,6 +22,9 @@ pacman -S --noconfirm --needed fcitx5 fcitx5-chinese-addons clang cmake ninja me
     wayland-protocols xorgproto hwdata libdisplay-info libinput libdrm seatd pixman libxkbcommon pango \
     cairo libxcursor xcb-util-errors xcb-util-wm libliftoff re2 muparser tomlplusplus lua mesa-utils wayvnc
 pacman -S --noconfirm libglvnd
+# Missing from Omarchy's set on aarch64, needed by preinstalled entries: qv4l2
+# (libQt6Core5Compat) and Disk Usage (dua).
+pacman -S --noconfirm --needed qt6-5compat dua-cli
 
 # cmake does not know a "HarmonyOS" system; report Linux to the tools.
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-uname.so "$here/desktop/hongmeng-uname.c" -ldl

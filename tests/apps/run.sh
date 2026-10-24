@@ -11,11 +11,15 @@ res="$here/../results/launch-$(date +%Y%m%d-%H%M%S).jsonl"
 tmp=$(mktemp)
 {
     echo "mkdir -p /tmp/ohm-tests && chown $user /tmp/ohm-tests"
+    # the app list goes in a file: ids contain spaces, and the command is quoted twice
+    echo "cat > /tmp/ohm-tests/only <<'END_OF_ONLY'"
+    printf '%s\n' "${ONLY:-}"
+    echo "END_OF_ONLY"
     echo "cat > /tmp/ohm-tests/launch_all.py <<'END_OF_PY'"
     cat "$here/launch_all.py"
     echo "END_OF_PY"
     cat <<SH
-su - $user -c 'export XDG_RUNTIME_DIR=/run/user/\$(id -u) WAYLAND_DISPLAY=wayland-1 PATH=/opt/ohmarchy/bin:\$PATH ONLY=${ONLY:-}
+su - $user -c 'export XDG_RUNTIME_DIR=/run/user/\$(id -u) WAYLAND_DISPLAY=wayland-1 PATH=/opt/ohmarchy/bin:\$PATH
 export HYPRLAND_INSTANCE_SIGNATURE=\$(hyprctl instances -j | python3 -c "import json,sys; print(json.load(sys.stdin)[0][\"instance\"])")
 OUT=/tmp/ohm-tests/launch.jsonl python3 /tmp/ohm-tests/launch_all.py' < /dev/null
 echo "=== JSONL"

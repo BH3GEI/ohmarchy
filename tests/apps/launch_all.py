@@ -24,7 +24,9 @@ import sys
 import time
 
 OUT = os.environ.get("OUT", "/tmp/ohm-tests/launch.jsonl")
-ONLY = set(filter(None, os.environ.get("ONLY", "").split(",")))
+ONLY_FILE = os.environ.get("ONLY_FILE", "/tmp/ohm-tests/only")
+_only = os.environ.get("ONLY") or (open(ONLY_FILE).read().strip() if os.path.exists(ONLY_FILE) else "")
+ONLY = set(filter(None, _only.split(",")))
 TIMEOUT = float(os.environ.get("APP_TIMEOUT", "20"))
 PASS_S, SLOW_S = 3.0, 10.0
 LOGDIR = os.path.join(os.path.dirname(OUT), "logs")
@@ -58,6 +60,22 @@ MENU_ITEMS = [
 ]
 # Desktop entries that open no window by design.
 NO_WINDOW = {"foot-server": "starts the foot server only"}
+# Commands to use instead of the entry's own, where the entry needs an argument or
+# a server to show anything (as when opened from a file or after foot --server).
+OVERRIDE = {
+    "imv": "imv \"$(readlink -f ~/.config/omarchy/current/background)\"",
+    "footclient": "(foot --server &) ; sleep 0.5; footclient",
+}
+# Entries that cannot work on the HongMeng kernel, with the reason. Still run (so a
+# change shows up), but reported as unsupported rather than failed.
+UNSUPPORTED = {
+    "Docker": "no container runtime: the HongMeng kernel has no cgroup v2 or user namespaces for dockerd",
+    "menu.docker": "no container runtime (see Docker); pkexec also needs polkit on a system bus",
+    "uuctl": "manages systemd user units; there is no systemd",
+    "menu.reminders": "reminders are systemd user timers; there is no systemd",
+    "qvidcap": "no V4L2 camera device: HarmonyOS does not expose its camera to Linux",
+    "org.gnome.DiskUtility": "needs udisks2 on the system D-Bus, which does not run in the session",
+}
 
 
 def sh(cmd, timeout=10):
@@ -165,6 +183,7 @@ def close(new_clients, new_pids):
 
 
 def run_one(app_id, name, cmd):
+    cmd = OVERRIDE.get(app_id, cmd)
     rec = dict(id=app_id, name=name, exec=cmd, result=None, seconds=None, frame=None, window=None,
                leftovers=0, log="")
     if app_id in NO_WINDOW:
@@ -216,6 +235,9 @@ def run_one(app_id, name, cmd):
         rec["log"] = "".join(open(log, errors="ignore").readlines()[-6:])[-600:]
     except OSError:
         pass
+    if app_id in UNSUPPORTED and rec["result"] != "pass":
+        rec["result"] = "unsupported"
+        rec["reason"] = UNSUPPORTED[app_id]
     return rec
 
 

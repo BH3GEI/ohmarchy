@@ -13,6 +13,8 @@ if timed:
     p95 = timed[min(len(timed) - 1, int(0.95 * len(timed)))]["seconds"]
     print(f"launch time: median {timed[len(timed) // 2]['seconds']} s, P95 {p95} s")
     print("slowest: " + ", ".join(f"{r['id']} {r['seconds']} s" for r in timed[-3:][::-1]))
+for r in by.get("unsupported", []):
+    print(f"unsupported {r['id']}: {r.get('reason', '')}")
 for k in ("slow", "fail", "timeout", "crash"):
     for r in by.get(k, []):
         last = r["log"].strip().splitlines()[-1] if r.get("log") else ""

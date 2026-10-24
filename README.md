@@ -17,7 +17,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **E. Bare metal**: (no doc yet) | Linux directly on the HarmonyOS PC's hardware, with no HarmonyOS underneath | Not started; nothing in this repo yet |
 | **F. Whole OS in Aetherium on the DevEco emulator**: [docs/emulator-aetherium.md](docs/emulator-aetherium.md) | No HarmonyOS hardware: the complete Omarchy AArch64 OS in a patched Aetherium (QEMU TCG) on DevEco's HarmonyOS 7.0 PC emulator, shown in a HarmonyOS window by a native VNC client | Omarchy 4.0.3 on its own kernel through Limine, first-boot setup, and the Hyprland desktop (llvmpipe) started from a console because SDDM's greeter times out; all in software emulation, so slow |
 | **G. Whole OS in the 铠大师 VM**: [docs/vm-kaidashi.md](docs/vm-kaidashi.md) | The complete Omarchy AArch64 disk (UEFI + GRUB, linux-aarch64 7.2 with the HMV ID-register quirk) in sanway's Windows-on-ARM VM app `com.sanway.ecoengine` | Concluded: same svga-pci path as B, 60 Hz; tools kept. A Linux ISO boots (fake `install.wim`, no login, Secure Boot off), but every VM is an install session that 铠大师 deletes on power-off; details in the doc |
-| **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): a TCG baseline to the Hyprland desktop, plus an investigation of whether QEMU can use the HMV hypervisor for hardware acceleration | In progress: HMV interface decoded by static analysis (ioctl ABI reusing KVM magic 0xAE, not KVM-compatible); TCG baseline and acceleration test next |
+| **H. Aetherium on the device**: [docs/device-aetherium.md](docs/device-aetherium.md) | The same QEMU-in-a-HAP as route F, but on the real HarmonyOS PC (`ohdev`): attempt a TCG baseline to Hyprland and investigate HMV hardware acceleration | Done (negative): without root nothing works — HMV is closed to third parties (hardcoded appIdentifier allowlist + MANAGE_VM, see [docs/vm-api.md](docs/vm-api.md)); TCG will not even initialize (QEMU aborts in `tcg_region_init`, the HAP is denied executable/JIT memory), so the baseline numbers are not obtainable on-device. HMV from a root VMM has no SELinux gate (only the undocumented 0xAE ABI); no virgl/venus 3D and no 120 Hz path. Route F covers TCG in the emulator |
 | **I. Our own VM on the hypervisor**: [docs/vm-own.md](docs/vm-own.md) | headless backend for D: Docker + full kernel. Omarchy's 7.2 kernel in a StratoVirt VM started as root on `/dev/hmv` (no VM app); D's terminal uses its dockerd over ssh | First run: network both ways, 120 Hz mode, virgl on the Maleoon GPU, Docker + compose; service `ohmarchy-vm` written, D's docker context set up, waiting for a slot |
 
 <!-- progress:start -->
@@ -162,7 +162,9 @@ Details, evidence and the comparison: [docs/vm-kaidashi.md](docs/vm-kaidashi.md)
 ## Route H quick start
 
 On a host with `ssh ohdev` (HarmonyOS device, root), DevEco Studio and `python3`.
-Coordinated and TCG-only for now (HMV acceleration is under investigation):
+Coordinated. NOTE: on the real device the in-app QEMU aborts at `tcg_region_init` (no
+executable memory for the HAP), so the VM does not boot on ohdev; these steps document the
+flow (and work in the route-F emulator). See docs/device-aetherium.md for the full result.
 
 ```sh
 device/sign-hap.sh                 # sign the route-F patched Aetherium with the device debug profile

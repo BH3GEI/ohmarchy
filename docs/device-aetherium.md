@@ -158,6 +158,53 @@ mkdir -p "$B/vms"; chown 20020166:20020166 "$B/vms"; chmod 771 "$B/vms"
 chcon u:object_r:debug_hap_data_file:s0 "$B/vms"
 ```
 
+## Criterion 1 result: TCG does not run on ohdev (QEMU aborts at init)
+
+The TCG baseline **cannot be produced on the device**: Aetherium's in-process QEMU
+aborts during engine initialization, before any guest boot. Confirmed on-device
+2026-10-25 after working around every earlier blocker (image registration via hmdfs,
+the create-button shot-coordinate, and the blank-disk + root disk-swap for the broken
+importer — all documented above).
+
+Starting the VM (`普通启动 (VNC)`) crashes the HAP with **SIGABRT in
+`tcg_region_init`** (QEMU's TCG translation/code-buffer setup):
+
+```
+Process name:com.caidingding233.qemuhmos
+Reason:Signal:SIGABRT ... LastFatalMessage:[appspawn_server.c:72]Unexpected call: exit(1)
+#03 ... libqemu_full.so(tcg_region_init+1232)
+#05 ... libqemu_full.so(accel_init_machine+92)
+#08 ... libqemu_full.so(qemu_init+12956)
+```
+
+i.e. `tcg_region_init` hits a fatal error and calls `exit(1)`, which an appspawn-managed
+HAP turns into an abort. This reproduces at **4 vCPU / 4 GB and at 1 vCPU / 2 GB**, so it
+is not a thread-count or memory-size issue — the TCG engine simply will not initialize.
+
+**Most likely cause: the HAP is denied the executable/JIT memory a TCG code buffer needs.**
+QEMU runs in the restricted `debug_hap` SELinux domain; `dmesg` shows this domain denied
+even `read` of `/proc/sys/vm/max_map_count` (and `ioctl` of `/dev/access_token_id`,
+`mounton` of the vulkan dir) at launch. `tcg_region_init`'s job is to allocate and carve
+up the executable code-generation buffer, and HarmonyOS hardening (W^X / no anonymous
+`PROT_EXEC` for an ordinary HAP) is the standard reason that allocation fails. A direct
+`execmem`/`execmod` AVC was **not** captured here (the kernel ring buffer had rolled past
+the launch window), so the exact denial is inferred from the crash site, not proven by an
+AVC line; it is the only cause consistent with a `tcg_region_init` exit that is independent
+of vCPU/memory.
+
+**Why route F (the emulator) is unaffected:** the DevEco emulator image runs the same
+Aetherium but allows JIT/executable memory, so TCG initializes there and Omarchy boots to
+Hyprland (see [emulator-aetherium.md](emulator-aetherium.md)). On the real device it does
+not.
+
+**Net for Route H without root:** there is no working path. HMV is closed to third parties
+(a hardcoded `appIdentifier` allowlist in `libvm_manager.z.so` plus `MANAGE_VM` — see
+[vm-api.md](vm-api.md)), and TCG will not initialize because the HAP is not granted
+executable memory. The accelerated/accel question and the display (virgl/venus, 120 Hz)
+question are answered above. The on-screen fps / refresh / boot-time / host-CPU numbers
+of criterion 1 therefore cannot be measured on ohdev — the comparison table's H column
+records this rather than numbers.
+
 ## Measuring the baseline
 
 Once the VM runs under TCG (criterion 1), numbers are collected with scripts
@@ -186,16 +233,16 @@ HarmonyOS's compositor, `hidumper -s RenderService`); B is from b15cf1f /
 |---|---|---|---|---|---|
 | Virtualization | HMV (system VMM) | none (HongMeng kernel) | HMV (system VMM) | HMV (system VMM) | TCG (software, in-app QEMU) |
 | GPU path | virgl (zink, Maleoon) | Maleoon via host virgl | SVGA3D hardware (GL ES 3.0) | svga-pci (same as Oseasy), network TBD | 2D virtio-gpu / llvmpipe (no 3D) |
-| Omarchy desktop | yes (SDDM→Hyprland) | yes | yes | survey only | pending |
+| Omarchy desktop | yes (SDDM→Hyprland) | yes | yes | survey only | **✗ — never reached (QEMU aborts at TCG init)** |
 | Kernel | linux-aarch64 7.2 + HMV quirk | HongMeng (host) | Debian 6.1 (route B) | n/a | Omarchy stock 7.2.3 (unpatched) |
-| Display refresh | 60 Hz (VM EDID) | 120 Hz (panel) | 60 Hz (panel locked) | — | pending (no 120 Hz path) |
-| es2gears on-screen, 1920x1280 | 60 fps | 117–120 fps | 60 fps (guest 120) | — | pending |
-| Workspace anim on-screen, 1920x1280 | 60 fps | 115–116 fps | — | — | pending |
-| es2gears on-screen, 2160x1440 | 60 fps | 117–118 fps | — | — | pending |
-| HwcPresentDisplay/s (es2gears 1920x1280) | ~40 | ~120 | — | — | pending |
-| Cold boot to desktop | see route C | n/a (native) | — | — | pending |
-| Host CPU while running | — | — | — | — | pending (device/baseline.sh) |
-| Host temperature | — | — | — | — | pending (device/baseline.sh) |
+| Display refresh | 60 Hz (VM EDID) | 120 Hz (panel) | 60 Hz (panel locked) | — | ✗ (no boot); static: no 120 Hz / no 3D path |
+| es2gears on-screen, 1920x1280 | 60 fps | 117–120 fps | 60 fps (guest 120) | — | ✗ (no boot) |
+| Workspace anim on-screen, 1920x1280 | 60 fps | 115–116 fps | — | — | ✗ (no boot) |
+| es2gears on-screen, 2160x1440 | 60 fps | 117–118 fps | — | — | ✗ (no boot) |
+| HwcPresentDisplay/s (es2gears 1920x1280) | ~40 | ~120 | — | — | ✗ (no boot) |
+| Cold boot to desktop | see route C | n/a (native) | — | — | **✗ — QEMU aborts before boot** |
+| Host CPU while running | — | — | — | — | ✗ (no VM runs) |
+| Host temperature | — | — | — | — | ✗ (no VM runs) |
 
 H's pending cells are filled from the TCG run (criterion 1). Expectation from
 route F (same stack on the emulator): desktop reaches Hyprland on llvmpipe but
@@ -204,7 +251,10 @@ slowly; on-screen fps far below C/D and no 120 Hz.
 
 ## Status
 
-In progress. Static HMV analysis done (above). TCG baseline and the on-device
-acceleration test are next; the app is signed with the device's debug profile
-(`UDID` from `bm get --udid`, same `sign.sh` as route D, bundle
-`com.caidingding233.qemuhmos`).
+Done. HMV acceleration: answered (no SELinux/permission gate on /dev/hmv for a root VMM;
+blocked only by the undocumented 0xAE ABI; custom accel feasible-in-principle, not built —
+system StratoVirt already covers Route I). Display: no virgl/venus 3D and no 120 Hz path
+(binary-confirmed). TCG baseline: cannot run on the device — QEMU aborts at tcg_region_init
+(no executable memory for the HAP); numbers are therefore not obtainable on ohdev (route F
+covers TCG in the emulator). vm-api (no-root VM service): closed partner allowlist, see
+vm-api.md.

@@ -1,0 +1,56 @@
+DAIF after ArmWriteVBar in Sec.c is 960
+UEFI firmware (version ce741e47cd built at 18:09:48 on Oct 19 2026)
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[0m[30m[47mWelcome to GRUB!
+
+[0m[37m[40m[0m[30m[40m[2J[01;01H[0m[37m[40m[02;34HGNU GRUB  version 2.06-13+deb12u2
+
+[04;02H/------------------------------------------------------------------------------------------------\[05;02H|[05;99H|[06;02H|[06;99H|[07;02H|[07;99H|[08;02H|[08;99H|[09;02H|[09;99H|[10;02H|[10;99H|[11;02H|[11;99H|[12;02H|[12;99H|[13;02H|[13;99H|[14;02H|[14;99H|[15;02H|[15;99H|[16;02H|[16;99H|[17;02H|[17;99H|[18;02H|[18;99H|[19;02H|[19;99H|[20;02H|[20;99H|[21;02H|[21;99H|[22;02H|[22;99H|[23;02H|[23;99H|[24;02H\------------------------------------------------------------------------------------------------/[25;02H[26;02H     Use the ^ and v keys to select which entry is highlighted.                              
+      Press enter to boot the selected OS, `e' to edit the commands before booting or `c' for 
+      a command-line.                                                                         [05;:0H [05;03H Boot the installed Omarchy disk                                                                [05;98H[0m[30m[47m[06;03H*Write Omarchy disk from the network (172.16.100.3:9000)                                        [0m[37m[40m[06;98H[07;03H Probe with linux-aarch64 7.2.12 + arm64.hmv_idreg_quirk                                        [07;98H[08;03H UEFI firmware settings                                                                         [08;98H[09;03H                                                                                                [09;98H[10;03H                                                                                                [10;98H[11;03H                                                                                                [11;98H[12;03H                                                                                                [12;98H[13;03H                                                                                                [13;98H[14;03H                                                                                                [14;98H[15;03H                                                                                                [15;98H[16;03H                                                                                                [16;98H[17;03H                                                                                                [17;98H[18;03H                                                                                                [18;98H[19;03H                                                                                                [19;98H[20;03H                                                                                                [20;98H[21;03H                                                                                                [21;98H[22;03H                                                                                                [22;98H[23;03H                                                                                                [23;98H[23;:0H [06;98H[29;01H   The highlighted entry will be executed automatically in 10s.                                    [06;98H[29;01H   The highlighted entry will be executed automatically in 9s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 8s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 7s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 6s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 5s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 4s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 3s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 2s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 1s.                                     [06;98H[29;01H   The highlighted entry will be executed automatically in 0s.                                     [06;98H[0m[30m[40m[2J[01;01H[0m[37m[40m[0m[30m[40m[2J[01;01H[0m[37m[40m  Booting `Write Omarchy disk from the network (172.16.100.3:9000)'
+
+[    0.000000] Linux version 7.2.12-1.1-aarch64-ARCH (builder@localhost) (gcc (GCC) 16.1.1 20260430, GNU ld (GNU Binutils) 2.46.0) #3 SMP PREEMPT_DYNAMIC Sat Oct 24 15:51:47 CST 2026
+[    0.000000] Kernel command line: BOOT_IMAGE=/k72/Image rdinit=/write-disk.sh arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200 loglevel=6
+[    0.000000] ITS@0x0000000008020000: Devices Table too large, reduce ids 32->19
+[    0.000000] ITS@0x0000000008020000: Devices too large, reduce ITS pages 1024->256
+[    0.027662] audit: type=2000 audit(0.025:1): state=initialized audit_enabled=0 res=1
+[    0.189098] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.189107] ACPI Warning: \_SB.BAT0._STA: Expected return object of type Integer (20260408/nspredef-249)
+[    0.189933] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.189940] ACPI Error: No object was returned from \_SB.BAT0._STA due to previous error (AE_NOT_EXIST) (20260408/uteval-79)
+[    0.189996] acpi PNP0A08:00: [Firmware Bug]: ECAM area [mem 0x4010000000-0x401fffffff] not reserved in ACPI namespace
+[    0.207899] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.211994] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.216181] SCSI subsystem initialized
+[    0.221560] VFS: Disk quotas dquot_6.6.0
+[    0.222757] ACPI Warning: \_SB.BAT0._STA: Missing expected return value (20260408/nsrepair-203)
+[    0.222764] ACPI Error: No object was returned from \_SB.BAT0._STA due to previous error (AE_NOT_EXIST) (20260408/uteval-79)
+[    0.245404] Initialise system trusted keyrings
+[    0.247956] NFS: Registering the id_resolver key type
+[    0.247967] Key type id_resolver registered
+[    0.247970] Key type id_legacy registered
+[    0.259753] Key type asymmetric registered
+[    0.259759] Asymmetric key parser 'x509' registered
+[    0.295691] virtio_blk virtio0: [vda] 536870912 512-byte logical blocks (275 GB/256 GiB)
+[    0.318766] Key type dns_resolver registered
+[    0.327177] Loading compiled-in X.509 certificates
+[    0.332544] Key type .fscrypt registered
+[    0.332555] Key type fscrypt-provisioning registered
+[    0.333546] Key type encrypted registered
+KDSINST begin 7.2.12-1.1-aarch64-ARCH BOOT_IMAGE=/k72/Image rdinit=/write-disk.sh arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200 loglevel=6
+KDSINST insmod failover
+KDSINST insmod net_failover
+KDSINST insmod virtio_net
+[    1.705587] scsi 0:0:0:0: CD-ROM            STRA     STRA CDROM            PQ: 0 ANSI: 5
+[    1.770966] sr 0:0:0:0: Attached scsi generic sg0 type 5
+[    2.473163] scsi 1:0:0:0: CD-ROM            STRA     STRA CDROM            PQ: 0 ANSI: 5
+[    2.533887] sr 1:0:0:0: Attached scsi generic sg1 type 5
+KDSINST net eth0 172.16.100.3
+KDSINST   2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast qlen 1000
+KDSINST       link/ether 52:54:00:12:34:56 brd ff:ff:ff:ff:ff:ff
+KDSINST       inet 172.16.100.3/24 scope global eth0
+KDSINST          valid_lft forever preferred_lft forever
+KDSINST       inet6 fe80::5054:ff:fe12:3456/64 scope link tentative 
+KDSINST          valid_lft forever preferred_lft forever
+KDSINST disk /dev/vda 536870912 sectors
+KDSINST ready listening on 172.16.100.3:9000 (gzip=0)
+[   49.879519] random: crng init done

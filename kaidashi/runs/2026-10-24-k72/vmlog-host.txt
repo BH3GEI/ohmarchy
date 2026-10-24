@@ -1,0 +1,411 @@
+2026-10-24T17:53:48.257060312: [16476][16476][src/main.rs:76]:INFO: StratoVirt commit-id 2.5.0 commit-id 9348e2767
+2026-10-24T17:53:48.257492656: [16476][16476][machine_manager/src/config/mod.rs:428]:INFO: Init VM APP ID with value 158e02cb
+2026-10-24T17:53:48.259396093: [16476][16476][machine_manager/src/config/viofsd.rs:62]:INFO: gfscl_root is not provide
+2026-10-24T17:53:48.259620468: [16476][16476][src/main.rs:101]:INFO: VmConfig is VmConfig { guest_name: "", machine_config: MachineConfig { mach_type: StandardVm, hypervisor: Hmv, nr_cpus: 6, nr_threads: 1, nr_cores: 6, nr_dies: 1, nr_clusters: 1, nr_sockets: 1, max_cpus: 6, mem_config: MachineMemCo
+2026-10-24T17:53:48.315754843: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PciHostRootState, desc: DeviceStateDesc { name: "PciHostRootState", alias: 6831086289109661353, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.315857656: [16476][16476][devices/src/legacy/fwcfg.rs:426]:WARN: Entry not empty, will override
+2026-10-24T17:53:48.315888593: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: FwCfgState, desc: DeviceStateDesc { name: "FwCfgState", alias: 14954724042672566575, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316038281: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/0, desc: DeviceStateDesc { name: "ArchVcpuState/0", alias: 14166199468117467508, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316121250: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/1, desc: DeviceStateDesc { name: "ArchVcpuState/1", alias: 14166199468117467509, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316200937: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/2, desc: DeviceStateDesc { name: "ArchVcpuState/2", alias: 14166199468117467510, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316275937: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/3, desc: DeviceStateDesc { name: "ArchVcpuState/3", alias: 14166199468117467511, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316348281: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/4, desc: DeviceStateDesc { name: "ArchVcpuState/4", alias: 14166199468117467512, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316422968: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ArchVcpuState/5, desc: DeviceStateDesc { name: "ArchVcpuState/5", alias: 14166199468117467513, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316476250: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: HmvGicv3State, desc: DeviceStateDesc { name: "HmvGicv3State", alias: 6973289372006893698, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.316499218: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PciIntxCountState, desc: DeviceStateDesc { name: "PciIntxCountState", alias: 10603345956286409774, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.317072812: [16476][16476][address_space/src/host_mmap.rs:126]:INFO: Using memory backing file, the page size is 4096
+2026-10-24T17:53:48.337168281: [16476][16476][address_space/src/host_mmap.rs:126]:INFO: Using memory backing file, the page size is 4096
+2026-10-24T17:53:48.337313593: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: OhUiMigrationState, desc: DeviceStateDesc { name: "OhUiMigrationState", alias: 5239244323314789457, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.337442343: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PL031State, desc: DeviceStateDesc { name: "PL031State", alias: 363556633843209866, size: 16, current_version: 132352, compat_version: 256, fields: [FieldDesc { var_name: "mr", type_name: "u32", al
+2026-10-24T17:53:48.337497968: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: GedState, desc: DeviceStateDesc { name: "GedState", alias: 11076945413389019523, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.340942656: [16476][16476][devices/src/acpi/power.rs:503]:INFO: Charging status is true, capacity is 100%
+2026-10-24T17:53:48.341347187: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PowerDevState, desc: DeviceStateDesc { name: "PowerDevState", alias: 8301164170412004807, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.341559843: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PL011State, desc: DeviceStateDesc { name: "PL011State", alias: 17637356254163504289, size: 128, current_version: 132352, compat_version: 256, fields: [FieldDesc { var_name: "rfifo", type_name: "[u
+2026-10-24T17:53:48.341685000: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PFlashState, desc: DeviceStateDesc { name: "PFlashState", alias: 18129169401654819217, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.341915781: [16476][16476][virtio/src/device/ohos_memory.rs:769]:INFO: virtio-mem: new MemoryConfig MemoryConfig { classtype: "virtio-mem-pci", id: "viomem0", bus: Some("pcie.0"), addr: Some((14, 0)), multifunction: None, block_size: Some(2097152), requested_size: Some(8589934592)
+2026-10-24T17:53:48.341994687: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "viomem0"
+2026-10-24T17:53:48.342010468: [16476][16476][virtio/src/transport/virtio_pci.rs:217]:WARN: Unknown device type, please make sure it is supported.
+2026-10-24T17:53:48.342048906: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: MsixState, desc: DeviceStateDesc { name: "MsixState", alias: 4781484013792521033, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.342057343: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: IntxState, desc: DeviceStateDesc { name: "IntxState", alias: 11115983048550053795, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.342088281: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: VirtioPciState, desc: DeviceStateDesc { name: "VirtioPciState", alias: 839353864850562066, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.342096250: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: OhosViomemState, desc: DeviceStateDesc { name: "OhosViomemState", alias: 13301958582487727560, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.343029531: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: XhciPciDevState, desc: DeviceStateDesc { name: "XhciPciDevState", alias: 12587451851283559901, size: 0, current_version: 512, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.343358750: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "blk0"
+2026-10-24T17:53:48.347043125: [16476][16476][block_backend/src/qcow2/table.rs:134]:INFO: Driver system l2 cache size 512
+2026-10-24T17:53:48.347136406: [16476][16476][block_backend/src/qcow2/refcount.rs:135]:INFO: Driver system refcount cache size 4
+2026-10-24T17:53:48.347359687: [16476][16476][block_backend/src/file.rs:77]:INFO: Update request and buffer alignment (4096, 4096) -> (512, 512)
+2026-10-24T17:53:48.347386875: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: BlockState, desc: DeviceStateDesc { name: "BlockState", alias: 10949465000703084609, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.347451875: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: UsbKeyboardDevState, desc: DeviceStateDesc { name: "UsbKeyboardDevState", alias: 3934222737360643532, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.347509375: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: UsbTabletDevState, desc: DeviceStateDesc { name: "UsbTabletDevState", alias: 4595394086134665087, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.347632968: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "touchpad"
+2026-10-24T17:53:48.347638281: [16476][16476][virtio/src/transport/virtio_pci.rs:217]:WARN: Unknown device type, please make sure it is supported.
+2026-10-24T17:53:48.347657187: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: MttState, desc: DeviceStateDesc { name: "MttState", alias: 6150958261552337424, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.347721406: [16476][16476][devices/src/display/svga/svga_pci.rs:97]:INFO: Svga vram size 256 Mb
+2026-10-24T17:53:48.435597656: [16476][16476][devices/src/display/svga/processor_dx/svga_dx_backend.rs:643]:INFO: VIDEO INFO | Power On OK
+2026-10-24T17:53:48.447814687: [16476][16476][devices/src/display/svga/processor_dx/svga_dx_backend.rs:665]:INFO: DXVK resource passthrough is not supported
+2026-10-24T17:53:48.447961250: [16476][16476][devices/src/display/svga/processor_dx/svga_dx_backend.rs:722]:INFO: set surface size: width 800, height 600
+2026-10-24T17:53:48.448061406: [16476][16476][devices/src/display/svga/processor_dx/svga_dx_backend.rs:3053]:INFO: VIDEO INFO | Get Caps Succeed
+2026-10-24T17:53:48.448220625: [16476][16476][devices/src/display/svga/svga_dev.rs:525]:INFO: svga device realized
+2026-10-24T17:53:48.448229531: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: SvgaPciDevState, desc: DeviceStateDesc { name: "SvgaPciDevState", alias: 3455210586609739480, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.448240000: [16476][16476][devices/src/display/svga/svga_pci.rs:200]:INFO: SvgaPciDevice realized.
+2026-10-24T17:53:48.448408906: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: IvshmemState, desc: DeviceStateDesc { name: "IvshmemState", alias: 8566846738192762674, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.450038125: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: ScreamState, desc: DeviceStateDesc { name: "ScreamState", alias: 6159533942940331229, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.450223125: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "virtio-serial0"
+2026-10-24T17:53:48.450258750: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: VirtioSerialState, desc: DeviceStateDesc { name: "VirtioSerialState", alias: 8526223605356451809, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.450828750: [16476][16476][machine_manager/src/guest_link_channel.rs:100]:INFO: guest_link_channel_init path /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/serial1.sock.
+2026-10-24T17:53:48.450845937: [16476][16511][devices/src/misc/scream/ohaudio.rs:597]:INFO: Capturer destroy
+2026-10-24T17:53:48.451211875: [16476][16510][devices/src/misc/scream/ohaudio.rs:353]:INFO: Renderer destroy
+2026-10-24T17:53:48.451665468: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: VirtioNetState, desc: DeviceStateDesc { name: "VirtioNetState", alias: 3680949691567146512, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.451717187: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "nic0"
+2026-10-24T17:53:48.452343593: [16476][16476][virtio/src/transport/virtio_pci.rs:1150]:INFO: func: realize, id: "fsd_dev"
+2026-10-24T17:53:48.452388906: [16476][16476][virtio/src/vhost/user/fs.rs:248]:INFO: Starting virtiofsd process
+2026-10-24T17:53:48.452435468: [16476][16476][virtio/src/vhost/user/fs.rs:300]:INFO: stderr is redirected
+2026-10-24T17:53:48.668720000: [16476][16476][virtio/src/vhost/user/fs.rs:311]:INFO: virtiofsd socket file exists
+2026-10-24T17:53:48.688875781: [16476][16476][virtio/src/vhost/user/fs.rs:105]:INFO: Qmp channel is not connected while sending viofsd pid message
+2026-10-24T17:53:48.689350937: [16476][16476][machine_manager/src/config/share_manager.rs:28]:INFO: multiple shared folders is enabled
+2026-10-24T17:53:48.689519843: [16476][16476][machine_manager/src/share_manager.rs:1008]:INFO: Virtiofsd command socket connected
+2026-10-24T17:53:48.689781406: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: FsState, desc: DeviceStateDesc { name: "FsState", alias: 14524578988457709102, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.690108437: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: PvPanicPciDevState, desc: DeviceStateDesc { name: "PvPanicPciDevState", alias: 7894622690081652596, size: 0, current_version: 256, compat_version: 0, fields: [] }
+2026-10-24T17:53:48.690279375: [16476][16476][migration/src/manager.rs:340]:INFO: Register device name: LogDevState, desc: DeviceStateDesc { name: "LogDevState", alias: 297267994863045891, size: 16, current_version: 132352, compat_version: 256, fields: [FieldDesc { var_name: "guest_buf_addr", type_n
+2026-10-24T17:53:48.690477500: [16476][16476][machine/src/aarch64/fdt.rs:196]:INFO: LOGDEV NODE: 151191552 4096
+2026-10-24T17:53:48.693635937: [16476][16476][ui/src/ohui_srv/mod.rs:748]:INFO: Successfully start listener.
+2026-10-24T17:53:48.693648125: [16476][16476][machine/src/lib.rs:3285]:INFO: Watching on emulator lifetime
+2026-10-24T17:53:48.694194843: [16476][16525][hypervisor/src/hmv/hm_cpu.rs:526]:INFO: vCPU 0 is running.
+2026-10-24T17:53:48.694326406: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:198]:INFO: QMP: <-- "{\"QMP\":{\"version\":{\"qemu\":{\"micro\":1,\"minor\":0,\"major\":5},\"package\":\"StratoVirt-2.5.0\"},\"capabilities\":[]}}"
+2026-10-24T17:53:48.695027656: [16476][16527][hypervisor/src/hmv/hm_cpu.rs:550]:INFO: Succeeded to join actvpool, thread id: 2
+2026-10-24T17:53:48.696655625: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:423]:INFO: QMP: --> qmp_capabilities { arguments: qmp_capabilities, id: None }
+2026-10-24T17:53:48.696746718: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:427]:INFO: QMP: <-- "{\"return\":{}}"
+2026-10-24T17:53:48.697286093: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:423]:INFO: QMP: --> query_ohui_status { arguments: undefined, id: None }
+2026-10-24T17:53:48.697323750: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:427]:INFO: QMP: <-- "{\"return\":\"listening\"}"
+2026-10-24T17:53:48.698523593: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:423]:INFO: QMP: --> set_qos { arguments: set_qos { level: 4, bundle_name: "com.sanway.ecoengine" }, id: None }
+2026-10-24T17:53:48.699737500: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:427]:INFO: QMP: <-- "{\"return\":{}}"
+2026-10-24T17:53:48.699747031: [16476][16527][devices/src/legacy/logdev.rs:181]:INFO: UEFI firmware for StratoVirt VM (version ce741e47cd built at 18:09:48 on Oct 19 2026)
+2026-10-24T17:53:48.700446093: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:423]:INFO: QMP: --> query_processes { arguments: query_processes, id: None }
+2026-10-24T17:53:48.700487500: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:427]:INFO: QMP: <-- "{\"return\":[{\"name\":\"StratoVirt\",\"process-id\":16476,\"threads\":[{\"level\":4,\"name\":\"stratovirt\",\"thread-id\":16476},{\"level\":4,\"name\":\"xhci-iothread\",\"thread-id\":16480},{\"l
+2026-10-24T17:53:48.700770625: [16476][16527][devices/src/legacy/logdev.rs:181]:INFO: Published HOB for Logdev @ 0x9030000
+2026-10-24T17:53:48.701236093: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:423]:INFO: QMP: --> set_qos_for_threads { arguments: set_qos_for_threads { pid: 16476, tids: [16507, 16484, 16485, 16486, 16487, 16488, 16489], level: 7, bundle_name: "com.sanway.ecoengine" }, id: None }
+2026-10-24T17:53:48.701638125: [16476][16476][machine_manager/src/qmp/qmp_socket.rs:427]:INFO: QMP: <-- "{\"return\":{}}"
+2026-10-24T17:53:48.864597187: [16476][16482][devices/src/legacy/logdev.rs:181]:INFO: InitializeLogDevDxe status = Success, 9030000 - 1000
+2026-10-24T17:53:48.923086406: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 8 update bar 0 mapping: addr 0x600021C000 size 32
+2026-10-24T17:53:48.923140312: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 8 delete bar 0 mapping: addr 0x600021C000 size 32
+2026-10-24T17:53:48.923208906: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:53:48.923246562: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:53:48.923303750: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:53:48.923335937: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:53:48.923433593: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 24 update bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:53:48.923477500: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 24 delete bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:53:48.923545312: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:53:48.923588125: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:53:48.923616562: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:53:48.923641093: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:53:48.923680937: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:53:48.924227812: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:53:48.924260312: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:53:48.924286562: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:53:48.924349218: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 0 mapping: addr 0x20226000 size 256
+2026-10-24T17:53:48.924372656: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 1 mapping: addr 0x20225000 size 4096
+2026-10-24T17:53:48.924399218: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 2 mapping: addr 0x6000000000 size 2097152
+2026-10-24T17:53:48.924435781: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 0 mapping: addr 0x20226000 size 256
+2026-10-24T17:53:48.924458593: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 1 mapping: addr 0x20225000 size 4096
+2026-10-24T17:53:48.924487968: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 2 mapping: addr 0x6000000000 size 2097152
+2026-10-24T17:53:48.924545937: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:53:48.924575468: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:53:48.924623437: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:53:48.924647500: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:53:48.924740625: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:53:48.924778593: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:53:48.924836406: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:53:48.924869375: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:53:48.924940156: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:53:48.924975625: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:53:48.925020000: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:53:48.925045625: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:53:48.925112187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:53:48.925144531: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:53:48.925190312: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:53:48.925219375: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:53:48.925283750: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 1 mapping: addr 0x20220000 size 4096
+2026-10-24T17:53:48.925319531: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 2 mapping: addr 0x6000200000 size 16384
+2026-10-24T17:53:48.925362968: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 112 delete bar 1 mapping: addr 0x20220000 size 4096
+2026-10-24T17:53:48.925386562: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 112 delete bar 2 mapping: addr 0x6000200000 size 16384
+2026-10-24T17:53:48.926051875: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 8 update bar 0 mapping: addr 0x600021C000 size 32
+2026-10-24T17:53:48.926094218: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:53:48.926137500: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:53:48.926217968: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 24 update bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:53:48.926302031: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:53:48.926378125: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:53:48.926445625: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:53:48.926515468: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:53:48.926607500: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 0 mapping: addr 0x20226000 size 256
+2026-10-24T17:53:48.926712187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 1 mapping: addr 0x20225000 size 4096
+2026-10-24T17:53:48.926887187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 2 mapping: addr 0x6000000000 size 2097152
+2026-10-24T17:53:48.927037187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:53:48.927136406: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:53:48.927266093: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:53:48.927381718: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:53:48.927535312: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:53:48.927662812: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:53:48.927812500: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:53:48.927947187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:53:48.928097968: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 1 mapping: addr 0x20220000 size 4096
+2026-10-24T17:53:48.928236406: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 2 mapping: addr 0x6000200000 size 16384
+2026-10-24T17:53:48.928486250: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 8 delete bar 0 mapping: addr 0x600021C000 size 32
+2026-10-24T17:53:48.928655937: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:53:48.928832187: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:53:48.928957031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 24 delete bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:53:48.929059843: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:53:48.929611406: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:53:48.929677187: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:53:48.929741875: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:53:48.929833281: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 0 mapping: addr 0x20226000 size 256
+2026-10-24T17:53:48.929896718: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 1 mapping: addr 0x20225000 size 4096
+2026-10-24T17:53:48.929959531: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 40 delete bar 2 mapping: addr 0x6000000000 size 2097152
+2026-10-24T17:53:48.930050312: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:53:48.930107812: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:53:48.930199218: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:53:48.930252031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:53:48.930330000: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:53:48.930365468: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:53:48.930425000: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:53:48.930456250: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:53:48.930510156: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 112 delete bar 1 mapping: addr 0x20220000 size 4096
+2026-10-24T17:53:48.930538906: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 112 delete bar 2 mapping: addr 0x6000200000 size 16384
+2026-10-24T17:53:48.932036093: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:53:48.932070156: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:53:48.932095468: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:53:48.932123437: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:53:48.932190312: [16476][16527][devices/src/display/svga/svga_dev.rs:683]:INFO: Not supported register 2
+2026-10-24T17:53:48.932209062: [16476][16527][devices/src/display/svga/svga_dev.rs:683]:INFO: Not supported register 3
+2026-10-24T17:53:48.932248906: [16476][16527][devices/src/display/svga/svga_dev.rs:683]:INFO: Not supported register 7
+2026-10-24T17:53:48.962877031: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:53:48.962933437: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:53:48.966589531: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 24 update bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:53:49.034868593: [16476][16476][chardev_backend/src/chardev.rs:529]:INFO: Chardev 'virtio_serial0' event, connection opened: { protocol: unix, address: /data/service/el2/100/virt_service/vm_manager/158e02cb/com.sanway.ecoengine/uds/serial0.sock }
+2026-10-24T17:53:49.034900625: [16476][16476][virtio/src/device/serial.rs:1110]:WARN: No control handler for port 1.
+2026-10-24T17:53:49.069513593: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:53:49.139739687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 5346312768, ccs: true }
+2026-10-24T17:53:49.150004843: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 5346325120, status: 0, control: 16788481, addr: 5346312784, ccs: true }
+2026-10-24T17:53:49.150042500: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:53:49.150085625: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 1 port id 1 device name disk
+2026-10-24T17:53:49.152519687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346325120, status: 0, control: 16790529, addr: 5346312800, ccs: true }
+2026-10-24T17:53:49.153176718: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 5346325120, status: 0, control: 16789505, addr: 5346312816, ccs: true }
+2026-10-24T17:53:49.194229218: [16476][16476][machine_manager/src/qmp/qmp_channel.rs:206]:INFO: EVENT: --> RssqosChanged { data: RssqosChanged, timestamp: TimeStamp { seconds: 1792835629, microseconds: 194206 } }
+2026-10-24T17:53:49.253494375: [16476][16492][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:53:49.323682500: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 5346312832, ccs: true }
+2026-10-24T17:53:49.333960312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 5346339520, status: 0, control: 33565697, addr: 5346312848, ccs: true }
+2026-10-24T17:53:49.334019687: [16476][16480][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:53:49.334215781: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 2 port id 2 device name kbd
+2026-10-24T17:53:49.336492968: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346339520, status: 0, control: 33567745, addr: 5346312864, ccs: true }
+2026-10-24T17:53:49.336764375: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346339520, status: 0, control: 33567745, addr: 5346312880, ccs: true }
+2026-10-24T17:53:49.337338281: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 5346339520, status: 0, control: 33566721, addr: 5346312896, ccs: true }
+2026-10-24T17:53:49.438232968: [16476][16492][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:53:49.508419843: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 5346312912, ccs: true }
+2026-10-24T17:53:49.518644687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 5346349824, status: 0, control: 50342913, addr: 5346312928, ccs: true }
+2026-10-24T17:53:49.518671093: [16476][16480][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:53:49.518679375: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 3 port id 3 device name tablet
+2026-10-24T17:53:49.521007812: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346349824, status: 0, control: 50344961, addr: 5346312944, ccs: true }
+2026-10-24T17:53:49.521214062: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346349824, status: 0, control: 50344961, addr: 5346312960, ccs: true }
+2026-10-24T17:53:49.521694843: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 5346349824, status: 0, control: 50343937, addr: 5346312976, ccs: true }
+2026-10-24T17:53:49.621953125: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:53:49.692096093: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 5346312992, ccs: true }
+2026-10-24T17:53:49.702310625: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 5346360128, status: 0, control: 67120129, addr: 5346313008, ccs: true }
+2026-10-24T17:53:49.702332187: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:53:49.702340312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 4 port id 4 device name unattend
+2026-10-24T17:53:49.704734843: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 5346360128, status: 0, control: 67122177, addr: 5346313024, ccs: true }
+2026-10-24T17:53:49.705321875: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 5346360128, status: 0, control: 67121153, addr: 5346313040, ccs: true }
+2026-10-24T17:53:49.721891875: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:53:49.722023593: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:53:49.722367031: [16476][16527][virtio/src/transport/virtio_pci.rs:490]:INFO: func: activate_device, id: "blk0"
+2026-10-24T17:53:49.748798593: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:53:49.748894843: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:53:49.749050625: [16476][16527][virtio/src/transport/virtio_pci.rs:578]:INFO: func: deactivate_device, id: "nic0"
+2026-10-24T17:53:49.750351562: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:53:49.750462187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:53:49.751504062: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:53:49.751626562: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:53:49.998419531: [16476][16527][virtio/src/transport/virtio_pci.rs:490]:INFO: func: activate_device, id: "nic0"
+2026-10-24T17:53:50.097239218: [16476][16481][ui/src/ohui_srv/msg_handle.rs:643]:INFO: GuestScreenInfoEvent { id: 0, width: 800, height: 600 }
+2026-10-24T17:53:50.097277812: [16476][16481][ui/src/ohui_srv/mod.rs:699]:INFO: New connection accepted.
+2026-10-24T17:53:50.098089843: [16476][16481][ui/src/ohui_srv/msg_handle.rs:763]:INFO: HostWindowInfoEvent { id: 0, width: 2026, height: 1455 }
+2026-10-24T17:53:50.098111250: [16476][16481][devices/src/display/svga/processor_dx/svga_dx_backend.rs:526]:INFO: update surface size: 2026 1455, id is 0
+2026-10-24T17:53:50.098180625: [16476][16481][ui/src/ohui_srv/msg_handle.rs:844]:INFO: VmViewChange: VmViewChangeEvent { evt: 0 }
+2026-10-24T17:53:50.098305937: [16476][16481][ui/src/ohui_srv/msg_handle.rs:773]:INFO: virtualScreen: GuestVirtualScreenInfoEvent { virtual_screen_width: 800, virtual_screen_height: 600 }
+2026-10-24T17:53:50.098869843: [16476][16481][ui/src/ohui_srv/msg_handle.rs:836]:INFO: WindowInfoExtensionEvent { surface_width: 2880, surface_height: 1920, rotation: 0, fold_status: 0 }
+2026-10-24T17:53:50.099157031: [16476][16481][ui/src/ohui_srv/msg_handle.rs:844]:INFO: VmViewChange: VmViewChangeEvent { evt: 1 }
+2026-10-24T17:53:50.100112500: [16476][16476][chardev_backend/src/chardev.rs:529]:INFO: Chardev 'clipboard_vioser0' event, connection opened: { protocol: unix, address: /data/service/el2/100/virt_service/hwf_service/158e02cb/com.sanway.ecoengine/uds/datashare.sock }
+2026-10-24T17:53:50.100140468: [16476][16476][virtio/src/device/serial.rs:1110]:WARN: No control handler for port 3.
+2026-10-24T17:53:50.103935312: [16476][16481][ui/src/ohui_srv/msg_handle.rs:535]:INFO: received focus-in event
+2026-10-24T17:53:50.106180937: [16476][16481][ui/src/ohui_srv/msg_handle.rs:763]:INFO: HostWindowInfoEvent { id: 0, width: 2026, height: 1455 }
+2026-10-24T17:53:50.106227343: [16476][16481][ui/src/ohui_srv/msg_handle.rs:844]:INFO: VmViewChange: VmViewChangeEvent { evt: 0 }
+2026-10-24T17:54:01.096647031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 24 delete bar 0 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:54:01.096985156: [16476][16527][virtio/src/transport/virtio_pci.rs:578]:INFO: func: deactivate_device, id: "nic0"
+2026-10-24T17:54:01.097073593: [16476][16527][virtio/src/transport/virtio_pci.rs:578]:INFO: func: deactivate_device, id: "blk0"
+2026-10-24T17:54:01.097111250: [16476][16527][block_backend/src/lib.rs:514]:INFO: Drain io 0 for device system
+2026-10-24T17:54:01.097116875: [16476][16527][block_backend/src/lib.rs:523]:INFO: Drain io finished for device system
+2026-10-24T17:54:01.575293750: [16476][16527][hypervisor/src/hmv/aarch64/psci.rs:100]:INFO: vCPU 1 is running.
+2026-10-24T17:54:01.576064687: [16476][16527][hypervisor/src/hmv/aarch64/psci.rs:100]:INFO: vCPU 2 is running.
+2026-10-24T17:54:01.576656718: [16476][16527][hypervisor/src/hmv/aarch64/psci.rs:100]:INFO: vCPU 3 is running.
+2026-10-24T17:54:01.577239531: [16476][16527][hypervisor/src/hmv/aarch64/psci.rs:100]:INFO: vCPU 4 is running.
+2026-10-24T17:54:01.577961562: [16476][16527][hypervisor/src/hmv/aarch64/psci.rs:100]:INFO: vCPU 5 is running.
+2026-10-24T17:54:01.578017343: [16476][16476][machine_manager/src/qmp/qmp_channel.rs:206]:INFO: EVENT: --> VmNotifyEvent { data: VmNotifyEvent { klass: 3, type_t: 1, code: 1, message: None }, timestamp: TimeStamp { seconds: 1792835641, microseconds: 577974 } }
+2026-10-24T17:54:01.758107031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:54:01.758185312: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:54:01.758456562: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:54:01.758516093: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:54:01.759902187: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:54:01.761137031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:54:01.761232812: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:54:01.761323125: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:54:01.761617656: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:54:01.761700000: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 1 mapping: addr 0x10000000 size 268435456
+2026-10-24T17:54:01.761784062: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 2 mapping: addr 0x20000000 size 2097152
+2026-10-24T17:54:01.761835156: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 3 mapping: addr 0x20200000 size 131072
+2026-10-24T17:54:01.762992656: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.763064843: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:54:01.763436718: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.763527656: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:54:01.764559531: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:54:01.764645000: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:54:01.765001406: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:54:01.765095625: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:54:01.765918125: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.765979218: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:54:01.766259375: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.766324531: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:54:01.767155468: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.767230000: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:54:01.767504062: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.767561250: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:54:01.769382031: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:54:01.769447656: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:54:01.769546718: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:54:01.769601875: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 2 mapping: addr 0x6000200000 size 16384
+2026-10-24T17:54:01.769745937: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.769804687: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:54:01.769907031: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.769980468: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:54:01.770075468: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:54:01.770143437: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 56 delete bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:54:01.770252187: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 1 mapping: addr 0x20223000 size 4096
+2026-10-24T17:54:01.770315156: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 56 update bar 2 mapping: addr 0x600020C000 size 16384
+2026-10-24T17:54:01.770388750: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.770448906: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 2 mapping: addr 0x6000208000 size 16384
+2026-10-24T17:54:01.770573125: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.770632343: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 2 mapping: addr 0x6000210000 size 16384
+2026-10-24T17:54:01.770718437: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.770783750: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 2 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:54:01.770876250: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.770933593: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 2 mapping: addr 0x6000214000 size 16384
+2026-10-24T17:54:01.771057500: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 16 delete bar 1 mapping: addr 0x20228000 size 4096
+2026-10-24T17:54:01.771117343: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 16 update bar 1 mapping: addr 0x20220000 size 4096
+2026-10-24T17:54:01.771225625: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 48 delete bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.771288437: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 48 update bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.771392656: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 64 delete bar 1 mapping: addr 0x20222000 size 4096
+2026-10-24T17:54:01.771455625: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 64 update bar 1 mapping: addr 0x20224000 size 4096
+2026-10-24T17:54:01.771544843: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 88 delete bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.771620468: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 88 update bar 1 mapping: addr 0x20225000 size 4096
+2026-10-24T17:54:01.771851406: [16476][16527][devices/src/pci/config.rs:946]:INFO: pci dev 32 delete bar 0 mapping: addr 0x20227000 size 16
+2026-10-24T17:54:01.771941718: [16476][16527][devices/src/pci/config.rs:989]:INFO: pci dev 32 update bar 0 mapping: addr 0x20227100 size 16
+2026-10-24T17:54:01.783549843: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:550]:INFO: Succeeded to join actvpool, thread id: 1
+2026-10-24T17:54:01.808702187: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 24 update bar 0 mapping: addr 0x6000204000 size 16384
+2026-10-24T17:54:01.841364218: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 0 mapping: addr 0x20227000 size 256
+2026-10-24T17:54:01.841456718: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 1 mapping: addr 0x20221000 size 4096
+2026-10-24T17:54:01.841551562: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 40 update bar 2 mapping: addr 0x6000000000 size 2097152
+2026-10-24T17:54:01.845206875: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 1 mapping: addr 0x20226000 size 4096
+2026-10-24T17:54:01.845295000: [16476][16526][devices/src/pci/config.rs:989]:INFO: pci dev 112 update bar 2 mapping: addr 0x6000218000 size 16384
+2026-10-24T17:54:01.848406562: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x2
+2026-10-24T17:54:01.848443593: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020c00c, error: Failed to access IO-type region, region base 0x600020C000, offset 0xC, size 0x4
+2026-10-24T17:54:01.848450468: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020c00c
+2026-10-24T17:54:01.848469687: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x3
+2026-10-24T17:54:01.848475937: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020c00c, error: Failed to access IO-type region, region base 0x600020C000, offset 0xC, size 0x4
+2026-10-24T17:54:01.848480156: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020c00c
+2026-10-24T17:54:01.852885781: [16476][16526][virtio/src/transport/virtio_pci.rs:490]:INFO: func: activate_device, id: "virtio-serial0"
+2026-10-24T17:54:01.853476406: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 4294967295 handle control message: event(0), value(1)
+2026-10-24T17:54:01.853496875: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 3 send control message: event(1), value(1)
+2026-10-24T17:54:01.853571250: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 1 send control message: event(1), value(1)
+2026-10-24T17:54:01.853592031: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 6 send control message: event(1), value(1)
+2026-10-24T17:54:01.853606250: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 2 send control message: event(1), value(1)
+2026-10-24T17:54:01.853628281: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 5 send control message: event(1), value(1)
+2026-10-24T17:54:01.853646093: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 4 send control message: event(1), value(1)
+2026-10-24T17:54:01.855008125: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 3 handle control message: event(3), value(1)
+2026-10-24T17:54:01.855068593: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 3 send control message: event(6), value(1)
+2026-10-24T17:54:01.856232656: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x2
+2026-10-24T17:54:01.856249062: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020000c, error: Failed to access IO-type region, region base 0x6000200000, offset 0xC, size 0x4
+2026-10-24T17:54:01.856254843: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020000c
+2026-10-24T17:54:01.856273593: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x3
+2026-10-24T17:54:01.856279375: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020000c, error: Failed to access IO-type region, region base 0x6000200000, offset 0xC, size 0x4
+2026-10-24T17:54:01.856283125: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020000c
+2026-10-24T17:54:01.856522656: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 1 handle control message: event(3), value(1)
+2026-10-24T17:54:01.856565312: [16476][16476][virtio/src/device/serial.rs:983]:INFO: Serial port 1 send control message: event(6), value(1)
+2026-10-24T17:54:01.857712187: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 6 handle control message: event(3), value(1)
+2026-10-24T17:54:01.858829687: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 2 handle control message: event(3), value(1)
+2026-10-24T17:54:01.860193125: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 5 handle control message: event(3), value(1)
+2026-10-24T17:54:01.861722812: [16476][16476][virtio/src/device/serial.rs:885]:INFO: Serial port 4 handle control message: event(3), value(1)
+2026-10-24T17:54:01.862305781: [16476][16526][virtio/src/transport/virtio_pci.rs:490]:INFO: func: activate_device, id: "blk0"
+2026-10-24T17:54:01.991256093: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 4337852416, ccs: true }
+2026-10-24T17:54:01.991542343: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.105149687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4317806592, status: 0, control: 16788993, addr: 4337852432, ccs: true }
+2026-10-24T17:54:02.105178437: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.105185312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 1 port id 1 device name disk
+2026-10-24T17:54:02.105563125: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.217145781: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrResetDevice XhciTRB { parameter: 0, status: 0, control: 16794625, addr: 4337852448, ccs: true }
+2026-10-24T17:54:02.217335468: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4317806592, status: 0, control: 16788481, addr: 4337852464, ccs: true }
+2026-10-24T17:54:02.217525312: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.217837343: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 1 port id 1 device name disk
+2026-10-24T17:54:02.230331718: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4317806592, status: 0, control: 16789505, addr: 4337852480, ccs: true }
+2026-10-24T17:54:02.232142968: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 16989185, addr: 4337852496, ccs: true }
+2026-10-24T17:54:02.232297187: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4317880320, status: 0, control: 16789505, addr: 4337852512, ccs: true }
+2026-10-24T17:54:02.232458125: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 17054721, addr: 4337852528, ccs: true }
+2026-10-24T17:54:02.232607812: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4317880320, status: 0, control: 16789505, addr: 4337852544, ccs: true }
+2026-10-24T17:54:02.233658750: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 4337852560, ccs: true }
+2026-10-24T17:54:02.233849218: [16476][16492][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:54:02.345142187: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4317900800, status: 0, control: 33566209, addr: 4337852576, ccs: true }
+2026-10-24T17:54:02.345169843: [16476][16480][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:54:02.345176562: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 2 port id 2 device name kbd
+2026-10-24T17:54:02.345547812: [16476][16492][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:54:02.458140625: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrResetDevice XhciTRB { parameter: 0, status: 0, control: 33571841, addr: 4337852592, ccs: true }
+2026-10-24T17:54:02.458282656: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4317900800, status: 0, control: 33565697, addr: 4337852608, ccs: true }
+2026-10-24T17:54:02.458297187: [16476][16480][devices/src/usb/keyboard.rs:244]:INFO: Keyboard device reset
+2026-10-24T17:54:02.458325468: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 2 port id 2 device name kbd
+2026-10-24T17:54:02.469107968: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 4317900800, status: 0, control: 33567745, addr: 4337852624, ccs: true }
+2026-10-24T17:54:02.470768906: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4317900800, status: 0, control: 33566721, addr: 4337852640, ccs: true }
+2026-10-24T17:54:02.470926406: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 33766401, addr: 4337852656, ccs: true }
+2026-10-24T17:54:02.471019062: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4317990912, status: 0, control: 33566721, addr: 4337852672, ccs: true }
+2026-10-24T17:54:02.524820312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 4337852688, ccs: true }
+2026-10-24T17:54:02.525054531: [16476][16492][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:54:02.637162343: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4318023680, status: 0, control: 50343425, addr: 4337852704, ccs: true }
+2026-10-24T17:54:02.637191250: [16476][16480][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:54:02.637198125: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 3 port id 3 device name tablet
+2026-10-24T17:54:02.637493906: [16476][16492][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:54:02.715181250: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x2
+2026-10-24T17:54:02.715201718: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020800c, error: Failed to access IO-type region, region base 0x6000208000, offset 0xC, size 0x4
+2026-10-24T17:54:02.715209843: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020800c
+2026-10-24T17:54:02.715231562: [16476][16526][virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x3
+2026-10-24T17:54:02.715243125: [16476][16526][machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 600020800c, error: Failed to access IO-type region, region base 0x6000208000, offset 0xC, size 0x4
+2026-10-24T17:54:02.715248750: [16476][16526][hypervisor/src/hmv/hm_cpu.rs:270]:ERROR: Failed to handle mmio write, addr is 0x600020800c
+2026-10-24T17:54:02.717111875: [16476][16526][virtio/src/transport/virtio_pci.rs:490]:INFO: func: activate_device, id: "nic0"
+2026-10-24T17:54:02.752163281: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrResetDevice XhciTRB { parameter: 0, status: 0, control: 50349057, addr: 4337852720, ccs: true }
+2026-10-24T17:54:02.752304531: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4318023680, status: 0, control: 50342913, addr: 4337852736, ccs: true }
+2026-10-24T17:54:02.752317187: [16476][16480][devices/src/usb/tablet.rs:294]:INFO: Tablet device reset
+2026-10-24T17:54:02.752342031: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 3 port id 3 device name tablet
+2026-10-24T17:54:02.763162343: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEvaluateContext XhciTRB { parameter: 4318023680, status: 0, control: 50344961, addr: 4337852752, ccs: true }
+2026-10-24T17:54:02.765735312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4318023680, status: 0, control: 50343937, addr: 4337852768, ccs: true }
+2026-10-24T17:54:02.765905312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 50543617, addr: 4337852784, ccs: true }
+2026-10-24T17:54:02.766031406: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4319121408, status: 0, control: 50343937, addr: 4337852800, ccs: true }
+2026-10-24T17:54:02.767545156: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrEnableSlot XhciTRB { parameter: 0, status: 0, control: 9217, addr: 4337852816, ccs: true }
+2026-10-24T17:54:02.767781562: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.879209687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4319133696, status: 0, control: 67120641, addr: 4337852832, ccs: true }
+2026-10-24T17:54:02.879236250: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.879242968: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 4 port id 4 device name unattend
+2026-10-24T17:54:02.879556250: [16476][16492][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.991182187: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrResetDevice XhciTRB { parameter: 0, status: 0, control: 67126273, addr: 4337852848, ccs: true }
+2026-10-24T17:54:02.991335625: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrAddressDevice XhciTRB { parameter: 4319133696, status: 0, control: 67120129, addr: 4337852864, ccs: true }
+2026-10-24T17:54:02.991347656: [16476][16480][devices/src/usb/storage.rs:580]:INFO: Storage device reset
+2026-10-24T17:54:02.991372812: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1660]:INFO: XHCI Address device slot id 4 port id 4 device name unattend
+2026-10-24T17:54:03.003200000: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4319133696, status: 0, control: 67121153, addr: 4337852880, ccs: true }
+2026-10-24T17:54:03.003364687: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 67320833, addr: 4337852896, ccs: true }
+2026-10-24T17:54:03.003475312: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4319170560, status: 0, control: 67121153, addr: 4337852912, ccs: true }
+2026-10-24T17:54:03.003580625: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrStopEndpoint XhciTRB { parameter: 0, status: 0, control: 67386369, addr: 4337852928, ccs: true }
+2026-10-24T17:54:03.003683750: [16476][16480][devices/src/usb/xhci/xhci_controller.rs:1478]:INFO: handle_command CrConfigureEndpoint XhciTRB { parameter: 4319170560, status: 0, control: 67121153, addr: 4337852944, ccs: true }
+2026-10-24T17:54:08.352716875: [16476][16483][block_backend/src/file.rs:77]:INFO: Update request and buffer alignment (512, 512) -> (4096, 4096)
+2026-10-24T17:54:08.353577968: [16476][16483][block_backend/src/qcow2/mod.rs:345]:INFO: Exit timer for update alignment

@@ -23,7 +23,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | B idle memory/CPU | recorded | desktop 0.5 % of a core, display app 1.9 %, 1.0 GB | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d), [c5c680f](https://github.com/BH3GEI/ohmarchy/commit/c5c680f) |
 | B power | proxy done, on site | idle costs nothing over baseline; es2gears same CPU as in the VM at twice the frame rate. Battery drain needs a run on battery | [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
 | C open/close 100 times | pass | 100 of 100, memory +0.1 % | [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8) |
-| C 24 h soak | running | hourly smoke since 17:52, ends 2026-10-25 17:52 | [7c6dec5](https://github.com/BH3GEI/ohmarchy/commit/7c6dec5) |
+| C 24 h soak | pass | 25 hourly smoke runs, host time 2026-10-24 17:52 to 10-25 17:53 CST (02:52 to 02:53 PDT): 23 ok; the 2 failures were desktop stops by the tests themselves. The last Hyprland instance ran 18 h without a restart; desktop memory with swap 695 MB at the end against 714 MB at the start: no growth | [7c6dec5](https://github.com/BH3GEI/ohmarchy/commit/7c6dec5) |
 | C display off/on, app background/foreground | pass | DPMS 20 of 20; app to background and back 20 of 20 | [4a3c1f8](https://github.com/BH3GEI/ohmarchy/commit/4a3c1f8), [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
 | C network loss | pass, plus on site | site and DNS outages: back within 0.1 s; a real Wi-Fi switch needs someone at the machine | [0fb8873](https://github.com/BH3GEI/ohmarchy/commit/0fb8873) |
 | C HarmonyOS screen off | on site | the only remote switch suspends the whole machine | (checklist below) |
@@ -41,7 +41,7 @@ Detail by area:
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 74 of 78 open within 3 s (P95 1.13 s), 3 unsupported, 0 failed. A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | cold start about 8 s (session 2.0 s + desktop 5.7-6.1 s), launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. Soak running since 17:52. Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. 24 h soak: pass (23 of 25, the 2 failures our own desktop stops; no memory growth). Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser and web apps in Firefox (sandboxed): pass. Open: Chromium itself (when started by hand) without sandbox; broker and session init in the `su` SELinux domain |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
@@ -309,20 +309,33 @@ throughout.
 
 ### C3. Soak
 
-`tests/stability/soak.sh start` runs `smoke.py` every hour for 24 h on the host
+`tests/stability/soak.sh start` ran `smoke.py` every hour for 24 h on the host
 (detached), in the desktop session: Hyprland's pid (a change means a restart), a
 window opens and closes, clipboard, file write, sound into PipeWire, system bus,
-desktop memory. Started 2026-10-24 17:52; first run all ok, desktop 714 MB.
-Desktop restarts by the tests themselves (cold start) are logged in the results.
-Desktop stopped and started on purpose during the soak: 18:29:41/18:29:59 (switch to
-the in-app GPU path), 18:47:31 (power baseline) to 18:54:27. The 18:52 run fell into that gap (no desktop: all checks false) and does not count.
-The 19:52 run failed too, also my doing: after the exclusive window the desktop was
-left on the in-app GPU path with the display app closed. On that path the app is
-the GPU, so with it closed Hyprland waits for it and the session stalls (`wl-copy`
-hung; the smoke script stopped with a timeout). Back on the host GPU path at 20:14
-(as at the start of the soak), smoke all ok at 20:15. The smoke script now records
-a hung check as failed instead of stopping. Further planned restarts: 19:57 and
-20:02 (sound relay, broker), 20:14 (back to the host GPU path).
+desktop memory. Times below are the host's (CST, UTC+8; PDT is 15 h behind).
+
+Result, 2026-10-24 17:52 to 10-25 17:53 CST: 25 runs, 23 all ok.
+
+| Runs (CST) | Hyprland pid | Result | Why |
+|---|---|---|---|
+| 10-24 17:52 | 55423 | ok | |
+| 18:52 | none | fail | the desktop was stopped on purpose for the power baseline (18:47-18:54) |
+| 19:52 | none | fail (smoke hung) | the desktop had been left on the in-app GPU path with the display app closed; on that path the app is the GPU, so Hyprland waits for it (fixed 20:14; the smoke script now records a hung check as failed) |
+| 20:52-22:52 | 53881 | ok | restarted 20:19 (timing the fixed `desktop start`) |
+| 23:52 | 32096 | ok | restarted 23:30-23:47 (screen windows: sound and remote virgl tests) |
+| 10-25 00:52-17:53 | 36437 | ok, 18 runs | restarted 23:56 (web apps override); then no restart for 18 h |
+
+Every restart was one of ours, done on purpose and logged (the log was kept in
+PDT: 03:29-08:57 PDT on 10-24). None came from a crash.
+
+Memory: the soak recorded the desktop's memory in RAM only (PSS), which went from
+714 MB at the start to 240-275 MB in the last 18 h. That drop is the host
+swapping the idle desktop out (it ran close to its 32 GB): at the end the Omarchy
+shell had 212 MB in RAM and 301 MB in swap, Hyprland 144 MB and 73 MB. The slow
+rise from 240 to 275 MB (about 2 MB an hour) is pages coming back from swap, not
+growth: counted with swap (PSS + SwapPss), the desktop's long-lived processes
+used 695 MB at the end against 714 MB at the start. `smoke.py` now records that
+figure.
 
 ## D. Upgrade and recovery
 

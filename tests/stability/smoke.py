@@ -49,12 +49,16 @@ def window():
 
 
 def desktop_mb():
+    """Memory of the long-lived desktop processes: in RAM (Pss) and swapped out
+    (SwapPss). RAM alone drops when the host swaps the idle desktop out and creeps
+    back as pages return, which looks like a trend and is not one."""
     total = 0
     for d in os.listdir("/proc"):
         if d.isdigit():
             try:
                 if open(f"/proc/{d}/comm").read().strip() in LONG_LIVED:
-                    total += sum(int(l.split()[1]) for l in open(f"/proc/{d}/smaps_rollup") if l.startswith("Pss:"))
+                    total += sum(int(l.split()[1]) for l in open(f"/proc/{d}/smaps_rollup")
+                                 if l.startswith(("Pss:", "SwapPss:")))
             except (OSError, ValueError):
                 pass
     return round(total / 1024, 1)

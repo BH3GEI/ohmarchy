@@ -1,0 +1,111 @@
+== baseline, vote120 off 19:38:15
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 17.0 frames/s (97 frames over 5.64 s)
+RSMainThread::DoComposition: 274 total, 34/s
+HwcPresentDisplay: 0 total, 0/s
+NativeWindowFlushBuffer: 0 total, 0/s
+== NativeWindowFlushBuffer per thread (/s)
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 29.7 frames/s (175 frames over 5.85 s)
+HwcPresentDisplay: 293 total, 48/s
+  dxvk-submit-13806                        42
+force stop process successfully.
+start ability successfully.
+== vote120 1x1 draw0, just started (focused) 19:38:58
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=120
+== composer fps: 0.3 frames/s (3 frames over 7.57 s)
+RSMainThread::DoComposition: 367 total, 45/s
+HwcPresentDisplay: 0 total, 0/s
+NativeWindowFlushBuffer: 0 total, 0/s
+== NativeWindowFlushBuffer per thread (/s)
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=120
+== composer fps: 120.0 frames/s (384 frames over 3.19 s)
+HwcPresentDisplay: 295 total, 49/s
+  dxvk-submit-13806                        47
+  RSUniRenderThre-2792                     47
+tapped 720,450 on com.oseasy1.ohvm
+== vote120 1x1 draw0, Oseasy focused 19:39:42
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (384 frames over 6.38 s)
+RSMainThread::DoComposition: 426 total, 53/s
+HwcPresentDisplay: 797 total, 99/s
+NativeWindowFlushBuffer: 863 total, 107/s
+== NativeWindowFlushBuffer per thread (/s)
+  dxvk-submit-13806                        106
+  RSUniRenderThre-2792                     1
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+HwcPresentDisplay: 668 total, 111/s
+  dxvk-submit-13806                        120
+  RSUniRenderThre-2792                     0
+== Oseasy focused, +2 min 19:42:18
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (384 frames over 6.38 s)
+RSMainThread::DoComposition: 431 total, 53/s
+HwcPresentDisplay: 815 total, 101/s
+NativeWindowFlushBuffer: 870 total, 108/s
+== NativeWindowFlushBuffer per thread (/s)
+  dxvk-submit-13806                        108
+  RSUniRenderThre-2792                     0
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 120.0 frames/s (384 frames over 3.19 s)
+HwcPresentDisplay: 301 total, 50/s
+  RSUniRenderThre-2792                     47
+  dxvk-submit-13806                        47
+== Oseasy focused, +4 min 19:44:54
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (384 frames over 6.38 s)
+RSMainThread::DoComposition: 428 total, 53/s
+HwcPresentDisplay: 806 total, 100/s
+NativeWindowFlushBuffer: 861 total, 107/s
+== NativeWindowFlushBuffer per thread (/s)
+  dxvk-submit-13806                        106
+  RSUniRenderThre-2792                     0
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+HwcPresentDisplay: 698 total, 116/s
+  dxvk-submit-13806                        120
+  RSUniRenderThre-2792                     1
+== Oseasy focused, +6 min 19:47:26
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (384 frames over 6.38 s)
+RSMainThread::DoComposition: 436 total, 54/s
+HwcPresentDisplay: 815 total, 101/s
+NativeWindowFlushBuffer: 871 total, 108/s
+== NativeWindowFlushBuffer per thread (/s)
+  dxvk-submit-13806                        108
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+HwcPresentDisplay: 663 total, 110/s
+  dxvk-submit-13806                        120
+force stop process successfully.
+stopped
+== after, vote120 stopped 19:48:11
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (384 frames over 6.38 s)
+RSMainThread::DoComposition: 472 total, 59/s
+HwcPresentDisplay: 876 total, 109/s
+NativeWindowFlushBuffer: 946 total, 118/s
+== NativeWindowFlushBuffer per thread (/s)
+  dxvk-submit-13806                        118
+  RSUniRenderThre-2792                     0
+-- + workspace switching
+activeMode: 2880x1920, refreshRate=60
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+HwcPresentDisplay: 664 total, 110/s
+  dxvk-submit-13806                        120
+  RSUniRenderThre-2792                     0
+== s120 done 19:48:42

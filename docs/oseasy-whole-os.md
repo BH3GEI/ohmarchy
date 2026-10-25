@@ -436,7 +436,7 @@ the runs above unless marked pending.
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
 | Runs next to another VM | not tested, held back by `vm.lock` (HMV runs one VM at a time on this machine); the system VM kit has the error `Not support vm multi-instance` | not tested, same kit and lock | yes (no VM) |
 | Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app's own start not timed | about 2 min from kernel start to `systemd running` (pure disk, [hongrong-whole-os.md](hongrong-whole-os.md)) | about 8 s (session 2.0 s + desktop 5.7-6.1 s, [acceptance.md](acceptance.md) B) |
-| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | not measured | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
+| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | not measured: the VM boots to the SDDM login screen, a login is needed | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | es2gears 114-120 in the guest, 60 on screen | es2gears 114-120, 117-120 on screen |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
 | 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak failed twice (hang after 38 and 51 min, use-after-free of command buffer headers); with the fix **77 min (5 ms hold) and 3 h 07 min (50 ms hold), no fault**, 0 late writes seen (cause inferred, not observed) | 3/3 warm reboots (pure disk); soak 30 min with all 6 vCPUs busy, no fault ([hongrong-whole-os.md](hongrong-whole-os.md)) | no VM to reboot; 24 h soak with hourly smoke test running ([acceptance.md](acceptance.md) C) |
@@ -912,6 +912,62 @@ backtrace and the corrupted free-list link point to a device write into a freed
 header. The check never caught one, either within 5 ms (77 min) or within
 50 ms (3 h). With the fix in place, the hang has not come back in 4 h 24 min
 under the load that hung twice within 51 minutes.
+
+### Fourteenth run: ohmarchy-120 as a 1x1 window, and 鸿融 app launch (19:28-20:08, 2026-10-25)
+
+Logs: [`vote120-1x1.log`](../oseasy/runs/2026-10-25-pollfix/vote120-1x1.log),
+[`vote120-1x1-extra.log`](../oseasy/runs/2026-10-25-pollfix/vote120-1x1-extra.log),
+[`hongrong-launch.log`](../oseasy/runs/2026-10-25-pollfix/hongrong-launch.log).
+Oseasy reinstalled with the committed driver (5 ms hold; package
+`9d16d338b2b2d946898fccde1b01b4ce55181080a8088d7b62b6c6016ebe8009`, ISO
+`4888ee093bff436b7246e221e34ca6432be76237358bb134a1d45c3273ce0126`); es2gears running
+(the script's first two readings were taken before it started and are not used).
+ohmarchy-120 started as `--pi w 1 --pi h 1 --pi x 0 --pi y 0 --pi draw 0` (1x1
+window, votes 120 Hz from the frame callback, presents nothing).
+
+| State | Panel | Compositions/s (hitrace) | VM flushes/s (`dxvk-submit`) | GPU composition (`RSUniRenderThread` flushes/s) |
+|---|---|---|---|---|
+| ohmarchy-120 focused | **120 Hz** | 35-50 | 35-47 | 36-47 |
+| Oseasy focused, ohmarchy-120 still open | 60 Hz | 53-54 (HWC presents 100-116) | 106-120 | 0-1 |
+| ohmarchy-120 stopped (baseline) | 60 Hz | 59 (HWC presents 109-110) | 118-120 | 0 |
+
+- The vote counts only while ohmarchy-120 has focus. Then the panel runs at
+  120 Hz, but any second window, even a 1x1 one that never presents, moves
+  RenderService from the display hardware (HWC) to GPU composition, which
+  reaches only 35-50 frames/s. That is worse than the 60 of the baseline. Once
+  Oseasy has focus again, the vote stops counting and the panel goes back to 60 Hz.
+- So Oseasy cannot get 120 Hz on screen from outside. The Oseasy app would have to ask for the
+  frame rate itself (it only reads `getDefaultDisplaySync().refreshRate`, see
+  below).
+- Caution for these measurements: `hidumper -s RenderService -a 'composer fps'`
+  reads the last 384 timestamps, and at 120 Hz those span 3.2 s. It reported
+  "120.0 frames/s" while hitrace counted 35 compositions/s. Count frames with
+  hitrace (`DoComposition`, `HwcPresentDisplay`, flushes per thread), not with
+  `composer fps`, when the panel is at 120 Hz.
+
+鸿融 app launch times: **not measured**. 鸿融's main VM (started from the
+鸿融 app after Oseasy's VM was off) boots to the SDDM login screen (deepin's
+`6.6.143-arm64-desktop-hwe` kernel with `subroot=arch`). Hyprland runs only as
+the `sddm` greeter, and `yao` has no graphical session. Measuring needs a login
+on Yao's own VM, which is not done on his behalf. foot, nautilus, chromium and
+obsidian are installed there. Nothing was installed, changed or written in the
+guest (the throwaway browser profiles were never created). `systemctl poweroff`
+over ssh is refused by polkit (no session). On the supervisor's decision 鸿融's VM
+is **left running at the login screen**, closer to how Yao had it. vm.lock is
+kept, with the owner "鸿融 main VM (Yao's), left running by supervisor decision —
+stop it only via the 鸿融 UI and restore after". screen.lock was released.
+
+### State at the end of the Oseasy line (2026-10-25 20:10 PDT)
+
+- Omarchy 4.0.6 cold-boots into Hyprland in Oseasy 3.1.1.7 with the
+  `vmwgfx-oseasy` driver (3D through Mesa SVGA3D → DXVK → Vulkan). The comparison
+  table above is complete except: 鸿融 app launch (needs a login), the Oseasy app's
+  own start time, and running next to another VM (not tested, `vm.lock`).
+- Stability: the GPU-soak hang (use-after-free of command buffer headers) is
+  fixed with a 5 ms hold. 77 min plus 3 h 07 min under GPU load without a fault. The
+  cause is inferred from the backtrace, not observed directly.
+- 120 Hz on screen: not reachable from outside Oseasy (above).
+- Oseasy's own VM is powered off. Its disk is the fourteenth-run install.
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

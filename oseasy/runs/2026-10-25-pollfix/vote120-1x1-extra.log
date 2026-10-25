@@ -1,0 +1,10 @@
+== extra: vote120 focused, es2gears running 19:42:53
+supportedMode[0]: 2880x1920, refreshRate=120
+activeMode: 2880x1920, refreshRate=120
+== composer fps: 120.0 frames/s (384 frames over 3.19 s)
+RSMainThread::DoComposition: 286 total, 35/s
+HwcPresentDisplay: 286 total, 35/s
+NativeWindowFlushBuffer: 572 total, 71/s
+== NativeWindowFlushBuffer per thread (/s)
+  RSUniRenderThre-2792                     36
+  dxvk-submit-13806                        35

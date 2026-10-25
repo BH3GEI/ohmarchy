@@ -44,14 +44,14 @@ SVDIR=/system/bin/virt_service/vm_engine/stratovirt
 pidf=$D/stratovirt.pid
 # ours only: the recorded pid, still a StratoVirt on our disk (never by name)
 # (HongMeng's grep does not match inside the NUL-separated cmdline: tr first)
-cmdline() { tr '\0' ' ' < /proc/$1/cmdline 2>/dev/null; }
+cmdline() { { tr '\0' ' ' < /proc/$1/cmdline; } 2>/dev/null; }
 running() { [ -f $pidf ] && [ -d /proc/$(cat $pidf) ] && cmdline $(cat $pidf) | grep -q "$DISK"; }
 # ssh comes from route D's Arch root (archtest) until the host has its own
 AR=/proc/$(cat /data/local/archtest/session.pid 2>/dev/null)/root
 SSH() {
   "$AR/usr/lib/ld-linux-aarch64.so.1" --library-path "$AR/usr/lib" "$AR/usr/bin/ssh" \
     -i $OVM_DIR/hostkey -o UserKnownHostsFile=$OVM_DIR/known_hosts -o StrictHostKeyChecking=yes \
-    -o LogLevel=ERROR -o ConnectTimeout=5 -o BatchMode=yes yao@$GUEST "$@"
+    -o LogLevel=ERROR -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -o BatchMode=yes yao@$GUEST "$@"
 }
 qmp() {  # one command per write: StratoVirt's parser takes one JSON object at a time
   { sleep 0.5; echo '{"execute":"qmp_capabilities"}'; sleep 0.5; echo "$1"; sleep 1; } |

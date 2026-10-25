@@ -210,15 +210,22 @@ time: `tests/demo/i.sh`.
 - The 鸿融 main VM is shut down (route I refuses to start next to another
   StratoVirt), and route D's desktop is open with a terminal.
 
-### Steps (about 3 min)
+### Steps (about 3 min; rehearsed 2026-10-26: `i.sh` all PASS in 91 s)
 
 | # | Action | Expected | Time |
 |---|---|---|---|
-| 1 | Start the VM, **on the host as root** (`ssh ohdev`): `sh /data/local/kaidashi/bin/ohmarchy-vm start`. D's terminal can't do this, see the note below. | `home share: virtiofsd pid …, uid 60000`, `started pid …`, `guest up after 5s`. | VM up in about 5 s; dockerd: filled in by the rehearsal (`i.sh` prints "dockerd answering N s after start") |
+| 1 | Start the VM, **on the host as root** (`ssh ohdev`): `sh /data/local/kaidashi/bin/ohmarchy-vm start`. D's terminal can't do this, see the note below. | `home share: virtiofsd pid …, uid 60000`, `started pid …`, `guest up after 5s`. | guest up in 5–10 s; dockerd answers right after (the rehearsal's number wasn't printed: HongMeng's sh can't parse `$((\$(date …) - t))`, fixed since) |
 | 2 | In D's terminal: `docker run --rm hello-world` | "Hello from Docker!" (the first run pulls the image through the VM's registry mirrors). | a few s |
 | 3 | In D's terminal, a compose service with a bind mount: `mkdir -p ~/demo-i/www && cd ~/demo-i`, then a `compose.yaml` with one `busybox` service: `ports: ["8080:8080"]`, `volumes: ["./www:/www"]`, `command: sh -c "echo hello-from-compose > /www/index.html; exec httpd -f -p 8080 -h /www"`. Then `docker compose up -d` and `curl http://172.16.100.2:8080/`. | `hello-from-compose`: the container wrote the page into `~/demo-i/www` on the desktop and serves it from there. | 10–20 s |
 | 4 | `ls -l www/index.html` | `-rw-r--r-- 1 builder builder … index.html`: 0644 and the desktop user's, although the container wrote it as root. | 5 s |
 | 5 | `docker compose down; cd; rm -rf ~/demo-i`, then on the host as root `sh /data/local/kaidashi/bin/ohmarchy-vm stop`. | `stopped`: the VM powered off from the inside; the tap and routing rules are gone. | 10 s |
+
+Pitfall, found in the rehearsal: on the host, `ohmarchy-vm ssh docker …` with
+docker's output going straight back through ssh can hang for good (four runs
+stuck there; ssh keepalives and timeouts on either side didn't help). Redirect
+in the guest (`ohmarchy-vm ssh "docker info > /dev/null 2>&1"`), as `i.sh`
+now does. Not seen from D's terminal: the docker context there goes through
+`docker system dial-stdio`.
 
 Talking points: Docker for a desktop whose kernel has no namespaces or
 cgroups, at the cost of one small VM that idles at about 1.2 GiB host memory

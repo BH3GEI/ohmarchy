@@ -15,9 +15,11 @@ echo "== 1. start the VM (host, as root)"
 "$here/../lib/remote.sh" demo-i-start host 300 <<SH || { echo "FAIL VM did not start"; exit 1; }
 t=\$(date +%s)
 sh $V start < /dev/null || exit 1
-i=0; until sh $V ssh docker info < /dev/null > /dev/null 2>&1; do i=\$((i+1)); [ \$i -ge 120 ] && break; sleep 1; done
-sh $V ssh docker info < /dev/null > /dev/null 2>&1 || { echo "FAIL dockerd does not answer"; exit 1; }
-echo "PASS VM up and dockerd answering \$((\$(date +%s) - \$t)) s after start"
+# "ssh docker info" with docker writing into the ssh channel can hang for good
+# on this host: let it write to /dev/null in the guest, and bound each try
+i=0; until timeout -s KILL 15 sh $V ssh "docker info > /dev/null 2>&1" < /dev/null > /dev/null 2>&1; do i=\$((i+1)); [ \$i -ge 30 ] && break; sleep 1; done
+timeout -s KILL 15 sh $V ssh "docker info > /dev/null 2>&1" < /dev/null > /dev/null 2>&1 || { echo "FAIL dockerd does not answer"; exit 1; }
+n=\$(date +%s); echo "PASS VM up and dockerd answering \$((n - t)) s after start"
 SH
 
 echo "== 2. Docker from the desktop session (as $user)"

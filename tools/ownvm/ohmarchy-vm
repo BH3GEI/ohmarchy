@@ -177,7 +177,7 @@ stop_rest() {
 stop() {
   if running; then
     # the guest's sudoers allows yao exactly this (guest-provision.sh)
-    SSH 'sudo -n /usr/bin/systemctl poweroff' >/dev/null 2>&1
+    SSH 'sudo -n /usr/bin/systemctl poweroff' < /dev/null >/dev/null 2>&1
     i=0; while running && [ $i -lt 60 ]; do sleep 2; i=$((i+2)); done
     running && { qmp '{"execute":"system_powerdown"}' >/dev/null; sleep 20; }
     running && { echo "no clean power-off; killing"; kill $(cat $pidf); sleep 2; }

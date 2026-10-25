@@ -422,7 +422,7 @@ and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then
 | Ownership in D | files written from the guest by yao **and by a root container** are `60000:60000` in D |
 | D → VM Docker (native-desktop line, `tests/compat/docker-mount.sh`) | `docker run -v $PWD:/w` reads: PASS; a container's file belongs to 60000 in D: PASS; compose writes through a `.` bind mount: PASS |
 | Symlink `../../etc` made in the guest | resolves in the guest: yao reads Omarchy's `/etc`, a container reads Alpine's; no host file reachable. `/home/builder/..` is the guest's `/home` |
-| Open | files created in containers are `0660`, not `0644` (umask/mode handling in passthrough mode); harmless for builder, not looked into |
+| Limitation | files made through the share are `0660`, directories `0771`, whatever the guest asks (HarmonyOS virtiofsd; see "Options tried" below); harmless for builder |
 
 What it took, beyond the offline plan:
 
@@ -485,3 +485,25 @@ modes and the host file seemingly a fixed one. To try next time vm.lock is
 held anyway: `OVM_FS_EXTRA=--mapped-perm` (interaction with `--translate-uid`
 unknown), and failing that `--posix-acl`/`--xattr` (no default ACL is set on
 D's home: not checked).
+
+**Options tried (2026-10-24 19:25–19:27 PDT, vm.lock, about 3 minutes; the
+host clock said 10:25 CST on the 25th).** The 0660/0771 stays; it cannot be
+changed with any option or command we have:
+
+| Try | In the guest | In D |
+|---|---|---|
+| `OVM_FS_EXTRA=--mapped-perm` | everything shows as `rwxrwxrwx` (file and directory, from yao and from a root container) | still `0660` / `0771` |
+| `OVM_FS_EXTRA=--posix-acl` | virtiofsd refuses to start: it cannot be combined with `--translate-uid/gid` ("translating UIDs … would break posix ACLs"), so it would cost the ownership mapping | — |
+| `chmod 644` / `chmod 755` from the guest, default options | the call succeeds, the mode stays `0660` / `0771` | `0660` / `0771` |
+| Host side, no VM: as 60000 directly in D's home (bind mount) | — | umask 022 gives `0644`/`0755`, umask 000 gives `0666`: hmfs keeps whatever mode it is given |
+
+So HarmonyOS's virtiofsd itself sets the mode on create and ignores `SETATTR`
+mode changes: 0660/0771 is the HarmonyOS user-storage convention, and the
+binary is built around a "virtual share" for HarmonyOS's own guests (strings
+include gallery, pasteboard and `GuestDriveShare` commands). Closed as a
+limitation of the system virtiofsd: builder owns every file, so D is not
+affected; only another user in D can't read these files. The real fix would
+be a different virtiofsd (upstream rust-vmm built for HongMeng), which isn't
+worth it for this. Fixed along the way: `ohmarchy-vm stop`'s guest ssh read
+the caller's stdin, which ate the rest of a `sh -s` script; it now reads
+`/dev/null`.

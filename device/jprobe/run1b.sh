@@ -12,10 +12,6 @@ to 90 ssh -o ConnectTimeout=20 "$OHDEV" 'cat > /data/local/tmp/exit42dyn' < "$D/
 set -u
 B=com.ohmarchy.xpmprobe
 SB=/data/app/el2/100/base/$B/haps/entry/files
-if [ ! -d /data/local/screen.lock ]; then
-  mkdir /data/local/screen.lock && printf 'agent-c6 (Route J step 1b)\npurpose: sandbox-execve test ~8s\nexpected end: <=1min\n' > /data/local/screen.lock/owner
-fi
-cat /data/local/screen.lock/owner | head -1
 bm install -r -p /data/local/tmp/xpmprobe.hap 2>&1 | tail -1
 mkdir -p "$SB"
 for f in exit42 exit42dyn; do

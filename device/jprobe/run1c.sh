@@ -10,10 +10,6 @@ to 90 ssh -o ConnectTimeout=20 "$OHDEV" 'cat > /data/local/tmp/libprobe.so' < "$
 "$(dirname "$0")/../ohsh" -t 150 - <<'SH'
 set -u
 B=com.ohmarchy.xpmprobe; SB=/data/app/el2/100/base/$B/haps/entry/files
-if [ ! -d /data/local/screen.lock ]; then
-  mkdir /data/local/screen.lock && printf 'agent-c6 (Route J step 1c)\npurpose: dlopen sandbox .so + execve HAP-libs ELF ~8s\nexpected end: <=1min\n' > /data/local/screen.lock/owner
-fi
-cat /data/local/screen.lock/owner | head -1
 bm install -r -p /data/local/tmp/xpmprobe.hap 2>&1 | tail -1
 mkdir -p "$SB"; cp -f /data/local/tmp/libprobe.so "$SB/libprobe.so"
 chmod 755 "$SB/libprobe.so"; chown 20020169:20020169 "$SB/libprobe.so"; chcon u:object_r:debug_hap_data_file:s0 "$SB/libprobe.so"

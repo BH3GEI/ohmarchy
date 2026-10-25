@@ -87,3 +87,38 @@ TCG path would require a separate TCI build; deprioritised — and in any case s
 HAP cannot get the executable memory even a TCI's generated glue/threads path might need for
 dynamically loaded code, while a pure-interpreter TCI would still be bound by the `.so`-only
 rule above.
+
+## Route J prototype — WORKS (2026-10-25)
+
+Built busybox 1.36.1 as a HAP-loadable shared object (`libbusybox.so`,
+`device/jloader/build-busybox.sh`, OHOS clang/musl, `FEATURE_SH_STANDALONE` so applets run
+in-process) and a loader HAP (`native/jloader`, `com.ohmarchy.jloader`): `libjl.so` forks,
+`dlopen`s the HAP-signed `libbusybox.so`, and calls its `main` as `sh -c <cmd>`, capturing the
+child's output through a pipe.
+
+On-device output (`device/jloader-run.sh`):
+
+```
+=== J loader: sh -c "...ls / | wc -l; echo pid=$$; { sleep 1 & echo bg_pid=$!; wait; }; ..."
+child exit=0
+===J-START===
+pipe: 0 entries in /         # the ls|wc pipeline ran; "ls: can't open '/'" is the sandbox FS
+pid=55935                    # $$ works
+bg_pid=55988                 # sleep 1 & + wait — background job via fork
+loop1 / loop2 / loop3        # for-loop
+cmdsub=0                     # $(...) command substitution ran
+===J-END===
+```
+
+So a **no-root** debug HAP runs a real `busybox sh` — pipelines, `$$`, background jobs
+(`&`/`wait`), command substitution, loops — entirely via **`dlopen` of a HAP-signed `.so` +
+`fork` + in-process applets**, with **no `execve`, no JIT, no root, no chroot**. Multi-process
+semantics survive (fork is allowed; only *mapping new unsigned code* is blocked). The `ls`
+"permission denied" on `/` is just the HAP sandbox's filesystem policy — pointed at a readable
+directory it lists normally.
+
+**This validates route J as a build-time-bundled userspace.** Next (J+D): fold the same
+fork+dlopen mechanism into the D-line display app (`native/app`, `com.ohmarchy.display`) so the
+app itself launches the signed `.so` userspace, then assess compiling Hyprland + aquamarine as
+`.so`s to run in the app process. Not possible this way: run-time `pacman`/new unsigned
+binaries (everything must be signed into the HAP at build time).

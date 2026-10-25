@@ -6,7 +6,6 @@
 # Safety: Aetherium opens as a normal window; before any keystroke the caller/helper
 # checks focus (dui never types into the 鸿融 window). Run only when the VM lock is free
 # and agent-53 is not measuring. This starts a TCG VM — nice it and cap threads via
-# Aetherium's config; it does NOT use HMV, so no /data/local/vm.lock is required for TCG.
 #
 # UNTESTED on the device yet (the disk transfer must finish first); the labels and order
 # are the same Aetherium build as the emulator, so this follows the validated flow.

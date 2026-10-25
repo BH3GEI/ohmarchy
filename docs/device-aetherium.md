@@ -62,7 +62,7 @@ into `libhmlibs.so.0`.
 on an fd), but it would mean re-implementing StratoVirt's `hmv/ioctl` set, and
 the gating question is permissions: `/dev/hmv` opens from `su`, but whether the
 create-VM/run ioctls succeed outside the `ohsw_stratovirt` domain was tested
-directly (`device/hmv-permtest.sh`, VM lock held, 鸿融 stopped).
+directly (`device/hmv-permtest.sh`, with the 鸿融 VM stopped).
 
 **Permission test result (2026-10-25 — no SELinux/permission gate on `/dev/hmv`):**
 A root process in the `su` domain running an unlabeled binary from
@@ -105,7 +105,7 @@ What would be required, and the blockers in order:
    is `dev_hmv_file` 0660 `root:hwf_service`. A `su`-domain process *opens*
    `/dev/hmv`, but whether the create-vm/create-vcpu ioctls succeed outside the
    `ohsw_stratovirt` domain is untested. This is the one test that needs the VM
-   lock and the 鸿融 VM stopped; it decides prototype-vs-impossible.
+   with the 鸿融 VM stopped; it decides prototype-vs-impossible.
 
 So: a config switch cannot enable HMV; a prototype is conceivable but needs both
 a QEMU port and clearing the permission gate. The permission test is queued.

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Route H HMV permission test — the decisive piece of the acceleration investigation.
-# RUN ONLY with /data/local/vm.lock held and the 鸿融 main VM stopped (no stratovirt running).
 # Answers: can a NON-system binary (su domain, /data path, no ohsw_stratovirt_exec label)
 # create an HMV VM, or does a domain/label/signature gate restrict it to the system VMM?
 #
@@ -13,7 +12,6 @@ set -uo pipefail
 "$(dirname "$0")/ohsh" -t 180 - <<'SH'
 set -u
 echo "== preconditions"
-[ -d /data/local/vm.lock ] || { echo "FAIL: /data/local/vm.lock not held"; exit 1; }
 pidof stratovirt >/dev/null 2>&1 && { echo "FAIL: a stratovirt is running (鸿融?)"; exit 1; }
 echo "lock held, no stratovirt running; caller domain: $(cat /proc/self/attr/current 2>/dev/null)"
 

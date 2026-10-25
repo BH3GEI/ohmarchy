@@ -137,8 +137,12 @@ kernel work.
 | 5 | One or two apps: a browser (Super+Shift+B) on a web page, and `fastfetch` in the terminal (kernel, Hyprland, GPU). | | 1 min |
 | 6 | Shut down: Super+Esc → power off from Omarchy's menu, or 鸿融's own stop control. | 鸿融 shows 已关机. | 20 s |
 
-Not yet rehearsed: the Super-key shortcuts through `ohui key` (keycodes are
-checked in the rehearsal). C1 steps 1–6 ran on 2026-10-26 as written.
+Shortcuts from the presenting machine (OpenHarmony keycodes, sent with
+`ssh ohdev uitest uiInput keyEvent K1 K2 [K3]`): Super = 2076 (META_LEFT),
+Return = 2054, Shift = 2047, B = 2018, 1 = 2001, 2 = 2002, Esc = 2070. So
+terminal: `2076 2054`; browser: `2076 2047 2018`; workspace 2: `2076 2002`;
+system menu: `2076 2070`. Bindings checked in the main VM's Omarchy config
+(2026-10-26); sending them through uitest is checked in the rehearsal. C1 steps 1–6 ran on 2026-10-26 as written.
 
 ## D: Omarchy natively on HarmonyOS
 

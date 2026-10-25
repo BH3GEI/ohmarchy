@@ -281,3 +281,40 @@ API). All `.so` are AArch64. libEGL's runtime `NEEDED`: libgallium, libgbm, libg
 plus OHOS `libc++_shared.so` + musl `libc.so` — all satisfiable on device. The guest-side virgl
 pipe talks to a host virglrenderer; wiring that to Aetherium's in-app GL path is the Stage-2→3
 integration risk already flagged. **Next: Stage 3 (Hypr C++ stack with clang 23 + libc++23).**
+
+### Stage 3 — Hypr C++ stack for OHOS musl (IN PROGRESS)
+
+The hard stage. Toolchain = homebrew **clang 23** + the from-source **libc++23** (OHOS musl).
+Recipe: `device/userspace/build-stage3.sh` + `ohos-cmake.toolchain.sample`.
+
+**Toolchain fixes discovered (all now encoded in the toolchain file):**
+1. **libc++ must be PIC** — the static `libc++.a` is linked into each `.so`, so libc++23 was
+   rebuilt with `-DCMAKE_POSITION_INDEPENDENT_CODE=ON` (else `R_AARCH64_ADD_ABS_LO12_NC …
+   recompile with -fPIC`).
+2. **libunwind `.S` must target OHOS** — the first libc++ build assembled
+   `UnwindRegistersSave/Restore.S` for the host (Mach-O), which lld rejects; fixed with
+   `-DCMAKE_ASM_COMPILER_TARGET=aarch64-linux-ohos`. (libc++.a/libc++abi.a were already correct
+   ELF; only libunwind's two asm objects were affected.)
+3. **clang 23's OHOS driver links GCC-style** — it looks for `crtbeginS.o`/`crtendS.o` and
+   builtins in its own (empty) resource dir, whereas the NDK ships `clang_rt.crtbegin.o` +
+   `libclang_rt.builtins.a`. Bridged with a compat dir (NDK crt renamed + builtins + our
+   libc++/libc++abi/libunwind via `-B`/`-L`) and a fake `-resource-dir`.
+4. **libc++ is static-linked into every component** — OHOS ships `libc++_shared.so` v15, ABI-
+   incompatible with our v23, so we never link it.
+
+**Built so far (shared libs, AArch64, self-contained but for libc.so):**
+
+| lib | version | size |
+|---|---|---|
+| libhyprutils.so | 0.14.3 | 4.2M |
+| libhyprlang.so | 0.6.8 | 1.8M |
+
+hyprlang's `hyprlang_test`/`hyprlang_fuzz` **executables also linked** — full compile+link of
+C++26 for OHOS confirmed, not just archiving. **This clears the Stage-0 top risk** ("Hyprland
+C++26 won't build on the available toolchain") at the library level.
+
+**Remaining:** the C support stack (cairo, pango, glib/gio, harfbuzz, freetype, fontconfig,
+libjpeg-turbo, libwebp, re2+abseil, muparser, lcms2, lua 5.5, libuuid, xcursor, libeis, udis86),
+the C++ header/tools (glaze, glslang, hyprwayland-scanner, hyprland-protocols), then hyprgraphics
+/ hyprcursor / aquamarine, and finally Hyprland 0.56.2 with D's two hongmeng patches + the
+HongMeng shims. glib/gio is the heaviest cross-compile; libinput is skipped (input is injected).

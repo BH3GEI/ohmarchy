@@ -1,0 +1,9 @@
+== idle AQ_TRACE=1 11:53:41
+idle desktop up 11:54:09; fires=0
+== t+0min 11:54:22 :: hyprctl=0 done  :: fires=0 
+== t+1min 11:55:41 :: hyprctl=0 done  :: fires=0 
+== t+2min 11:56:59 :: hyprctl=0 done  :: fires=0 
+== t+4min 11:58:18 :: hyprctl=0 done  :: fires=0 
+== t+5min 11:59:37 :: hyprctl=0 done  :: fires=0 
+== t+6min 12:00:57 :: hyprctl=0 done  :: fires=0 
+== t+8min 12:02:15 :: hyprctl=0 done  :: fires=0 

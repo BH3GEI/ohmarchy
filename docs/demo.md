@@ -28,8 +28,8 @@ below are the same flow.
 
 ### Before the demo (not shown, about 1 min)
 
-- OSEasy installed, no VM present (or delete any existing one). 鸿融's VM off
-  (`vm.lock` free; HMV runs one VM at a time).
+- OSEasy installed, no VM present (or delete any existing one). No other VM
+  running — `pidof stratovirt` is empty (HMV runs one VM at a time).
 - `Download/oseasy-probe.iso` is the watchdog build; `omarchy-pure.img.zst`,
   `push-disk.sh` and `waitpush.sh` are in `/data/local/oseasy/`.
 

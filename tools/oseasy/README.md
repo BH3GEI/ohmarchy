@@ -6,7 +6,7 @@ Oseasy scripts are kept under [`../../oseasy/`](../../oseasy) next to the guest
 driver in [`../../driver/vmwgfx-oseasy-7.2/`](../../driver/vmwgfx-oseasy-7.2),
 rather than split under `tools/`. This page exists so the named path resolves.
 
-- Scripts and probes: [`oseasy/`](../../oseasy) — `probe.sh`, `vmlock.sh`,
+- Scripts and probes: [`oseasy/`](../../oseasy) — `probe.sh`,
   `measure-fps.sh`, `guest-bench.sh`, `guest/` (hang-capture, boot-diag), `probe/`.
 - Guest display driver: [`driver/vmwgfx-oseasy-7.2/`](../../driver/vmwgfx-oseasy-7.2).
 - Write-up and comparison table: [`docs/oseasy-whole-os.md`](../../docs/oseasy-whole-os.md),

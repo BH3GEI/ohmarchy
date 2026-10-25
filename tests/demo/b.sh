@@ -4,7 +4,7 @@
 # Prereqs (see docs/demo.md "B: Omarchy in OSEasy"):
 #   - Download/oseasy-probe.iso is the 5ms+watchdog installer build (GRUB default=4)
 #   - /data/local/oseasy/ has omarchy-pure.img.zst, push-disk.sh, waitpush.sh, rb.sh
-#   - no VM running, 鸿融 off, both locks held by the presenter
+#   - no VM running (pidof stratovirt empty; HMV runs one VM at a time)
 # Usage: OHMARCHY_ROOT=~/oseasy-work/ohmarchy bash tests/demo/b.sh
 set -u
 ROOT=${OHMARCHY_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}

@@ -230,7 +230,7 @@ in the build environment); it puts the module in `updates/` and the options in
 `/etc/modprobe.d/vmwgfx-oseasy.conf`. Not built yet: waiting for the 7.2.12
 `linux-aarch64` package with the HMV patches.
 
-`oseasy/vmlock.sh take|show|drop` handles the host's one-VM lock.
+HMV runs one VM at a time; check with `pidof stratovirt` before starting one.
 
 ### Boot probe
 
@@ -434,7 +434,7 @@ the runs above unless marked pending.
 | Frames the host window receives | 120/s: Hyprland + es2gears, Oseasy's `dxvk-submit` flushes (run 9) | 112-123/s | 116-118/s |
 | Frames on screen | 60 (composer fps; panel stays at 60 Hz). With ohmarchy-120 focused the panel goes to 120 Hz but composition reaches only 40-51/s (two layers); with the console focused the vote stops counting (60 Hz) | 60 | 117-120 |
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
-| Runs next to another VM | **No.** HMV runs one VM system-wide: the `@ohos.virtualization` kit refuses a second with `Not support vm multi-instance` / `已有虚拟机在运行中`, observed by the 凯大师 line when a VM was already running ([vm-kaidashi.md](vm-kaidashi.md): "Next to another VM"). Not forced from this line (the `vm.lock` rule serialises VMs), but the kit's own refusal settles it | No, same kit and system-wide rule | yes (no VM) |
+| Runs next to another VM | **No.** HMV runs one VM system-wide: the `@ohos.virtualization` kit refuses a second with `Not support vm multi-instance` / `已有虚拟机在运行中`, observed by the 凯大师 line when a VM was already running ([vm-kaidashi.md](vm-kaidashi.md): "Next to another VM"). Not forced from this line (HMV runs one VM at a time), but the kit's own refusal settles it | No, same kit and system-wide rule | yes (no VM) |
 | Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app itself, cold (`aa force-stop`, `aa start`) to its first page: 1.1-1.9 s (3 rounds, `uitest dumpLayout` polling, 2026-10-25 20:15) | about 2 min from kernel start to `systemd running` (pure disk, [hongrong-whole-os.md](hongrong-whole-os.md)) | about 8 s (session 2.0 s + desktop 5.7-6.1 s, [acceptance.md](acceptance.md) B) |
 | App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | foot 0.07-0.13 s, nautilus 0.62 s, chromium 0.80-0.86 s, obsidian 1.16-1.30 s (first run slower: 1.7/1.7/2.4/2.4 s; 3 rounds, 2026-10-25, [hongrong-launch.log](../oseasy/runs/2026-10-25-pollfix/hongrong-launch.log)) | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | es2gears 114-120 in the guest, 60 on screen | es2gears 114-120, 117-120 on screen |
@@ -554,7 +554,7 @@ rate its frame callback gets. Window size from want parameters:
 `aa start -b com.ohmarchy.vote120 -a EntryAbility --pi w 64 --pi h 32`.
 `oseasy/vote120/build.sh` builds it with DevEco's hvigor and signs it like the
 native app (SDK test keys, device-bound debug profile). Installed on ohdev; the
-measurement next to the Oseasy window is pending (needs the screen lock).
+measurement next to the Oseasy window is pending.
 
 ### Fourth run: Hyprland in Oseasy, and 120 Hz through a voting window (21:30-21:45)
 
@@ -1006,18 +1006,34 @@ now guards against it directly (`vmwgfx_irq.c`, `vmwgfx_vkms.c`):
   armed event. It counts each fire (`flip_watchdog_fires`) and logs
   `vmwgfx: page-flip watchdog #N ...` rate-limited. The timestamp is bumped so it
   retries at most once per window; the next commit's `atomic_begin` clears it.
-- Verification plan (needs a lock slot): run with `AQ_TRACE=1` for 20 min as a
-  stress test. Pass = no stall and the watchdog count > 0 (proving both that the
-  race is real and that it is now recovered). Build: package
-  `7e78a1d40d53bca45d7f1c5df5d299e1cff2ef04c5738f81836a2c90f0d8c8e2`, ISO
-  `46e1044a3f44d8735c6b45e8c3992b51f38255e7f1003ef8b7666e6b5e8c376d` (compiles
-  clean; on-machine run pending).
+- On-machine result (2026-10-26, watchdog build; install ISO
+  `60c525dd…`, GRUB `default=4`): across three conditions the session **never
+  stalled** and the **watchdog fired 0 times**:
+  [`watchdog-aqtrace.log`](../oseasy/runs/2026-10-25-pollfix/watchdog-aqtrace.log)
+  — `AQ_TRACE=1` + es2gears, 20 min, 60/s on screen throughout, fires 0;
+  no-trace baseline, fires 0;
+  [`watchdog-idle-trace.log`](../oseasy/runs/2026-10-25-pollfix/watchdog-idle-trace.log)
+  — `AQ_TRACE=1` idle desktop (the condition that originally stalled in the sixth
+  run's boot-diag), 8 min, Hyprland responsive to `hyprctl` the whole time, fires 0.
+- Reading: with the 5 ms fence poll in place, the stall did **not reproduce** on
+  this build under either load or idle trace, so the watchdog had nothing to
+  recover (fires 0). The supervisor's "fires > 0" could not be met because the
+  race did not manifest — consistent with the poll already closing it. Two caveats
+  kept honest: (1) the watchdog only arms **after** a flip's vblank event is armed,
+  i.e. after the commit's fence wait, so it guards a *lost vblank event*, not a
+  *commit stuck on an unsignalled fence* (which the poll prevents); (2) absence of
+  a fire over this window is not proof the race can never happen, only that it is at
+  most very rare here. The watchdog stays in as a cheap safety net
+  (`hvm_flip_watchdog_us`, default 50 ms; 0 disables) with a counter for if it ever
+  does fire. Build: package
+  `7e78a1d40d53bca45d7f1c5df5d299e1cff2ef04c5738f81836a2c90f0d8c8e2`, install ISO
+  `60c525dd103cb843f49d…`.
 
 ### State at the end of the Oseasy line (2026-10-25 20:10 PDT)
 
 - Omarchy 4.0.6 cold-boots into Hyprland in Oseasy 3.1.1.7 with the
   `vmwgfx-oseasy` driver (3D through Mesa SVGA3D → DXVK → Vulkan). The comparison
-  table above is complete except: 鸿融 app launch (needs a login), and running next to another VM (not tested, `vm.lock`).
+  table above is complete except: 鸿融 app launch (needs a login), and running next to another VM (not tested; HMV runs one VM at a time).
 - Stability: the GPU-soak hang (use-after-free of command buffer headers) is
   fixed with a 5 ms hold. 77 min plus 3 h 07 min under GPU load without a fault. The
   cause is inferred from the backtrace, not observed directly.
@@ -1057,7 +1073,7 @@ supervisor to schedule, as 鸿融 is Yao's main VM.
   (`HwcPresentDisplay` about 111/s, no RenderService GPU work). With ohmarchy-120
   on screen as well, `RSUniRenderThread` starts compositing on the GPU and reaches
   only 40-51/s.
-- To try (screen lock needed): ohmarchy-120 shrunk to 1x1 and not presenting
+- To try: ohmarchy-120 shrunk to 1x1 and not presenting
   (`setDraw(false)`, vote kept by the frame callback), placed outside the console,
   so the VM layer can stay on HWC while the vote counts.
   Prepared: ohmarchy-120 takes `--pi x/y` (position) and `--pi draw 0` (vote

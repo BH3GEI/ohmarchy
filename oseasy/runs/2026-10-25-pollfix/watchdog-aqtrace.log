@@ -1,0 +1,47 @@
+== AQ_TRACE=1 11:28:37
+pgrep: pattern that searches for process name longer than 15 characters will result in zero matches
+Try `pgrep -f' option to match against the complete command line.
+trace up 11:29:13; fires start 0
+== t+0min 11:29:26 :: Hyprland 00:42, es2gears 1; load 0.61 0.18 0.06 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+2min 11:31:27 :: Hyprland 02:43, es2gears 1; load 0.95 0.45 0.18 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+4min 11:33:27 :: Hyprland 04:43, es2gears 1; load 1.04 0.67 0.29 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+6min 11:35:26 :: Hyprland 06:42, es2gears 1; load 1.00 0.78 0.38 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+8min 11:37:26 :: Hyprland 08:42, es2gears 1; load 1.00 0.86 0.46 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+10min 11:39:27 :: Hyprland 10:42, es2gears 1; load 1.04 0.92 0.54 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+12min 11:41:27 :: Hyprland 12:42, es2gears 1; load 1.30 1.04 0.63 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+14min 11:43:26 :: Hyprland 14:42, es2gears 1; load 1.09 1.04 0.68 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+16min 11:45:26 :: Hyprland 16:42, es2gears 1; load 1.01 1.02 0.73 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+18min 11:47:27 :: Hyprland 18:42, es2gears 1; load 1.08 1.04 0.78 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+== t+20min 11:49:27 :: Hyprland 20:43, es2gears 1; load 1.12 1.05 0.82 :: fires=0 
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-36985                        120
+=== trace end: fires=0 
+== no-trace 11:50:07
+pgrep: pattern that searches for process name longer than 15 characters will result in zero matches
+Try `pgrep -f' option to match against the complete command line.
+== notrace t+0min fires=0
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+== notrace t+2min fires=0
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+=== notrace: before=0 after=0
+SWD3_DONE

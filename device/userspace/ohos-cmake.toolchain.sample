@@ -11,7 +11,7 @@ set(CMAKE_SYSROOT ${NDK}/sysroot)
 
 set(_cflags   "-resource-dir=${SP}/stage3/ohos-res")
 set(_cxxflags "-nostdinc++ -isystem ${SP}/llvmsrc/build-libcxx/include/c++/v1 -resource-dir=${SP}/stage3/ohos-res")
-set(_ldflags  "-B${SP}/stage3/ohos-cxx-lib -L${SP}/stage3/ohos-cxx-lib -L${SP}/stage1/prefix/lib -resource-dir=${SP}/stage3/ohos-res -nostdlib++ -lc++ -lc++abi")
+set(_ldflags  "-B${SP}/stage3/ohos-cxx-lib -L${SP}/stage3/ohos-cxx-lib -L${SP}/stage1/prefix/lib -resource-dir=${SP}/stage3/ohos-res -nostdlib++ -unwindlib=none -lc++_ohm")
 set(CMAKE_C_FLAGS_INIT   "${_cflags}")
 set(CMAKE_CXX_FLAGS_INIT "${_cxxflags}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT    "${_ldflags}")

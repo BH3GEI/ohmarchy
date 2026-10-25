@@ -299,15 +299,26 @@ Recipe: `device/userspace/build-stage3.sh` + `ohos-cmake.toolchain.sample`.
    builtins in its own (empty) resource dir, whereas the NDK ships `clang_rt.crtbegin.o` +
    `libclang_rt.builtins.a`. Bridged with a compat dir (NDK crt renamed + builtins + our
    libc++/libc++abi/libunwind via `-B`/`-L`) and a fake `-resource-dir`.
-4. **libc++ is static-linked into every component** — OHOS ships `libc++_shared.so` v15, ABI-
-   incompatible with our v23, so we never link it.
+4. **ONE shared C++ runtime, not static per-component** — all the C++ components
+   (hyprutils, hyprlang, aquamarine, Hyprland, re2, …) load into the **same process**, so a
+   static libc++ in each `.so` would give multiple `operator new`/typeinfo/exception-runtime
+   copies + duplicate iostream globals → cross-`.so` exceptions, `dynamic_cast`, and
+   `std::string` ownership break. Instead the three static archives are merged once into a
+   single **`libc++_ohm.so.1`** (custom SONAME, so no clash with OHOS's own v15
+   `libc++_shared.so`), and every component links `-nostdlib++ -unwindlib=none -lc++_ohm`.
+   The merge adds a tiny **`__cxa_thread_atexit_impl` shim** (`device/userspace/shim/`) — OHOS
+   musl omits that symbol, and the libc++ cross-configure false-positives it (its try-compile
+   only compiles, never links).
 
 **Built so far (shared libs, AArch64, self-contained but for libc.so):**
 
 | lib | version | size |
 |---|---|---|
-| libhyprutils.so | 0.14.3 | 4.2M |
-| libhyprlang.so | 0.6.8 | 1.8M |
+| **libc++_ohm.so** (shared C++ runtime) | LLVM 23.1.4 | 1.9M |
+| libhyprutils.so | 0.14.3 | 2.6M |
+| libhyprlang.so | 0.6.8 | 301K |
+
+(hyprutils 4.2M→2.6M and hyprlang 1.8M→301K once libc++ stopped being copied into each.)
 
 hyprlang's `hyprlang_test`/`hyprlang_fuzz` **executables also linked** — full compile+link of
 C++26 for OHOS confirmed, not just archiving. **This clears the Stage-0 top risk** ("Hyprland

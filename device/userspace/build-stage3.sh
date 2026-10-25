@@ -29,6 +29,17 @@ cp "$RT/libclang_rt.builtins.a" "$CXXLIB/"
 cp "$RT/libclang_rt.builtins.a" "$RES/lib/aarch64-linux-ohos/"
 cp "$L/libc++.a" "$L/libc++abi.a" "$L/libunwind.a" "$CXXLIB/"
 
+# ONE shared C++ runtime for ALL C++ components (never static-link libc++ per-.so: that
+# duplicates operator new / typeinfo / the exception runtime / iostream globals in one
+# process). Custom SONAME libc++_ohm.so.1 so it can't collide with OHOS's v15
+# libc++_shared.so. Includes a __cxa_thread_atexit_impl shim (OHOS musl omits it; the
+# libc++ cross-configure false-positives it because its try-compile only compiles).
+HBB="$HB/bin"; SR="$NDK/sysroot"
+"$HBB/clang" --target=aarch64-linux-ohos --sysroot="$SR" -O2 -fPIC   -c "$SP/stage3/shim/cxa_thread_atexit.c" -o "$SP/stage3/shim/cxa_thread_atexit.o"
+"$HBB/clang++" --target=aarch64-linux-ohos --sysroot="$SR" -shared -fuse-ld=lld   -o "$CXXLIB/libc++_ohm.so.1" -Wl,-soname,libc++_ohm.so.1   -Wl,--whole-archive "$L/libc++.a" "$L/libc++abi.a" "$L/libunwind.a" -Wl,--no-whole-archive   "$SP/stage3/shim/cxa_thread_atexit.o"   -B"$CXXLIB" -L"$CXXLIB" -resource-dir="$RES" -nostdlib++ -lc
+ln -sf libc++_ohm.so.1 "$CXXLIB/libc++_ohm.so"
+# toolchain links components with: -nostdlib++ -unwindlib=none -lc++_ohm  (see toolchain file)
+
 cmcfg() { # cmcfg <srcdir> [extra cmake args...]
   local d="$1"; shift
   cmake -B "$d/_b" -S "$d" -G Ninja -DCMAKE_TOOLCHAIN_FILE="$TC" \
@@ -39,8 +50,8 @@ cmcfg() { # cmcfg <srcdir> [extra cmake args...]
 }
 
 # --- Hypr family (light deps) ---
-cmcfg "$SP/stage3/src/hyprutils-ex"      # needs pixman        -> libhyprutils.so  4.2M  DONE
-cmcfg "$SP/stage3/src/hyprlang-ex"       # needs hyprutils     -> libhyprlang.so   1.8M  DONE
+cmcfg "$SP/stage3/src/hyprutils-ex"      # needs pixman        -> libhyprutils.so  2.6M  DONE
+cmcfg "$SP/stage3/src/hyprlang-ex"       # needs hyprutils     -> libhyprlang.so   301K  DONE
 # TODO downstream (need the C support stack first):
 #   hyprgraphics  (cairo, libjpeg-turbo, libwebp, libmagic, hyprutils)
 #   hyprcursor    (hyprlang, libzip, cairo, librsvg?)

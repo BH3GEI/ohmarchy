@@ -8,7 +8,6 @@
 # 120 Hz) after the app has it, which this does not count.
 #   MPV_ARGS  extra mpv options (default: none);  ARCH_USER  desktop user
 here=$(cd "$(dirname "$0")" && pwd)
-"$here/../lib/screen-free.sh" || exit 1
 user=${ARCH_USER:-builder}
 B=${ARCH_BASE:-/data/local/archtest}
 {

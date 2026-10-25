@@ -145,16 +145,14 @@ GPU through virgl inside the app ([native-desktop.md](native-desktop.md)).
 Automated, from the presenting machine, with a screenshot after every step
 and the elapsed time: `tests/demo/d.sh` (screenshots in
 `tests/results/demo-<time>/`; `tests/demo/d.sh clean` closes the demo's
-windows afterwards). It needs the screen: `/data/local/screen.lock` free, or
-held by the native-desktop line with `HOLD_LOCK=1`.
+windows afterwards).
 
 ### Before the demo (not shown, about 1 min)
 
 - ohdev has just booted and is unlocked; HarmonyOS's own desktop is in front.
-  Take `/data/local/screen.lock` for the duration.
 - For the Docker step (8): start route I's VM, **on the host as root**:
   `sh /data/local/kaidashi/bin/ohmarchy-vm start` (or `tests/demo/d.sh prep`).
-  It takes `/data/local/vm.lock`, and the 鸿融 VM has to be shut down. Wait
+  The 鸿融 VM has to be shut down (one VM at a time). Wait
   until `ohmarchy-vm status` shows a `dockerd:` version. Without the VM, `d.sh`
   skips step 8 and says so.
 
@@ -178,7 +176,7 @@ Linux kernel, so it borrows route I's small VM.
 
 Afterwards: `tests/demo/d.sh clean` (or close the windows with Super+W), and
 `sh /data/local/kaidashi/bin/ohmarchy-vm stop` on the host if the VM was
-started for the demo. Release the screen lock.
+started for the demo.
 
 Not yet rehearsed: the click on the dock icon (`d.sh` uses `aa start`), the
 Super-key shortcuts through `ohui key` (`d.sh` starts the same commands

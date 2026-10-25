@@ -5,8 +5,6 @@
 #                     b-idle c1 e   (b-coldstart restarts the desktop; c1 takes
 #                     about 15 minutes)
 #   C1_ROUNDS         open/close rounds (default 100)
-# Tests that show the display app (a3-*) are skipped while someone else holds the
-# screen (/data/local/vm.lock, see lib/screen-free.sh).
 here=$(cd "$(dirname "$0")" && pwd)
 out="$here/results/run-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$out"
@@ -35,19 +33,15 @@ if run a2 A "$here/lib/session-py.sh" core "$here/core/core_ops.py" 600; then
     row a2 A $r "$n of $t core operations pass $(grep -E '^[a-z-]+ +FAIL' "$out/a2.log" | awk '{printf "(failed: %s) ", $1}')"
 fi
 
-if "$here/lib/screen-free.sh" 2> "$out/screen.log"; then
-    if run a3-latency A "$here/audio/run.sh"; then
-        worst=$(grep -oE "max [0-9]+ ms" "$out/a3-latency.log" | grep -oE "[0-9]+" | sort -n | tail -1)
-        [ -n "$worst" ] && [ "$worst" -le 200 ] && r=PASS || r=FAIL
-        row a3-latency A $r "$(grep -E '^(cold|warm):' "$out/a3-latency.log" | sed 's/:.*;/:/' | tr '\n' ' ')(target <= 200 ms)"
-    fi
-    if run a3-avsync A "$here/audio/avsync.sh"; then
-        m=$(grep -oE "median [+-]?[0-9]+ ms" "$out/a3-avsync.log" | grep -oE "[+-]?[0-9]+")
-        [ -n "$m" ] && [ "${m#[+-]}" -le 100 ] && r=PASS || r=FAIL
-        row a3-avsync A $r "sound - picture: median ${m:-?} ms (target within 100 ms)"
-    fi
-else
-    row a3 A SKIP "screen in use by someone else: $(head -c 120 "$out/screen.log" | tr '\n' ' ')"
+if run a3-latency A "$here/audio/run.sh"; then
+    worst=$(grep -oE "max [0-9]+ ms" "$out/a3-latency.log" | grep -oE "[0-9]+" | sort -n | tail -1)
+    [ -n "$worst" ] && [ "$worst" -le 200 ] && r=PASS || r=FAIL
+    row a3-latency A $r "$(grep -E '^(cold|warm):' "$out/a3-latency.log" | sed 's/:.*;/:/' | tr '\n' ' ')(target <= 200 ms)"
+fi
+if run a3-avsync A "$here/audio/avsync.sh"; then
+    m=$(grep -oE "median [+-]?[0-9]+ ms" "$out/a3-avsync.log" | grep -oE "[+-]?[0-9]+")
+    [ -n "$m" ] && [ "${m#[+-]}" -le 100 ] && r=PASS || r=FAIL
+    row a3-avsync A $r "sound - picture: median ${m:-?} ms (target within 100 ms)"
 fi
 
 if run b-coldstart B "$here/perf/coldstart.sh"; then

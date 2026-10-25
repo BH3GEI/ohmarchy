@@ -35,7 +35,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | H. Aetherium on the device | Concluded | Without root, Aetherium cannot run on the device (HMV closed to third parties; no executable memory for TCG) |
 | G. 铠大师 VM | Concluded | Same `svga-pci` path as B; Linux only lives in an install session |
 
-Two locks on the device: `vm.lock` for the HMV hypervisor (one VM at a time) and `screen.lock` for the foreground; work that needs neither runs in parallel. Starting or killing processes on the device also needs `vm.lock`.
+No locks on the device (removed 2026-10-25): use the screen directly. The HMV hypervisor still runs one VM at a time, so stop the 鸿融 VM before starting another.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

@@ -1,7 +1,6 @@
 #!/bin/bash
 # Route D demo, automated (docs/demo.md): each step is one command on the
 # HarmonyOS host, then a screenshot into OUT (default tests/results/demo-<time>).
-# Needs the screen to ourselves (lib/screen-free.sh, HOLD_LOCK=1 when we hold it).
 #   tests/demo/d.sh prep    start route I's VM for the Docker step (not part of the
 #                           demo; takes vm.lock; needs the 鸿融 VM off)
 #   tests/demo/d.sh         the demo, timed
@@ -41,7 +40,6 @@ for c in json.load(sys.stdin):
 omarchy-menu close > /dev/null 2>&1'
     ;;
 run)
-    "$here/../lib/screen-free.sh" || exit 1
     # 1. the desktop (idempotent; at boot ohmarchy-desktop.cfg already does it)
     echo "sh $B/bin/omarchy desktop start > /dev/null" | h
     step 01-desktop-started 0

@@ -10,7 +10,6 @@
 # frames reach the app's surface. Needs the display app open and the screen.
 #   UNLOCK_PW=... [ROUNDS=20] tests/stability/screenoff.sh
 here=$(cd "$(dirname "$0")" && pwd)
-"$here/../lib/screen-free.sh" || exit 1
 : "${UNLOCK_PW:?set UNLOCK_PW to the HarmonyOS lock screen password}"
 OHUI="$here/../../tools/ohdev/ohui"
 export OHUI_DIR=${OHUI_DIR:-/tmp/ohui}

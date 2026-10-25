@@ -425,8 +425,7 @@ Open items, both limits of the platform (2026-10-25):
 Everything else above runs remotely. These need a person at the HM740; each takes a
 few minutes except the battery test. Commands marked "Mac" run from the
 repository on the machine that drives the host (`ssh ohdev` works there); the
-others are on the HM740 itself. Hold `/data/local/screen.lock` for 1-4 (tell the
-other test lines first).
+others are on the HM740 itself.
 
 Already done remotely since: HarmonyOS screen off and on (20 of 20, C4), sound
 shown to go out (A3). What still needs a person:

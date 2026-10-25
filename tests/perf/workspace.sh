@@ -5,7 +5,6 @@
 # while frames are flowing (gaps over 50 ms, between animations, left out). The
 # display app must be open and in front; target >= 110 fps.
 here=$(cd "$(dirname "$0")" && pwd)
-"$here/../lib/screen-free.sh" || exit 1
 B=${ARCH_BASE:-/data/local/archtest}
 user=${ARCH_USER:-builder}
 {

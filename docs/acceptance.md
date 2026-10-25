@@ -375,17 +375,34 @@ package versions, disk, test results). No passwords or user files.
 | Browser sandbox | default browser: pass. Firefox is now Omarchy's default browser (`40-install-desktop.sh`): its tab, media, socket and utility processes run under seccomp-bpf (`Seccomp: 2`) with its file broker; tested headless, the page rendered. Web apps: fail: Chromium (Omarchy's web apps) runs with `--no-sandbox`. Without user namespaces it needs its setuid helper; with it the zygote starts in its own PID namespace (pid 1) but never completes its handshake. Under strace (as root, `-u` the desktop user, so the helper keeps setuid) the zygote stops on a `brk` trap (SIGTRAP, TRAP_BRKPT) early in its startup: a Chromium `CHECK` fails; which one needs symbols. Ruled out, each tested on its own: PID and network namespaces (root), chroot into `/proc/self/fdinfo` (the helper's chroot), SCM_RIGHTS and SCM_CREDENTIALS over SOCK_SEQPACKET (the pid is translated correctly across PID namespaces), `capset` dropping all capabilities, seccomp-bpf (and Chromium's seccomp policy off does not help) No debug symbols for ALARM's Chromium (debuginfod.archlinux.org: 404; ALARM has no debuginfod), so the failing check is not identified |
 | seccomp-bpf | pass: the kernel takes filters (so a working setuid sandbox would get both layers) |
 
-Open items:
+Open items, both limits of the platform (2026-10-25):
 
-- Chromium without a sandbox, when started by hand. Omarchy's web apps (Basecamp,
+- Chromium without a sandbox, when started by hand. Cause found: HongMeng does
+  not share `CLONE_FS` between processes (a child's `chroot`/`chdir` after
+  `clone(CLONE_FS)` does not change the parent's root or cwd; tested). Chromium's
+  setuid helper jails the zygote exactly that way (a `CLONE_FS` helper chroots into
+  `/proc/self/fdinfo/` when asked), so the zygote stays unjailed and its own check
+  (can it still open `/`?) fails: the `brk` trap seen under strace. Without user
+  namespaces there is no other layer 1, the zygote has no capability to chroot
+  itself (no `PR_SET_KEEPCAPS` here), and Chromium refuses seccomp-bpf alone
+  (`--no-zygote-sandbox`, `--disable-namespace-sandbox` and `--no-zygote` all tried).
+  Faking the check would only hide it. Mitigation in place: Firefox, which
+  sandboxes itself here, is the default browser and opens the web apps. Omarchy's web apps (Basecamp,
   HEY, WhatsApp, ...) now open in Firefox: route D's `omarchy-launch-webapp` in
   `/opt/ohmarchy/overrides`, which `ohdisplay.lua` puts ahead of Omarchy's own bin
   in the apps' PATH (Omarchy puts its bin first, so `/usr/local/bin` is not
   enough). They get Firefox's toolbar instead of Chromium's app window; all 9 open
   in 1.2-1.6 s (A1). `OHMARCHY_WEBAPP_BROWSER=chromium` restores Omarchy's
   launcher.
-- The broker and the session init run in the `su` SELinux domain (all-powerful on
-  the host); a narrower domain needs policy that cannot be loaded from here.
+- The broker and the session init run in the `su` SELinux domain, which is
+  permissive (its denials are only logged) while the system is enforcing. A
+  narrower domain is not reachable: requesting another context for the next exec
+  (`/proc/self/attr/exec`) fails for `shell`, `system_basic` and
+  `normal_hap_attr` (the policy forbids the transition) and is ignored for others;
+  there is no `runcon`. A domain of our own would need the system's SELinux policy
+  changed and reloaded (the system partition, a reboot): not done on the only test
+  machine. Mitigation in place: what can run without root does (the broker's work
+  as uid 60000), and the sockets serve only the display app's uid.
 
 ## On site: what needs someone at the machine
 

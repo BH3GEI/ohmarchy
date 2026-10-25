@@ -217,4 +217,5 @@ ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):
 | `/etc/machine-id` empty: libdbus aborts, which took the Omarchy shell down once Qt loaded its fcitx plugin | write one with `dbus-uuidgen` |
 | Host GPU server (`OHMARCHY_GPU=host`): each desktop restart left a `virgl_test_server` child behind (~80 MB), its connection still ESTAB with no peer | `omarchy desktop stop` ends the server's children; the desktop's clients are gone by then |
 | Reading `/proc/PID/cmdline` of a process that exits during the read (`tr '\0' ' ' < /proc/PID/cmdline` in a script) can spin forever: one such `tr` ran at 100 % of a core for 16 h | read it with a timeout, or check the process still exists first; kill strays |
+| `clone(CLONE_FS)` does not share the root and cwd: a child's `chroot`/`chdir` does not reach the parent | Chromium's setuid sandbox cannot jail its zygote (it fails a check and dies); Chromium runs with `--no-sandbox` | Firefox (seccomp-bpf sandbox works) for the browser and web apps |
 | Omarchy's Lua config: `hyprctl dispatch`/`keyword` do not parse | `hyprctl eval 'hl.exec_cmd("...")'` |

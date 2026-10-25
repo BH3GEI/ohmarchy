@@ -41,5 +41,3 @@ for f in /data/log/hwf_service/vmlog4 /data/log/hwf_service/vmlog3 /data/log/hwf
   [ -f $f ] && grep -c $B $f | sed "s|^|$f: |"
 done
 
-echo "== VM lock"
-ls -ld /data/local/vm.lock 2>&1 && cat /data/local/vm.lock/owner 2>/dev/null

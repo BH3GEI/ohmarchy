@@ -27,7 +27,7 @@ user (`ARCH_USER`, default `builder`).
 | `audio/avsync.sh` | A3: mpv sound vs picture |
 | `compat/sysv_ipc.c` | SysV IPC on the HongMeng kernel |
 | `demo/d.sh` | demo of route D: desktop start, app, terminal and fastfetch, workspaces (fps), Firefox, Omarchy menu and Files, docker hello-world; a screenshot per step (needs the screen) |
-| `demo/i.sh` | demo of route I: VM start time, hello-world, compose with a bind mount, 0644 files (uses vm.lock) |
+| `demo/i.sh` | demo of route I: VM start time, hello-world, compose with a bind mount, 0644 files (needs no other StratoVirt running) |
 
 The tests only clean up processes they started themselves (the app's own session
 and its descendants, or the window they opened), never other processes of the same

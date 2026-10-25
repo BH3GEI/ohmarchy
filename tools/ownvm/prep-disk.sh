@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Make route I's disk on the HarmonyOS host (root, no VM, no vm.lock): a sparse
+# Make route I's disk on the HarmonyOS host (root, no VM): a sparse
 # copy of agent-2a's verified omarchy-pure.img with a 120 Hz EDID for the
 # virtio-gpu connector and the kernel argument that loads it.
 #   perl -e 'alarm 3600; exec @ARGV' ssh ohdev sh -s [SRC [DST]] < tools/ownvm/prep-disk.sh

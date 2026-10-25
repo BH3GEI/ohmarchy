@@ -1,7 +1,7 @@
 #!/bin/bash
 # Drive 铠大师 from a Mac/Linux host: create its VM from an ISO in 下载 and pick a
 # GRUB entry of kds-installer.iso, or close the VM. Needs tools/ohdev/ohui and the
-# ohdev ssh alias; take /data/local/vm.lock first (and power off 鸿融's VM).
+# ohdev ssh alias; power off 鸿融's VM first (HMV runs one VM at a time).
 #   tools/kaidashi/kds-run.sh start ROW ENTRY   ROW: the ISO's row in the picker's
 #                                               下载 list (1 = top), ENTRY: GRUB entry (0 = first;
 #                                               - = leave the ISO's own default, e.g. other ISOs)

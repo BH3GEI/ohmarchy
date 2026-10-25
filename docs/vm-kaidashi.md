@@ -61,8 +61,8 @@ On ohdev (MateBook 14 `HM740-001`, HarmonyOS `7.0.0.115`, HongMeng kernel
 - Its Windows-11-24H2-ARM64-only ISO check reads nothing but the WIM's XML
   metadata. A Debian 12 netboot ISO with a 2.5 KB fake `sources/install.wim`
   (`tools/kaidashi/make-fake-wim.sh`) is accepted as 安装版本 WINDOWS 11 PRO.
-- **A VM was created and booted from that ISO** (16:16, during a `vm.lock` slot
-  with 鸿融's VM powered off): UEFI → Debian's shim/GRUB → Debian 6.1 kernel →
+- **A VM was created and booted from that ISO** (16:16, with 鸿融's VM
+  powered off): UEFI → Debian's shim/GRUB → Debian 6.1 kernel →
   the probe script. No login, membership or payment was asked for.
 - The VM is Oseasy's machine minus a few devices: `svga-pci` (VMware SVGA II
   `15ad:0405`, 256 MB VRAM, no `xres`/`yres`), Windows firmware
@@ -119,7 +119,7 @@ route G, but it was not run:
 Why it was not done (decision of the supervising session, agent-75,
 2026-10-24): Windows setup accepts Microsoft's licence terms through 铠大师's
 autounattend, which the project does not do on the owner's behalf; it needs
-about 100 minutes of the host's single VM slot (both locks), the scarcest
+about 100 minutes of the host's single VM slot and its screen, the scarcest
 resource; and its outcome would repeat route B's, since 铠大师 and Oseasy share
 the same `vm_manager` and `svga-pci` stack. Also, the Windows 11 ISO that Oseasy
 had used was no longer on the device when this was considered.
@@ -394,23 +394,20 @@ host surface size, (2) provide its own EDID/modes (the device has none),
 
 | When | What |
 |---|---|
-| 2026-10-24 16:10 | `mkdir /data/local/vm.lock` (owner: kaidashi) |
 | 16:15 | 鸿融's VM powered off from inside the guest (`hl.dsp.exec_cmd("systemctl poweroff")` in its Hyprland session; 鸿融's page showed 已关机 with 关机 greyed out while the VM ran); StratoVirt gone in 6 s |
 | 16:16 | 铠大师 开始安装 with `kds-probe.iso`; one system prompt for the 文档 folder (answered 不允许); StratoVirt pid 38867 |
 | 16:17 | probe output in the host log; 铠大师 window shows the Linux console |
 | 16:18 | 铠大师 VM closed from its window (安装过程异常终止) |
 | 16:19 | 鸿融's VM started again (`tools/hongrong/hrvm start`), virgl GPU as before; at 16:28 its SDDM greeter is up |
-| 16:30 | lock removed |
-| 17:50 | lock (second slot, 30 min budget): 鸿融 powered off from the guest with `sudo poweroff` |
+| 17:50 | second slot (30 min budget): 鸿融 powered off from the guest with `sudo poweroff` |
 | 17:53 | 铠大师 VM from `kds-installer.iso` (pid 16476): 7.2.12 boots, eth0 up, host ping fails ([`runs/2026-10-24-k72`](../kaidashi/runs/2026-10-24-k72/)) |
 | 18:06 | second VM (pid 34450), same result; a GRUB command-line retry with `pci=nomsi` missed the menu |
 | 18:10 | 铠大师 VM closed, 鸿融 started; its SDDM greeter at 18:11 |
-| 18:12 | lock removed |
-| 21:14 | last slot, vm.lock + screen.lock (鸿融 was off); hilog captured with `timeout` |
+| 21:14 | last slot (鸿融 was off); hilog captured with `timeout` |
 | 21:16 | install session from `kds-installer.iso`: 7.2.12 boots, virtiofs share is dead (no shared dir), so the staged disk cannot be read; staged copy removed at 21:19 |
 | 21:18 | guest `poweroff -f`: 安装过程异常终止, VM destroyed (code 0) |
 | 21:21 | second session, guest `reboot -f`: VM keeps running, no state callback |
-| 21:23 | session closed (destroyed), 鸿融 started; greeter at 21:28; locks removed 21:29 |
+| 21:23 | session closed (destroyed), 鸿融 started; greeter at 21:28 |
 
 ![鸿融 back on its Omarchy greeter](img/kaidashi/hongrong-restored.jpeg)
 ![鸿融 after the second slot](img/kaidashi/hongrong-restored-2.jpeg)
@@ -460,8 +457,8 @@ for an empty disk is "Write Omarchy disk from the Documents share": it loads
 gzip-compressed image there, `stage-disk.sh remove` takes it away right after
 (文档 is the owner's personal folder). `stage-disk.sh putraw IMAGE` makes a
 sparse copy instead of compressing (`wininspect/slice.py`): route G's 64 GiB
-Omarchy disk (9.0 GiB of data) takes 11 s. Stage it only inside the lock
-slot and remove it right after the write: ohdev runs `cloudfiledaemon` and
+Omarchy disk (9.0 GiB of data) takes 11 s. Stage it only for the run
+and remove it right after the write: ohdev runs `cloudfiledaemon` and
 has the CloudDrive/CloudSync capabilities; whether 文档 is synced could not be
 told from the device read-only (`hmdfs/cloud` holds 559 KB), so a large file
 there might be uploaded.

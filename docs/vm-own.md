@@ -156,7 +156,7 @@ for later rebuilds, and in both GRUB entries
 window from route D's app's XComponent surface id
 (`OH_NativeWindow_CreateNativeWindowFromSurfaceId`) and flushes CPU-filled
 buffers into it; if pictures appear, a substitute `libhwf_kits.z.so` can hand
-that window to vhost-device-gpu. Needs the app open (screen.lock).
+that window to vhost-device-gpu. Needs the app open.
 
 Result (2026-10-24 08:22 PDT, run by the native-desktop line with route D's
 app open in GPU mode): surface id `8216272437645` from hilog
@@ -248,7 +248,7 @@ gives glmark2 933 at 640x480 and es2gears at its display's 60 Hz.
 Not the main route yet: the transport and security parts are in place, the
 protocol limit needs the proxy pair.
 
-## First run (2026-10-24 09:07–09:40 PDT, vm.lock, headless)
+## First run (2026-10-24 09:07–09:40 PDT, headless)
 
 `tools/ownvm/ownvm.sh` on `omarchy-own.img` (agent-2a's `omarchy-pure.img`
 plus the no-preferred 120 Hz EDID), StratoVirt on HMV, 6 vCPUs, 8 GiB,
@@ -341,7 +341,7 @@ docker 29.9.2 and docker-compose 5.6.1 clients; context `ohmarchy` =
 `authorized_keys` on the disk, the guest host key in builder's `known_hosts`.
 dockerd is not exposed on TCP.
 
-**Run as a service (2026-10-24 09:52–09:55 PDT, vm.lock):**
+**Run as a service (2026-10-24 09:52–09:55 PDT):**
 
 | Item | Result |
 |---|---|
@@ -350,7 +350,7 @@ dockerd is not exposed on TCP.
 | D → VM Docker | from D's terminal (archtest, `builder`, context `ohmarchy` over ssh), run by the native-desktop line: `hello-world` PASS (1.2 s), compose PASS |
 | Port 8080 | `docker run -p 8080:80 nginx:alpine`: 200 from the guest (127.0.0.1, 172.16.100.2, localhost) and from the host. The first run's `000` was a race, not the port mapping: nginx listens a moment after compose reports "Started", and the first request is reset; `guest-setup.sh` now retries |
 | Balloon (free page reporting) | host RSS of StratoVirt: 1151 MiB idle → 4109 MiB with 3000 MiB written to `/dev/shm` in the guest → **1161 MiB within ~6 s** after deleting it. Idle: ~1.17 GiB host RSS for an 8 GiB guest |
-| `ohmarchy-vm stop` | power-off from inside the guest in ~10 s; rules, tap and lock removed |
+| `ohmarchy-vm stop` | power-off from inside the guest in ~10 s; rules and tap removed |
 
 StratoVirt's `query-balloon` answers `GenericError "No error information (os
 error 0)"`, so `status` shows host RSS instead; the reclaim itself works.
@@ -412,7 +412,7 @@ Next slot: mount in the guest, `ls -ln /home/builder`, a file created by yao
 and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then
 `ls -ln` in D for both; `docker compose up` with a bind mount from D.
 
-### Home share, run (2026-10-24 10:48–10:59 PDT, vm.lock)
+### Home share, run (2026-10-24 10:48–10:59 PDT)
 
 | Check | Result |
 |---|---|
@@ -457,7 +457,7 @@ sets umask 022 before exec, for the 0660 files (HongMeng's root shells start
 with umask 007). To verify in the next slot: `Umask` in virtiofsd's
 `/proc/PID/status` and a container's new file being 0644 in D.
 
-**umask check (2026-10-24 13:09–13:10 PDT, vm.lock).** Not fixed by
+**umask check (2026-10-24 13:09–13:10 PDT).** Not fixed by
 `umask(022)` in `dropuid`: virtiofsd shows `Umask: 0000` (it sets this itself,
 as passthrough servers do, and applies the guest's mode). The guest's umask is
 0022 (yao's shell and an Alpine container), yet in D the new files are `0660`
@@ -480,12 +480,11 @@ convention, and this build's own options point there: `--mapped-perm`
 ("whether pass the host side uid/gid/mode directly to the virtual machine or
 the virtual machines have independent uid/gid/mode"; with it, it logs
 `Use mapped perm: euid: …, supgid: …`). Without it the VM gets "independent"
-modes and the host file seemingly a fixed one. To try next time vm.lock is
-held anyway: `OVM_FS_EXTRA=--mapped-perm` (interaction with `--translate-uid`
+modes and the host file seemingly a fixed one. To try in the next run: `OVM_FS_EXTRA=--mapped-perm` (interaction with `--translate-uid`
 unknown), and failing that `--posix-acl`/`--xattr` (no default ACL is set on
 D's home: not checked).
 
-**Options tried (2026-10-24 19:25–19:27 PDT, vm.lock, about 3 minutes; the
+**Options tried (2026-10-24 19:25–19:27 PDT, about 3 minutes; the
 host clock said 10:25 CST on the 25th).** The 0660/0771 stays; it cannot be
 changed with any option or command we have:
 
@@ -518,12 +517,10 @@ bytes, on ohdev as `/data/local/kaidashi/bin/virtiofsd-upstream`.
 HarmonyOS's `--cmd-socket-path`, `--passthrough-fs`, `--log-file`, so those
 are left out and its log goes to `svc/virtiofsd.out`. In a container as
 60000:60000 with the service's id mappings, it got as far as "Waiting for
-vhost-user socket connection". Still to check with a guest on ohdev (next
-vm.lock slot): it runs on HongMeng, `share-test.sh` and `umask-test.sh`
+vhost-user socket connection". Still to check with a guest on ohdev: it runs on HongMeng, `share-test.sh` and `umask-test.sh`
 pass, new files are 0644/0755, chmod works.
 
-**Upstream virtiofsd verified, now the default (2026-10-25 10:12–10:13 PDT,
-vm.lock lent by agent-2a, then handed to OSEasy).** `upstream-fs-test.sh`
+**Upstream virtiofsd verified, now the default (2026-10-25 10:12–10:13 PDT).** `upstream-fs-test.sh`
 with the same uid 60000, no capabilities, and the same id mappings:
 
 | Check | System virtiofsd (HarmonyOS 1.13.0) | Upstream 1.14.0 |

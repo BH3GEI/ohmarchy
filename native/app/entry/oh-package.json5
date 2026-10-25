@@ -1,10 +1,9 @@
 {
   "name": "entry",
   "version": "1.0.0",
-  "description": "Please describe the basic information.",
+  "description": "display app",
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": { "libbbload.so": "file:./src/main/cpp/jl/types/libbbload" }
 }
-

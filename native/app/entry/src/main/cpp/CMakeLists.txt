@@ -24,3 +24,6 @@ target_include_directories(ohdisp PRIVATE ${GPU} ${V}/src ${V}/src/gallium/inclu
 target_compile_options(ohdisp PRIVATE -O2)
 target_link_libraries(ohdisp PUBLIC libace_napi.z.so libace_ndk.z.so libnative_window.so libhilog_ndk.z.so
     libohinputmethod.so libohaudio.so hwf_kits.z ${PREBUILT}/libvirglrenderer.so m)
+
+# Route J (J+D) loader module, independent of the GPU libs
+add_subdirectory(jl)

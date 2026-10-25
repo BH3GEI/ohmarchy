@@ -1,6 +1,7 @@
 // The Linux desktop fills the window: libohdisp.so draws it into the XComponent and
 // handles input. Until the first frame arrives, a status line says what is going on.
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { startJl } from '../jl/jl';
 
 interface OhdispModule {
   getStatus(): string;
@@ -15,6 +16,7 @@ struct Index {
   private timer: number = -1;
 
   aboutToAppear(): void {
+    if (AppStorage.get<boolean>('jl') === true) { startJl(); }
     this.timer = setInterval(() => {
       if (this.ohdisp) {
         this.status = this.ohdisp.getStatus();

@@ -7,6 +7,8 @@ const DOMAIN = 0x0D0D;
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+    const jlp: Object | undefined = want?.parameters?.['jl'];
+    AppStorage.setOrCreate('jl', jlp === true || jlp === 'true');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {

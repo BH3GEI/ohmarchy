@@ -43,20 +43,23 @@ function probe() {
 // with WebAssembly.instantiate(bytes, {e: imports}). Each success is a block of
 // x86 code turned into native code by the engine's wasm compiler.
 const jit = { ok: 0, fail: 0, bytes: 0, first_error: null };
-const origInstantiate = WebAssembly.instantiate.bind(WebAssembly);
-WebAssembly.instantiate = function (src, imports) {
-  const p = origInstantiate(src, imports);
-  if (imports && imports.e && src instanceof Uint8Array) {
-    jit.bytes += src.length;
-    p.then(() => { jit.ok++; }, (e) => { jit.fail++; if (!jit.first_error) { jit.first_error = String(e); log("jit-fail", e); } });
-  }
-  return p;
-};
+if (typeof WebAssembly === "object") {
+  const origInstantiate = WebAssembly.instantiate.bind(WebAssembly);
+  WebAssembly.instantiate = function (src, imports) {
+    const p = origInstantiate(src, imports);
+    if (imports && imports.e && src instanceof Uint8Array) {
+      jit.bytes += src.length;
+      p.then(() => { jit.ok++; }, (e) => { jit.fail++; if (!jit.first_error) { jit.first_error = String(e); log("jit-fail", e); } });
+    }
+    return p;
+  };
+}
 
 // --- 3. Emulator -----------------------------------------------------------------
 const P = new URLSearchParams(location.search);
 async function main() {
   const pr = probe();
+  if (!pr.wasm) { stat.textContent = "this WebView has no WebAssembly (JIT disabled?): v86 cannot run"; return; }
   let cfg = {};
   try { cfg = await (await fetch("config.json")).json(); } catch (e) { log("no config.json", e); }
   const memMB = +(P.get("mem") || cfg.memory_mb || 512);

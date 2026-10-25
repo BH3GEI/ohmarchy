@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "xpm probe",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": { "libjl.so": "file:./src/main/cpp/types/libjl" }
+}

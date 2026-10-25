@@ -507,3 +507,18 @@ be a different virtiofsd (upstream rust-vmm built for HongMeng), which isn't
 worth it for this. Fixed along the way: `ohmarchy-vm stop`'s guest ssh read
 the caller's stdin, which ate the rest of a `sh -s` script; it now reads
 `/dev/null`.
+
+**Upstream virtiofsd as the fix (built 2026-10-25, not yet verified on ohdev).**
+Static aarch64 build of upstream virtiofsd v1.14.0 (commit `c2540f8d`), built
+natively in an arm64 `alpine:3.22` container (rustc 1.87.0, musl 1.2.5,
+libseccomp 2.6.1, libcap-ng 0.8.5, all static, non-PIE, no interpreter):
+`tools/ownvm/build-virtiofsd.sh`. sha256
+`a12e4dbf2cfe8ad329b1dc2276ced88f0a2a991c79e5dceb4ee2629289a00463`, 2 560 408
+bytes, on ohdev as `/data/local/kaidashi/bin/virtiofsd-upstream`.
+`OVM_VIRTIOFSD=upstream ohmarchy-vm start` uses it. Upstream has none of
+HarmonyOS's `--cmd-socket-path`, `--passthrough-fs`, `--log-file`, so those
+are left out and its log goes to `svc/virtiofsd.out`. In a container as
+60000:60000 with the service's id mappings, it got as far as "Waiting for
+vhost-user socket connection". Still to check with a guest on ohdev (next
+vm.lock slot): it runs on HongMeng, `share-test.sh` and `umask-test.sh`
+pass, new files are 0644/0755, chmod works.

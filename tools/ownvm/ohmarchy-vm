@@ -16,6 +16,10 @@
 #   OVM_DISK  raw disk image                 ($OVM_DIR/omarchy-own.img)
 #   OVM_CPUS  vCPUs (6)   OVM_MEM  MiB (8192)   OVM_GPU=1  virgl GPU (off)
 #   OVM_SHARE=0  no home share (default: share D's /home/builder, see below)
+#   OVM_VIRTIOFSD=upstream  serve the share with /data/local/kaidashi/bin/
+#             virtiofsd-upstream (static build of upstream 1.14.0,
+#             tools/ownvm/build-virtiofsd.sh) instead of HarmonyOS's own build,
+#             which forces 0660/0771 on every file (being verified)
 #
 # Home share: route D's terminal runs as builder (uid/gid 60000) in the
 # archtest session, so D's /home/builder (on the host only as
@@ -122,12 +126,20 @@ start() {
     fi
     run_as="/data/local/kaidashi/bin/dropuid 60000 60000"
     [ "${OVM_FS_ROOT:-0}" = 1 ] && run_as=   # diagnostic: virtiofsd as root
+    ids="--translate-uid host:60000:1000:1 --translate-uid squash-guest:0:60000:4294967295
+      --translate-gid host:60000:1000:1 --translate-gid squash-guest:0:60000:4294967295"
+    if [ "${OVM_VIRTIOFSD:-system}" = upstream ]; then
+      # upstream has no --cmd-socket-path, --passthrough-fs or --log-file
+      # (HarmonyOS additions): its log goes to stderr, i.e. virtiofsd.out
+      $run_as /data/local/kaidashi/bin/virtiofsd-upstream --shared-dir $MB --socket-path $FD/fs.sock \
+        --tag builder --sandbox none --seccomp none --rlimit-nofile 0 --cache auto --announce-submounts \
+        ${OVM_FS_EXTRA:-} $ids > $D/virtiofsd.out 2>&1 &
+    else
     $run_as /data/local/kaidashi/bin/virtiofsd --shared-dir $MB --socket-path $FD/fs.sock \
       --cmd-socket-path $FD/fs-cmd.sock --tag builder \
       --sandbox none --seccomp none --rlimit-nofile 0 --cache auto --announce-submounts --passthrough-fs ${OVM_FS_EXTRA:-} \
-      --translate-uid host:60000:1000:1 --translate-uid squash-guest:0:60000:4294967295 \
-      --translate-gid host:60000:1000:1 --translate-gid squash-guest:0:60000:4294967295 \
-      --log-file $FD/virtiofsd.log > $D/virtiofsd.out 2>&1 &
+      $ids --log-file $FD/virtiofsd.log > $D/virtiofsd.out 2>&1 &
+    fi
     echo $! > $D/virtiofsd.pid
     i=0; while [ ! -S $FD/fs.sock ] && [ $i -lt 10 ]; do sleep 1; i=$((i+1)); done
     if [ -S $FD/fs.sock ]; then

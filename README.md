@@ -157,7 +157,7 @@ Concluded (outcome B: no persistent Omarchy VM in 铠大师). The tools remain:
 tools/kaidashi/wrap-iso.sh IN.iso OUT.iso            # any UEFI ISO passes 铠大师's Windows-only check
 tools/kaidashi/installer/build.sh WORKDIR linux-aarch64-7.2.12-*.pkg.tar.xz   # 7.2.12 probe/installer ISO
 perl -e 'alarm 180; exec @ARGV' ssh ohdev sh -s < tools/kaidashi/probe.sh       # read-only survey
-tools/kaidashi/kds-run.sh start ROW ENTRY            # drive the wizard (take vm.lock + screen.lock first)
+tools/kaidashi/kds-run.sh start ROW ENTRY            # drive the wizard
 ```
 
 Details, evidence and the comparison: [docs/vm-kaidashi.md](docs/vm-kaidashi.md).

@@ -254,3 +254,30 @@ cross-built with `-Dscanner=false` and a meson **native file** whose `pkg_config
 the native `wayland-scanner.pc`. libffi is wayland's only hard dep. All `.a` confirmed AArch64;
 `.pc` files land in `$PREFIX/lib/pkgconfig` for the downstream builds. **Next: Stage 2 (mesa
 virgl, no-llvm).**
+
+### Stage 2 — mesa (virgl, no-LLVM) for OHOS musl (DONE)
+
+Built offline on a Mac (NDK clang 15), **no build products on ohdev**. Recipe:
+`device/userspace/build-stage2.sh`. mesa **24.3.4**, `-Dgallium-drivers=virgl -Dllvm=disabled
+-Dvulkan-drivers= -Dplatforms=wayland -Dglx=disabled -Degl -Dgles2 -Dgbm`.
+
+Added target deps: **zlib 1.3.1** (libz.a 117K — its Darwin Makefile forces Apple `libtool`
+which rejects ELF objects, so the lib is built by hand), **expat 2.6.4** (libexpat.so 167K — a
+runtime `NEEDED` of libEGL; the tools subdir errors but the lib installs), and host data
+**wayland-protocols 1.38** (into the native prefix). mesa host-build python needs `mako` +
+`packaging` (its mako check imports `packaging.version`; distutils is gone in py3.12+) + `pyyaml`.
+
+| artifact | size |
+|---|---|
+| libEGL.so | 681K |
+| libGLESv2.so | 86K |
+| libgbm.so | 194K |
+| libgallium-24.3.4.so (**holds the virgl driver**) | 14M |
+| libexpat.so (runtime dep) | 167K |
+| **deployable total** | **~16M** |
+
+virgl confirmed inside libgallium (`pipe_virtio_gpu_create_screen` + the full `virgl_*` gallium
+API). All `.so` are AArch64. libEGL's runtime `NEEDED`: libgallium, libgbm, libglapi, libexpat,
+plus OHOS `libc++_shared.so` + musl `libc.so` — all satisfiable on device. The guest-side virgl
+pipe talks to a host virglrenderer; wiring that to Aetherium's in-app GL path is the Stage-2→3
+integration risk already flagged. **Next: Stage 3 (Hypr C++ stack with clang 23 + libc++23).**

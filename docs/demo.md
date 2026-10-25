@@ -79,9 +79,10 @@ What it shows: Omarchy (Arch Linux ARM + Hyprland) running as 鸿融's own VM
 on the HarmonyOS PC, on a linux-aarch64 7.2.12 kernel with the 鸿融 patches
 (`arm64.hmv_idreg_quirk`), with virgl GPU acceleration.
 
-Two versions. **C1** applies if the Developer image imports through 鸿融's UI
-(the os_type 1 image, see [hongrong-whole-os.md](hongrong-whole-os.md#developer-image));
-otherwise use **C2**, which needs nothing new.
+Two versions. **C1** imports the Developer image through 鸿融's UI (works
+since 2026-10-26: the os_type 1 image, see
+[hongrong-whole-os.md](hongrong-whole-os.md#developer-image)); **C2** shows
+Yao's existing main VM and needs no deletion or restore.
 
 Never written into any file, including this one: the VM login password. It
 lives in an environment variable on the presenting machine only (`PW` below).
@@ -94,6 +95,10 @@ lives in an environment variable on the presenting machine only (`PW` below).
 - C1 only: 鸿融 1.1.1.103 holds one VM, so Yao's main VM has to go first. Back
   it up and verify sha256, delete it in 鸿融 (更多 → 删除), and have the Developer
   image `omarchy-dev-7.2.12-os1.qcow2` in the file manager's 下载 folder.
+  That image has neither glmark2 nor the 120 Hz EDID (build-disk.sh adds
+  both from now on, not yet rebuilt). With it, do one dry-run import before
+  the demo and in that VM run `sudo pacman -S mesa-utils glmark2` and
+  `sudo hongrong/edid/install-edid.sh`, or skip steps 7–8.
   After the demo, restore the main VM with `hrswap.sh restore-main IMGDIR BACKUPDIR`
   (see hongrong-whole-os.md).
 - C2 only: the main VM shows 已关机 in 鸿融.
@@ -102,19 +107,20 @@ lives in an environment variable on the presenting machine only (`PW` below).
 
 | # | Action | Expected | Time |
 |---|---|---|---|
-| 1 | Open 鸿融 from the dock (orange-yellow icon). | Empty VM page with 创建虚拟机. | 5 s |
-| 2 | 创建虚拟机 → choose a local image. | The file picker (选择文件) opens on 个人 › 下载. | 10 s |
+| 1 | Open 鸿融 from the dock (orange-yellow icon). With no VM it opens on "请选择虚拟机镜像来源". | 本地文件 card on the right. | 5 s |
+| 2 | 本地文件 (940, 365). | The file picker (选择文件) opens on 个人 › 下载. | 5 s |
 | 3 | Click `omarchy-dev-7.2.12-os1.qcow2` in the list, then 打开 (1185, 775). | 镜像文件 page shows the file name. | 10 s |
-| 4 | 开始安装 (1137, 742). | "正在安装 Linux 系统，请稍候…" progress. 鸿融 hashes the file (about 20 s for 9.6 GB), then copies it. | about 1 min |
-| 5 | The VM starts by itself after import (it did with the 鸿融-made image). If not: 开机 (836, 393). | Full-screen VM window, then the 增强服务 guide dialog; close it with 知道了 (719, 685). | 1–1.5 min to SDDM |
-| 6 | Log in: click the password field, then `ohui type "$PW"` followed by a newline (or type by hand). | Hyprland desktop (Omarchy theme, top bar). | 10 s |
+| 4 | 开始安装 (1137, 742). | "正在安装 Linux 系统，请稍候…" progress: 鸿融 hashes the file, then copies it. | under 1 min (measured 2026-10-26) |
+| 5 | The VM starts by itself after the import. | Full-screen VM window with the Omarchy SDDM login; the 增强服务 guide dialog may appear, close it with 知道了 (719, 685). | measured: login screen less than 1 min after 开始安装 |
+| 6 | Take a screenshot first and check 鸿融's VM window is in front (another app's window took the keystrokes once). Log in: click the password field (737, 565; with the 120 Hz EDID the greeter is larger: 743, 594), then `ohui type "$PW"` followed by a newline (or type by hand). | Hyprland desktop (Omarchy theme, top bar). | 15 s |
 | 7 | GPU: open a terminal (Super+Return) and run `glmark2-es2-wayland --fullscreen`; or from the presenting machine over ssh: `hongrong/pure/guest/gfx.sh glmark2`. | Fullscreen glmark2 scenes; score at the end. Reference: **596**, renderer `virgl (zink Vulkan 1.2 (Maleoon 916))`. | about 2.5 min |
-| 8 | 120 Hz: in the terminal, `hyprctl monitors` shows `2160x1440@120`. On the host, start the 120 Hz vote window: `aa start -b com.ohmarchy.vote120 -a EntryAbility --pi w 64 --pi h 32`, then read the on-screen rate with `hidumper -s RenderService -a "composer fps"`. | Mode line at 120 Hz. On-screen rate: to be filled in after this round's measurement. | 1 min |
+| 8 | 120 Hz (needs the EDID): in the terminal, `hyprctl monitors` shows `2160x1440@119.98`. Say it plainly: the guest renders at 120 Hz, but 鸿融 shows the fullscreen VM at **60 Hz on screen** (measured with `hidumper -s RenderService -a "composer fps"`). Do not start the vote120 window: bringing it to the front makes 鸿融 drop the VM's fullscreen view. | Mode line at 119.98 Hz; screen at 60 Hz. | 30 s |
 | 9 | Optional: `uname -r` → `7.2.12-1.1-aarch64-ARCH`; `cat /proc/cmdline` shows `arm64.hmv_idreg_quirk`. | | 20 s |
 
 Talking points: one qcow2 file, imported with 鸿融's own button; no root on
 the host, no deepin. The kernel is Arch's own `linux-aarch64` with two small
-patches. The import used to fail on a single header byte (os_type).
+patches. The import used to fail on a single header byte (os_type). 120 Hz
+reaches the guest's display; 鸿融 itself presents the VM at 60 Hz.
 
 ### C2: Yao's main VM (about 4 min)
 
@@ -132,8 +138,7 @@ kernel work.
 | 6 | Shut down: Super+Esc → power off from Omarchy's menu, or 鸿融's own stop control. | 鸿融 shows 已关机. | 20 s |
 
 Not yet rehearsed: the Super-key shortcuts through `ohui key` (keycodes are
-checked in the rehearsal), and the import entry's exact click positions in
-C1 steps 1–2.
+checked in the rehearsal). C1 steps 1–6 ran on 2026-10-26 as written.
 
 ## D: Omarchy natively on HarmonyOS
 

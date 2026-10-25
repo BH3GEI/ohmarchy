@@ -13,6 +13,12 @@
 # native Arch environment on the HarmonyOS host, via arch.sh run).
 # Usage: build-disk.sh WORKDIR USER PASSWORD KERNEL_PKG...
 #   WORKDIR gets root/, esp.img, root.img and the result omarchy-pure.img
+# Environment: DISK_GIB, ESP_MIB, CMDLINE; EDID (default hongrong/edid/
+# omarchy-120.bin, empty for none): an EDID with a 2160x1440@120 mode for the
+# virtio-gpu output, loaded with drm.edid_firmware (see hongrong/edid);
+# EXTRA_PKGS (default "mesa-utils glmark2", the GPU checks in guest/gfx.sh).
+# The EDID and EXTRA_PKGS steps were added 2026-10-26 and have not been run
+# in a full build yet; the same steps done by hand in a running VM worked.
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
@@ -20,6 +26,9 @@ pkgs=("$@"); [ ${#pkgs[@]} -gt 0 ] || { echo "no kernel packages given"; exit 1;
 here=$(cd "$(dirname "$0")/.." && pwd)        # hongrong/
 disk_gib=${DISK_GIB:-64} esp_mib=${ESP_MIB:-512}
 cmdline=${CMDLINE:-"rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200"}
+edid=${EDID-$here/edid/omarchy-120.bin}
+extra_pkgs=${EXTRA_PKGS-mesa-utils glmark2}
+[ -z "$edid" ] || cmdline="$cmdline drm.edid_firmware=Virtual-1:edid/$(basename "$edid")"
 R=$W/root
 
 pacman -S --needed --noconfirm mtools dosfstools e2fsprogs grub >/dev/null
@@ -114,6 +123,12 @@ mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R
 sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
 in_root bash /root/hongrong/20-install-omarchy.sh "$user"
 rm -rf "$R/root/hongrong"
+[ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
+# virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
+if [ -n "$edid" ]; then
+  install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/$(basename "$edid")"
+  echo "FILES+=(/usr/lib/firmware/edid/$(basename "$edid"))" > "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
+fi
 # omarchy-apply-system may regenerate the initramfs with autodetect again
 sed -i 's/^HOOKS=(\(.*\)autodetect \(.*\))/HOOKS=(\1\2)/' "$R/etc/mkinitcpio.conf"
 in_root mkinitcpio -P

@@ -243,8 +243,8 @@ The scripts follow the ISO's order: repositories and keys, packages,
 A ready-made Omarchy disk for the 鸿融 app: download one qcow2 file, import it
 in 鸿融, start it. No root on the HarmonyOS PC, no deepin, no build step.
 
-**Status (2026-10-24, 08:00–08:45 PDT): runs in 鸿融 1.1.1.103; one-click
-import still blocked (cause found 2026-10-26, see below).** The image, booted as 鸿融's own VM (started from the 鸿融
+**Status (2026-10-26): imports through 鸿融 1.1.1.103's own UI and runs.**
+(Checks below from 2026-10-24, 08:00–08:45 PDT, unless dated.) The image, booted as 鸿融's own VM (started from the 鸿融
 UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 
 | Check | Result |
@@ -253,13 +253,13 @@ UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 | Desktop | SDDM → Hyprland (Omarchy 4.0.6) as `yao` on the 鸿融 screen |
 | Network | 172.16.100.2 on 鸿融's bridge; `pacman -Sy` from the mirrors works |
 | GPU | Mesa 26.2.5, `virgl (zink Vulkan 1.2 (Maleoon 916))`; glmark2-es2-wayland fullscreen: **596** |
-| Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`) |
+| Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`); with the 120 Hz EDID still 60 on screen, see 120 Hz below (2026-10-26) |
 | Docker | 29.9.2, overlayfs, cgroup v2: `hello-world`, `postgres:16-alpine` (`pg_isready`), `docker compose` with nginx; through registry mirrors |
 | Soak | 30 min, all 6 vCPUs busy (load 6.0): `running` throughout, no RCU stall, soft lockup, hung task or Oops |
-| 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) the kernel keeps 2160x1440@120 and the CRTC runs at 120 Hz; frames reaching the 鸿融 screen not measured yet |
+| 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) Hyprland runs `Virtual-1` at 2160x1440@119.98; 鸿融 shows the fullscreen VM at 60 Hz (2026-10-26) |
+| Import | 2026-10-26, 03:06 CST: 本地文件 → `omarchy-dev-7.2.12-os1.qcow2` (9.6 GB) → 开始安装; imported, started by itself and at the SDDM login in under a minute |
 
-**Import through 鸿融's UI fails; cause found (2026-10-26), fix not yet
-imported.** "导入 qcow2" rejected every variant tried (zlib-compressed,
+**Why import failed before (fixed 2026-10-26).** "导入 qcow2" rejected every variant tried (zlib-compressed,
 uncompressed 64 GiB, resized to 256 GiB, StratoVirt-shaped header) with
 "镜像可能在传输过程中损坏" or "disk is damaged". The persisted hilog
 (`/data/log/hilog/hilog.*.gz`, read with `zcat | strings`) shows the steps:
@@ -281,7 +281,8 @@ header. `stratovirt-img set DISK os_type=1`
 that byte; [qcow2-stratovirt-header.py](../hongrong/pure/qcow2-stratovirt-header.py)
 now writes it too, giving byte-identical headers. The snapshot in 鸿融's disks
 (`snapshot_…`, VM size 0) is 鸿融's auto backup, made after import, and not
-required. Still to do: import the os_type 1 image through the UI.
+required. The os_type 1 image then imported (table above). Making it:
+[hongrong/pure/make-qcow2.sh](../hongrong/pure/make-qcow2.sh) RAW OUT.
 
 **120 Hz:** `hongrong/edid` makes an EDID with a 2160x1440@120 preferred mode;
 with `drm.edid_firmware=Virtual-1:edid/omarchy-120.bin` the kernel reads it
@@ -290,9 +291,16 @@ with `drm.edid_firmware=Virtual-1:edid/omarchy-120.bin` the kernel reads it
 `conn_mode_valid` deletes a preferred mode whose size differs from the host
 scanout by more than 16 px (found by the Route I line, docs/vm-own.md).
 `mkedid.py` now marks no timing preferred; then the probed modes are
-2160x1440@120 and @60, and the active CRTC mode is the 120 Hz one. Still to
-measure: how many of those frames 鸿融 puts on screen (with and without a
-120 Hz vote window).
+2160x1440@120 and @60, and the active CRTC mode is the 120 Hz one.
+
+On screen (2026-10-26, es2gears fullscreen in the guest, host composer rate
+from `hidumper -s RenderService -a "composer fps"`): with the VM fullscreen
+in 鸿融 the screen runs at **60 fps**. A 120 Hz vote window
+(`com.ohmarchy.vote120`) only counts while it is visible, and bringing any
+other window to the front makes 鸿融 leave the VM's fullscreen view for its
+main page (composer then 120 fps, VM only in the small preview). So the guest
+renders at 120 Hz but 鸿融 1.1.1.103 presents the VM at 60 Hz; this is on
+鸿融's side.
 
 ### What is in it
 
@@ -302,17 +310,23 @@ measure: how many of those frames 鸿融 puts on screen (with and without a
   `arm64.hmv_idreg_quirk`; pacman owns the kernel, so `pacman -Syu` keeps
   working as long as the package keeps the patches (see the PKGBUILD).
 - One partition layout: 512 MiB EFI system partition with GRUB at the
-  removable-media path, ext4 root. 64 GiB virtual size, about 4 GiB to
-  download (compressed qcow2).
-- Built from scratch by [hongrong/pure/build-disk.sh](../hongrong/pure/build-disk.sh).
+  removable-media path, ext4 root (64 GiB filesystem layout) in a qcow2 of
+  256 GiB virtual size, about 9.6 GB to download.
+- Built from scratch by [hongrong/pure/build-disk.sh](../hongrong/pure/build-disk.sh),
+  then [make-qcow2.sh](../hongrong/pure/make-qcow2.sh). build-disk.sh now
+  also installs the 120 Hz EDID (`drm.edid_firmware`) and `mesa-utils
+  glmark2`; that version has not been built yet: the imported
+  `omarchy-dev-7.2.12-os1.qcow2` got them by hand
+  (`hongrong/edid/install-edid.sh`, `pacman -S mesa-utils glmark2`).
 
 ### Import
 
-1. Copy `omarchy-dev-7.2.12.qcow2` into the HarmonyOS file manager's
+1. Copy `omarchy-dev-7.2.12-os1.qcow2` into the HarmonyOS file manager's
    Downloads folder.
 2. In 鸿融: if a VM exists, it has to go first (1.1.1.103 holds exactly one
-   VM; back up its disk if it matters). Choose 本地文件 → the qcow2 file, then
-   start it.
+   VM; back up its disk if it matters): 更多 → 删除. Then 本地文件 → the
+   qcow2 file → 打开 → 开始安装. The VM starts by itself when the import is
+   done (under a minute for 9.6 GB).
 3. Log in as `yao` (the password is given with the download, not here);
    change it with `passwd`.
 

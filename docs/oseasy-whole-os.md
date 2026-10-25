@@ -435,7 +435,7 @@ the runs above unless marked pending.
 | Frames on screen | 60 (composer fps; panel stays at 60 Hz). With ohmarchy-120 focused the panel goes to 120 Hz but composition reaches only 40-51/s (two layers); with the console focused the vote stops counting (60 Hz) | 60 | 117-120 |
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
 | Runs next to another VM | not tested, held back by `vm.lock` (HMV runs one VM at a time on this machine); the system VM kit has the error `Not support vm multi-instance` | not tested, same kit and lock | yes (no VM) |
-| Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app's own start not timed | about 2 min from kernel start to `systemd running` (pure disk, [hongrong-whole-os.md](hongrong-whole-os.md)) | about 8 s (session 2.0 s + desktop 5.7-6.1 s, [acceptance.md](acceptance.md) B) |
+| Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app itself, cold (`aa force-stop`, `aa start`) to its first page: 1.1-1.9 s (3 rounds, `uitest dumpLayout` polling, 2026-10-25 20:15) | about 2 min from kernel start to `systemd running` (pure disk, [hongrong-whole-os.md](hongrong-whole-os.md)) | about 8 s (session 2.0 s + desktop 5.7-6.1 s, [acceptance.md](acceptance.md) B) |
 | App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | not measured: the VM boots to the SDDM login screen, a login is needed | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | es2gears 114-120 in the guest, 60 on screen | es2gears 114-120, 117-120 on screen |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
@@ -961,8 +961,7 @@ stop it only via the 鸿融 UI and restore after". screen.lock was released.
 
 - Omarchy 4.0.6 cold-boots into Hyprland in Oseasy 3.1.1.7 with the
   `vmwgfx-oseasy` driver (3D through Mesa SVGA3D → DXVK → Vulkan). The comparison
-  table above is complete except: 鸿融 app launch (needs a login), the Oseasy app's
-  own start time, and running next to another VM (not tested, `vm.lock`).
+  table above is complete except: 鸿融 app launch (needs a login), and running next to another VM (not tested, `vm.lock`).
 - Stability: the GPU-soak hang (use-after-free of command buffer headers) is
   fixed with a 5 ms hold. 77 min plus 3 h 07 min under GPU load without a fault. The
   cause is inferred from the backtrace, not observed directly.

@@ -88,8 +88,8 @@ lives in an environment variable on the presenting machine only (`PW` below).
 
 ### Before the demo (not shown, about 20 min)
 
-- Take `/data/local/vm.lock` and `/data/local/screen.lock`; nobody else runs
-  VMs or touches the screen during the demo.
+- No other VM running (`pidof stratovirt` prints nothing; HMV runs one VM at
+  a time), and nobody else drives the screen during the demo.
 - Close or minimize other windows so 鸿融 is in front. Clear notifications.
 - C1 only: 鸿融 1.1.1.103 holds one VM, so Yao's main VM has to go first. Back
   it up and verify sha256, delete it in 鸿融 (更多 → 删除), and have the Developer

@@ -5,8 +5,7 @@
 # outside the 鸿融 app, the way 鸿融 starts its VM (HMV acceleration, the same
 # UEFI firmware, virtio-blk/net, vsock), with the serial console in a file.
 # The serial console is a unix socket ($D/serial.sock) to log in through.
-# Run as root on the host. Only while the 鸿融 VM is shut down and the shared
-# lock /data/local/vm.lock is held (see docs/hongrong-whole-os.md).
+# Run as root on the host, only while no other VM runs (HMV runs one at a time).
 #   testvm.sh start DISK   start (DISK: raw image)
 #   testvm.sh status       pid, vCPUs started (host VM log), serial tail
 #   testvm.sh stop         ACPI power button via QMP, then wait; kill after 60 s
@@ -31,7 +30,6 @@ case "$1" in
 start)
   disk=${2:?disk}
   pidof stratovirt >/dev/null && { echo "a StratoVirt VM is running (鸿融?); not starting"; exit 1; }
-  [ -d /data/local/vm.lock ] || { echo "take /data/local/vm.lock first"; exit 1; }
   mkdir -p $D; rm -f $D/qmp.sock $D/serial.sock
   ip tuntap add dev $TAP mode tap 2>/dev/null
   [ -n "$BR" ] && ip link set $TAP master $BR

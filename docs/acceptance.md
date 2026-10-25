@@ -428,12 +428,15 @@ repository on the machine that drives the host (`ssh ohdev` works there); the
 others are on the HM740 itself. Hold `/data/local/screen.lock` for 1-4 (tell the
 other test lines first).
 
+Already done remotely since: HarmonyOS screen off and on (20 of 20, C4), sound
+shown to go out (A3). What still needs a person:
+
 1. **Hear the sound** (A3). Turn the media volume up to about half. Open
    "Omarchy (native)". Mac: `tests/audio/run.sh`; you should hear ten short beeps,
    evenly spaced, no crackle. Then in the native desktop open a terminal and run
    `mpv --fs` on any video with speech; lips and voice should match. Put the volume
    back to where it was.
-2. **Screen off and on** (C). With "Omarchy (native)" open and a terminal in it:
+2. **Screen off and on with the power button** (C; the timeout path is tested). With "Omarchy (native)" open and a terminal in it:
    press the power button, wait 10 s, press it again, unlock. The desktop must
    come back showing the same windows, and typing in the terminal must work.
    Do it 20 times (or let the screen time out a few of those times). Note any
@@ -454,7 +457,9 @@ other test lines first).
    - 鸿融 VM open on its Omarchy desktop, idle (native desktop stopped);
    - 鸿融 VM, `es2gears_wayland` running in it.
    Record the watts each prints. Plug back in.
-5. **Start at boot** (only with Yao's go-ahead to reboot). Reboot the HM740 and
-   log in. Within about a minute "Omarchy (native)" opened from the dock must show
-   the desktop; `ssh ohdev cat /data/local/archtest/boot-start.log` shows when it
-   started.
+5. **Start at boot**: needs one planned reboot with Yao present. Not done
+   remotely: after the last reboot HarmonyOS replaced 鸿融 (1.3.1.80 with
+   1.1.1.103) by itself, and another reboot could change Yao's apps again, which
+   cannot be undone from here. Reboot the HM740 and log in. Within about a minute
+   "Omarchy (native)" opened from the dock must show the desktop; `ssh ohdev cat
+   /data/local/archtest/boot-start.log` shows when it started.

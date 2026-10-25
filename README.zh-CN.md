@@ -21,7 +21,7 @@
 | **F. DevEco 模拟器里的 Aetherium**：[docs/emulator-aetherium.md](docs/emulator-aetherium.md) | 没有鸿蒙真机时，在 DevEco 的鸿蒙 PC 模拟器里，用打过补丁的 Aetherium（QEMU 软件模拟）跑完整的 Omarchy | 能进 Hyprland 桌面，纯软件模拟，很慢 |
 | **G. 铠大师虚拟机**：[docs/vm-kaidashi.md](docs/vm-kaidashi.md) | 完整的 Omarchy 系统，跑在 sanway 的 Windows-on-ARM 虚拟机 app 里 | 7.2 内核能启动；底层和 OSEasy 一样；收尾中，经验并入 B |
 | **H. 真机上的 Aetherium**：[docs/device-aetherium.md](docs/device-aetherium.md) | 和 F 一样的 QEMU，但跑在 ohdev 真机上，同时调查 QEMU 能不能用 HMV 硬件加速 | HMV 接口已经反汇编出来，是私有的 ioctl 接口，不兼容 KVM；软件模拟的基线测试和权限实测进行中 |
-| **L. 鸿蒙浏览器内核里的 Linux**：[docs/route-l-arkweb.md](docs/route-l-arkweb.md) | 普通应用里用 ArkWeb 网页跑 v86 模拟器（x86，翻译成 WebAssembly 执行），里面是 Arch Linux 32（有 pacman 和 systemd），不要 root，也不要虚拟机权限 | 2026-10-25 决定暂停。镜像、网页和签好名的应用都做好了，在电脑上的 Chrome 里 32 秒进到 root 命令行；没上真机（一直拿不到 screen.lock），所以还不知道 ArkWeb 在第三方应用里能不能用 WebAssembly 即时编译 |
+| **L. 鸿蒙浏览器内核里的 Linux**：[docs/route-l-arkweb.md](docs/route-l-arkweb.md) | 普通应用里用 ArkWeb 网页跑 v86 模拟器（x86，翻译成 WebAssembly 执行），里面是 Arch Linux 32（有 pacman 和 systemd），不要 root，也不要虚拟机权限 | 2026-10-25 决定暂停。镜像、网页和签好名的应用都做好了，在电脑上的 Chrome 里 32 秒进到 root 命令行；没上真机（屏幕一直被别的测试占着），所以还不知道 ArkWeb 在第三方应用里能不能用 WebAssembly 即时编译 |
 
 试过哪些路、为什么走不通：[docs/findings.md](docs/findings.md)。
 

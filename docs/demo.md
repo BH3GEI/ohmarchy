@@ -122,7 +122,7 @@ the host, no deepin. The kernel is Arch's own `linux-aarch64` with two small
 patches. The import used to fail on a single header byte (os_type). 120 Hz
 reaches the guest's display; 鸿融 itself presents the VM at 60 Hz.
 
-### C2: Yao's main VM (about 4 min)
+### C2: Yao's main VM (about 4 min; rehearsed 2026-10-26: 3 min 41 s)
 
 This is the existing deepin + Arch disk; it boots Omarchy on deepin's
 6.6.143 kernel, not on the patched 7.2.12, so it shows the desktop, not the
@@ -130,19 +130,18 @@ kernel work.
 
 | # | Action | Expected | Time |
 |---|---|---|---|
-| 1 | Open 鸿融 from the dock. | VM page: Linux, 当前状态 已关机. | 5 s |
-| 2 | 开机 (836, 393). | Full-screen VM window; 增强服务 guide dialog after about 1 min; 知道了 (719, 685). | 1–1.5 min |
-| 3 | Omarchy login screen (lock icon and password field). Log in with uitest: click the field (737, 565), then `ohui type "$PW"` plus a newline. The password comes from the environment, never from a file. | Hyprland desktop. Checked 2026-10-26: no login loop, SDDM greeter on seat0. | 15 s |
-| 4 | Hyprland: Super+Return for a terminal, tile a second one, show workspace switching (Super+1/2). | Tiled windows, Omarchy theme. | 1 min |
-| 5 | One or two apps: a browser (Super+Shift+B) on a web page, and `fastfetch` in the terminal (kernel, Hyprland, GPU). | | 1 min |
-| 6 | Shut down: Super+Esc → power off from Omarchy's menu, or 鸿融's own stop control. | 鸿融 shows 已关机. | 20 s |
+| 1 | Open 鸿融 from the dock. If another app's window is in front, tap 鸿融's dock icon first. | VM page: Linux, 当前状态 已关机 (or, if the VM already runs, its live preview). | 5 s |
+| 2 | 开机 (836, 393); if the VM already runs, tap its preview (650, 323) instead. Then take a screenshot and check 鸿融's fullscreen VM window is in front before typing anything. | Full-screen VM window; 增强服务 guide dialog after about 1 min; 知道了 (719, 685). A 增强服务 toast stays in the lower right; ignore it. | 1–1.5 min (10 s if already running) |
+| 3 | Omarchy login screen (lock icon and password field). Log in with uitest: click the field (737, 565), then `ohui type "$PW"` plus a newline. The password comes from the environment, never from a file. | Hyprland desktop (Omarchy wallpaper, top bar with workspaces 1–5). | 15 s |
+| 4 | Terminal: Super+Return (`keyEvent 2076 2054`), then `ohui type "fastfetch"` + newline. | foot terminal fullscreen; fastfetch: KVM Virtual Machine (StratoVirt), Omarchy 4.0.6, Hyprland 0.56.2, Linux 6.6.143. Talk through it here: the next window halves the terminal and reflows the output. | 20 s |
+| 5 | Browser: Super+Shift+B (`keyEvent 2076 2047 2018`). Chromium tiles to the right. It shows "Restore pages?" (the VM was powered off with Chromium open); leave it, tapping its X did not close it. Click the address bar (1050, 118), type `omarchy.org` + newline. | omarchy.org loads over 鸿融's network. | 30 s |
+| 6 | Workspaces: Super+2 (`keyEvent 2076 2002`), then Super+1 (`keyEvent 2076 2001`). | Empty workspace 2, then back to the tiled terminal and browser. | 10 s |
+| 7 | Leave it running, or shut down: Super+Esc → power off from Omarchy's menu, or 鸿融's own stop control. | 鸿融 shows 已关机. | 20 s |
 
-Shortcuts from the presenting machine (OpenHarmony keycodes, sent with
-`ssh ohdev uitest uiInput keyEvent K1 K2 [K3]`): Super = 2076 (META_LEFT),
-Return = 2054, Shift = 2047, B = 2018, 1 = 2001, 2 = 2002, Esc = 2070. So
-terminal: `2076 2054`; browser: `2076 2047 2018`; workspace 2: `2076 2002`;
-system menu: `2076 2070`. Bindings checked in the main VM's Omarchy config
-(2026-10-26); sending them through uitest is checked in the rehearsal. C1 steps 1–6 ran on 2026-10-26 as written.
+All shortcuts were sent with `ssh ohdev uitest uiInput keyEvent ...` from the
+presenting machine and worked (Omarchy bindings: Super+Return terminal,
+Super+Shift+B browser, Super+Esc system menu, Super+W close). Keycodes:
+Super 2076, Return 2054, Shift 2047, B 2018, 1 2001, 2 2002, Esc 2070.
 
 ## D: Omarchy natively on HarmonyOS
 

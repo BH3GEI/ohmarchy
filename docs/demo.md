@@ -110,4 +110,7 @@ hypervisor, tap, routing, the share's bind mount), and D's terminal is the
 unprivileged desktop user. So for now step 1 and the stop run on the host.
 Doing them from D would need a small root helper on the host that accepts
 only `start`, `stop`, `status` from the desktop user. That opens a way from
-the desktop into host root, so it's proposed here, not built.
+the desktop into host root, so it isn't built (supervisor, 2026-10-26: not
+worth it for one command in a demo). If the VM should later start with the
+desktop, build it like D's existing broker: SO_PEERCRED, accept uid 60000
+only, and only the three fixed commands.

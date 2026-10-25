@@ -1,7 +1,6 @@
 #!/bin/bash
 # Route L helpers on the device (root over ssh). Only touches com.ohmarchy.webemu
-# and /data/local/tmp/routel. Installing, launching and stopping the app need
-# /data/local/screen.lock (see README); this script does not take it.
+# and /data/local/tmp/routel. Installing and launching the app bring it to the foreground.
 #   device.sh disk     copy /data/local/tmp/routel/arch32.img into the app sandbox (files/)
 #   device.sh install  bm install /data/local/tmp/routel/webemu.hap
 #   device.sh start    aa start the app

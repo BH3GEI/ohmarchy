@@ -4,8 +4,7 @@
 the direction. What exists: a working image build, page and signed HAP, verified
 on a desktop browser. **Nothing was run on the device**: the HAP and disk image
 were pushed to `ohdev:/data/local/tmp/routel/` but never installed, because
-`screen.lock` was held by other sessions (handed directly between them) for the
-whole window, from 08:56 to past 11:00 PDT. So the main open question, whether
+the screen was in use by other sessions for the whole window, from 08:56 to past 11:00 PDT. So the main open question, whether
 ArkWeb in a third-party HAP gets wasm JIT, is **not answered**.
 
 Idea: run a real Linux distro inside HarmonyOS's built-in browser engine via a
@@ -102,7 +101,7 @@ DOCKER_HOST=unix://$HOME/.colima/default/docker.sock webemu/image/build-image.sh
 webemu/fetch.sh                                   # v86 0.5.472, xterm.js 6.0.0, BIOS
 python3 webemu/tools/serve.py 8086 &              # desktop comparison
 python3 webemu/tools/desktop-run.py "http://127.0.0.1:8086/index.html?autobench=1"
-webemu/app/build.sh --no-install                  # HAP; then, holding screen.lock:
+webemu/app/build.sh --no-install                  # HAP; then:
 #   push webemu.hap and arch32.img to /data/local/tmp/routel (device/push-resumable.sh),
 #   webemu/tools/device.sh install; device.sh disk; device.sh start; device.sh log
 ```

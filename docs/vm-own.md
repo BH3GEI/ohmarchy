@@ -306,9 +306,9 @@ Differences from `testvm.sh`: its own tap `ohmvm0` and run directory
 (idempotent, `net-down` deletes every copy of pref 10500/10501),
 `virtio-balloon-pci,deflate-on-oom=true,free-page-reporting=true`, and
 the guest's host key pinned (`tools/ownvm/known_hosts`, `SHA256:4zK0cQ3DUJ7/aUSTr22zV/GdwiYBRIAua9y7MihSuLE`).
-While other HMV users share the host it takes `vm.lock` (owner
-`ohmarchy-vm`) and refuses to start next to any other StratoVirt (鸿融 uses
-the same subnet).
+It refuses to start next to any other StratoVirt (鸿融 uses the same
+subnet). There are no locks any more (Yao, 2026-10-26): that check is the
+only guard.
 
 The routing rules change host routing for everyone: with them a host process
 reaching `172.16.100.1` gets source `172.16.100.1` instead of
@@ -405,8 +405,7 @@ must find them, so D's `/home/builder` is shared into the guest at
 - **Incident (10:02 PDT).** A dry run of this used `kill $(pidof virtiofsd)`;
   the test process had not started, and the kill hit OSEasy's running VM's
   virtiofsd (vm_manager restarted it; OSEasy's run does not use the share).
-  Since then: any test that starts or kills processes on ohdev takes vm.lock
-  first, and scripts kill only PIDs they recorded (`ohmarchy-vm` also checks
+  Since then scripts kill only PIDs they recorded (`ohmarchy-vm` also checks
   that the pid's command line names its own disk or directory).
 
 Next slot: mount in the guest, `ls -ln /home/builder`, a file created by yao

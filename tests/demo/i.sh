@@ -5,18 +5,16 @@
 # with a bind mount (busybox httpd serving a page the container writes into
 # D's home), the page over the network, the file's mode and owner in D
 # (0644, the desktop user); stop. Prints PASS/FAIL lines.
-# Uses the hypervisor: needs /data/local/vm.lock free (ohmarchy-vm takes and
-# removes it), or DEMO_LENT_LOCK=1 when another session has lent its lock
-# (the lock is then left as it is).
+# Needs the hypervisor free: ohmarchy-vm refuses to start while another
+# StratoVirt VM (鸿融) runs.
 here=$(cd "$(dirname "$0")" && pwd)
 user=${ARCH_USER:-builder}
 V=/data/local/kaidashi/bin/ohmarchy-vm
-nolock=; [ "${DEMO_LENT_LOCK:-0}" = 1 ] && nolock="OHMARCHY_VM_NOLOCK=1"
 
 echo "== 1. start the VM (host, as root)"
 "$here/../lib/remote.sh" demo-i-start host 300 <<SH || { echo "FAIL VM did not start"; exit 1; }
 t=\$(date +%s)
-env $nolock sh $V start < /dev/null || exit 1
+sh $V start < /dev/null || exit 1
 i=0; until sh $V ssh docker info < /dev/null > /dev/null 2>&1; do i=\$((i+1)); [ \$i -ge 120 ] && break; sleep 1; done
 sh $V ssh docker info < /dev/null > /dev/null 2>&1 || { echo "FAIL dockerd does not answer"; exit 1; }
 echo "PASS VM up and dockerd answering \$((\$(date +%s) - \$t)) s after start"
@@ -51,5 +49,5 @@ SH
 
 echo "== 3. stop the VM (host, as root)"
 "$here/../lib/remote.sh" demo-i-stop host 120 <<SH
-env $nolock sh $V stop < /dev/null && echo "PASS VM stopped"
+sh $V stop < /dev/null && echo "PASS VM stopped"
 SH

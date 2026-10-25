@@ -8,8 +8,7 @@
 #   ohmarchy-vm ssh [CMD]  ssh into the guest as yao (host-only key)
 #   ohmarchy-vm balloon MiB   set the guest's memory target (QMP balloon)
 #   ohmarchy-vm net-up | net-down   only the host network part (idempotent)
-# While other HMV users share the host, start takes /data/local/vm.lock (owner
-# "ohmarchy-vm") and stop removes it; OHMARCHY_VM_NOLOCK=1 skips that.
+# No locks: start refuses only when another StratoVirt VM already runs.
 #
 # Settings (environment, or $OVM_DIR/config sourced as shell):
 #   OVM_DIR   run files, disk and key        (/data/local/kaidashi/ownvm)
@@ -40,7 +39,6 @@ DISK=${OVM_DISK:-$OVM_DIR/omarchy-own.img}
 CPUS=${OVM_CPUS:-6}; MEM=${OVM_MEM:-8192}
 D=$OVM_DIR/svc
 TAP=ohmvm0; NET=172.16.100; GUEST=$NET.2
-LOCK=/data/local/vm.lock
 FW=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi-linux
 SVDIR=/system/bin/virt_service/vm_engine/stratovirt
 pidf=$D/stratovirt.pid
@@ -84,11 +82,6 @@ net_down() {
 start() {
   running && { echo "running, pid $(cat $pidf)"; return 0; }
   pidof stratovirt >/dev/null && { echo "another StratoVirt VM runs (鸿融?); not starting"; return 1; }
-  if [ "${OHMARCHY_VM_NOLOCK:-0}" != 1 ]; then
-    mkdir $LOCK 2>/dev/null || { grep -q '^ohmarchy-vm' $LOCK/owner 2>/dev/null ||
-      { echo "vm.lock held:"; head -2 $LOCK/owner; return 1; }; }
-    printf 'ohmarchy-vm (route I backend for D, agent-a4)\nstart: %s\n' "$(toybox date '+%F %T %z')" > $LOCK/owner
-  fi
   mkdir -p $D; rm -f $D/qmp.sock $D/serial.sock
   net_up
   gpu=
@@ -182,7 +175,6 @@ stop_rest() {
   done
   grep -q " $OVM_DIR/home-builder " /proc/self/mountinfo && umount $OVM_DIR/home-builder
   net_down
-  [ "${OHMARCHY_VM_NOLOCK:-0}" != 1 ] && grep -q '^ohmarchy-vm' $LOCK/owner 2>/dev/null && rm -rf $LOCK
   return 0
 }
 stop() {

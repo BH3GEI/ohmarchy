@@ -1,14 +1,11 @@
 #!/system/bin/sh
 # upstream-fs-test.sh: the home share served by upstream virtiofsd
-# (OVM_VIRTIOFSD=upstream, docs/vm-own.md), in a vm.lock slot lent by another
-# session. Root on the host:  sh upstream-fs-test.sh
-# The lock is not ours, so the service must not create or remove it
-# (OHMARCHY_VM_NOLOCK=1); the caller keeps the lock directory, writes our
-# owner line while testing and puts the lender's back afterwards.
+# (OVM_VIRTIOFSD=upstream, docs/vm-own.md). Root on the host:
+#   sh upstream-fs-test.sh
 V=/data/local/kaidashi/bin/ohmarchy-vm
 S=/data/local/kaidashi/ownvm/svc
 H=/proc/$(cat /data/local/archtest/session.pid)/root/home/builder
-export OHMARCHY_VM_NOLOCK=1 OVM_VIRTIOFSD=upstream
+export OVM_VIRTIOFSD=upstream
 g() { sh $V ssh "$@" < /dev/null; }
 hr() { printf '\n== %s\n' "$*"; }
 

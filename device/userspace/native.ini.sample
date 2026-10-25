@@ -1,0 +1,5 @@
+[binaries]
+pkg-config = '/opt/homebrew/bin/pkg-config'
+
+[built-in options]
+pkg_config_path = '${SP}/stage1/native/lib/pkgconfig'

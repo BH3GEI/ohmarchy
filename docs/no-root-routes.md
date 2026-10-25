@@ -219,3 +219,38 @@ Hyprland 0.56 is C++26. Findings:
 
 **Decision: GO.** Toolchain = upstream clang 23 + a libc++23 built for OHOS musl; the remaining
 risk shifts from "compiler too old" (cleared) to "build libc++ + the stack against OHOS musl".
+
+### Stage 1 — libc++23 + the Wayland base stack for OHOS musl (DONE)
+
+All built offline on a Mac, aarch64-linux-ohos, static libs; **no build products on ohdev**.
+Recipe: `device/userspace/build-stage1.sh` (+ `ohos.cross.sample`, `native.ini.sample`).
+
+**Prerequisite #0 — libc++23 (clang 23 + musl).** Built libc++/libc++abi/libunwind from the
+LLVM 23.1.4 tree with the cmake *runtimes* build, `-DLIBCXX_HAS_MUSL_LIBC=ON`,
+`-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY` (homebrew clang has no OHOS crt/builtins for the
+configure link test), `-DLLVM_INCLUDE_TESTS=OFF` + sparse-checkout `llvm/utils/llvm-lit`, and
+`-I<llvm-project/libc>` on CXXFLAGS (charconv needs `shared/fp_bits.h` from LLVM libc). Output:
+`libc++.a` 2.5M, `libc++abi.a` 739K, `libunwind.a` 138K, `libc++experimental.a` 2.3K;
+`__config_site` has `_LIBCPP_HAS_MUSL_LIBC 1`. **End-to-end verified:** a C++26 program using
+`std::expected`/`std::format`/ranges compiles to an aarch64-ohos object against this libc++.
+
+**Toolchain note:** the four C libraries below are built with the **OHOS NDK's own clang 15**
+(it ships matching crt + `libclang_rt.builtins` for the musl target, so executables/`.so` link
+with no extra flags). The clang-23 + libc++23 toolchain is reserved for the Stage-3 C++ stack.
+macOS host tools: meson (pip venv), ninja, **bison ≥2.3a** (Apple's 2.3 fails xkbcommon's YACC
+check → `brew install bison`), expat (for the native wayland-scanner).
+
+| lib | version | artifact | size |
+|---|---|---|---|
+| libffi | 3.4.6 | libffi.a | 105K |
+| pixman | 0.44.2 | libpixman-1.a | 2.8M |
+| libdrm | 2.4.124 | libdrm.a (no vendor drivers) | 364K |
+| libxkbcommon | 1.7.0 | libxkbcommon.a (no x11/registry/tools) | 1.2M |
+| wayland | 1.23.1 | libwayland-client.a 238K / -server.a 351K / -cursor.a 81K / -egl.a 6.4K | — |
+
+wayland needs a **wayland-scanner that runs on the build host**: built natively on the Mac
+(`-Dscanner=true -Dlibraries=false`) into a separate native prefix, then the target libs are
+cross-built with `-Dscanner=false` and a meson **native file** whose `pkg_config_path` points at
+the native `wayland-scanner.pc`. libffi is wayland's only hard dep. All `.a` confirmed AArch64;
+`.pc` files land in `$PREFIX/lib/pkgconfig` for the downstream builds. **Next: Stage 2 (mesa
+virgl, no-llvm).**

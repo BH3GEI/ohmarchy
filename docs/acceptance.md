@@ -26,7 +26,7 @@ Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 | C 24 h soak | pass | 25 hourly smoke runs, host time 2026-10-24 17:52 to 10-25 17:53 CST (02:52 to 02:53 PDT): 23 ok; the 2 failures were desktop stops by the tests themselves. The last Hyprland instance ran 18 h without a restart; desktop memory with swap 695 MB at the end against 714 MB at the start: no growth | [7c6dec5](https://github.com/BH3GEI/ohmarchy/commit/7c6dec5) |
 | C display off/on, app background/foreground | pass | DPMS 20 of 20; app to background and back 20 of 20 | [4a3c1f8](https://github.com/BH3GEI/ohmarchy/commit/4a3c1f8), [2a4852d](https://github.com/BH3GEI/ohmarchy/commit/2a4852d) |
 | C network loss | pass, plus on site | site and DNS outages: back within 0.1 s; a real Wi-Fi switch needs someone at the machine | [0fb8873](https://github.com/BH3GEI/ohmarchy/commit/0fb8873) |
-| C HarmonyOS screen off | on site | the only remote switch suspends the whole machine | (checklist below) |
+| C HarmonyOS screen off | pass | 20 of 20 through the screen-off timeout and the lock screen; a keep-screen-on bug in the app found and fixed | (this commit) |
 | D reset, upgrade check, logs | pass | fresh install about 30 min; reset 56 s; `check-upgrade.sh`; log bundle | [e090e8e](https://github.com/BH3GEI/ohmarchy/commit/e090e8e), [b569eec](https://github.com/BH3GEI/ohmarchy/commit/b569eec) |
 | E security | pass with open items | ordinary user, sudo with password, no TCP ports, GPU and sound sockets only for the app's uid, Firefox sandboxed, web apps in Firefox too. Open: Chromium itself (started by hand) without sandbox; `su` SELinux domain | [caee075](https://github.com/BH3GEI/ohmarchy/commit/caee075), [3461eb8](https://github.com/BH3GEI/ohmarchy/commit/3461eb8), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa), [8f7acc9](https://github.com/BH3GEI/ohmarchy/commit/8f7acc9), [f1636a5](https://github.com/BH3GEI/ohmarchy/commit/f1636a5) |
 | F one-command regression | pass | `tests/run-all.sh` | [6e5d491](https://github.com/BH3GEI/ohmarchy/commit/6e5d491) |
@@ -41,7 +41,7 @@ Detail by area:
 |---|---|---|---|
 | A. Compatibility | every Omarchy app opens a window within 3 s; core operations work | `tests/apps/run.sh` | A1: 74 of 78 open within 3 s (P95 1.13 s), 3 unsupported, 0 failed. A2: 6 of 6 core operations pass (sound not yet heard by ear: to confirm on site). Sound: 75-104 ms to the speaker (median), A/V within 100 ms; not yet heard (host volume 0) |
 | B. Performance | cold start to desktop <= 10 s; app launch P95 <= 3 s; workspace switch >= 110 fps; idle memory/CPU recorded; power vs the HarmonyOS desktop | `tests/perf/` | cold start about 8 s (session 2.0 s + desktop 5.7-6.1 s), launch P95 1.2 s, workspace switch 119 fps, idle: the app 1.9 % of a core, the desktop 0.5 %, 1.0 GB; power proxy: idle native desktop costs nothing over baseline, es2gears the same CPU as in the VM at twice the frame rate. Battery drain: needs a run on battery |
-| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. 24 h soak: pass (23 of 25, the 2 failures our own desktop stops; no memory growth). Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off: needs someone on site, as does a real Wi-Fi switch |
+| C. Stability | 100 open/close rounds without leftovers and < 5 % memory growth; 24 h soak with hourly smoke test; 20 screen off/on cycles; network loss and Wi-Fi change | `tests/stability/` | 100 rounds: all opened, +0.1 % memory, nothing hung. Network outage and DNS outage: recover within 0.1 s. 24 h soak: pass (23 of 25, the 2 failures our own desktop stops; no memory growth). Display off/on on Hyprland's side (DPMS): 20 of 20. App to background and back: 20 of 20. HarmonyOS screen off and on: 20 of 20 (after a keep-screen-on bug was fixed). A real Wi-Fi switch needs someone on site |
 | D. Upgrade and recovery | one-command reset to a clean environment; regression after `pacman -Syu`; log bundle | `native/install.sh`, `reset.sh`, `check-upgrade.sh`, `collect-logs.sh` | fresh install from nothing in a second environment: about 30 min; reset to the clean image: 56 s; `-Syu` check: tool works, nothing to upgrade yet (a regression run needs time to pass); log bundle: done |
 | E. Security | desktop and apps as an ordinary user; `su` context only where needed; browser sandbox | `tests/security/check.sh` | desktop as an ordinary user, sudo needs a password, no listening ports, sound and GPU sockets only for the display app's uid, default browser and web apps in Firefox (sandboxed): pass. Open: Chromium itself (when started by hand) without sandbox; broker and session init in the `su` SELinux domain |
 | F. Regression | `tests/run-all.sh`, one table | `tests/run-all.sh` | done: runs A1, A2, A3, B, C1, E and prints one table (PASS/FAIL/SKIP/INFO); screen tests skip while the screen is someone else's |
@@ -199,7 +199,13 @@ HarmonyOS vsync (about 8 ms) is not counted on the picture side. To re-measure o
 the in-app GPU path when the machine is idle.
 
 Not verified yet: hearing it. HarmonyOS's media volume was 0 during the tests and
-no one was at the machine, so it stays to be confirmed by ear on site. What is
+no one was at the machine, so it stays to be confirmed by ear on site. What shows
+that sound goes out, 2026-10-26 01:31 CST: a -12 dBFS tone arrives at the
+"HarmonyOS" sink's monitor at -12.0 dBFS peak, -14.8 dBFS RMS, and silence at 0
+(`tests/audio/level.sh`); the app finds each beep in the PCM it hands to OHAudio
+and the renderer plays it (first sound median 89 ms, during playback 71 ms); and
+HarmonyOS lists the stream as `com.ohmarchy.display` on FastRendererSink, s16le
+2ch 48000 Hz, RUNNING. The MUSIC volume is 0, which is why nothing is heard. What is
 verified without sound: the PCM the app hands to the renderer carries each beep
 (the onset detector fires on samples above 64), and the renderer's play position
 moves past those samples on the speaker sink. A capture at FastRendererSink itself
@@ -218,7 +224,7 @@ nothing that shows the display app ran). Official numbers when the machine is id
 | App launch | `tests/apps/run.sh` (A1) | median 0.67 s, P95 1.22 s | P95 <= 3 s |
 | Workspace switch | `tests/perf/workspace.sh` (HarmonyOS compositor frame timestamps while switching every 0.45 s for 10 s, in-app GPU path) | 119.4 fps (2026-10-24 18:35, machine quiet) | >= 110 fps |
 | Idle CPU and memory, desktop processes only | `tests/perf/idle.sh` | display app closed: 0.5 % of one core, 1.0 GB (PSS; Omarchy shell 430 MB, Hyprland 140 MB, fcitx5 67 MB). Display app open, idle: 1.9 % of one core in the app (`tests/perf/app-threads.sh`; was about 14 % before its frame-rate vote dropped to 10 Hz when nothing changes) | recorded |
-| Power vs the HarmonyOS desktop | `tests/perf/power.sh` (below) | proxy only: see the table below. Battery drain needs a run on battery (on mains with a full battery it reports 0 current) | |
+| Power vs the HarmonyOS desktop | `tests/perf/power.sh` (below) | proxy only: see the table below. Battery drain needs the machine unplugged, so someone at it: on mains it reads full and 0 current (`hidumper -s BatteryService -a -i`, 2026-10-26 01:31: capacity 100, pluggedType 1, nowCurrent 0) | |
 
 Found while measuring, fixed:
 
@@ -298,9 +304,19 @@ for 2 s, then on; after each round a new window must map and render (grim sees a
 real frame), Hyprland must be the same process and the window list unchanged.
 2026-10-24 18:14: 20 of 20 rounds ok.
 
-HarmonyOS's own screen off cannot be tested remotely: the only command-line
-switch, `power-shell suspend`, suspends the whole machine, which could leave it out
-of reach. Needs someone at the machine. The closest remote stand-in, sending the
+HarmonyOS's own screen off, `tests/stability/screenoff.sh` (2026-10-26 01:21-01:31
+CST): not with `power-shell suspend` (it suspends the whole machine, which could
+leave it out of reach) but through the screen-off timeout (`power-shell timeout -o
+3000`): the screen goes AWAKE, DIM, INACTIVE (off); the host keeps answering;
+`power-shell wakeup` brings it back to HarmonyOS's lock screen, which the test
+unlocks as a user would. 20 of 20 rounds: off every time, the same display app and
+Hyprland afterwards, the desktop drawing again (31-38 new frames on the app's
+surface after a workspace switch).
+
+Bug found and fixed on the way: the screen never went off while the display app
+was open. The app asked HarmonyOS to keep the screen on (`setWindowKeepScreenOn`,
+there since the first version), which held a screen lock for as long as its window
+existed. Removed: the screen times out and locks as with any other app. The closest remote stand-in, sending the
 display app to the background and back (HarmonyOS destroys and recreates its
 surface, as at screen off): `tests/stability/bgfg.sh` brings Settings to the front,
 then the display app again, makes the desktop draw and checks that new frames reach

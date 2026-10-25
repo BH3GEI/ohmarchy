@@ -16,7 +16,8 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       // Opens as a normal window; maximize it from the title bar for the full desktop.
-      windowStage.getMainWindowSync().setWindowKeepScreenOn(true);
+      // No keep-screen-on: the screen times out and locks as HarmonyOS decides,
+      // as with any other app.
     });
   }
 }

@@ -73,16 +73,28 @@ static napi_value RunProbes(napi_env env, napi_callback_info) {
         LOGI("(d) dlopen system .so: %{public}s", h ? "OK" : dlerror());
         if (h) dlclose(h);
     }
-    // (e) fork+execve a binary from the sandbox (can we spawn our own ELF?)
+    // (e) fork+execve ELFs. A tiny static ELF that exit(42)s makes success unambiguous;
+    //     the child logs its own errno if execve fails, so we learn WHY (EACCES/EPERM/ENOEXEC).
     {
-        const char *paths[] = {"/system/bin/toybox", "/data/storage/el2/base/haps/entry/files/busybox", nullptr};
+        const char *paths[] = {
+            "/system/bin/toybox",                                              // system ELF (baseline)
+            "/data/storage/el2/base/haps/entry/files/exit42",                  // our unsigned static ELF in sandbox
+            "/data/storage/el2/base/haps/entry/files/exit42dyn",               // our dynamic ELF via its own ld
+            nullptr};
         for (int i = 0; paths[i]; i++) {
-            if (access(paths[i], X_OK) != 0) { LOGI("(e) %{public}s: not present/!x (errno=%{public}d)", paths[i], errno); continue; }
+            LOGI("(e) try %{public}s present=%{public}d x=%{public}d", paths[i],
+                 access(paths[i], F_OK) == 0, access(paths[i], X_OK) == 0);
             pid_t pid = fork();
-            if (pid == 0) { execl(paths[i], paths[i], "true", (char*)nullptr); _exit(127); }
-            else if (pid > 0) { int st=0; waitpid(pid,&st,0);
-                LOGI("(e) execve %{public}s: exited status=%{public}d", paths[i], WIFEXITED(st)?WEXITSTATUS(st):-1); }
-            else LOGI("(e) fork: FAIL errno=%{public}d", errno);
+            if (pid == 0) {
+                execl(paths[i], paths[i], (char*)nullptr);
+                int e = errno;                       // execve failed
+                OH_LOG_Print(LOG_APP, LOG_ERROR, 0xBEEF, LOG_TAG,
+                    "(e) CHILD execve %{public}s FAILED errno=%{public}d(%{public}s)", paths[i], e, strerror(e));
+                _exit(120 + (e & 7));
+            } else if (pid > 0) { int st=0; waitpid(pid,&st,0);
+                LOGI("(e) %{public}s -> %{public}s=%{public}d (42=ran-ok; 120+=execve-failed)",
+                     paths[i], WIFEXITED(st)?"exit":"signal", WIFEXITED(st)?WEXITSTATUS(st):WTERMSIG(st)); }
+            else LOGI("(e) fork FAIL errno=%{public}d", errno);
         }
     }
     LOGI("=== XPM probe done ===");

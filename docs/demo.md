@@ -69,6 +69,55 @@ Not yet rehearsed: the Super-key shortcuts through `ohui key` (keycodes are
 checked in the rehearsal), and the import entry's exact click positions in
 C1 steps 1–2.
 
+## D: Omarchy natively on HarmonyOS
+
+What it shows: Arch Linux ARM and Omarchy's Hyprland desktop running as
+ordinary processes on the HongMeng kernel, with no VM. The desktop appears in
+a HarmonyOS app window ("Omarchy (native)") at 120 Hz, drawn by the device's
+GPU through virgl inside the app ([native-desktop.md](native-desktop.md)).
+
+Automated, from the presenting machine, with a screenshot after every step
+and the elapsed time: `tests/demo/d.sh` (screenshots in
+`tests/results/demo-<time>/`; `tests/demo/d.sh clean` closes the demo's
+windows afterwards). It needs the screen: `/data/local/screen.lock` free, or
+held by the native-desktop line with `HOLD_LOCK=1`.
+
+### Before the demo (not shown, about 1 min)
+
+- ohdev has just booted and is unlocked; HarmonyOS's own desktop is in front.
+  Take `/data/local/screen.lock` for the duration.
+- For the Docker step (8): start route I's VM, **on the host as root**:
+  `sh /data/local/kaidashi/bin/ohmarchy-vm start` (or `tests/demo/d.sh prep`).
+  It takes `/data/local/vm.lock`, and the 鸿融 VM has to be shut down. Wait
+  until `ohmarchy-vm status` shows a `dockerd:` version. Without the VM, `d.sh`
+  skips step 8 and says so.
+
+### Steps (under 2 min)
+
+| # | Action | Expected | Time |
+|---|---|---|---|
+| 1 | On the host as root (`ssh ohdev`): `omarchy desktop start` (`/data/local/archtest/bin/omarchy`). Once the boot service (`native/boot/`) is verified by a reboot, this is already done at boot. | Returns after about 3 s; Hyprland and the GPU broker run, waiting for the app (`omarchy desktop status`). Nothing new on screen yet. | 3 s |
+| 2 | Click "Omarchy (native)" in the HarmonyOS dock (or `aa start -a EntryAbility -b com.ohmarchy.display`). | A window that says what it waits for, then the Hyprland desktop: Omarchy wallpaper and top bar. Maximize it from the title bar. | 10 s |
+| 3 | Super+Return, then type `fastfetch` and Enter. | A foot terminal, tiled; fastfetch shows Arch Linux ARM, the HongMeng kernel, Hyprland, the Omarchy theme. | 10 s |
+| 4 | Super+2, Super+1, a few times. | Workspaces slide back and forth smoothly. Measured rate (HarmonyOS's compositor, `tests/perf/workspace.sh`): 119 fps, `d.sh` prints it in the step-4 screenshot name. | 10 s |
+| 5 | Super+Shift+B. | Firefox opens on workspace 1, tiled next to the terminal. Open any page, e.g. omarchy.org. | 15 s |
+| 6 | Super+Space (Omarchy menu), then Escape; Super+Shift+F. | The Omarchy menu; then Files (Nautilus) on the home directory. | 15 s |
+| 7 | In the terminal: `docker run --rm hello-world`. | "Hello from Docker!": the container runs in route I's VM; the CLI here talks to it over ssh (context `ohmarchy`). The first run pulls the image. | 10 s |
+
+About 75 s of actions plus talking. Talking points: no hypervisor for the
+desktop itself, so it starts in about 8 s cold and idles at 0.5% CPU; the
+HongMeng kernel runs Arch's own binaries; keyboard, mouse, sound and the
+HarmonyOS IME pass through the app; Docker is the one thing that needs a
+Linux kernel, so it borrows route I's small VM.
+
+Afterwards: `tests/demo/d.sh clean` (or close the windows with Super+W), and
+`sh /data/local/kaidashi/bin/ohmarchy-vm stop` on the host if the VM was
+started for the demo. Release the screen lock.
+
+Not yet rehearsed: the click on the dock icon (`d.sh` uses `aa start`), the
+Super-key shortcuts through `ohui key` (`d.sh` starts the same commands
+through Hyprland instead), and the timings above.
+
 ## I: Docker on the native desktop
 
 What it shows: the native desktop (route D) runs on the HongMeng kernel, which

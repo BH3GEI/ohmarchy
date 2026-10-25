@@ -2,7 +2,7 @@
 # Route D demo, automated (docs/demo.md): each step is one command on the
 # HarmonyOS host, then a screenshot into OUT (default tests/results/demo-<time>).
 #   tests/demo/d.sh prep    start route I's VM for the Docker step (not part of the
-#                           demo; takes vm.lock; needs the 鸿融 VM off)
+#                           demo; needs the 鸿融 VM off)
 #   tests/demo/d.sh         the demo, timed
 #   tests/demo/d.sh clean   close the demo's windows
 here=$(cd "$(dirname "$0")" && pwd)

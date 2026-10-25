@@ -291,6 +291,9 @@ module_param_named(hvm_hw_cursor, vmw_hvm_hw_cursor, bool, 0400);
 int vmw_hvm_irq_poll_us = 1000;
 MODULE_PARM_DESC(hvm_irq_poll_us, "HVM: poll fences and command buffers every N us (the device raises no interrupts); 0=off");
 module_param_named(hvm_irq_poll_us, vmw_hvm_irq_poll_us, int, 0400);
+int vmw_hvm_flip_watchdog_us = 50000;
+MODULE_PARM_DESC(hvm_flip_watchdog_us, "HVM: from the poll, complete a page-flip event still undelivered after N us (about 2-3 vblanks); 0=off");
+module_param_named(hvm_flip_watchdog_us, vmw_hvm_flip_watchdog_us, int, 0600);
 
 
 struct bitmap_name {

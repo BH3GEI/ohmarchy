@@ -473,6 +473,8 @@ struct vmw_private {
 	struct hrtimer hvm_poll_timer;
 	struct work_struct hvm_poll_work;
 	bool hvm_poll_on;
+	/* page-flip watchdog: a flip whose event was armed but never delivered */
+	u64 flip_watchdog_fires;
 	resource_size_t io_start;
 	resource_size_t vram_start;
 	resource_size_t vram_size;
@@ -1557,5 +1559,6 @@ extern bool vmw_hvm_vblank;
 extern bool vmw_hvm_dumb_bo;
 extern bool vmw_hvm_hw_cursor;
 extern int vmw_hvm_irq_poll_us;
+extern int vmw_hvm_flip_watchdog_us;
 
 #endif

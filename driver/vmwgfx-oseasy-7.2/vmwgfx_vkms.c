@@ -315,6 +315,14 @@ vmw_vkms_crtc_atomic_begin(struct drm_crtc *crtc,
 			   struct drm_atomic_commit *state)
 {
 	struct vmw_private *vmw = vmw_priv(crtc->dev);
+	struct vmw_display_unit *du = vmw_crtc_to_du(crtc);
+
+	/*
+	 * A new commit means the previous flip's event has been delivered (the
+	 * atomic core refuses a commit while a page flip is awaiting), so the
+	 * watchdog has nothing outstanding to chase.
+	 */
+	WRITE_ONCE(du->vkms.flip_armed_at, 0);
 
 	if (vmw->vkms_enabled)
 		vmw_vkms_modeset_lock(crtc);
@@ -331,16 +339,31 @@ vmw_vkms_crtc_atomic_flush(struct drm_crtc *crtc,
 		return;
 
 	if (crtc->state->event) {
+		struct vmw_display_unit *du = vmw_crtc_to_du(crtc);
+		bool armed = false;
+
 		spin_lock_irqsave(&crtc->dev->event_lock, flags);
 
-		if (drm_crtc_vblank_get(crtc) != 0)
+		if (drm_crtc_vblank_get(crtc) != 0) {
 			drm_crtc_send_vblank_event(crtc, crtc->state->event);
-		else
+		} else {
 			drm_crtc_arm_vblank_event(crtc, crtc->state->event);
+			armed = true;
+		}
 
 		spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
 
 		crtc->state->event = NULL;
+
+		/*
+		 * Only an armed event waits for a vblank to be delivered; the
+		 * fence of the frame it shows has already passed (the commit
+		 * waited for it). Arm the watchdog so the poll can deliver it if
+		 * the vblank event is lost (no device interrupts; seen only when
+		 * AQ_TRACE stretches the timing). The immediate-send path above
+		 * is already complete, so it needs no watchdog.
+		 */
+		WRITE_ONCE(du->vkms.flip_armed_at, armed ? ktime_get() : 0);
 	}
 
 	vmw_vkms_unlock(crtc);

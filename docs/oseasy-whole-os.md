@@ -992,6 +992,27 @@ Evidence (post-fix capture
 to observe. Hyprland's own trace is enough for the commit/flip sequence. No change
 to the shipped driver or session.
 
+**Driver hardening (page-flip watchdog).** The stall is a real race, not only a
+diagnostic artifact: with no device interrupts a flip's vblank event can be lost
+and the flip stays pending forever; trace only widens the window. So the driver
+now guards against it directly (`vmwgfx_irq.c`, `vmwgfx_vkms.c`):
+
+- When a nonblocking commit arms its flip's vblank event, the display unit records
+  the time (`vkms.flip_armed_at`). By then the commit has already waited for the
+  frame's fence, so the fence is signalled.
+- The 1 ms fence poll runs a watchdog: a flip whose event has been armed but
+  undelivered for longer than `hvm_flip_watchdog_us` (default 50000, about 2-3
+  vblanks) is completed by running `drm_crtc_handle_vblank`, which delivers the
+  armed event. It counts each fire (`flip_watchdog_fires`) and logs
+  `vmwgfx: page-flip watchdog #N ...` rate-limited. The timestamp is bumped so it
+  retries at most once per window; the next commit's `atomic_begin` clears it.
+- Verification plan (needs a lock slot): run with `AQ_TRACE=1` for 20 min as a
+  stress test. Pass = no stall and the watchdog count > 0 (proving both that the
+  race is real and that it is now recovered). Build: package
+  `7e78a1d40d53bca45d7f1c5df5d299e1cff2ef04c5738f81836a2c90f0d8c8e2`, ISO
+  `46e1044a3f44d8735c6b45e8c3992b51f38255e7f1003ef8b7666e6b5e8c376d` (compiles
+  clean; on-machine run pending).
+
 ### State at the end of the Oseasy line (2026-10-25 20:10 PDT)
 
 - Omarchy 4.0.6 cold-boots into Hyprland in Oseasy 3.1.1.7 with the

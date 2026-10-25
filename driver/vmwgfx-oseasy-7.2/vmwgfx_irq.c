@@ -28,7 +28,11 @@
 #include <linux/pci.h>
 #include <linux/sched/signal.h>
 
+#include <drm/drm_crtc.h>
+#include <drm/drm_vblank.h>
+
 #include "vmwgfx_drv.h"
+#include "vmwgfx_kms.h"
 
 #define VMW_FENCE_WRAP (1 << 24)
 
@@ -323,6 +327,43 @@ void vmw_irq_uninstall(struct drm_device *dev)
  * then deadlocks against the atomic commit, which waits for the fence of the
  * frame already rendered. Do the irq thread's work from a timer instead.
  */
+/*
+ * Page-flip watchdog. With the fences polled above, a nonblocking atomic commit
+ * proceeds and arms a vblank event for its flip; the vkms vblank timer then
+ * delivers it. Without device interrupts there is a narrow window where that
+ * event is never delivered and the flip stays pending forever (the compositor
+ * then waits in ep_poll and never commits again). It is rare in normal use but
+ * reliably reproduced when AQ_TRACE stretches the compositor's per-frame timing.
+ * Here: a flip whose event was armed (so its fence has already passed) and has
+ * been outstanding longer than the threshold is completed by running the vblank
+ * handler, which delivers the armed event. flip_armed_at is bumped so we retry
+ * at most once per threshold; atomic_begin clears it when the next commit comes.
+ */
+static void vmw_hvm_flip_watchdog(struct vmw_private *dev_priv, ktime_t now)
+{
+	int limit_us = vmw_hvm_flip_watchdog_us;
+	struct drm_crtc *crtc;
+
+	if (limit_us <= 0 || !dev_priv->vkms_enabled)
+		return;
+
+	drm_for_each_crtc(crtc, &dev_priv->drm) {
+		struct vmw_display_unit *du = vmw_crtc_to_du(crtc);
+		ktime_t armed = READ_ONCE(du->vkms.flip_armed_at);
+
+		if (armed == 0 || ktime_us_delta(now, armed) < limit_us)
+			continue;
+
+		WRITE_ONCE(du->vkms.flip_armed_at, now);
+		dev_priv->flip_watchdog_fires++;
+		pr_warn_ratelimited("vmwgfx: page-flip watchdog #%llu: event on CRTC %d undelivered %lld us after arming (fence already signalled); completing it\n",
+				    dev_priv->flip_watchdog_fires,
+				    drm_crtc_index(crtc),
+				    ktime_us_delta(now, armed));
+		drm_crtc_handle_vblank(crtc);
+	}
+}
+
 static void vmw_hvm_poll_work_fn(struct work_struct *work)
 {
 	struct vmw_private *dev_priv =
@@ -333,6 +374,7 @@ static void vmw_hvm_poll_work_fn(struct work_struct *work)
 	wake_up_all(&dev_priv->fifo_queue);
 	if (dev_priv->cman)
 		vmw_cmdbuf_irqthread(dev_priv->cman);
+	vmw_hvm_flip_watchdog(dev_priv, ktime_get());
 }
 
 static enum hrtimer_restart vmw_hvm_poll_timer_fn(struct hrtimer *timer)

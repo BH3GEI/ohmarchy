@@ -335,6 +335,15 @@ struct vmw_display_unit {
 		bool crc_pending;
 		u64 frame_start;
 		u64 frame_end;
+
+		/*
+		 * HVM page-flip watchdog: when a flip's vblank event is armed
+		 * (the nonblocking commit has already waited for its fence, so
+		 * the fence is signalled by then), the time it was armed, in
+		 * ktime ns; 0 when no flip is outstanding. Read from the poll
+		 * work with READ_ONCE/WRITE_ONCE, no extra lock.
+		 */
+		ktime_t flip_armed_at;
 	} vkms;
 };
 

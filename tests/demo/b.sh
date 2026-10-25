@@ -53,6 +53,20 @@ t1=$(date +%s)
 for i in $(seq 1 90); do g 15 'ps -o user= -C Hyprland' 2>/dev/null | grep -q yao && break; sleep 2; done
 echo "Hyprland up $(( $(date +%s)-t1 )) s after reset"
 
+# Install this host's ssh key into the fresh guest so the es2gears/app steps below
+# can drive it over ssh. Needs the guest login password in $GS_PW (never stored).
+# A live presentation can instead open a terminal in the guest and do this by hand.
+if ! g 10 true 2>/dev/null; then
+  step "B2 install ssh key (needs \$GS_PW)"
+  : "${GS_PW:?set GS_PW to the guest login password for the demo}"
+  AP=$(mktemp); printf '#!/bin/sh\necho "$GS_PW"\n' > "$AP"; chmod +x "$AP"
+  cat ~/.ssh/id_ed25519.pub | SSH_ASKPASS="$AP" SSH_ASKPASS_REQUIRE=force DISPLAY=:0 GS_PW="$GS_PW" \
+    perl -e 'alarm 40; exec @ARGV' ssh -o StrictHostKeyChecking=accept-new \
+    -o PreferredAuthentications=password -o ConnectTimeout=20 "$GUEST" \
+    'mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys; echo key-ok'
+  rm -f "$AP"
+fi
+
 step "B3 es2gears (120 fps from the VM)"
 g 20 'setsid -f env XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-1 es2gears_wayland >/tmp/g.log 2>&1 </dev/null'; sleep 3
 "$ROOT/oseasy/measure-fps.sh" 6 2>&1 | grep -e 'composer fps' -e dxvk | head -3

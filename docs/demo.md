@@ -58,6 +58,9 @@ below are the same flow.
 7. Reboot the VM into the installed system (host-side, over the installer's telnet:
    `oseasy/… rb.sh`, a sysrq reboot). Omarchy's Hyprland desktop appears about
    **7 s** after the reset. `ssh ohvm-arch` reaches the guest.
+   (For the scripted demo, `b.sh` then installs the presenter's ssh key into the
+   fresh guest using `$GS_PW`; a hands-on presenter instead opens a terminal in the
+   guest. The es2gears/app steps below drive the guest over ssh.)
 
 ### B3: show it working (about 1 min)
 

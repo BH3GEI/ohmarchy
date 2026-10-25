@@ -14,6 +14,8 @@
 #include <cstring>
 #include <cerrno>
 #include <cstdio>
+#include <dirent.h>
+#include <fcntl.h>
 #undef LOG_TAG
 #define LOG_TAG "JLAPP"
 #define LOGI(...) OH_LOG_Print(LOG_APP, LOG_INFO, 0xBEEF, LOG_TAG, __VA_ARGS__)
@@ -24,6 +26,22 @@ static pid_t g_spawner = -1;
 
 static int readn(int fd, void *p, size_t n){ char*b=(char*)p; size_t g=0; while(g<n){ ssize_t k=read(fd,b+g,n-g); if(k<=0) return -1; g+=k; } return 0; }
 static int writen(int fd, const void *p, size_t n){ const char*b=(const char*)p; size_t s=0; while(s<n){ ssize_t k=write(fd,b+s,n-s); if(k<=0) return -1; s+=k; } return 0; }
+
+// Close every inherited fd except `keep` (and 0/1/2): the app holds live connections
+// (@ohmarchy-display, vtest, @ohmarchy-audio, XComponent/OHAudio). If the spawner or the
+// busybox it runs kept them open, the app closing a connection would not deliver EOF to the
+// peer (Hyprland/broker would not notice the app went away).
+static void close_inherited_fds(int keep){
+    DIR *d = opendir("/proc/self/fd");
+    if(!d){ return; }
+    int dfd = dirfd(d);
+    struct dirent *e;
+    while((e=readdir(d))){
+        int fd = atoi(e->d_name);
+        if(fd>2 && fd!=keep && fd!=dfd) close(fd);
+    }
+    closedir(d);
+}
 
 // runs in the single-threaded spawner child; never returns
 static void spawner_loop(int s){
@@ -55,7 +73,7 @@ static void ensure_spawner(){
     if(g_spawner>0) return;
     int sv[2]; if(socketpair(AF_UNIX,SOCK_STREAM,0,sv)!=0){ LOGI("socketpair FAIL errno=%{public}d",errno); return; }
     pid_t p=fork();
-    if(p==0){ close(sv[0]); spawner_loop(sv[1]); _exit(0); }
+    if(p==0){ close(sv[0]); close_inherited_fds(sv[1]); spawner_loop(sv[1]); _exit(0); }
     if(p<0){ LOGI("fork spawner FAIL errno=%{public}d",errno); close(sv[0]); close(sv[1]); return; }
     close(sv[1]); g_sock=sv[0]; g_spawner=p;
     LOGI("spawner forked pid=%{public}d (single-threaded; busybox=%{public}s)", p, BB);
@@ -77,7 +95,8 @@ static napi_value RunSh(napi_env env, napi_callback_info info){
 }
 
 static napi_value Init(napi_env env, napi_value exports){
-    ensure_spawner();   // fork the spawner as early as possible (at module load)
+    // Do NOT fork here: loading the module (switch off) must behave exactly as before.
+    // The spawner is forked lazily in start()/runSh(), i.e. only when the jl switch is on.
     napi_property_descriptor d[]={
         {"start",nullptr,Start,nullptr,nullptr,nullptr,napi_default,nullptr},
         {"runSh",nullptr,RunSh,nullptr,nullptr,nullptr,napi_default,nullptr},

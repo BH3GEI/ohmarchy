@@ -202,3 +202,20 @@ build** (patched into the libs or linked into the spawner) or fixed in OHOS musl
 `wayland+xkbcommon+pixman+libdrm`; (2) `mesa` (virgl, no-llvm); (3) the Hypr C++ stack with D's
 two patches + the HongMeng shims compiled in. Critical-path risks: Hyprland C++26 and the mesa
 virgl winsys rework. Await agent-63's go for the full rebuild.
+
+### Stage 0 — C++26 toolchain probe (GO)
+
+Hyprland 0.56 is C++26. Findings:
+- **OHOS SDK toolchain is too old:** clang **15.0.4** / libc++ **15004** — no `-std=c++26`, and
+  `<expected>`/`<format>` are absent (added in libc++ 16/17). Cannot build Hyprland.
+- **Upstream clang 23 works:** homebrew `llvm` (clang 23.1.4) compiles C++26 language features
+  (concepts, deducing-`this`, `consteval`, ranges) and emits **aarch64-ohos** objects
+  (`--target=aarch64-linux-ohos --sysroot=<OHOS>`). The compiler barrier is cleared.
+- **libc++ must be built from source for the musl target.** Homebrew's macOS libc++ headers
+  can't be reused (Darwin availability markup + a Darwin locale/rune-table backend baked in →
+  `unknown rune table`/`availability` errors). The fix is a from-source **libc++ + libc++abi
+  built for `aarch64-linux-ohos` with `-DLIBCXX_HAS_MUSL_LIBC=ON`**, statically linked. This is
+  a standard procedure (musl distros do it) and is **stage-1 prerequisite #0**.
+
+**Decision: GO.** Toolchain = upstream clang 23 + a libc++23 built for OHOS musl; the remaining
+risk shifts from "compiler too old" (cleared) to "build libc++ + the stack against OHOS musl".

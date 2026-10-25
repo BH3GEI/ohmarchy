@@ -113,7 +113,7 @@ The root causes behind most ❌ rows:
 | Session D-Bus | ✅ | Started with the desktop. Activation works for services with an `Exec=` (portals, gvfs, keyring, fcitx5). |
 | System D-Bus | ⚠️ | `ohmarchy-sysbus`, started and stopped by `omarchy desktop start/stop`; socket on the session's own `/run`. Started as the `dbus` user (switching to it itself fails: no PR_SET_KEEPCAPS). Bus activation limited to udisks2, polkit and upower; the launch helper (setuid) works. Roll back: delete `/opt/ohmarchy/bin/ohmarchy-sysbus`. |
 | Audio | ✅ | No `/dev/snd`; PipeWire (started with the desktop) plays into a sink that the display app plays through OHAudio. About 75-105 ms to the speaker. See acceptance.md A3. No microphone. |
-| Wi-Fi, Bluetooth widgets | ❌ | NetworkManager/bluez: system bus. The network itself works (host's network namespace). |
+| Wi-Fi, Bluetooth widgets | ❌ | NetworkManager/bluez: system bus. The network itself works (host's network namespace). `nm-online` is replaced (`/opt/ohmarchy/overrides`) so Omarchy's first run no longer asks to set up Wi-Fi on a machine that is online. |
 | Power profile, battery | ⚠️ | upower runs but lists no battery (`upower -e`: only the display device). No power-profiles-daemon. |
 | Brightness | ❌ | No backlight device; HarmonyOS controls the panel. |
 | Printing | ❌ | cupsd not running. |

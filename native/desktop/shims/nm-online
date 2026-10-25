@@ -1,0 +1,20 @@
+#!/bin/bash
+# Route D: nm-online without NetworkManager. The session uses the HarmonyOS host's
+# network (shared namespace) and NetworkManager does not run, so the real
+# nm-online always says offline, and Omarchy's first run then asks to set up Wi-Fi
+# on a machine that is online. Online here means the host has a route out.
+# Same exit codes (0 online, 1 not within the timeout); -t SECONDS (default 30),
+# -x/-s/-q accepted. Lives in /opt/ohmarchy/overrides (ahead in the apps' PATH).
+t=30
+while [ $# -gt 0 ]; do
+  case $1 in
+  -t | --timeout) t=$2; shift ;;
+  -t*) t=${1#-t} ;;
+  esac
+  shift
+done
+for _ in $(seq 0 "$t"); do
+  ip route get 223.5.5.5 > /dev/null 2>&1 && exit 0
+  sleep 1
+done
+exit 1

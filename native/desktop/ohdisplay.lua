@@ -12,6 +12,13 @@ hl.monitor({
   scale = tonumber(os.getenv("OHMARCHY_DISPLAY_SCALE") or "1"),
 })
 
+-- Repaint the whole output on any change. With per-region damage (the default, 2),
+-- regions not repainted in a frame keep stale pixels on screen: after the Omarchy
+-- menu closed and a window opened, the menu stayed drawn over the terminal until the
+-- next full repaint (rehearsal 2026-10-26). Buffer contents apparently don't survive
+-- the swapchain on the app's present path; until that is found, full frames.
+hl.config({ debug = { damage_tracking = 1 } })
+
 -- Route D's replacements for a few Omarchy commands (/opt/ohmarchy/overrides, e.g.
 -- omarchy-launch-webapp: web apps in Firefox, which can sandbox itself here).
 -- Omarchy puts its own bin directory first in the apps' PATH; this goes before it.

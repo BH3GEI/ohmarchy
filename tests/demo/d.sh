@@ -13,20 +13,23 @@ OUT=${OUT:-$here/../results/demo-$(date +%Y%m%d-%H%M%S)}
 VM=${OHMARCHY_VM:-/data/local/kaidashi/bin/ohmarchy-vm}
 h() { perl -e 'alarm shift; exec @ARGV' "${DL:-90}" ssh -o ConnectTimeout=15 "${OHOS_HOST:-ohdev}" sh -s; }
 # run CMD in the desktop session as the desktop user, with Hyprland's environment
-ses() {
+sescmd() {
     printf '%s\n' "P=\$(cat $B/session.pid)" \
         "nsenter -t \$P -m -p -- chroot $B/arch /usr/bin/env -i PATH=/usr/bin /usr/bin/su - $U -c 'export XDG_RUNTIME_DIR=/run/user/\$(id -u) WAYLAND_DISPLAY=wayland-1
 export HYPRLAND_INSTANCE_SIGNATURE=\$(hyprctl instances -j | python3 -c \"import json,sys; print(json.load(sys.stdin)[0][\\\"instance\\\"])\")
-$1' < /dev/null" | h
+$1' < /dev/null"
 }
+ses() { sescmd "$1" | h; }
 # start CMD from Hyprland, as from a keybinding (SUPER+RETURN etc.); no quotes in CMD
 launch() { ses "hyprctl eval \"hl.exec_cmd([[$1]])\" > /dev/null"; }
-t0=$(date +%s)
+t0=$(date +%s); shots=0  # shots: seconds spent taking screenshots, not part of the demo
 step() {  # name, seconds to let it settle
     sleep "$2"
     mkdir -p "$OUT"
+    local s=$(date +%s)
     OHUI_DIR=$OUT "$OHUI" shot "$1" > /dev/null 2>&1
-    printf '%5s s  %s  (%s.jpeg)\n' "$(( $(date +%s) - t0 ))" "$1" "$OUT/$1"
+    shots=$(( shots + $(date +%s) - s ))
+    printf '%5s s  %s  (%s.jpeg)\n' "$(( $(date +%s) - t0 - shots ))" "$1" "$OUT/$1"
 }
 
 case "${1:-run}" in
@@ -50,9 +53,10 @@ run)
     launch "foot -T demo-terminal --hold fastfetch"
     step 03-terminal-fastfetch 3
     # 4. workspaces at 120 Hz (SUPER+2 / SUPER+1), measured by HarmonyOS's compositor
-    echo 'hidumper -s RenderService -a "fpsClear" > /dev/null 2>&1' | h
-    ses 'for i in 1 2 3 4 5; do hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = \"2\" }))" > /dev/null; sleep 0.45; hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = \"1\" }))" > /dev/null; sleep 0.45; done'
-    fps=$(echo 'hidumper -s RenderService -a "composer fps" 2>/dev/null | cat' | h | python3 -c '
+    # one host call: frames after the switching would lower the rate (the dump keeps the last 384)
+    fps=$({ echo 'hidumper -s RenderService -a "fpsClear" > /dev/null 2>&1'
+            sescmd 'for i in 1 2 3 4 5 6 7 8; do hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = \"2\" }))" > /dev/null; sleep 0.45; hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = \"1\" }))" > /dev/null; sleep 0.45; done'
+            echo 'hidumper -s RenderService -a "composer fps" 2>/dev/null | cat'; } | h | python3 -c '
 import re, sys
 t = sys.stdin.read()
 ts = sorted(int(x) for x in re.findall(r"^(\d{10,})$", t, re.M)) or sorted(int(b) for a, b in re.findall(r"^(\d+):(\d+)$", t, re.M))
@@ -66,6 +70,7 @@ print(f"{1000 / (sum(d) / len(d)):.0f}" if d else "?")')
     ses 'omarchy-menu summon > /dev/null 2>&1'
     step 06-omarchy-menu 1
     ses 'omarchy-menu close > /dev/null 2>&1'
+    sleep 1.5  # the menu fades out; Files opening meanwhile leaves it half drawn in the shot
     launch "nautilus --new-window"
     step 07-files 2
     # 8. Docker through route I's VM (d.sh prep first)
@@ -75,6 +80,6 @@ print(f"{1000 / (sum(d) / len(d)):.0f}" if d else "?")')
     else
         echo "      route I's VM is not up: Docker step skipped (tests/demo/d.sh prep)"
     fi
-    echo "total $(( $(date +%s) - t0 )) s; screenshots in $OUT"
+    echo "demo $(( $(date +%s) - t0 - shots )) s (plus $shots s for screenshots); screenshots in $OUT"
     ;;
 esac

@@ -7,6 +7,72 @@ they shift when windows move, so take a screenshot first and adjust if needed.
 Driving the demo remotely uses `tools/ohdev/ohui`; presenting by hand uses
 the same clicks.
 
+## B: Omarchy in OSEasy
+
+What it shows: Omarchy (Arch Linux ARM + Hyprland) installed from scratch into
+the third-party OSEasy VM app (`com.oseasy1.ohvm` 3.1.1.7), cold-booting to the
+Hyprland desktop with 3D acceleration (Mesa SVGA3D → host DXVK → Vulkan), running
+es2gears and apps. It starts from *no VM*, because OSEasy forgets a non-Windows
+VM once it is powered off (a known OSEasy limitation, not our bug).
+
+Artifact: the published installer ISO with the 5 ms command-buffer fix and the
+page-flip watchdog (driver commit [`61e5998`](https://github.com/BH3GEI/ohmarchy/commit/61e5998)).
+Build it with `oseasy/probe/build.sh` using `PROBE_DEFAULT=4` (install mode is the
+default boot entry); the ISO's embedded GRUB then reads `set default=4`. Copy it to
+the device's `Download/oseasy-probe.iso`. The host-side disk image
+(`omarchy-pure.img.zst`) and `waitpush.sh` must be in `/data/local/oseasy/` (the
+installer pulls the disk over the VM network on tcp/5003).
+
+Automated end to end by [`tests/demo/b.sh`](../tests/demo/b.sh); the manual clicks
+below are the same flow.
+
+### Before the demo (not shown, about 1 min)
+
+- OSEasy installed, no VM present (or delete any existing one). 鸿融's VM off
+  (`vm.lock` free; HMV runs one VM at a time).
+- `Download/oseasy-probe.iso` is the watchdog build; `omarchy-pure.img.zst`,
+  `push-disk.sh` and `waitpush.sh` are in `/data/local/oseasy/`.
+
+### B1: create and install (about 2 min 30 s)
+
+1. Open OSEasy; it shows "创建您的第一个虚拟机". Arm the disk push on the host:
+   `wc -l < /data/log/hwf_service/vmlog > /data/local/oseasy/vmlog.s2;
+   nohup sh /data/local/oseasy/waitpush.sh &`.
+2. Click **立即创建** (1053,449). A dialog "检测到文件目录存在ISO" offers 导入 — it
+   auto-picks the wrong Windows ISO, so click **取消** (735,419).
+3. Click **点击选择 ISO** (1118,398). In the picker, click `oseasy-probe.iso`
+   (460,320), then **打开** (1185,775). (The picker is a different app, so a plain
+   tap, not the bundle-checked safetap.)
+4. OSEasy flags it "镜像不符合要求 / 系统架构: 未知" — expected for a non-Windows ISO.
+   Click **下一步** (1278,659) → **继续安装** (735,430) → **仍要安装** (735,430).
+5. On the config page (name Windows 11, 6 cores / 8 GB / 256 GB), click
+   **开始安装** (1278,659). The VM console opens; collapse the intro with
+   **收起介绍** (720,738).
+6. The VM boots the installer (GRUB default 4 = install), which pulls the disk over
+   tcp/5003 and adds the `vmwgfx-oseasy` driver. Wait for `install: INSTALL_DONE`
+   in the host's `/data/log/hwf_service/vmlog` — about **133 s** (unavoidable: a
+   64 GiB raw write at ~750 MB/s plus mkinitcpio).
+
+### B2: boot to the desktop (about 10 s)
+
+7. Reboot the VM into the installed system (host-side, over the installer's telnet:
+   `oseasy/… rb.sh`, a sysrq reboot). Omarchy's Hyprland desktop appears about
+   **7 s** after the reset. `ssh ohvm-arch` reaches the guest.
+
+### B3: show it working (about 1 min)
+
+8. **es2gears** — in the guest: `guest-bench.sh gears` (or just launch
+   `es2gears_wayland`). On the workstation run
+   [`oseasy/measure-fps.sh`](../oseasy/measure-fps.sh): the VM's `dxvk-submit`
+   flushes **120 frames/s**; the panel composes 60/s.
+9. **Workspace switching** — `guest-bench.sh workspaces 10` while `measure-fps.sh`
+   runs: still 60/s on screen, smooth.
+10. **foot** — launch `foot`; the window appears in about **0.1 s**.
+11. **chromium** — launch `chromium`; first window in about **0.8–1.2 s**.
+
+Total, hands-on parts: about 1 min 30 s of clicks plus the 133 s install and 10 s
+boot — roughly **4 minutes**.
+
 ## C: Omarchy in 鸿融
 
 What it shows: Omarchy (Arch Linux ARM + Hyprland) running as 鸿融's own VM

@@ -1,0 +1,18 @@
+#!/bin/bash
+# safetap BUNDLE X Y : tap (scaled coords) only if the topmost window at (x,y) is BUNDLE
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+export OHUI_DIR=${OHUI_DIR:-/tmp/ohui-demo}; mkdir -p "$OHUI_DIR"
+O=$ROOT/tools/ohdev/ohui
+b=$1; x=$2; y=$3
+f=$($O dump st 2>/dev/null | tail -1)
+top=$(python3 - "$f" "$x" "$y" <<'PY'
+import json,sys,re
+d=json.load(open(sys.argv[1])); x=float(sys.argv[2])*2; y=float(sys.argv[3])*2
+for c in d.get('children',[]):
+    a=c.get('attributes',{}); m=re.findall(r'\d+',a.get('bounds',''))
+    if len(m)==4:
+        x1,y1,x2,y2=map(int,m)
+        if x1<=x<=x2 and y1<=y<=y2: print(a.get('bundleName','?')); break
+PY
+)
+if [ "$top" = "$b" ]; then $O tap "$x" "$y" >/dev/null 2>&1; echo "tapped $x,$y on $top"; else echo "SKIP: top at $x,$y is '$top', not $b"; exit 1; fi

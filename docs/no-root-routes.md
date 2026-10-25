@@ -151,3 +151,54 @@ mesa with OHOS clang/musl, linked `-shared` with a `main`/entry, `dlopen`'d by t
 spawner), reusing Alpine's musl patches; D's existing glibc Arch packages are **not** reusable
 in-process. A no-TLS "hello" could be made to run via (b), but it would not generalise, so an
 empirical (b) run is not worth the device time.
+## Hyprland-stack musl-rebuild assessment (path a)
+
+Everything must be **recompiled against OHOS `libc.so`** with OHOS clang, linked `.so`, signed
+into the HAP, and `dlopen`'d by the `jl` spawner. Alpine binaries can't be reused (Alpine musl
+≠ OHOS musl); only its APKBUILDs/patches are borrowed. Grounded on D's on-device `ldd`
+(Hyprland **0.56.2**, aquamarine **0.15.1**).
+
+**Full glibc tree is huge, but most of it is droppable.** `ldd /opt/ohmarchy/bin/Hyprland` =
+175 libs; with mesa deduped, 183 libs / **272 MiB** (excl. the 51 MiB `libgallium`). The bulk
+is removable for the in-app headless build:
+- `libLLVM` **163 MiB** — only for mesa's llvmpipe. **Dropped** by building mesa with
+  `-Dgallium-drivers=virgl -Dllvm=disabled -Dvulkan-drivers= -Dplatforms=wayland -Dglx=disabled`
+  (also removes SPIRV-Tools 3.8M + glslang 3.6M). GPU goes through mesa's **virgl** frontend →
+  `vtest` → the host Maleoon `libvirglrenderer.so` the app already loads (`virpipe`, surfaceless
+  EGL; `HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe`, `native/omarchy:86`). mesa then ≈ a few MB.
+- **Drop xwayland** (removes the whole X11/xcb set), **systemd/libudev/libinput/libseat**
+  (input is injected via `@ohmarchy-display` + aquamarine's headless patch), `libicudata` 32M
+  (pull only if a kept lib truly needs ICU), `librsvg`/`libglycin`/`libjxl` (image formats, keep
+  only what hyprgraphics needs).
+
+**Must keep (the real build set):** `wayland` + `wayland-protocols`, `libxkbcommon`, `pixman`,
+`libdrm` (core only), `cairo`, `pango`, `glib2`/`gio`, `harfbuzz`, `freetype2`, `fontconfig`,
+`libpng`/`libjpeg-turbo`/`libwebp`(/`libjxl` if needed), `re2` + ~60 `abseil` libs, `lua`,
+`muparser`, `tomlplusplus`, `libzip`, `libdisplay-info`, and the Hypr stack:
+`hyprlang`/`hyprutils`/`hyprcursor`/`hyprgraphics`, `aquamarine` (libaquamarine.so.14),
+`Hyprland`. C++ runtime: OHOS `libc++_shared` (not glibc `libstdc++`). Estimated HAP libs after
+slimming: **~25–40 MiB** (vs 272).
+
+**D's patches to carry over (required):**
+- `native/desktop/patches/hyprland-0.56.2-hongmeng.patch` (491 lines) — surfaceless EGL render
+  + readback, no dmabuf/gbm scanout.
+- `native/desktop/patches/aquamarine-0.15.1-hongmeng.patch` (551 lines) — headless backend +
+  DMAHeap, output/input over `@ohmarchy-display`.
+- Sources via `native/desktop/fetch-sources.sh` → `native/desktop/src/{Hyprland,aquamarine}`.
+
+**HongMeng-kernel shims (also needed in-app):** D's `native/desktop/*.c` LD_PRELOAD shims
+`hongmeng-statx`, `hongmeng-uname`, `hongmeng-msgrcv`, `ohzc-memcpy` work around kernel quirks.
+In the HAP there is no `LD_PRELOAD` across a `dlopen`, so these must be **compiled into the
+build** (patched into the libs or linked into the spawner) or fixed in OHOS musl.
+
+**Most likely to fail (D's experience + mine):**
+1. **Hyprland itself** — C++26, needs very new clang/libc++; OHOS libc++ may lag → the top risk.
+2. **mesa virgl winsys** — `vtest` is a unix socket; in-app it must become an internal
+   connection (the app already hosts vtest), so the winsys needs repointing.
+3. **glib2/gio** — platform assumptions; Alpine patches needed.
+4. **libinput/udev** — just don't build them (input is injected).
+
+**Recommendation:** feasible after slimming (~25–40 MiB, no LLVM). Staged proof: (1)
+`wayland+xkbcommon+pixman+libdrm`; (2) `mesa` (virgl, no-llvm); (3) the Hypr C++ stack with D's
+two patches + the HongMeng shims compiled in. Critical-path risks: Hyprland C++26 and the mesa
+virgl winsys rework. Await agent-63's go for the full rebuild.

@@ -68,3 +68,46 @@ kernel work.
 Not yet rehearsed: the Super-key shortcuts through `ohui key` (keycodes are
 checked in the rehearsal), and the import entry's exact click positions in
 C1 steps 1–2.
+
+## I: Docker on the native desktop
+
+What it shows: the native desktop (route D) runs on the HongMeng kernel, which
+can't run containers, yet `docker` and `docker compose` work in its terminal.
+The CLI talks to dockerd in route I's VM, a headless Omarchy under StratoVirt
+(`ohmarchy-vm`, [vm-own.md](vm-own.md)). The VM shares the desktop user's home
+at the same path, so bind mounts work as on any Linux, and the files
+containers write are ordinary files of the desktop user (0644, not root's).
+
+Automated, from the presenting machine, with PASS/FAIL lines and the startup
+time: `tests/demo/i.sh` (it takes and releases vm.lock itself;
+`DEMO_LENT_LOCK=1` when another session lent its lock).
+
+### Before the demo (not shown, 1 min)
+
+- `/data/local/vm.lock` is free or lent to you, the 鸿融 main VM is shut down
+  (route I refuses to start next to another StratoVirt), and route D's
+  desktop is open with a terminal.
+
+### Steps (about 3 min)
+
+| # | Action | Expected | Time |
+|---|---|---|---|
+| 1 | Start the VM, **on the host as root** (`ssh ohdev`): `sh /data/local/kaidashi/bin/ohmarchy-vm start`. D's terminal can't do this, see the note below. | `home share: virtiofsd pid …, uid 60000`, `started pid …`, `guest up after 5s`. | VM up in about 5 s; dockerd: filled in by the rehearsal (`i.sh` prints "dockerd answering N s after start") |
+| 2 | In D's terminal: `docker run --rm hello-world` | "Hello from Docker!" (the first run pulls the image through the VM's registry mirrors). | a few s |
+| 3 | In D's terminal, a compose service with a bind mount: `mkdir -p ~/demo-i/www && cd ~/demo-i`, then a `compose.yaml` with one `busybox` service: `ports: ["8080:8080"]`, `volumes: ["./www:/www"]`, `command: sh -c "echo hello-from-compose > /www/index.html; exec httpd -f -p 8080 -h /www"`. Then `docker compose up -d` and `curl http://172.16.100.2:8080/`. | `hello-from-compose`: the container wrote the page into `~/demo-i/www` on the desktop and serves it from there. | 10–20 s |
+| 4 | `ls -l www/index.html` | `-rw-r--r-- 1 builder builder … index.html`: 0644 and the desktop user's, although the container wrote it as root. | 5 s |
+| 5 | `docker compose down; cd; rm -rf ~/demo-i`, then on the host as root `sh /data/local/kaidashi/bin/ohmarchy-vm stop`. | `stopped`: the VM powered off from the inside; the lock, tap and routing rules are gone. | 10 s |
+
+Talking points: Docker for a desktop whose kernel has no namespaces or
+cgroups, at the cost of one small VM that idles at about 1.2 GiB host memory
+(the balloon gives more back on demand). The home share runs as the desktop
+user with no capabilities, so the VM can't reach anything else on the host.
+Files keep normal modes since the switch to upstream virtiofsd 1.14.0 (with
+HarmonyOS's own virtiofsd they were always 0660).
+
+Note, starting from D's terminal: `ohmarchy-vm` needs root on the host (the
+hypervisor, tap, routing, the share's bind mount), and D's terminal is the
+unprivileged desktop user. So for now step 1 and the stop run on the host.
+Doing them from D would need a small root helper on the host that accepts
+only `start`, `stop`, `status` from the desktop user. That opens a way from
+the desktop into host root, so it's proposed here, not built.

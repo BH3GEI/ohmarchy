@@ -422,7 +422,7 @@ and one by a root container (`docker run -v $PWD:/w alpine touch /w/x`), then
 | Ownership in D | files written from the guest by yao **and by a root container** are `60000:60000` in D |
 | D → VM Docker (native-desktop line, `tests/compat/docker-mount.sh`) | `docker run -v $PWD:/w` reads: PASS; a container's file belongs to 60000 in D: PASS; compose writes through a `.` bind mount: PASS |
 | Symlink `../../etc` made in the guest | resolves in the guest: yao reads Omarchy's `/etc`, a container reads Alpine's; no host file reachable. `/home/builder/..` is the guest's `/home` |
-| Limitation | files made through the share are `0660`, directories `0771`, whatever the guest asks (HarmonyOS virtiofsd; see "Options tried" below); harmless for builder |
+| Modes | with the system virtiofsd, files were always `0660` and directories `0771`; fixed with upstream virtiofsd (now the default): `0644`/`0755`, chmod works (see the last section) |
 
 What it took, beyond the offline plan:
 
@@ -522,3 +522,20 @@ are left out and its log goes to `svc/virtiofsd.out`. In a container as
 vhost-user socket connection". Still to check with a guest on ohdev (next
 vm.lock slot): it runs on HongMeng, `share-test.sh` and `umask-test.sh`
 pass, new files are 0644/0755, chmod works.
+
+**Upstream virtiofsd verified, now the default (2026-10-25 10:12–10:13 PDT,
+vm.lock lent by agent-2a, then handed to OSEasy).** `upstream-fs-test.sh`
+with the same uid 60000, no capabilities, and the same id mappings:
+
+| Check | System virtiofsd (HarmonyOS 1.13.0) | Upstream 1.14.0 |
+|---|---|---|
+| Runs on HongMeng as 60000 | yes | yes (warns that file handles aren't supported and falls back to O_PATH fds, as expected) |
+| File from yao / root container, in D | `0660` | `0644` |
+| Directory from yao / root container, in D | `0771` | `0755` |
+| `chmod 600` from the guest, in D | ignored (`0660`) | `0600` |
+| Ownership in D | 60000:60000 | 60000:60000 |
+| Symlink `../../etc` | resolves inside the guest | the same: Omarchy's /etc for yao, Alpine's in a container; nothing of the host's |
+| virtiofsd process | Uid 60000, CapEff 0, NoNewPrivs 1 | the same |
+
+`ohmarchy-vm` now uses upstream by default; `OVM_VIRTIOFSD=system` goes
+back to the system binary. The 0660 limitation above is fixed this way.

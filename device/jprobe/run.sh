@@ -11,7 +11,6 @@ set -u
 if mkdir /data/local/screen.lock 2>/dev/null; then
   printf 'agent-c6 (Route J XPM probe)\npurpose: install+run com.ohmarchy.xpmprobe ~8s, read hilog+dmesg\nexpected end: <= 1 min\n' > /data/local/screen.lock/owner
 else echo "screen.lock HELD:"; cat /data/local/screen.lock/owner; exit 3; fi
-trap 'rm -rf /data/local/screen.lock' EXIT
 B=com.ohmarchy.xpmprobe
 bm install -r -p /data/local/tmp/xpmprobe.hap 2>&1 | tail -1
 aa force-stop $B >/dev/null 2>&1 || true

@@ -97,6 +97,37 @@ static napi_value RunProbes(napi_env env, napi_callback_info) {
             else LOGI("(e) fork FAIL errno=%{public}d", errno);
         }
     }
+    // (f) dlopen an UNSIGNED .so dropped in the sandbox, then call its exported probe_fn().
+    {
+        const char *so = "/data/storage/el2/base/haps/entry/files/libprobe.so";
+        LOGI("(f) dlopen sandbox .so present=%{public}d", access(so, F_OK) == 0);
+        void *h = dlopen(so, RTLD_NOW);
+        if (!h) { LOGI("(f) dlopen sandbox .so: FAIL %{public}s", dlerror()); }
+        else {
+            using Fn = int (*)();
+            Fn f = (Fn)dlsym(h, "probe_fn");
+            if (!f) LOGI("(f) dlsym probe_fn: FAIL %{public}s", dlerror());
+            else LOGI("(f) sandbox .so probe_fn() = %{public}d (42=ran-ok)", f());
+            dlclose(h);
+        }
+    }
+    // (g) execve an ELF packed into the HAP's libs/ (signed with the HAP, trusted after
+    //     install) — the Termux-on-Android-10+ trick. If this runs, J can bundle the whole
+    //     Arch userspace into the HAP at build time.
+    {
+        const char *libs[] = {"/data/storage/el1/bundle/libs/arm64/libexit42.so",
+                              "/data/storage/el1/bundle/libs/arm64-v8a/libexit42.so", nullptr};
+        for (int i = 0; libs[i]; i++) {
+            if (access(libs[i], F_OK) != 0) { LOGI("(g) %{public}s not present", libs[i]); continue; }
+            LOGI("(g) try %{public}s x=%{public}d", libs[i], access(libs[i], X_OK) == 0);
+            pid_t pid = fork();
+            if (pid == 0) { execl(libs[i], libs[i], (char*)nullptr); int e=errno;
+                OH_LOG_Print(LOG_APP, LOG_ERROR, 0xBEEF, LOG_TAG, "(g) CHILD execve %{public}s FAILED errno=%{public}d(%{public}s)", libs[i], e, strerror(e)); _exit(120+(e&7)); }
+            else if (pid>0) { int st=0; waitpid(pid,&st,0);
+                LOGI("(g) %{public}s -> %{public}s=%{public}d (42=ran-ok;120+=failed)", libs[i], WIFEXITED(st)?"exit":"sig", WIFEXITED(st)?WEXITSTATUS(st):WTERMSIG(st)); }
+            else LOGI("(g) fork FAIL errno=%{public}d", errno);
+        }
+    }
     LOGI("=== XPM probe done ===");
     napi_value r; napi_create_int32(env, 0, &r); return r;
 }

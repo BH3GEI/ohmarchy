@@ -50,14 +50,14 @@ below are the same flow.
    **收起介绍** (720,738).
 6. The VM boots the installer (GRUB default 4 = install), which pulls the disk over
    tcp/5003 and adds the `vmwgfx-oseasy` driver. Wait for `install: INSTALL_DONE`
-   in the host's `/data/log/hwf_service/vmlog` — about **133 s** (unavoidable: a
-   64 GiB raw write at ~750 MB/s plus mkinitcpio).
+   in the host's `/data/log/hwf_service/vmlog` — about **60–135 s** (the 64 GiB raw
+   write plus mkinitcpio; measured 61 s in the 2026-10-26 rehearsal).
 
 ### B2: boot to the desktop (about 10 s)
 
 7. Reboot the VM into the installed system (host-side, over the installer's telnet:
    `oseasy/… rb.sh`, a sysrq reboot). Omarchy's Hyprland desktop appears about
-   **7 s** after the reset. `ssh ohvm-arch` reaches the guest.
+   **6 s** after the reset (measured). `ssh ohvm-arch` reaches the guest.
    (For the scripted demo, `b.sh` then installs the presenter's ssh key into the
    fresh guest using `$GS_PW`; a hands-on presenter instead opens a terminal in the
    guest. The es2gears/app steps below drive the guest over ssh.)
@@ -70,11 +70,14 @@ below are the same flow.
    flushes **120 frames/s**; the panel composes 60/s.
 9. **Workspace switching** — `guest-bench.sh workspaces 10` while `measure-fps.sh`
    runs: still 60/s on screen, smooth.
-10. **foot** — launch `foot`; the window appears in about **0.1 s**.
-11. **chromium** — launch `chromium`; first window in about **0.8–1.2 s**.
+10. **foot** — launch `foot`; the window appears in about **0.08 s** (measured).
+11. **nautilus** — about **0.6 s**; **chromium** — first window about **0.8 s**
+    (measured; stop es2gears first, these are quiet-desktop times).
 
-Total, hands-on parts: about 1 min 30 s of clicks plus the 133 s install and 10 s
-boot — roughly **4 minutes**.
+Total, hands-on parts: about 1 min 30 s of clicks plus ~60 s install and ~6 s
+boot — roughly **3 minutes** (2026-10-26 rehearsal: install 61 s, boot 6 s,
+es2gears and workspace switching 60/s on screen, foot 0.08 s, nautilus 0.6 s,
+chromium 0.8 s).
 
 ## C: Omarchy in 鸿融
 

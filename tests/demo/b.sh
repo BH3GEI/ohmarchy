@@ -81,14 +81,18 @@ g 20 'XDG_RUNTIME_DIR=/run/user/1000 /tmp/guest-bench.sh workspaces 8 >/dev/null
 "$ROOT/oseasy/measure-fps.sh" 6 2>&1 | grep 'composer fps'
 
 step "B3 foot and chromium launch times"
+# Stop es2gears/workspace load first so the times reflect a quiet desktop, and set
+# HYPRLAND_INSTANCE_SIGNATURE so hyprctl (hence the window-appeared check) works.
 g 60 'bash -s' <<'G'
 export XDG_RUNTIME_DIR=/run/user/$(id -u) WAYLAND_DISPLAY=wayland-1
+export HYPRLAND_INSTANCE_SIGNATURE=$(ls "$XDG_RUNTIME_DIR/hypr" | head -1)
+pkill -x es2gears_wayland 2>/dev/null; pkill -f guest-bench 2>/dev/null; sleep 2
 count(){ hyprctl clients -j 2>/dev/null | grep -c '"class"'; }
-for app in "foot" "chromium --user-data-dir=/tmp/demo-cr --no-first-run"; do
+for app in "foot" "chromium --user-data-dir=/tmp/demo-cr --no-first-run --no-default-browser-check"; do
   b=$(count); t0=$(date +%s%N); setsid -f $app >/dev/null 2>&1 </dev/null
-  for _ in $(seq 1 100); do [ "$(count)" -gt "$b" ] && break; sleep 0.05; done
-  printf '%s: %d ms\n' "${app%% *}" "$(( ($(date +%s%N)-t0)/1000000 ))"
-  sleep 1; hyprctl dispatch killactive >/dev/null 2>&1; sleep 1
+  ok=timeout; for _ in $(seq 1 120); do [ "$(count)" -gt "$b" ] && { ok=up; break; }; sleep 0.05; done
+  printf '%s: %d ms (%s)\n' "${app%% *}" "$(( ($(date +%s%N)-t0)/1000000 ))" "$ok"
+  sleep 1; hyprctl dispatch killactive >/dev/null 2>&1; sleep 1.5
 done
 rm -rf /tmp/demo-cr
 G

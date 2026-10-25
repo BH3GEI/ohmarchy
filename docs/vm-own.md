@@ -470,7 +470,7 @@ with HongMeng's `hmmac=inherit_parent`. A host-side probe (as 60000 with umask
 line: `umask 022; touch ~/x; ls -l ~/x` as builder in D. Harmless for builder
 (the owner); it matters only for other users in D.
 
-**Known issue: files made through the share are 0660, directories 0771**
+**Fixed (upstream virtiofsd 1.14.0, see the last section): files made through the share were 0660, directories 0771**
 (low priority; builder, the owner, is not affected). Not D's filesystem: in
 D's terminal, builder with umask 022 creates `0644`/`0755` under `~` on the
 same `hmmac=inherit_parent` mount (native-desktop line, 13:20 PDT). Not
@@ -503,12 +503,12 @@ binary is built around a "virtual share" for HarmonyOS's own guests (strings
 include gallery, pasteboard and `GuestDriveShare` commands). Closed as a
 limitation of the system virtiofsd: builder owns every file, so D is not
 affected; only another user in D can't read these files. The real fix would
-be a different virtiofsd (upstream rust-vmm built for HongMeng), which isn't
-worth it for this. Fixed along the way: `ohmarchy-vm stop`'s guest ssh read
+be a different virtiofsd (upstream built for HongMeng); that was done next and
+works (below). Fixed along the way: `ohmarchy-vm stop`'s guest ssh read
 the caller's stdin, which ate the rest of a `sh -s` script; it now reads
 `/dev/null`.
 
-**Upstream virtiofsd as the fix (built 2026-10-25, not yet verified on ohdev).**
+**Upstream virtiofsd as the fix (built 2026-10-25; verified below).**
 Static aarch64 build of upstream virtiofsd v1.14.0 (commit `c2540f8d`), built
 natively in an arm64 `alpine:3.22` container (rustc 1.87.0, musl 1.2.5,
 libseccomp 2.6.1, libcap-ng 0.8.5, all static, non-PIE, no interpreter):

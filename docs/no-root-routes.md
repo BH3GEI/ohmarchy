@@ -122,3 +122,32 @@ fork+dlopen mechanism into the D-line display app (`native/app`, `com.ohmarchy.d
 app itself launches the signed `.so` userspace, then assess compiling Hyprland + aquamarine as
 `.so`s to run in the app process. Not possible this way: run-time `pacman`/new unsigned
 binaries (everything must be signed into the HAP at build time).
+
+## libc decision for the Hyprland stack: musl rebuild (path a), not nested glibc (path b)
+
+D's Hyprland/aquamarine/mesa are glibc-built; the `jl` spawner runs inside the app's **OHOS
+musl** process. Two options were weighed (evidence from a real aarch64 `glibc` 2.43 package):
+
+- **(a) recompile the stack with OHOS clang/musl.** busybox already proves musl builds work
+  (`device/jloader/build-busybox.sh`); Alpine ships musl patches for Hyprland, wlroots and
+  mesa to start from.
+- **(b) nested glibc: map a signed glibc `ld.so` in the musl process and jump to it.**
+
+(b) is **not viable**:
+1. A glibc `.so` imports versioned symbols `GLIBC_2.x` (the package shows up to GLIBC_2.43)
+   that OHOS musl does not provide, so it cannot be `dlopen`'d into the musl process directly.
+2. The decisive blocker is TLS. glibc `libc.so.6` has a `PT_TLS` segment and thread-local
+   `errno`/`__resp`/`__h_errno`; glibc and musl keep the thread-control-block at the same
+   AArch64 thread pointer (`TPIDR_EL0`) but with **incompatible layouts**. A thread can hold
+   only one TCB, so the instant glibc code touches TLS (errno, malloc arena, stdio — i.e.
+   almost immediately) it misreads musl's TCB and corrupts; and glibc's `ld.so` setting up its
+   own TCB would clobber musl's and break the host app (ArkUI/render/vtest threads). Running
+   glibc code only on dedicated threads with their own `TPIDR` (never calling back into musl)
+   is theoretically possible but extremely fragile and still needs every glibc lib signed into
+   the HAP — far more work than (a) for a worse result.
+
+**Decision: path (a).** The Hyprland-stack port is a musl rebuild (Hyprland/aquamarine/wlroots/
+mesa with OHOS clang/musl, linked `-shared` with a `main`/entry, `dlopen`'d by the `jl`
+spawner), reusing Alpine's musl patches; D's existing glibc Arch packages are **not** reusable
+in-process. A no-TLS "hello" could be made to run via (b), but it would not generalise, so an
+empirical (b) run is not worth the device time.

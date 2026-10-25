@@ -439,7 +439,7 @@ the runs above unless marked pending.
 | App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | not measured | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | es2gears 114-120 in the guest, 60 on screen | es2gears 114-120, 117-120 on screen |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
-| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak failed twice (hang after 38 and 51 min, use-after-free of command buffer headers); with the fix **77 min, no fault** (0 late writes seen) | 3/3 warm reboots (pure disk); soak 30 min with all 6 vCPUs busy, no fault ([hongrong-whole-os.md](hongrong-whole-os.md)) | no VM to reboot; 24 h soak with hourly smoke test running ([acceptance.md](acceptance.md) C) |
+| 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak failed twice (hang after 38 and 51 min, use-after-free of command buffer headers); with the fix **77 min (5 ms hold) and 3 h 07 min (50 ms hold), no fault**, 0 late writes seen (cause inferred, not observed) | 3/3 warm reboots (pure disk); soak 30 min with all 6 vCPUs busy, no fault ([hongrong-whole-os.md](hongrong-whole-os.md)) | no VM to reboot; 24 h soak with hourly smoke test running ([acceptance.md](acceptance.md) C) |
 
 ### Commits (MateBook 14 work)
 
@@ -885,6 +885,33 @@ A write that late would not be seen by the check, but it would also land after
 the header had been freed, so it could still corrupt the pool. The 5 ms delay
 stays as it is: with no measured latency there is nothing to tune it from. A
 longer soak, or a second one, would tell the two cases apart.
+
+### Thirteenth run: 3-hour GPU soak with a 50 ms hold, still no late write (16:07-19:24, 2026-10-25)
+
+Logs: [`soak5.log`](../oseasy/runs/2026-10-25-pollfix/soak5.log),
+[`soak5-netconsole.log`](../oseasy/runs/2026-10-25-pollfix/soak5-netconsole.log).
+One clean run against failures at 38 and 51 minutes was weak evidence, so the
+supervisor asked for a longer run with a wider window. Debug build: the only
+change is `VMW_CMDBUF_RETIRE_US` 5000 → 50000 (hold time and detection window
+both 50 ms; never committed). Package `43d19cd1ae05550b329884770a0f0a7412e654f0717e04d24e028b0c9443fac9`,
+ISO `2f205f8e7976bf1766ae17b62bfb2f966deca962b63f81d7abc297979899e286`. Same load
+and capture as run twelve.
+
+- Soak from 16:16:10 to 19:22 PDT (guest uptime 111 s to 11331 s, 3 h 07 min).
+  All 38 checks answered. Every check: `dxvk-submit` flushes 120 frames/s, the
+  screen composes 60/s. Load 1.0-1.2 and 6.9 GB free throughout.
+- netconsole: 1125 lines, 1121 heartbeats with no gap over 15 s, no oops, BUG,
+  WARNING, hung task or RCU stall. The guest journal shows none either.
+- **Late device writes: 0** with a 50 ms window.
+- Powered off from the guest; both locks dropped.
+
+Conclusion, by the supervisor's rule set before the run: no late write and no
+oops in 3 hours, so **5 ms stays as the release delay** (`VMW_CMDBUF_RETIRE_US`,
+as committed in a145d58). **The root cause is inferred, not directly observed.** The
+backtrace and the corrupted free-list link point to a device write into a freed
+header. The check never caught one, either within 5 ms (77 min) or within
+50 ms (3 h). With the fix in place, the hang has not come back in 4 h 24 min
+under the load that hung twice within 51 minutes.
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

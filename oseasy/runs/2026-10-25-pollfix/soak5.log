@@ -1,0 +1,401 @@
+host 7.247.135.16
+listener 48474
+hang-capture: kernel.hardlockup_all_cpu_backtrace=1 not available
+hang-capture: kernel.nmi_watchdog=1 not available
+hang-capture: netconsole enp0s6 -> 7.247.135.16:6666 via 172.16.100.1 (e2:23:4a:ca:5e:61); watchdog 1, nmi_watchdog 0
+Running as unit: ohmarchy-heartbeat.service; invocation ID: 501326969cdf4751a3d06584f406f87e
+netcon.log: 5 [  111.161560] hang-capture: heartbeat started [  111.192522] hb: load 0.24 0.17 0.07 1/327; mem 6920 MB; top:  2.0 quickshell, 0.8 systemd, 0.6 pr/ttyAMA-1, 0.6 kworker/u24:0-writeback, 
+== t+0 min 16:16:10
+Hyprland up 02:09, es2gears 3; load 0.45 0.22 0.09; mem avail 6877 MB
+netcon: 7 [  131.226524] hb: load 0.41 0.21 0.08 1/339; mem 6873 MB; top: 12.3 es2gears_waylan, 4.6 es2gears_waylan, 1.6 quickshell, 1.1 Hyprland, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+5 min 16:21:10
+Hyprland up 07:08, es2gears 3; load 1.06 0.78 0.38; mem avail 6886 MB
+netcon: 37 [  431.771585] hb: load 1.15 0.80 0.38 1/308; mem 6890 MB; top:  7.8 Hyprland, 3.1 es2gears_waylan, 3.1 es2gears_waylan, 0.6 quickshell, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+10 min 16:26:10
+Hyprland up 12:09, es2gears 3; load 1.22 1.06 0.62; mem avail 6886 MB
+netcon: 67 [  732.308740] hb: load 1.24 1.06 0.62 1/311; mem 6889 MB; top:  9.7 Hyprland, 3.8 es2gears_waylan, 3.7 es2gears_waylan, 0.6 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+== t+15 min 16:31:10
+Hyprland up 17:08, es2gears 3; load 1.01 1.08 0.77; mem avail 6886 MB
+netcon: 97 [ 1032.836785] hb: load 1.01 1.08 0.77 1/310; mem 6891 MB; top: 10.1 Hyprland, 3.5 es2gears_waylan, 3.5 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+20 min 16:36:10
+Hyprland up 22:09, es2gears 3; load 1.12 1.12 0.89; mem avail 6888 MB
+netcon: 127 [ 1333.366119] hb: load 1.13 1.12 0.89 4/311; mem 6889 MB; top: 10.2 Hyprland, 3.5 es2gears_waylan, 3.4 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+25 min 16:41:10
+Hyprland up 27:09, es2gears 3; load 0.98 1.08 0.95; mem avail 6888 MB
+netcon: 157 [ 1633.906064] hb: load 0.98 1.08 0.95 2/314; mem 6889 MB; top: 10.7 Hyprland, 3.7 es2gears_waylan, 3.6 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+30 min 16:46:10
+Hyprland up 32:08, es2gears 3; load 1.14 1.14 1.02; mem avail 6890 MB
+netcon: 187 [ 1934.443565] hb: load 1.16 1.14 1.02 1/312; mem 6890 MB; top: 10.9 Hyprland, 3.8 es2gears_waylan, 3.7 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+35 min 16:51:10
+Hyprland up 37:09, es2gears 3; load 1.22 1.23 1.09; mem avail 6888 MB
+netcon: 217 [ 2234.977719] hb: load 1.24 1.23 1.10 1/313; mem 6889 MB; top: 11.0 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+40 min 16:56:10
+Hyprland up 42:09, es2gears 3; load 1.38 1.21 1.11; mem avail 6889 MB
+netcon: 247 [ 2535.509189] hb: load 1.24 1.18 1.10 1/313; mem 6891 MB; top: 11.2 Hyprland, 3.9 es2gears_waylan, 3.8 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+45 min 17:01:10
+Hyprland up 47:09, es2gears 3; load 1.17 1.20 1.12; mem avail 6889 MB
+netcon: 277 [ 2836.036831] hb: load 1.17 1.20 1.12 1/314; mem 6890 MB; top: 11.1 Hyprland, 3.9 es2gears_waylan, 3.8 es2gears_waylan, 0.7 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+50 min 17:06:10
+Hyprland up 52:09, es2gears 3; load 1.10 1.19 1.13; mem avail 6890 MB
+netcon: 307 [ 3136.580159] hb: load 1.10 1.19 1.13 1/311; mem 6889 MB; top: 11.2 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+55 min 17:11:10
+Hyprland up 57:09, es2gears 3; load 1.23 1.16 1.12; mem avail 6891 MB
+netcon: 337 [ 3437.108919] hb: load 1.23 1.16 1.12 1/309; mem 6893 MB; top: 11.2 Hyprland, 3.9 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+60 min 17:16:10
+Hyprland up 01:02:09, es2gears 3; load 1.07 1.12 1.10; mem avail 6881 MB
+netcon: 367 [ 3737.642358] hb: load 1.07 1.12 1.10 1/314; mem 6885 MB; top: 11.2 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+65 min 17:21:10
+Hyprland up 01:07:09, es2gears 3; load 1.08 1.18 1.13; mem avail 6890 MB
+netcon: 397 [ 4038.180361] hb: load 1.08 1.18 1.13 2/311; mem 6891 MB; top: 11.3 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+70 min 17:26:10
+Hyprland up 01:12:09, es2gears 3; load 1.19 1.14 1.12; mem avail 6888 MB
+netcon: 427 [ 4338.709256] hb: load 1.19 1.14 1.12 1/311; mem 6893 MB; top: 11.3 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+75 min 17:31:10
+Hyprland up 01:17:09, es2gears 3; load 1.05 1.14 1.12; mem avail 6888 MB
+netcon: 457 [ 4639.237207] hb: load 1.05 1.14 1.12 1/312; mem 6891 MB; top: 11.2 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+80 min 17:36:10
+Hyprland up 01:22:09, es2gears 3; load 1.20 1.17 1.12; mem avail 6886 MB
+netcon: 486 [ 4929.759365] hb: load 1.22 1.17 1.12 1/310; mem 6891 MB; top: 11.3 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+85 min 17:41:10
+Hyprland up 01:27:09, es2gears 3; load 1.22 1.16 1.12; mem avail 6888 MB
+netcon: 516 [ 5230.295066] hb: load 1.24 1.16 1.12 1/311; mem 6888 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+90 min 17:46:10
+Hyprland up 01:32:08, es2gears 3; load 1.23 1.14 1.10; mem avail 6889 MB
+netcon: 546 [ 5530.842868] hb: load 1.25 1.14 1.11 1/312; mem 6892 MB; top: 11.4 Hyprland, 4.1 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+95 min 17:51:10
+Hyprland up 01:37:09, es2gears 3; load 1.21 1.18 1.12; mem avail 6889 MB
+netcon: 576 [ 5831.372953] hb: load 1.22 1.18 1.12 2/312; mem 6891 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+100 min 17:56:10
+Hyprland up 01:42:09, es2gears 3; load 1.06 1.12 1.10; mem avail 6887 MB
+netcon: 606 [ 6131.897254] hb: load 1.06 1.12 1.10 3/310; mem 6891 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+105 min 18:01:10
+Hyprland up 01:47:08, es2gears 3; load 1.00 1.05 1.07; mem avail 6887 MB
+netcon: 636 [ 6432.433427] hb: load 1.00 1.05 1.07 1/310; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+110 min 18:06:10
+Hyprland up 01:52:09, es2gears 3; load 1.33 1.13 1.09; mem avail 6888 MB
+netcon: 666 [ 6732.971755] hb: load 1.33 1.13 1.09 1/311; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+115 min 18:11:10
+Hyprland up 01:57:09, es2gears 3; load 1.22 1.09 1.08; mem avail 6888 MB
+netcon: 696 [ 7033.497939] hb: load 1.22 1.09 1.08 1/312; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+120 min 18:16:10
+Hyprland up 02:02:09, es2gears 3; load 1.11 1.12 1.09; mem avail 6886 MB
+netcon: 726 [ 7334.026599] hb: load 1.11 1.12 1.09 1/314; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+125 min 18:21:10
+Hyprland up 02:07:09, es2gears 3; load 1.12 1.14 1.10; mem avail 6888 MB
+netcon: 756 [ 7634.556439] hb: load 1.12 1.14 1.10 2/313; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 3.9 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+130 min 18:26:10
+Hyprland up 02:12:09, es2gears 3; load 1.14 1.15 1.10; mem avail 6888 MB
+netcon: 786 [ 7935.093210] hb: load 1.14 1.15 1.10 1/312; mem 6889 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+135 min 18:31:10
+Hyprland up 02:17:11, es2gears 3; load 1.14 1.13 1.09; mem avail 6888 MB
+netcon: 816 [ 8235.626361] hb: load 1.15 1.13 1.10 1/313; mem 6888 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+== t+140 min 18:36:10
+Hyprland up 02:22:09, es2gears 3; load 0.98 1.06 1.07; mem avail 6886 MB
+netcon: 846 [ 8536.154735] hb: load 0.98 1.06 1.07 1/313; mem 6889 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+145 min 18:41:10
+Hyprland up 02:27:09, es2gears 3; load 1.19 1.08 1.07; mem avail 6882 MB
+netcon: 876 [ 8836.694811] hb: load 1.12 1.06 1.07 1/312; mem 6887 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+150 min 18:46:10
+Hyprland up 02:32:09, es2gears 3; load 1.13 1.11 1.09; mem avail 6888 MB
+netcon: 906 [ 9137.231119] hb: load 1.12 1.11 1.09 1/310; mem 6890 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+155 min 18:51:10
+Hyprland up 02:37:09, es2gears 3; load 1.04 1.12 1.09; mem avail 6887 MB
+netcon: 936 [ 9437.759045] hb: load 1.19 1.15 1.10 2/310; mem 6891 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+160 min 18:56:10
+Hyprland up 02:42:09, es2gears 3; load 1.23 1.11 1.09; mem avail 6888 MB
+netcon: 966 [ 9738.298936] hb: load 1.21 1.11 1.09 1/310; mem 6890 MB; top: 11.5 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+165 min 19:01:10
+Hyprland up 02:47:09, es2gears 3; load 1.14 1.14 1.10; mem avail 6885 MB
+netcon: 996 [10038.829241] hb: load 1.13 1.13 1.09 1/314; mem 6887 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/u24:4-events_unbound, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+170 min 19:06:10
+Hyprland up 02:52:09, es2gears 3; load 1.19 1.18 1.11; mem avail 6888 MB
+netcon: 1026 [10339.351278] hb: load 1.17 1.17 1.11 1/311; mem 6891 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+175 min 19:11:10
+Hyprland up 02:57:09, es2gears 3; load 1.07 1.12 1.09; mem avail 6887 MB
+netcon: 1056 [10639.881031] hb: load 1.06 1.11 1.09 1/310; mem 6886 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+180 min 19:16:10
+Hyprland up 03:02:09, es2gears 3; load 1.13 1.12 1.09; mem avail 6886 MB
+netcon: 1085 [10930.397098] hb: load 1.14 1.12 1.09 1/312; mem 6886 MB; top: 11.4 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+== t+185 min 19:21:10
+Hyprland up 03:07:09, es2gears 3; load 1.01 1.07 1.08; mem avail 6887 MB
+netcon: 1115 [11230.938126] hb: load 1.02 1.07 1.08 1/311; mem 6887 MB; top: 11.5 Hyprland, 4.0 es2gears_waylan, 4.0 es2gears_waylan, 0.8 kworker/1:1H-events_highpri, 
+-- es2gears
+== composer fps: 60.0 frames/s (241 frames over 4.00 s)
+  dxvk-submit-46118                        120
+-- es2gears + workspace switching
+== composer fps: 60.0 frames/s (361 frames over 6.00 s)
+  dxvk-submit-46118                        120
+  RSUniRenderThre-2792                     0
+listener 48474 stopped
+== soak5 done 19:22:56; netcon.log     1125 lines

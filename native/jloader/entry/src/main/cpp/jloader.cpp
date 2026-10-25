@@ -25,11 +25,11 @@ static napi_value RunBusybox(napi_env env, napi_callback_info info) {
     if (n == 0) strcpy(cmd, "echo no-cmd");
     LOGI("=== J loader: sh -c \"%{public}s\" (bb=%{public}s present=%{public}d) ===", cmd, BB, access(BB, F_OK) == 0);
 
-    unlink(OUT);
+    int pfd[2];
+    if (pipe(pfd) != 0) { LOGI("pipe FAILED errno=%{public}d", errno); napi_value r0; napi_create_int32(env,-1,&r0); return r0; }
     pid_t pid = fork();
     if (pid == 0) {
-        int fd = open(OUT, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        close(pfd[0]); dup2(pfd[1], 1); dup2(pfd[1], 2); if (pfd[1] > 2) close(pfd[1]);
         void *h = dlopen(BB, RTLD_NOW | RTLD_GLOBAL);
         if (!h) { dprintf(2, "dlopen busybox FAILED: %s\n", dlerror()); _exit(111); }
         using MainFn = int (*)(int, char **);
@@ -42,14 +42,14 @@ static napi_value RunBusybox(napi_env env, napi_callback_info info) {
         dprintf(2, "[child] busybox main returned %d\n", rc);
         _exit(rc & 0xff);
     } else if (pid > 0) {
+        close(pfd[1]);
+        char buf[8192]; ssize_t tot = 0, k;
+        while ((k = read(pfd[0], buf + tot, sizeof(buf) - 1 - tot)) > 0) { tot += k; if (tot >= (ssize_t)sizeof(buf)-1) break; }
+        buf[tot > 0 ? tot : 0] = 0; close(pfd[0]);
         int st = 0; waitpid(pid, &st, 0);
-        LOGI("child exit=%{public}d", WIFEXITED(st) ? WEXITSTATUS(st) : -WTERMSIG(st));
-        FILE *f = fopen(OUT, "r");
-        if (f) { char line[1024]; int ln = 0;
-            while (fgets(line, sizeof(line), f)) { size_t l = strlen(line); if (l && line[l-1]=='\n') line[l-1]=0;
-                LOGI("OUT| %{public}s", line); if (++ln > 200) break; }
-            fclose(f);
-        } else LOGI("no output file");
+        LOGI("child exit=%{public}d, %{public}zd bytes output:", WIFEXITED(st) ? WEXITSTATUS(st) : -WTERMSIG(st), (ssize_t)tot);
+        char *line = buf; while (line && *line) { char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+            LOGI("OUT| %{public}s", line); line = nl ? nl + 1 : nullptr; }
     } else LOGI("fork FAILED errno=%{public}d", errno);
     LOGI("=== J loader done ===");
     napi_value r; napi_create_int32(env, 0, &r); return r;

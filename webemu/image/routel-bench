@@ -1,0 +1,13 @@
+#!/bin/bash
+# Fixed CPU workload for route L (same input every run). Times are the guest's
+# wall clock; the page also logs the emulator's instruction rate meanwhile.
+t() { local s e; s=$(date +%s%N); "$@" > /dev/null; e=$(date +%s%N); echo $(( (e - s) / 1000000 )); }
+echo "ROUTEL-BENCH start $(uname -r) $(nproc) cpu"
+yes 'route L benchmark line 0123456789 abcdefghijklmnopqrstuvwxyz' | head -c 4194304 > /tmp/bench.in
+echo "ROUTEL-BENCH sha256sum_4MiB_ms $(t sha256sum /tmp/bench.in)"
+echo "ROUTEL-BENCH bzip2_4MiB_ms $(t bzip2 -9 -c /tmp/bench.in)"
+echo "ROUTEL-BENCH gzip_4MiB_ms $(t gzip -6 -c /tmp/bench.in)"
+echo "ROUTEL-BENCH bash_loop_100k_ms $(t bash -c 'i=0; while [ $i -lt 100000 ]; do i=$((i+1)); done')"
+echo "ROUTEL-BENCH pacman_Q_ms $(t pacman -Q)"
+rm -f /tmp/bench.in
+echo "ROUTEL-BENCH done"

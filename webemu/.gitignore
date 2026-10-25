@@ -1,0 +1,9 @@
+vendor/
+app/entry/build/
+app/.hvigor/
+app/oh_modules/
+app/*.hap
+app/entry/src/main/resources/rawfile/
+app/sign/app-chain.pem
+app/sign/app.p7b
+app/sign/profile.json

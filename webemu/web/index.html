@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arch in ArkWeb</title>
+<link rel="stylesheet" href="xterm.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #ddd; font: 13px/1.4 monospace; }
+  body { display: flex; flex-direction: column; }
+  #bar { padding: 4px 8px; background: #1d2330; color: #9fd; white-space: pre-wrap; }
+  #bar b { color: #fff; }
+  #bar button { font: inherit; margin-left: 8px; }
+  #term { flex: 1; min-height: 0; padding: 4px; }
+</style>
+</head>
+<body>
+<div id="bar"><b>route L</b> <span id="stat">starting</span><button id="bench">routel-bench</button></div>
+<div id="term"></div>
+<script src="xterm.js"></script>
+<script src="libv86.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

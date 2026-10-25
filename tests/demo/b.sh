@@ -21,6 +21,11 @@ step "B1 arm the disk push"
 echo 'wc -l < /data/log/hwf_service/vmlog > /data/local/oseasy/vmlog.s2; nohup sh /data/local/oseasy/waitpush.sh >/dev/null 2>&1 & echo armed' | h 25
 
 step "B1 open OSEasy, create VM"
+# Close a stray 鸿融 app window if it is on top — it would intercept the taps below
+# (safetap guards against mis-taps, which would otherwise stall the flow).
+if $O dump d0 2>/dev/null | grep -q com.huawei.medivh; then
+  "$ROOT/tests/demo/safetap" com.huawei.medivh 1207 183 >/dev/null 2>&1; sleep 2
+fi
 $O sh 'aa start -b com.oseasy1.ohvm -a VMConsoleAbility -m entry' >/dev/null 2>&1; sleep 5
 # if a prior failed VM is remembered, OSEasy shows 安装失败 -> 再次安装; else 立即创建
 if $O dump d 2>/dev/null | grep -q 再次安装; then

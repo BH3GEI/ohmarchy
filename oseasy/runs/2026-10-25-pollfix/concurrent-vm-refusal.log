@@ -1,0 +1,13 @@
+# Firsthand concurrent-VM test — 2026-10-26 ~03:25 PDT, on ohdev
+# 鸿融 main VM was running (stratovirt pid 8744, com.huawei.medivh, at its Omarchy login screen).
+# In OSEasy, tapped 再次安装; it called virtualization.createVm() while 鸿融 ran.
+# The @ohos.virtualization kit rejected it with code 401 'Not support vm multi-instance';
+# no second stratovirt appeared (pidof stratovirt still only 8744). 鸿融 unaffected.
+
+
+--- observed in appLog (OSEasy's own log), the two 再次安装 attempts ---
+[INFO ] 2026-10-26 03:25:47,602 [v100:0] virtualization.createVm('com.oseasy1.ohvm', /storage/media/100/local/files/Docs/Download/oseasy-probe.iso, {"cpuNum":6,"memorySize":8,"diskSize":262144,...})
+[ERROR] 2026-10-26 03:25:49,316 [v100:0] called createVm() error: BusinessError(name=Error code=401 message=Not support vm multi-instance. data=undefined)
+[ERROR] 2026-10-26 03:25:49,317 [CreatorPage:0] createVm() error: {"code":401}
+[INFO ] 2026-10-26 03:25:49,319 [v100:0] virtualization.destroyVm('com.oseasy1.ohvm') success!
+[ERROR] 2026-10-26 03:25:51,580 [v100:0] called createVm() error: BusinessError(name=Error code=401 message=Not support vm multi-instance. data=undefined)

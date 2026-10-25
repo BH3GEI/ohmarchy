@@ -436,7 +436,7 @@ the runs above unless marked pending.
 | GPU | 3D: Mesa SVGA3D (GLES 3.0) → host D3D11 on DXVK → Vulkan (Maleoon) | 3D: virgl → zink → Vulkan (Maleoon), OpenGL only | virgl through vtest (Hyprland only) |
 | Runs next to another VM | not tested, held back by `vm.lock` (HMV runs one VM at a time on this machine); the system VM kit has the error `Not support vm multi-instance` | not tested, same kit and lock | yes (no VM) |
 | Cold start to desktop | Hyprland 6-7 s after the VM reset (UEFI/GRUB/kernel included); the Oseasy app itself, cold (`aa force-stop`, `aa start`) to its first page: 1.1-1.9 s (3 rounds, `uitest dumpLayout` polling, 2026-10-25 20:15) | about 2 min from kernel start to `systemd running` (pure disk, [hongrong-whole-os.md](hongrong-whole-os.md)) | about 8 s (session 2.0 s + desktop 5.7-6.1 s, [acceptance.md](acceptance.md) B) |
-| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | not measured: the VM boots to the SDDM login screen, a login is needed | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
+| App launch times (first window) | foot 0.07-0.08 s, nautilus 0.60-0.90 s, chromium 0.81-1.17 s, obsidian 0.66-0.67 s (Wayland ozone) | foot 0.07-0.13 s, nautilus 0.62 s, chromium 0.80-0.86 s, obsidian 1.16-1.30 s (first run slower: 1.7/1.7/2.4/2.4 s; 3 rounds, 2026-10-25, [hongrong-launch.log](../oseasy/runs/2026-10-25-pollfix/hongrong-launch.log)) | 74 of 78 apps within 3 s, P95 1.13-1.22 s ([acceptance.md](acceptance.md) A1, B) |
 | es2gears / glmark2 | es2gears: 120 frames/s reach the host, 60 on screen; glmark2-es2-wayland 1280x720: 1083 (swap interval 0, before the dmabuf fix) | es2gears 114-120 in the guest, 60 on screen | es2gears 114-120, 117-120 on screen |
 | Workspace switching on screen | 60 (composer fps, with es2gears running; run 9) | 59-60 | 109-115 |
 | 3 warm reboots, 1 h soak | 3/3 warm reboots OK (21-22 s to Hyprland); GPU-load soak failed twice (hang after 38 and 51 min, use-after-free of command buffer headers); with the fix **77 min (5 ms hold) and 3 h 07 min (50 ms hold), no fault**, 0 late writes seen (cause inferred, not observed) | 3/3 warm reboots (pure disk); soak 30 min with all 6 vCPUs busy, no fault ([hongrong-whole-os.md](hongrong-whole-os.md)) | no VM to reboot; 24 h soak with hourly smoke test running ([acceptance.md](acceptance.md) C) |
@@ -967,6 +967,30 @@ stop it only via the 鸿融 UI and restore after". screen.lock was released.
   cause is inferred from the backtrace, not observed directly.
 - 120 Hz on screen: not reachable from outside Oseasy (above).
 - Oseasy's own VM is powered off. Its disk is the fourteenth-run install.
+
+### Fifteenth run: 鸿融 app launch times (2026-10-25 23:29-23:45 PDT)
+
+Logs: [`hongrong-launch.log`](../oseasy/runs/2026-10-25-pollfix/hongrong-launch.log).
+On Yao's say-so (relayed by the supervisor) the login was done: logged in at 鸿融's
+Omarchy greeter as `yao` (password entered through `uitest`, never written to a
+file), timed foot/nautilus/chromium/obsidian by direct launch (this Hyprland's
+`hyprctl dispatch exec` is parsed as Lua and errors; windows counted from
+`hyprctl clients -j`), with throwaway browser/obsidian profiles in `/tmp` that
+were removed after. Nothing was installed or configured in the guest. Three rounds;
+the first is cold (populates caches):
+
+| App | round 1 (cold) | round 2 | round 3 |
+|---|---|---|---|
+| foot | 0.07 s | 0.13 s | 0.08 s |
+| nautilus | 1.66 s | 0.62 s | 0.63 s |
+| chromium | 2.42 s | 0.86 s | 0.80 s |
+| obsidian | 2.42 s | 1.30 s | 1.16 s |
+
+Known issue left for the restart: logging the session out with
+`loginctl terminate-session` put 鸿融 into a greeter/tty-autologin loop (no
+compositor, user sessions respawning, black screen). No data is touched; a restart
+of 鸿融 from its own UI returns it to the working login screen. Left for the
+supervisor to schedule, as 鸿融 is Yao's main VM.
 
 ### 120 Hz: what holds composition at 40-51/s (offline findings)
 

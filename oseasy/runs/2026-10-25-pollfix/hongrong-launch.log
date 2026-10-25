@@ -1,44 +1,15 @@
-== start 19:49:07
-started
-up: 6.6.143-arm64-desktop-hwe
-== ssh up 19:52:33
-Hyprland up 07:47; load 0.03 0.05 0.03
-foot: installed
-nautilus: installed
-chromium: installed
-obsidian: installed
--- round 1
-ls: cannot access '/run/user/1000/hypr': No such file or directory
-foot:  s
-bash: line 45: bc: command not found
-nautilus:  s
-bash: line 45: bc: command not found
-chromium --user-data-dir=/tmp/hrbench-chromium:  s
-bash: line 45: bc: command not found
-obsidian --ozone-platform=wayland --user-data-dir=/tmp/hrbench-obsidian:  s
-bash: line 45: bc: command not found
--- round 2
-ls: cannot access '/run/user/1000/hypr': No such file or directory
-foot:  s
-bash: line 45: bc: command not found
-nautilus:  s
-bash: line 45: bc: command not found
-chromium --user-data-dir=/tmp/hrbench-chromium:  s
-bash: line 45: bc: command not found
-bash: line 45: bc: command not found
-obsidian --ozone-platform=wayland --user-data-dir=/tmp/hrbench-obsidian:  s
--- round 3
-ls: cannot access '/run/user/1000/hypr': No such file or directory
-foot:  s
-bash: line 45: bc: command not found
-nautilus:  s
-bash: line 45: bc: command not found
-chromium --user-data-dir=/tmp/hrbench-chromium:  s
-bash: line 45: bc: command not found
-obsidian --ozone-platform=wayland --user-data-dir=/tmp/hrbench-obsidian:  s
-bash: line 45: bc: command not found
-ls: cannot access '/tmp/hrbench-*': No such file or directory
-== poweroff 20:03:29
-Call to PowerOff failed: Access denied as the requested operation requires interactive authentication. However, interactive authentication has not been enabled by the calling program.
-vms after poweroff: [23997] 20:07:22
-== hr done
+== round 1 08:43:32
+foot: 70 ms (up)
+nautilus: 1658 ms (up)
+chromium: 2420 ms (up)
+obsidian: 2416 ms (up)
+== round 2 08:44:04
+foot: 132 ms (up)
+nautilus: 618 ms (up)
+chromium: 861 ms (up)
+obsidian: 1302 ms (up)
+== round 3 08:44:31
+foot: 76 ms (up)
+nautilus: 627 ms (up)
+chromium: 796 ms (up)
+obsidian: 1164 ms (up)

@@ -244,7 +244,7 @@ A ready-made Omarchy disk for the 鸿融 app: download one qcow2 file, import it
 in 鸿融, start it. No root on the HarmonyOS PC, no deepin, no build step.
 
 **Status (2026-10-24, 08:00–08:45 PDT): runs in 鸿融 1.1.1.103; one-click
-import still blocked.** The image, booted as 鸿融's own VM (started from the 鸿融
+import still blocked (cause found 2026-10-26, see below).** The image, booted as 鸿融's own VM (started from the 鸿融
 UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 
 | Check | Result |
@@ -258,15 +258,30 @@ UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 | Soak | 30 min, all 6 vCPUs busy (load 6.0): `running` throughout, no RCU stall, soft lockup, hung task or Oops |
 | 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) the kernel keeps 2160x1440@120 and the CRTC runs at 120 Hz; frames reaching the 鸿融 screen not measured yet |
 
-**Import through 鸿融's UI fails.** "导入 qcow2" rejects the image with
-"镜像可能在传输过程中损坏，无法完成校验" for every variant tried: zlib-compressed,
-uncompressed 64 GiB, uncompressed resized to 256 GiB. 鸿融's bytecode shows a
-structural check (magic, version, cluster_bits, virtual size, L1/L2/refcount
-tables and data clusters within the file) before a SHA-256 pass; it logs
-nothing a root shell can read, so which check fails is not known yet. A qcow2
-that 鸿融 itself created (from an earlier VM) imports fine. The test above put
-the image in place of such an imported VM's disk from a root shell, which a
-developer cannot do; making the file pass 鸿融's check is the open item.
+**Import through 鸿融's UI fails; cause found (2026-10-26), fix not yet
+imported.** "导入 qcow2" rejected every variant tried (zlib-compressed,
+uncompressed 64 GiB, resized to 256 GiB, StratoVirt-shaped header) with
+"镜像可能在传输过程中损坏" or "disk is damaged". The persisted hilog
+(`/data/log/hilog/hilog.*.gz`, read with `zcat | strings`) shows the steps:
+
+1. The app's own qcow2 check (`[IsoCheckModel]`): magic, version,
+   cluster_bits, virtual size, and L1/L2/refcount tables and data clusters
+   within the file. One earlier variant failed here
+   ("qcow2 l1 table out of range: end 9007199254745088"); the image created
+   directly at 256 GiB passes ("qcow2 validation passed").
+2. SHA-256 of the whole file, then `ImportVmDiskImage` in vm_manager.
+3. vm_manager `CheckBeforeImportVmDisk` runs
+   `stratovirt-img get DISK os_type` and stops with
+   "src disk img ostype invalid" when the type is 0. 鸿融's own disks return
+   `os type: 1`; qemu-img images return 0.
+
+os_type is the last byte (offset 255) of StratoVirt's 256-byte qcow2 v3
+header. `stratovirt-img set DISK os_type=1`
+(`/system/bin/virt_service/vm_engine/stratovirt/stratovirt-img`) changes only
+that byte; [qcow2-stratovirt-header.py](../hongrong/pure/qcow2-stratovirt-header.py)
+now writes it too, giving byte-identical headers. The snapshot in 鸿融's disks
+(`snapshot_…`, VM size 0) is 鸿融's auto backup, made after import, and not
+required. Still to do: import the os_type 1 image through the UI.
 
 **120 Hz:** `hongrong/edid` makes an EDID with a 2160x1440@120 preferred mode;
 with `drm.edid_firmware=Virtual-1:edid/omarchy-120.bin` the kernel reads it

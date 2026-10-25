@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Rewrite a qemu-img qcow2 v3 header into the shape StratoVirt (鸿融) writes:
-header_length 256 and no header extensions (qemu-img writes 112 plus a
-feature-name table, which is optional). Edits the file in place; only bytes
-104..255 of cluster 0 change. Usage: qcow2-stratovirt-header.py FILE.qcow2"""
+header_length 256, no header extensions (qemu-img writes 112 plus a
+feature-name table, which is optional) and os_type 1 in the header's last
+byte (offset 255). 鸿融's import runs `stratovirt-img get DISK os_type` and
+rejects a disk whose os type is 0 ("src disk img ostype invalid" in hilog,
+"disk is damaged" in the UI); its own disks carry 1, and
+`stratovirt-img set DISK os_type=1` writes exactly that byte. Edits the file
+in place; only bytes 100..255 of cluster 0 change.
+Usage: qcow2-stratovirt-header.py FILE.qcow2"""
 import struct, sys
 p = sys.argv[1]
 with open(p, "r+b") as f:
@@ -17,5 +22,6 @@ with open(p, "r+b") as f:
     assert ctype == 0, "only zlib (0) is expected"
     h[100:104] = struct.pack(">I", 256)
     h[104:256] = bytes(152)          # compression_type 0 + padding, no extensions
+    h[255] = 1                       # os_type, read by 鸿融's import
     f.seek(0); f.write(h[:256])
-print(f"{p}: header_length {old_len} -> 256, extensions removed")
+print(f"{p}: header_length {old_len} -> 256, extensions removed, os_type 1")

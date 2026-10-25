@@ -52,7 +52,12 @@ collect() {
 stage() {   # stage NAME [VAR=VALUE...]
     local name=$1; shift
     : > "$ENVF"
-    for kv in AQ_TRACE=1 HYPRLAND_TRACE=1 "$@"; do echo "export $kv" >> "$ENVF"; done
+    # HYPRLAND_TRACE only: aquamarine's AQ_TRACE writes dozens of synchronous log
+    # lines per frame, and that alone stalls the session after ~160 frames on this
+    # device (page flip pending forever, main thread idle in ep_poll — not a trace
+    # pipe block). It re-exposes the no-interrupt flip-event race that the 1 ms
+    # fence poll closes in normal (untraced) use; see docs/oseasy-whole-os.md.
+    for kv in HYPRLAND_TRACE=1 "$@"; do echo "export $kv" >> "$ENVF"; done
     chown "$U:" "$ENVF"
     if pgrep -x -u "$U" Hyprland > /dev/null; then
         loginctl terminate-user "$U"       # getty@tty1 autologs in again; .bash_profile starts uwsm

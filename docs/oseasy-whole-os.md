@@ -957,6 +957,41 @@ is **left running at the login screen**, closer to how Yao had it. vm.lock is
 kept, with the owner "鸿融 main VM (Yao's), left running by supervisor decision —
 stop it only via the 鸿融 UI and restore after". screen.lock was released.
 
+### AQ_TRACE self-induced stall (offline analysis, 2026-10-26)
+
+The boot diagnostics ([`boot-diag.sh`](../oseasy/guest/boot-diag.sh)) started the
+session under `AQ_TRACE=1 HYPRLAND_TRACE=1`. In every stage the session stalled
+after ~160 frames. This is a diagnostic artifact, not a bug in normal use.
+
+Evidence (post-fix capture
+[`runs/.../20261025-013933`](../oseasy/runs/2026-10-25-pollfix/ohmarchy-boot/20261025-013933/)):
+
+- The atomic stage runs ~162 page flips, then `drm: Cannot commit when a page-flip
+  is awaiting` repeats and `CDRMOutput::scheduleFrame … isPageFlipPending true`
+  never clears. Same symptom in the `AQ_NO_ATOMIC=1` and `AQ_NO_MODIFIERS=1`
+  stages. It is the same "page flip pending forever" as the sixth run's
+  no-interrupt fence stall.
+- **Not trace output blocking a callback.** The stack of every Hyprland thread was
+  captured (`threads.txt`): the main thread sits in `ep_poll` (idle, waiting for a
+  DRM event), not in `write()`/a blocked pipe; the others are ordinary futex/poll
+  idle waits. So the supervisor's "stderr pipe backs up and blocks a callback"
+  hypothesis does not hold.
+- **It is timing, and only under trace.** `AQ_TRACE` makes aquamarine emit dozens
+  of synchronous log lines per frame, slowing the single main loop by one to two
+  orders of magnitude. That re-opens the narrow window of the no-interrupt
+  flip-event race (a flip is issued but its completion event never reaches
+  Hyprland's epoll); the 1 ms fence poll closes this window at normal speed but not
+  when every frame is stretched by logging.
+- **Normal use is unaffected.** With the poll fix and no trace, the GPU soak ran
+  **4 h 24 min** of continuous es2gears + workspace switching (runs 12 and 13) with
+  zero stalls. `AQ_TRACE` is only ever set by the diagnostics (`probe.diag=1`),
+  never in a normal boot.
+
+**Action:** `AQ_TRACE=1` removed from `boot-diag.sh`; it now traces with
+`HYPRLAND_TRACE=1` only, so the diagnostic no longer induces the stall it is meant
+to observe. Hyprland's own trace is enough for the commit/flip sequence. No change
+to the shipped driver or session.
+
 ### State at the end of the Oseasy line (2026-10-25 20:10 PDT)
 
 - Omarchy 4.0.6 cold-boots into Hyprland in Oseasy 3.1.1.7 with the

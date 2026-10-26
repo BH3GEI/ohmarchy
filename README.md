@@ -78,16 +78,16 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 15:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 16:29 PDT)
 
-Now: **the full demo rehearsal is in part 3** (B, OSEasy). Parts 1 and 2 are done. The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out waits for an upload token.
+Now: all three parts of the demo were rehearsed; B's public ISO is held back for one display fix. The internal report is done ([docs/report/](docs/report/index.html)).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Part 3 of the rehearsal: desktop steps, then shutdown | In the rehearsal the final ISO reinstalled and the first-login screen again ended with "密码已设置 / Password set." |
-| C. 鸿融 | Part 2 done; after the rehearsal: swap the main disk back, fix the 60 Hz | — |
-| D. Native | Re-run of part 1 after the fixes | **A process spinning for 9 hours was found and stopped on the test machine**: the ssh keep-alive script (`/data/oh-ssh/boot-start.sh`, on the device only) checked every process with `tr < /proc/*/cmdline` every 30 s, and on HongMeng reading `cmdline` of a process that is exiting never returns. It now reads `comm` first and reads `cmdline` only for the two daemons it looks after, in the background with a 3 s limit, the same approach as the Docker fix. The load average of ~20 did not change after the kill and no process is stuck, so it looks like how HongMeng counts load |
-| I. Own VM | Installing the Docker fix after part 3 | GPL source collection finished: 386 packages with source, 18 missing, 2.7 GB |
+| B. OSEasy | Testing the fix for the empty desktop on a fresh install | **Rehearsal part 3**: from "再次安装" to the password screen in about 1.5 min (faster than the manual said); password, sudo, disk growth to 252 GB, Hyprland at 120 Hz and the terminal all fine. **Found**: after login the wallpaper and the top bar are missing. The theme is set (Tokyo Night in `~/.local/state/omarchy/current`, Omarchy 4's place for it), and the same disk in 鸿融 shows both, so it is OSEasy-only: quickshell, which draws the wallpaper and bar, creates its layers but they come out black on the SVGA3D driver. Fix being tested: Qt Quick's software renderer for quickshell on vmwgfx only (`QT_QUICK_BACKEND=software`). The ISO built so far is not uploaded |
+| C. 鸿融 | After B's fix: find why the disk runs at 60 Hz instead of 120 Hz | Rehearsal part 2 had wallpaper and top bar |
+| D. Native | Re-run of part 1 after the fixes | — |
+| I. Own VM | Installing the Docker fix when the hypervisor is free | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

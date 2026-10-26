@@ -21,8 +21,11 @@
 # for a GitHub release asset. ROOT_IMG=1 also writes omarchy-root.img, the
 # same tree as a bare ext4 filesystem of minimal size without / and /boot/efi
 # in fstab, for route B (OSEasy loop-mounts it from the shared folder).
-# NOPASS=1 (with the full install, not BASE): the user gets no password; the
-# first-boot service only asks for one on tty1 and then lets SDDM start. With
+# NOPASS=1 (with the full install, not BASE): the user gets no password; at
+# the first boot SDDM logs it in once and a terminal on the desktop asks for
+# one (firstboot/ohmarchy-setpass-root.sh). KEEP_AUTOLOGIN (default 1 with
+# NOPASS, route B's choice for its trial image): SDDM keeps logging the user
+# in after that and the password is for sudo; 0 goes back to the SDDM prompt. With
 # the docs, man pages and pacman cache left out this is the image route B
 # ships. The user name is still the USER argument (omarchy for releases).
 # TRIM_PKGS: packages removed after the Omarchy install (pacman -Rns, leaf
@@ -47,7 +50,7 @@
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
-trim_pkgs=${TRIM_PKGS:-} slim=${SLIM:-0}
+trim_pkgs=${TRIM_PKGS:-} slim=${SLIM:-0} keep_autologin=${KEEP_AUTOLOGIN:-1}
 base=${BASE:-0} nopass=${NOPASS:-0} root_img=${ROOT_IMG:-0} ai_env=${AI_ENV:-} vmwgfx_ko=${VMWGFX_KO:-}
 pkgs=("$@"); [ ${#pkgs[@]} -gt 0 ] || { echo "no kernel packages given"; exit 1; }
 here=$(cd "$(dirname "$0")/.." && pwd)        # hongrong/
@@ -186,12 +189,40 @@ else
   if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
   else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
   if [ "$nopass" = 1 ]; then
-    # Omarchy is in place: first boot only asks for the password (and installs
-    # 鸿融's agent when its CD is there); the coding agents get the relay
-    # config now and install on first use
-    firstboot_files
-    mkdir -p "$R/var/lib/ohmarchy"; touch "$R/var/lib/ohmarchy/omarchy-installed"
+    # Omarchy is in place. First boot: SDDM logs the user in once without a
+    # password and a terminal on the desktop asks for one (route B's vmwgfx
+    # hides the text console, so tty1 cannot be used); see
+    # firstboot/ohmarchy-setpass-root.sh. The coding agents get the relay
+    # config now and install on first use.
+    mkdir -p "$L" "$R/var/lib/ohmarchy"
+    # a reused tree may still have the tty1 first-boot service of earlier builds
+    in_root systemctl disable ohmarchy-firstboot.service 2>/dev/null || true
+    rm -rf "$R/etc/systemd/system/ohmarchy-firstboot.service" "$L"/{ohmarchy-firstboot.sh,20-install-omarchy.sh,etc}
+    cp "$here/pure/install-vm-agent.sh" "$here/pure/guest/setup-ai.sh" "$L/"
+    install -m 755 "$here/pure/firstboot/ohmarchy-setpass-root.sh" "$L/"
+    [ -z "$ai_env" ] || install -m 600 "$ai_env" "$L/ai.env"
+    touch "$R/var/lib/ohmarchy/omarchy-installed" "$R/var/lib/ohmarchy/setpass-pending"
+    if [ "$keep_autologin" = 1 ]; then touch "$R/var/lib/ohmarchy/keep-autologin"
+    else rm -f "$R/var/lib/ohmarchy/keep-autologin"; fi
+    install -D -m 644 /dev/stdin "$R/etc/sddm.conf.d/zz-ohmarchy-firstboot.conf" <<'SDDM'
+# SDDM autologin for omarchy; with /var/lib/ohmarchy/keep-autologin it stays
+# after the first login, otherwise ohmarchy-setpass-root.sh removes it
+[Autologin]
+User=omarchy
+Session=omarchy.desktop
+SDDM
+    install -D -m 440 /dev/stdin "$R/etc/sudoers.d/ohmarchy-setpass" <<SUDO
+$user ALL=(root) NOPASSWD: /usr/local/lib/ohmarchy/ohmarchy-setpass-root.sh
+SUDO
+    in_root visudo -cf /etc/sudoers.d/ohmarchy-setpass
+    u=$R/home/$user/.config/systemd/user
+    install -D -m 644 "$here/pure/firstboot/ohmarchy-setpass.service" "$u/ohmarchy-setpass.service"
+    mkdir -p "$u/graphical-session.target.wants"
+    ln -sf ../ohmarchy-setpass.service "$u/graphical-session.target.wants/ohmarchy-setpass.service"
+    in_root chown -R "$user:$user" "/home/$user/.config"
     in_root runuser -u "$user" -- bash /usr/local/lib/ohmarchy/setup-ai.sh ${ai_env:+/usr/local/lib/ohmarchy/ai.env}
+    rm -f "$L/ai.env"
+    rm -rf "$R"/usr/share/{doc,man,info,gtk-doc}
   fi
 fi
 kver=$(ls "$R/usr/lib/modules" | grep -v '^\.' | head -1)

@@ -1,0 +1,11 @@
+[Unit]
+Description=Omarchy first login: set the password
+After=graphical-session.target
+ConditionPathExists=/var/lib/ohmarchy/setpass-pending
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/foot --fullscreen --title "设置密码 / Set your password" -- /usr/bin/bash -c 'sudo -n /usr/local/lib/ohmarchy/ohmarchy-setpass-root.sh; read -r _'
+
+[Install]
+WantedBy=graphical-session.target

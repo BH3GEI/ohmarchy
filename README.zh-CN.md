@@ -14,13 +14,16 @@
 | 路线 | 在鸿蒙电脑上跑的是什么 | 状态 |
 |---|---|---|
 | **A. 鸿蒙 Linux 引擎**：[docs/linux-engine-apps.md](docs/linux-engine-apps.md) | Omarchy 的 neovim 配置和命令行工具，跑在鸿蒙自带的 Linux 引擎里，每个工具一个鸿蒙窗口 | 可用 |
-| **B. OSEasy 虚拟机**：[docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | 完整的 Omarchy 系统，跑在 OSEasy 虚拟机 app 里 | MateBook 14 上：7.2 内核加补丁能启动；GPU 渲染的画面能在窗口里显示（Mesa SVGA3D 硬件 3D），guest 出帧 120fps，但面板停在 60Hz（OSEasy 没投高刷票）；Omarchy 盘能装进去并冷启动，桌面还差一步 |
-| **C. 鸿融虚拟机**：[docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | 完整的 Omarchy 系统，跑在华为的 Linux 虚拟机 app 里 | 原方案：借 deepin 的 6.6 内核，能进 Hyprland 桌面，virgl 加速。新进展：不带 deepin 的纯 Omarchy，用 7.2.12 补丁内核，冷启动加 3 次热重启都通过 |
+| **B. OSEasy 虚拟机**：[docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) | 完整的 Omarchy 系统，跑在 OSEasy 虚拟机 app 里 | 7.2 内核加补丁；Hyprland 桌面加 GPU 3D（Mesa SVGA3D）能用，修了三个显卡驱动 bug，带 GPU 负载连续 4 小时 24 分钟不卡；屏幕上 60Hz（OSEasy 不申请高刷）；从安装到桌面约 3 分钟 |
+| **C. 鸿融虚拟机**：[docs/hongrong-whole-os.md](docs/hongrong-whole-os.md) | 完整的 Omarchy 系统，跑在华为的 Linux 虚拟机 app 里 | 纯 Omarchy 开发者镜像（7.2.12 补丁内核）能直接用鸿融界面的"本地文件"导入；virgl GPU 加速，Docker；虚拟机里 120Hz，鸿融全屏只给 60Hz |
 | **D. 原生**：[docs/native-chroot.md](docs/native-chroot.md)、[docs/native-desktop.md](docs/native-desktop.md) | Arch Linux ARM 加 Omarchy 的软件包，直接跑在鸿蒙内核上，不用虚拟机 | Hyprland 桌面在鸿蒙 app 里以 120Hz 显示，用的是麒麟 GPU；78 个 app 测过，没有打不开的；声音、中文输入、剪贴板都能用；验收见 [docs/acceptance.md](docs/acceptance.md) |
 | **E. 裸机** | 不要鸿蒙，Linux 直接装在硬件上 | 未开始 |
 | **F. DevEco 模拟器里的 Aetherium**：[docs/emulator-aetherium.md](docs/emulator-aetherium.md) | 没有鸿蒙真机时，在 DevEco 的鸿蒙 PC 模拟器里，用打过补丁的 Aetherium（QEMU 软件模拟）跑完整的 Omarchy | 能进 Hyprland 桌面，纯软件模拟，很慢 |
 | **G. 铠大师虚拟机**：[docs/vm-kaidashi.md](docs/vm-kaidashi.md) | 完整的 Omarchy 系统，跑在 sanway 的 Windows-on-ARM 虚拟机 app 里 | 7.2 内核能启动；底层和 OSEasy 一样；收尾中，经验并入 B |
-| **H. 真机上的 Aetherium**：[docs/device-aetherium.md](docs/device-aetherium.md) | 和 F 一样的 QEMU，但跑在 ohdev 真机上，同时调查 QEMU 能不能用 HMV 硬件加速 | HMV 接口已经反汇编出来，是私有的 ioctl 接口，不兼容 KVM；软件模拟的基线测试和权限实测进行中 |
+| **H. 真机上的 Aetherium**：[docs/device-aetherium.md](docs/device-aetherium.md) | 和 F 一样的 QEMU，但跑在 ohdev 真机上，不用 root | 已结束：走不通。虚拟化层只对 8 个白名单 app 开放；软件模拟拿不到可执行内存，QEMU 一启动就退出 |
+| **I. 自建虚拟机**：[docs/vm-own.md](docs/vm-own.md) | 用 root 直接调华为虚拟化层起一台虚拟机，给 D 当后台跑 Docker 和完整内核 | 能用：原生终端里 docker run、compose、挂载个人目录都行；内存用多少占多少，空闲时还给鸿蒙 |
+| **J. 沙箱里的 Linux**：[docs/no-root-routes.md](docs/no-root-routes.md) | 不用 root：把 Linux 程序编成签名的程序库打进 app，用 fork 加加载的办法运行 | busybox 已经在 D 的显示 app 里跑起来；Hyprland 整套正在用鸿蒙的 musl 重新编译 |
+| **K. 解释模式模拟器** | QEMU 的解释模式（TCI），不需要可执行内存 | 只是备选想法，没开始 |
 | **L. 鸿蒙浏览器内核里的 Linux**：[docs/route-l-arkweb.md](docs/route-l-arkweb.md) | 普通应用里用 ArkWeb 网页跑 v86 模拟器（x86，翻译成 WebAssembly 执行），里面是 Arch Linux 32（有 pacman 和 systemd），不要 root，也不要虚拟机权限 | 2026-10-25 决定暂停。镜像、网页和签好名的应用都做好了，在电脑上的 Chrome 里 32 秒进到 root 命令行；没上真机（屏幕一直被别的测试占着），所以还不知道 ArkWeb 在第三方应用里能不能用 WebAssembly 即时编译 |
 
 试过哪些路、为什么走不通：[docs/findings.md](docs/findings.md)。

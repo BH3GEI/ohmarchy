@@ -493,7 +493,7 @@ index 3173323..798b4f4 100644
  
     vtest_server_run();
  
-@@ -393,6 +395,82 @@ static void vtest_server_open_read_file(void)
+@@ -393,6 +395,85 @@ static void vtest_server_open_read_file(void)
     }
  }
  
@@ -506,6 +506,7 @@ index 3173323..798b4f4 100644
 +/* Clients the broker bridged from TCP (marker 'r'): served with protocol version 0. */
 +static bool vtest_remote_fds[1024];
 +static bool vtest_listening;
++void vtest_listen_hook(void) __attribute__((weak));
 +
 +bool vtest_server_fd_is_remote(int fd)
 +{
@@ -558,6 +559,8 @@ index 3173323..798b4f4 100644
 +         exit(1);
 +      }
 +      vtest_listening = true;
++      if (vtest_listen_hook)
++         vtest_listen_hook();
 +      return;
 +   }
 +   server.socket = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);

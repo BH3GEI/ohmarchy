@@ -88,6 +88,10 @@ static void launch_hyprland(const char *cfg){
             (void)!write(cf,lua,strlen(lua)); close(cf);
         }
     }
+    // Wait for the app's vtest to listen (gpu.cpp writes files/vtest.ready): Hyprland is
+    // started before the window exists, and connecting to an earlier run's socket file
+    // gets EINVAL on the first read on HongMeng instead of a refusal.
+    for(int i=0; i<300 && access("/data/storage/el2/base/files/vtest.ready", F_OK)!=0; i++) usleep(100000);
     void *h = dlopen(HY, RTLD_NOW | RTLD_GLOBAL);
     if(!h){ dprintf(2, "dlopen hyprland FAILED: %s\n", dlerror()); _exit(121); }
     int(*hymain)(int,char**) = (int(*)(int,char**))dlsym(h, "main");

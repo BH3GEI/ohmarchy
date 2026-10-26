@@ -324,6 +324,18 @@ void BrokerKick()
     close(fd);
 }
 
+// vtest is listening on the local socket (route J): clients may connect now. The
+// launcher waits for this file, since a connection to the socket file of an earlier
+// run (nobody listening) gets EINVAL on its first read on HongMeng, not a refusal.
+extern "C" void vtest_listen_hook(void)
+{
+    int fd = open("/data/storage/el2/base/files/vtest.ready", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    if (fd >= 0) {
+        close(fd);
+    }
+    LOGI("local gpu: listening");
+}
+
 std::string LocalGpu()
 {
     static std::string path = "/data/storage/el2/base/files/vtest.sock";
@@ -332,6 +344,8 @@ std::string LocalGpu()
         // vtest listens on the path itself (vtest-inapp.patch): handing a connection
         // to a thread of the same process with SCM_RIGHTS lost it on HongMeng (the
         // client's first read failed with EINVAL)
+        unlink("/data/storage/el2/base/files/vtest.ready");
+        unlink(path.c_str());
         g_vtestName = path.c_str();
         LOGI("local gpu: clients on %{public}s", path.c_str());
     }

@@ -16,13 +16,63 @@
 #include <cstdio>
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #undef LOG_TAG
 #define LOG_TAG "JLAPP"
 #define LOGI(...) OH_LOG_Print(LOG_APP, LOG_INFO, 0xBEEF, LOG_TAG, __VA_ARGS__)
 
+static const char *LIBDIR = "/data/storage/el1/bundle/libs/arm64";
 static const char *BB = "/data/storage/el1/bundle/libs/arm64/libbusybox.so";
+static const char *HY = "/data/storage/el1/bundle/libs/arm64/libhyprland.so";
+static const char *RUNDIR = "/data/storage/el2/base/files/run";          // XDG_RUNTIME_DIR (0700)
+static const char *VTEST_SOCK = "/data/storage/el2/base/files/vtest.sock"; // app's in-proc vtest
 static int   g_sock = -1;      // app end of the socketpair
 static pid_t g_spawner = -1;
+
+// glvnd needs an EGL vendor JSON pointing at our mesa ICD. Our libs are renamed with an _ohm
+// suffix to avoid binding to the system's libEGL/libGLESv2 (already loaded in the app process),
+// but libEGL_mesa keeps its unique name. Write the JSON at launch and point glvnd at it.
+static void write_egl_vendor(const char *dir){
+    mkdir(dir, 0755);
+    char path[512]; snprintf(path, sizeof(path), "%s/50_mesa.json", dir);
+    int fd = open(path, O_CREAT|O_TRUNC|O_WRONLY, 0644);
+    if(fd < 0) return;
+    char j[256];
+    int n = snprintf(j, sizeof(j),
+        "{\n  \"file_format_version\":\"1.0.0\",\n  \"ICD\":{\"library_path\":\"%s/libEGL_mesa.so\"}\n}\n", LIBDIR);
+    (void)!write(fd, j, n); close(fd);
+}
+
+// Launch Hyprland as a dlopen'd shared library (no execve/PIE: HAP has no ELF interpreter and
+// HongMeng blocks exec). Runs in a detached grandchild of the single-threaded spawner. Never
+// returns on success (the compositor event loop takes over). Env matches D's chroot desktop
+// (native/desktop/ohmarchy-desktop) + the J in-app GPU path (OHMARCHY_LOCAL_GPU server).
+static void launch_hyprland(const char *cfg){
+    mkdir(RUNDIR, 0700);
+    char vendordir[512]; snprintf(vendordir, sizeof(vendordir), "%s/egl_vendor.d", RUNDIR);
+    write_egl_vendor(vendordir);
+    setenv("XDG_RUNTIME_DIR", RUNDIR, 1);
+    setenv("VTEST_SOCKET_NAME", VTEST_SOCK, 1);          // mesa virpipe -> app's in-proc vtest
+    setenv("HYPRLAND_SURFACELESS_GALLIUM_DRIVER", "virpipe", 1); // not global GALLIUM_DRIVER
+    setenv("HYPRLAND_READBACK_PRESENT", "1", 1);         // present-by-tag, no full readback
+    setenv("AQ_HEADLESS_EXPORT", "ohmarchy-display", 1); // aquamarine export socket
+    setenv("MESA_PROCESS_NAME", "Hyprland", 1);          // vtest client name (u_process.c)
+    setenv("__EGL_VENDOR_LIBRARY_DIRS", vendordir, 1);   // glvnd finds our 50_mesa.json
+    setenv("XDG_SESSION_TYPE", "wayland", 1);
+    setenv("XDG_CURRENT_DESKTOP", "Hyprland", 1);
+    setenv("OMARCHY_PATH", "/usr/share/omarchy", 1);
+    if(!getenv("HOME")) setenv("HOME", RUNDIR, 1);
+    void *h = dlopen(HY, RTLD_NOW | RTLD_GLOBAL);
+    if(!h){ dprintf(2, "dlopen hyprland FAILED: %s\n", dlerror()); _exit(121); }
+    int(*hymain)(int,char**) = (int(*)(int,char**))dlsym(h, "main");
+    if(!hymain){ dprintf(2, "dlsym main FAILED: %s\n", dlerror()); _exit(122); }
+    char a0[]="Hyprland";
+    if(cfg && cfg[0]){
+        char c1[]="-c"; char *av[]={a0,c1,(char*)cfg,nullptr}; _exit(hymain(3,av)&0xff);
+    } else {
+        char *av[]={a0,nullptr}; _exit(hymain(1,av)&0xff);
+    }
+}
 
 static int readn(int fd, void *p, size_t n){ char*b=(char*)p; size_t g=0; while(g<n){ ssize_t k=read(fd,b+g,n-g); if(k<=0) return -1; g+=k; } return 0; }
 static int writen(int fd, const void *p, size_t n){ const char*b=(const char*)p; size_t s=0; while(s<n){ ssize_t k=write(fd,b+s,n-s); if(k<=0) return -1; s+=k; } return 0; }
@@ -49,6 +99,16 @@ static void spawner_loop(int s){
         uint32_t len; if(readn(s,&len,4)!=0) _exit(0);
         if(len>1u<<20) _exit(0);
         char *cmd=(char*)malloc(len+1); if(!cmd||readn(s,cmd,len)!=0) _exit(0); cmd[len]=0;
+        // opcode 0x01 = launch Hyprland (long-running, detached): rest is the config path.
+        if(len>=1 && (unsigned char)cmd[0]==0x01){
+            pid_t hp=fork();
+            if(hp==0){ // detach from the spawner: own session, drop stdio to the app log
+                setsid(); close(s); launch_hyprland(cmd+1); _exit(0); // launch_hyprland never returns on success
+            }
+            free(cmd);
+            uint32_t ok=0; writen(s,&ok,4);   // ack: launched. Hyprland runs for the app's
+            continue;                         // lifetime; we don't wait on it (one zombie at most).
+        }
         int pp[2]; if(pipe(pp)!=0){ free(cmd); continue; }
         pid_t g=fork();
         if(g==0){ // grandchild: run busybox sh -c cmd, output to the pipe
@@ -79,7 +139,26 @@ static void ensure_spawner(){
     LOGI("spawner forked pid=%{public}d (single-threaded; busybox=%{public}s)", p, BB);
 }
 
-static napi_value Start(napi_env env, napi_callback_info){ ensure_spawner(); napi_value r; napi_create_int32(env, g_spawner>0?0:-1, &r); return r; }
+static napi_value Start(napi_env env, napi_callback_info){
+    // Tell the app's in-process GPU server (gpu.cpp) to act as the vtest broker on
+    // VTEST_SOCK. Set in the app process BEFORE the window/XComponent is created.
+    setenv("OHMARCHY_LOCAL_GPU", "1", 1);
+    ensure_spawner(); napi_value r; napi_create_int32(env, g_spawner>0?0:-1, &r); return r;
+}
+
+// Launch Hyprland via the single-threaded spawner (opcode 0x01 + optional config path).
+static napi_value StartHyprland(napi_env env, napi_callback_info info){
+    size_t argc=1; napi_value a[1]={nullptr}; napi_get_cb_info(env,info,&argc,a,nullptr,nullptr);
+    char cfg[1024]={0}; size_t n=0; if(argc>=1) napi_get_value_string_utf8(env,a[0],cfg,sizeof(cfg),&n);
+    ensure_spawner();
+    napi_value res;
+    if(g_spawner<=0){ napi_create_int32(env,-1,&res); return res; }
+    uint32_t len=(uint32_t)(1+n); char *buf=(char*)malloc(len); buf[0]=0x01; if(n) memcpy(buf+1,cfg,n);
+    int rc = (writen(g_sock,&len,4)==0 && writen(g_sock,buf,len)==0) ? 0 : -1; free(buf);
+    uint32_t ack=0; if(rc==0) readn(g_sock,&ack,4);   // wait for the "launched" ack
+    LOGI("startHyprland(cfg=%{public}s) rc=%{public}d", cfg[0]?cfg:"(none)", rc);
+    napi_create_int32(env, rc, &res); return res;
+}
 
 static napi_value RunSh(napi_env env, napi_callback_info info){
     size_t argc=1; napi_value a[1]={nullptr}; napi_get_cb_info(env,info,&argc,a,nullptr,nullptr);
@@ -100,8 +179,9 @@ static napi_value Init(napi_env env, napi_value exports){
     napi_property_descriptor d[]={
         {"start",nullptr,Start,nullptr,nullptr,nullptr,napi_default,nullptr},
         {"runSh",nullptr,RunSh,nullptr,nullptr,nullptr,napi_default,nullptr},
+        {"startHyprland",nullptr,StartHyprland,nullptr,nullptr,nullptr,napi_default,nullptr},
     };
-    napi_define_properties(env,exports,2,d); return exports;
+    napi_define_properties(env,exports,3,d); return exports;
 }
 static napi_module g_module={.nm_version=1,.nm_flags=0,.nm_filename=nullptr,.nm_register_func=Init,.nm_modname="bbload",.nm_priv=nullptr,.reserved={0}};
 extern "C" __attribute__((constructor)) void RegisterBbload(void){ napi_module_register(&g_module); }

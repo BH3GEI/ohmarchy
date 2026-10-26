@@ -86,6 +86,8 @@ Rehearsed 2026-10-26 on ohdev with keys injected through HarmonyOS's input
 service (right Alt as Super): 1.1–1.7 all as described; the desktop was up about
 10 s after the double-click. In part 1 every "Super" is **right Alt**: the Windows
 key opens HarmonyOS's start menu (click back into the desktop to close it).
+The display app on ohdev is main 48eee76 (installed 2026-10-27, adds the
+HarmonyOS notification when Docker is blocked; the desktop opens normally).
 
 ### Part 1: if this happens, do this
 
@@ -96,7 +98,7 @@ key opens HarmonyOS's start menu (click back into the desktop to close it).
 | Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | A window is stuck | **Super+W** closes it; go on to the next step |
 | `docker` shows nothing for 15–20 s | Expected: the first run starts the background VM. Keep talking |
-| `docker` says `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | Another VM is running (checklist item 5 was missed). On stage: "this is exactly the one-VM-at-a-time limit", skip Docker. [backstage] find which VM it is; it has to be off before part 2 |
+| `docker` says `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | Another VM is running (checklist item 5 was missed). An Omarchy (native) notification also lands in HarmonyOS's notification center (no banner while the app is in front, just a red dot on the bell; clear it with checklist item 7). On stage: "this is exactly the one-VM-at-a-time limit", skip Docker. [backstage] find which VM it is; it has to be off before part 2 |
 | `docker` shows nothing for over 1 min | Ctrl+C, skip Docker, show the backup screenshot (`docs/img/autostart/03-docker-cold.jpeg`). [backstage] `ohmarchy-vm stop`, confirm `pidof stratovirt` is empty before part 2 |
 | A minute after hello-world, 鸿融 says another VM is running | The Docker VM is still on (e.g. another `docker` was typed). In the terminal: `docker-vm stop` (about 6 s, "Docker 虚拟机已关闭"); if it says a container is running, `docker ps`, `docker stop <name>` first. Or [backstage] `ohmarchy-vm stop` |
 

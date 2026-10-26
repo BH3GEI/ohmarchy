@@ -37,6 +37,43 @@ else
 fi
 
 case " $cmd " in
+*" probe.rootimg=1 "*)
+    # Boot Omarchy from an ext4 image on Oseasy's shared folder (virtiofs tag
+    # shared_dir). /dev/vda is unused, so Oseasy's 再次安装 never wipes the system and
+    # state persists. Mount the share, loop-mount the image, grow+fsck it, and
+    # switch_root in; the image's own first-boot service sets the password / installs.
+    for m in virtio_pci virtiofs loop ext4; do modprobe "$m" 2>/dev/null; done
+    sleep 1
+    mkdir -p /shared
+    i=0; until mount -t virtiofs shared_dir /shared 2>/dev/null; do
+        sleep 1; i=$((i+1)); [ $i -ge 15 ] && break
+    done
+    IMG=/shared/ohmarchy/omarchy-root.img
+    if [ ! -f "$IMG" ]; then
+        log "rootimg: $IMG not found; /shared has: $(ls /shared 2>/dev/null | tr '\n' ' ')"
+    else
+        want=$((30*1024*1024*1024)); cur=$(stat -c %s "$IMG" 2>/dev/null || echo 0)
+        [ "$cur" -lt "$want" ] && { truncate -s "$want" "$IMG" 2>/dev/null \
+            && log "rootimg: grew image to 30G (was $cur)" || log "rootimg: truncate failed"; }
+        LOOP=$(losetup -f --show "$IMG" 2>/dev/null)
+        log "rootimg: $IMG -> ${LOOP:-FAILED} ($(date +%T))"
+        if [ -n "$LOOP" ]; then
+            e2fsck -fp "$LOOP" >/tmp/fsck.txt 2>&1; log "rootimg: e2fsck rc=$? $(tail -1 /tmp/fsck.txt)"
+            resize2fs "$LOOP" >/tmp/resize.txt 2>&1 && log "rootimg: resize2fs $(tail -1 /tmp/resize.txt)"
+            mkdir -p /newroot
+            if mount -t ext4 "$LOOP" /newroot; then
+                # the loop backing file lives on /shared (virtiofs); that mount must live for
+                # the system's whole life, so move it into the new root before switch_root.
+                mkdir -p /newroot/mnt/hostshare
+                mount --move /shared /newroot/mnt/hostshare 2>/dev/null
+                for d in proc sys dev; do mount --move /$d /newroot/$d 2>/dev/null; done
+                log "rootimg: switch_root into Omarchy ($(date +%T))"
+                exec switch_root /newroot /sbin/init
+            fi
+            log "rootimg: mount of $LOOP failed"
+        fi
+    fi
+    ;;
 *" probe.install=1 "*)
     # Get a zstd-compressed raw disk image and write it to /dev/vda, all without a
     # host or root. Look for omarchy-pure.img.zst in three places, in order:

@@ -42,7 +42,8 @@ mkdir -p "$R/lib/modules/$kver"
 cp -a "$M"/modules.order "$M"/modules.builtin* "$R/lib/modules/$kver/"
 (cd "$M" && cp -a --parents kernel/drivers/gpu kernel/drivers/net/virtio_net.ko* \
     kernel/drivers/net/net_failover.ko* kernel/net/core/failover.ko* kernel/drivers/virtio \
-    kernel/drivers/block/virtio_blk.ko* kernel/drivers/input kernel/drivers/hid \
+    kernel/drivers/block/virtio_blk.ko* kernel/drivers/block/loop.ko* \
+    kernel/drivers/input kernel/drivers/hid \
     kernel/drivers/usb kernel/fs/fat kernel/fs/nls kernel/lib \
     kernel/drivers/scsi/scsi_mod.ko* kernel/drivers/scsi/sr_mod.ko* \
     kernel/drivers/cdrom kernel/fs/isofs kernel/fs/fuse \
@@ -92,6 +93,8 @@ copy_bin /usr/bin/zstd   # the install mode takes a zstd stream
 copy_bin /usr/bin/kmod
 copy_bin /usr/bin/modetest
 copy_bin /usr/bin/kmsprint 2>/dev/null || true
+copy_bin /usr/bin/e2fsck     # root-on-image boot: fsck the loop-mounted ext4
+copy_bin /usr/bin/resize2fs  # and grow it to fill the truncated image
 cp -L /usr/lib/ld-linux-aarch64.so.1 "$R/usr/lib/"
 ln -s usr/lib "$R/lib64" 2>/dev/null || true
 ln -sf ../usr/lib/ld-linux-aarch64.so.1 "$R/lib/ld-linux-aarch64.so.1"

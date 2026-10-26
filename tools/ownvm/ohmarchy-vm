@@ -14,7 +14,7 @@
 # Settings (environment, or $OVM_DIR/config sourced as shell):
 #   OVM_DIR   run files, disk and key        (/data/local/kaidashi/ownvm)
 #   OVM_DISK  raw disk image                 ($OVM_DIR/omarchy-own.img)
-#   OVM_CPUS  vCPUs (6)   OVM_MEM  MiB (8192)   OVM_GPU=1  virgl GPU (off)
+#   OVM_CPUS  vCPUs (6)   OVM_MEM  MiB (12288)   OVM_GPU=1  virgl GPU (off)
 #   OVM_SHARE=0  no home share (default: share D's /home/builder, see below)
 #   OVM_VIRTIOFSD  upstream (default): /data/local/kaidashi/bin/virtiofsd-upstream,
 #             a static build of upstream 1.14.0 (tools/ownvm/build-virtiofsd.sh);
@@ -37,7 +37,7 @@
 OVM_DIR=${OVM_DIR:-/data/local/kaidashi/ownvm}
 [ -r $OVM_DIR/config ] && . $OVM_DIR/config
 DISK=${OVM_DISK:-$OVM_DIR/omarchy-own.img}
-CPUS=${OVM_CPUS:-6}; MEM=${OVM_MEM:-8192}
+CPUS=${OVM_CPUS:-6}; MEM=${OVM_MEM:-12288}
 D=$OVM_DIR/svc
 TAP=ohmvm0; NET=172.16.100; GUEST=$NET.2
 FW=/system/opt/virt_service/virtualized_hwf/stratovirt-uefi-linux

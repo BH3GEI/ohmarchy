@@ -28,8 +28,13 @@ export default class EntryAbility extends UIAbility {
       return;
     }
     const t: Object | undefined = want?.parameters?.['notifyTitle'];
+    // SOCIAL_COMMUNICATION: the ordinary slot HarmonyOS allows banners for. On
+    // ohdev (2026-10-27, the app in front) neither it nor the default slot showed
+    // a banner: the notification lands in the notification centre (the bell gets
+    // a red dot); banners are the user's per-app notification setting.
     const req: notificationManager.NotificationRequest = {
       id: 1,
+      notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
       content: {
         notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
         normal: { title: typeof t === 'string' && t !== '' ? t : 'Omarchy', text: text }

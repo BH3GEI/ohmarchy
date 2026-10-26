@@ -244,8 +244,8 @@ HarmonyOS's compositor, `hidumper -s RenderService`); B is from b15cf1f /
 | Virtualization | HMV (system VMM) | none (HongMeng kernel) | HMV (system VMM) | HMV (system VMM) | TCG (software, in-app QEMU) |
 | GPU path | virgl (zink, Maleoon) | Maleoon via host virgl | SVGA3D hardware (GL ES 3.0) | svga-pci (same as Oseasy), network TBD | 2D virtio-gpu / llvmpipe (no 3D) |
 | Omarchy desktop | yes (SDDM→Hyprland) | yes | yes | survey only | **✗ — never reached (QEMU aborts at TCG init)** |
-| Kernel | linux-aarch64 7.2 + HMV quirk | HongMeng (host) | Debian 6.1 (route B) | n/a | Omarchy stock 7.2.3 (unpatched) |
-| Display refresh | 60 Hz (VM EDID) | 120 Hz (panel) | 60 Hz (panel locked) | — | ✗ (no boot); static: no 120 Hz / no 3D path |
+| Kernel | linux-aarch64 7.2.12 + HMV quirk | HongMeng (host) | linux-aarch64 7.2.12-1.1 + HMV patches, patched `vmwgfx` (route B; Debian 6.1 at first) | n/a | Omarchy stock 7.2.3 (unpatched) |
+| Display refresh | guest 120 Hz (120 Hz EDID), 60 Hz on screen | 120 Hz (panel) | 60 Hz (panel locked) | — | ✗ (no boot); static: no 120 Hz / no 3D path |
 | es2gears on-screen, 1920x1280 | 60 fps | 117–120 fps | 60 fps (guest 120) | — | ✗ (no boot) |
 | Workspace anim on-screen, 1920x1280 | 60 fps | 115–116 fps | — | — | ✗ (no boot) |
 | es2gears on-screen, 2160x1440 | 60 fps | 117–118 fps | — | — | ✗ (no boot) |

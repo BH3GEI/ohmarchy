@@ -93,6 +93,19 @@ snapshot() {
                 esac
                 [ -n "$sn" ] && curl -fsSL --retry 2 -m 900 -o "$t/s/$nm-$sr.tar.gz" "$sn" && ok=$sr
             fi
+            if [ -z "$ok" ] && [ "$r" != HEAD ]; then
+                # a release tag: the upstream release tarball of that version
+                # (GNU mirror at TUNA, savannah's download area)
+                local v=${r#v}; v=${v#"$repo"-}; local tb
+                for tb in "https://mirrors.tuna.tsinghua.edu.cn/gnu/$repo/$repo-$v.tar.xz" \
+                          "https://mirrors.tuna.tsinghua.edu.cn/gnu/$repo/$repo-$v.tar.gz" \
+                          "https://download.savannah.nongnu.org/releases/$repo/$repo-$v.tar.xz" \
+                          "https://download.savannah.nongnu.org/releases/$repo/$repo-$v.tar.gz"; do
+                    curl -fsSL --retry 2 -m 900 -o "$t/s/$(basename "$tb")" "$tb" 2>/dev/null &&
+                        { ok="release $v"; echo "$nm: upstream release tarball $(basename "$tb") for tag $r" >> "$log"; break; }
+                    rm -f "$t/s/$(basename "$tb")"
+                done
+            fi
             [ -n "$ok" ] || { echo "$nm: no snapshot of $url $r" >> "$log"; rm -rf "$t"; return 1; }
             [ "$r" = HEAD ] && echo "$nm unpinned, HEAD $ok" >> "$log" || echo "$nm $r" >> "$log"
             ;;

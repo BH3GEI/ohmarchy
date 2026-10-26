@@ -341,3 +341,36 @@ libjpeg-turbo, libwebp, re2+abseil, muparser, lcms2, lua 5.5, libuuid, xcursor, 
 the C++ header/tools (glaze, glslang, hyprwayland-scanner, hyprland-protocols), then hyprgraphics
 / hyprcursor / aquamarine, and finally Hyprland 0.56.2 with D's two hongmeng patches + the
 HongMeng shims. glib/gio is the heaviest cross-compile; libinput is skipped (input is injected).
+
+#### Stage 3 support stack — built (all static .a, aarch64-ohos)
+
+The C/C++ libraries Hyprland links, cross-built offline and installed into the Stage-1 prefix.
+Recipe: `device/userspace/build-stage3-deps.sh` (+ `uapi-fix/linux/socket.h`). C-API libs use
+NDK clang 15 (macOS libtool can't emit Linux ELF `.so`, so these are static only); the C++-API
+libs Hyprland links (abseil/re2/muparser) use clang 23 + the libc++_ohm toolchain for ABI match.
+
+| lib | ver | .a size | lib | ver | .a size |
+|---|---|---|---|---|---|
+| pcre2 | 10.44 | 428K | glib-2.0 | 2.82.2 | 5.7M |
+| lcms2 | 2.16 | 576K | gobject-2.0 | | 2.0M |
+| libpng | 1.6.44 | 303K | gio-2.0 | | 15M |
+| libjpeg-turbo | 3.0.4 | 659K | cairo | 1.18.2 | 7.5M |
+| libwebp | 1.4.0 | 666K | pango-1.0 | 1.54.0 | 2.3M |
+| freetype | 2.13.3 | 917K | pangocairo | | 325K |
+| fribidi | 1.0.16 | 316K | abseil | 20240722 | 90 libs |
+| harfbuzz | 10.1.0 | 49M* | re2 | 2024-07-02 | 894K |
+| fontconfig | 2.15.0 | 1.4M | muparser | 2.3.5 | 961K |
+
+\*harfbuzz .a is unstripped C++; the linker pulls only what's used.
+
+Three environment fixes (one-time, in the recipe): **(A)** OHOS `linux/socket.h` defines
+`sockaddr_storage` unguarded → clashes with musl `sys/socket.h` (broke glib/gio); shipped
+`uapi-fix/linux/socket.h` guards it with `#ifndef _SYS_SOCKET_H`, added to `ohos.cross` as
+`-isystem`. **(B)** clang 23's resource dir has the NEON intrinsic headers but no OHOS builtins
+→ copy the NDK `libclang_rt.builtins.a` into `clang -print-resource-dir`/lib/aarch64-linux-ohos
+once (so C++ both compiles and links with the real resource dir). **(C)** musl keeps gettext in
+libc but some `.pc` add `-lintl` → drop an empty `libintl.a` stub.
+
+**Remaining before Hyprland:** lua 5.5, libzip, udis86, libdisplay-info, libseat, hwdata,
+header-only glaze/tomlplusplus, glslang, the native hyprwayland-scanner, hyprland-protocols,
+then hyprgraphics/hyprcursor/aquamarine, then Hyprland 0.56.2 + D's two patches + shims.

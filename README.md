@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 03:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 04:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Making OSEasy's fullscreen work (the Omarchy desktop must fill the screen at the screen's resolution), tested on an ISO built from the untrimmed full image; then the final ISO from the trimmed image | Install from the disc works end to end (a854e99). The test machine's reboot reset OSEasy to "点击创建虚拟机", so the VM has to be created again from the new ISO |
-| C. 鸿融 / public image | Trimmed rebuild of the passwordless full image | First full build: no password hash, no relay key, but 2.66 GB compressed, too big for a GitHub asset. Trimmed by uninstalling with pacman (qemu-user-static, LibreOffice, Obsidian, superwhisper, .NET runtime, LocalSend, theme intro videos), locales cut to zh_CN and en, mise caches cleared (31e78f6). Users can install any of them back. Target: the whole ISO under 2 GiB |
-| D. Native | Second real reboot to verify autostart | **The first real reboot failed to autostart**: the desktop service used a "condition" start that never fired, so the boot script never ran (it had only been dry-run before). Now it starts in boot mode like the ssh service and waits for boot-completed itself (63b0f2c); run by hand it brings up the Arch session and the desktop in 36 s |
-| I. Own VM | Done | Verified: the Docker VM stops by itself about 35 s after hello-world; the demo manual says "nothing to do" at step 1.9 (8aa3829) |
-| J. Linux in an app sandbox (no root) | Background research | Unchanged: four rounds on the device, no picture yet |
+| B. OSEasy | First boot moves to the desktop: auto-login once, a terminal pops up and asks for the new password, then auto-login is removed. Then the fullscreen test | **The new install ISO works up to first boot**: the fixed default entry boots the installer, the full image is read from the disc and written to the disk (64 GiB in 231 s, about 4 min in total with `zstd --long=31`, 6077fcd), then it reboots into Omarchy. **Blocker found**: once vmwgfx takes over the display, the text console on tty1 stops updating, so the first-boot password prompt can't be seen |
+| C. 鸿融 / public image | Rebuilding with qemu removed as well (qemu-user-static-binfmt had pulled it back in) and with the graphical first boot | **鸿融 started its VM by itself** when its main page was brought up: "自动启动虚拟机" is on in 鸿融's settings. Check 5b in the operator manual: both that switch and "闲置自动暂停" must be off before the demo (c6693c3). 鸿融 1.1.1.103 holds only one VM, so the demo will swap the Omarchy disk in and restore the main disk afterwards |
+| D. Native | Waiting for the second real reboot (after the image build and B's test) | Autostart fix in place (63b0f2c), not yet verified by a reboot |
+| I. Own VM | Done | — |
+| J. Linux in an app sandbox (no root) | Background research | Unchanged |
 
-Release: the GPL source bundle for the B image is being prepared; libtool's source is fetched by hand from the upstream tarball because the git clone fails.
+Release: the GPL source script now falls back to the upstream tarball when a git tag can't be fetched (e4ca59d), takes git sources as snapshots of their pinned refs (98c6dfe), runs several workers (22f2cbe) and stops before the disk fills (894ce49). The source run for B's 806 packages is under way.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

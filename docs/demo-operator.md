@@ -56,7 +56,7 @@ doesn't touch them.
 | 5b | **鸿融 does not start a VM by itself** | In 鸿融, 虚拟机 → 功能设置 → 启动与闲置: both 启动客户端后虚拟机自动运行 (start the VM when the app starts) and 闲置自动暂停虚拟机 (pause the VM when idle) are off (turned off on 2026-10-26; with the first on, opening 鸿融 starts the VM and takes the HMV that part 1's Docker needs). Do not tap 鸿融 in the dock before the start. [backstage] if `ssh ohdev pidof stratovirt` prints something and `ps -ef \| grep stratovirt` shows com.huawei.medivh, shut it down from 鸿融: 关机 for the Omarchy disk (it has the guest agent), 更多 → 强制关机 for the main disk (no agent); then check `pidof stratovirt` is empty again |
 | 6 | Native desktop already running in the background | it starts at boot by itself (verified by a real reboot on 2026-10-26: the desktop was running about 50 s after power-on; after login, double-clicking the icon showed it at once). [backstage] `ssh ohdev sh /data/local/archtest/bin/omarchy desktop status`; if it is down, `... omarchy desktop start` (about 3 s) |
 | 7 | Clean desktop | only HarmonyOS's own desktop; no 鸿融, OSEasy or "Omarchy (native)" window open; notifications cleared |
-| 8 | The three icons are in the dock | "Omarchy (native)", 鸿融 (orange-yellow), OSEasy |
+| 8 | The three icons can be found | 鸿融 (orange-yellow) and "Omarchy (native)" are on the desktop, top left; while 鸿融 is closed it is **not** in the dock (rehearsal 2026-10-27): open it by double-clicking the desktop icon |
 | 9 | 鸿融 auto-update is off | AppGallery has swapped 鸿融's version on its own before. It should be 1.1.1.103 |
 | 10 | OSEasy holds the installed VM | opening OSEasy shows 再次安装 (**to be confirmed in rehearsal**: the flow is being changed). Close OSEasy again after looking |
 | 11 | OSEasy's trial has not expired | OSEasy allows one trial per device (**to be confirmed in rehearsal**: look for an expiry notice in the app) |
@@ -144,13 +144,13 @@ Before starting: the Docker VM has stopped (1.9).
 
 | # | Do | Expect on screen | Wait | Say |
 |---|---|---|---|---|
-| 2.1 | Tap **鸿融** in the dock (orange-yellow) | the VM page: Linux, 当前状态 已关机, 已使用 6 GB | 5 s | "鸿融 is Huawei's own Linux VM app, installed from AppGallery; no root needed." |
-| 2.2 | Tap **开机** | 鸿融 switches to the fullscreen VM and lands on the Omarchy desktop (wallpaper, top bar with workspaces 1–5): **no password**, and no 增强服务 guide dialog any more | about 1 min | "This disk is the same public image OSEasy installs in part 3: a complete Arch + Omarchy." |
-| 2.3 | **Super+Return**, type `fastfetch`, Enter | terminal; fastfetch shows the StratoVirt VM, Omarchy, Hyprland | 20 s | "This one is a VM, on HarmonyOS's own hypervisor HMV, with Huawei's StratoVirt." (Talk here: the next window halves the terminal) |
-| 2.4 | **Super+Shift+B**, click the address bar, type `omarchy.org`, Enter | Chromium opens on the right and loads the page | 30 s | "The network goes through 鸿融's own virtual bridge." |
-| 2.5 | **Super+2**, then **Super+1** | empty workspace 2, then back to terminal and browser | 10 s | "Inside the VM it actually renders at 120 Hz, but 鸿融 shows it fullscreen at 60 Hz; that's on 鸿融's side." |
+| 2.1 | **Double-click 鸿融 on the desktop**, top left (orange-yellow; it is not in the dock while closed) | the VM page: Linux, 当前状态 已关机, 已使用 6 GB | 5 s | "鸿融 is Huawei's own Linux VM app, installed from AppGallery; no root needed." |
+| 2.2 | Tap **开机** | 鸿融 switches to the fullscreen VM and lands on the Omarchy desktop (wallpaper, top bar with workspaces 1–5): **no password**, and no 增强服务 guide dialog any more | about 1 min (not timed exactly in the 2026-10-27 rehearsal: the network lagged). **Go on as soon as the desktop is there**: after 150 s idle the screensaver starts, after 300 s it locks and the display goes off (in the rehearsal it sat about 8 min: black screen, a key brought up the lock screen, the password and Enter brought the desktop back) | "This disk is the same public image OSEasy installs in part 3: a complete Arch + Omarchy." |
+| 2.3 | **Super+Return**, type `fastfetch`, Enter | terminal; its first line is the AI agent setup hint (the public image has no key; expected). fastfetch: KVM Virtual Machine (StratoVirt), Virtio GPU, 1920x1280 60 Hz, Omarchy 4.0.6, Linux 7.2.12-1.1-aarch64-ARCH, Hyprland 0.56.2, 793 packages (rehearsal 2026-10-27) | 20 s | "This one is a VM, on HarmonyOS's own hypervisor HMV, with Huawei's StratoVirt." (Talk here: the next window halves the terminal) |
+| 2.4 | **Super+Shift+B**; when Chromium is up, **Ctrl+L** (or click the address bar), type `omarchy.org`, Enter | Chromium opens on the right and loads the page; no "Restore pages?". Two Omarchy notifications (Update System, Learn Keybindings) stay at the top right over the end of Chromium's toolbar; ignore them | 30 s | "The network goes through 鸿融's own virtual bridge." |
+| 2.5 | **Super+2**, then **Super+1** | empty workspace 2, then back to terminal and browser | 10 s | "鸿融 gives the VM a 60 Hz display; for 120 Hz see the native desktop in part 1." (fastfetch shows 60 Hz for this disk in 鸿融: don't claim 120 Hz inside the VM) |
 | 2.6 | Bring 鸿融's main window forward: tap 鸿融 in the dock if it shows; otherwise [backstage] `ssh ohdev aa start -b com.huawei.medivh -a EntryAbility` | the card: 当前状态 **运行中** (green); 关机 and 暂停 active | 5 s | "Our system has 鸿融's guest agent, so 鸿融 knows it is running." |
-| 2.7 | Tap **关机** | shutdown messages scroll by, then 鸿融 returns to the VM page by itself, card 已关机 | about 20 s | "Shutting down is 鸿融's own button, too." |
+| 2.7 | Tap **关机** (鸿融's window may open at a different position each time; aim at the button) | shutdown messages scroll by, then 鸿融 returns to the VM page by itself, card 已关机 | 18 s (rehearsal 2026-10-27) | "Shutting down is 鸿融's own button, too." |
 | 2.8 | Confirm it is off: card 已关机, 开机 can be tapped ([backstage] `pidof stratovirt` empty) | | 5 s | |
 
 ### After the demo ([backstage], about 2 min)
@@ -165,7 +165,7 @@ backup's sizes.
 |---|---|
 | 鸿融 is fullscreen and neither the Home key nor edge swipes get out | Known. If the dock shows, tap 鸿融's dock icon; otherwise [backstage] `ssh ohdev aa start -b com.huawei.medivh -a EntryAbility` |
 | "请设置密码" or the 增强服务 guide dialog shows up after 开机 | The preparation was not finished (step 3). Type the password twice, Enter, wait for the one restart, go on |
-| The screen goes dark or locks after some idle time | Omarchy's idle defaults: screensaver at 150 s, lock at 300 s. Move the mouse; at the lock screen type the password, Enter |
+| The screen goes dark or locks after some idle time | Omarchy's idle defaults: screensaver at 150 s, lock and display off at 300 s. Press a key (Shift) to get the lock prompt, type the password, Enter. Happened in the rehearsal; this recovered it |
 | The card keeps saying 已关机 with 关机 greyed out, but the preview is live | The guest agent didn't connect. Tap the preview to get back to the VM and shut down inside with Super+Esc → Shutdown |
 | 开机 is refused / nothing happens | Most likely another VM (Docker or OSEasy) is still running. [backstage] `pidof stratovirt`, `ohmarchy-vm stop` for the Docker VM, then tap 开机 again. What 鸿融 shows on screen when refused: **to be confirmed in rehearsal** |
 | Typing does nothing, or goes elsewhere | Keys go to the window in front. Click the VM's picture first, then type again |

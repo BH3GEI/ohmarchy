@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 11:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 12:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Checking sudo, the disk, the desktop and whether data survives a reboot; then the final ISO | **First login works end to end**: the full-screen prompt shows a large centred "请设置密码 / Set your password" with the rules in Chinese and English; the password was typed twice and the screen showed "密码已设置 / Password set." The fix that made it work: the NOPASSWD rule for the password script is read last (cf91ba0) |
-| C. 鸿融 / public image | Swapping the Omarchy disk into 鸿融 for the demo, after B's check | Image with the sudo fix: 1,775,051,138 bytes, `zstd -t` verified |
+| B. OSEasy | **Final ISO verified; waiting for an upload token to attach it to the draft release** | Final ISO: 2,006,953,984 bytes (1.869 GiB). Checked inside the installed system: the password screen, `sudo` with the new password, the temporary NOPASSWD rule removed, the disk grown to 252 GB, Hyprland running. **A reboot inside Omarchy keeps data**: a file survived `systemctl reboot` into the same installed system. After power-off OSEasy only offers "再次安装", which wipes the disk. The install guide and operator manual part 3 follow these measurements; OSEasy's "install.wim 损坏" pop-up is a false alarm and the guide says to press 确定, never 取消 (which deletes the VM) (39f1bb9) |
+| C. 鸿融 | Demo part 2 ready | **Rehearsed with the public image swapped into 鸿融** (2dc4a42): password screen 45 s after power-on, 鸿融's guest agent installed during first login, then the card shows 运行中 and 鸿融's 关机 shuts down in 20 s. The main VM was backed up first and swapped back afterwards. Operator manual part 2 updated (e596929) |
 | D. Native | — | — |
-| I. Own VM | Waiting for the hypervisor to be free for the x86 and memory tests | — |
+| I. Own VM | GPU in containers: assessed, not done | **Docker's limits lifted** (48eee76, a2b6d0f): x86-64 images run under qemu-user with `--platform linux/amd64` (pure Python ~50x slower, C ~4x); the VM may use 12 GiB and still costs ~1.2 GiB when idle; when 鸿融 or OSEasy holds the hypervisor, `docker` names the app and a HarmonyOS notification says the same |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 
-Release: **a draft for B exists** (tag `b-20261027`, visible to collaborators only, not published). Attached so far: the license file with the written offer of source, this repository's source and the upstream kernel source. Of 360 GPL/LGPL packages, 168 have source and 192 are listed at the top of the notes as missing; the run continues. Large files go to GitHub straight from the HarmonyOS machine, with the token passed on stdin only, and SHA256SUMS is built from GitHub's own digests (a4c7693).
+Release: the B draft (tag `b-20261027`, not published) has the small attachments; the ISO and the GPL source bundle go up from the HarmonyOS machine once a short-lived token for this repository is available.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

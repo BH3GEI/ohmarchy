@@ -123,6 +123,18 @@ app itself launches the signed `.so` userspace, then assess compiling Hyprland +
 `.so`s to run in the app process. Not possible this way: run-time `pacman`/new unsigned
 binaries (everything must be signed into the HAP at build time).
 
+**J+D done (2026-10-25): busybox runs inside D's display app.** The same mechanism is now
+in `com.ohmarchy.display` itself ([9d4000c](https://github.com/BH3GEI/ohmarchy/commit/9d4000c),
+[9a6539d](https://github.com/BH3GEI/ohmarchy/commit/9a6539d)): a separate napi module
+`libbbload.so` (`native/app/entry/src/main/cpp/jl`, ArkTS wrapper `ets/jl/jl.ets`) starts a
+single-threaded spawner child (fork in a multithreaded app is safe there: the child has only
+the calling thread), and the spawner fork+`dlopen`s the HAP-signed `libbusybox.so` per
+command. Behind a `jl` switch, off by default (`--pb jl true`). From the D line's on-device
+run: the spawner forks only on `start()`, so with the switch off nothing changes, and right
+after fork it closes every inherited fd but its socketpair, so the app's own connections
+(`@ohmarchy-display`, vtest, `@ohmarchy-audio`) still see EOF when the app closes them. The
+display, GPU and sound code were not touched.
+
 ## libc decision for the Hyprland stack: musl rebuild (path a), not nested glibc (path b)
 
 D's Hyprland/aquamarine/mesa are glibc-built; the `jl` spawner runs inside the app's **OHOS

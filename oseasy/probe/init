@@ -107,7 +107,7 @@ case " $cmd " in
     fi
     if [ -n "$imgzst" ]; then
         log "install: writing /dev/vda from $imgzst"
-        zstd -dc "$imgzst" | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+        zstd -dc --long=31 "$imgzst" | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     else
         log "install: no image on CD or shared folder; waiting for one on tcp/5003, writing /dev/vda"
         # busybox nc -l does not exit when the sender closes (and -w also bounds the wait
@@ -118,7 +118,7 @@ case " $cmd " in
             [ "$n" = "$last" ] && [ "${n:-0}" -gt 0 ] && { kill $(pidof nc) 2>/dev/null; break; }
             last=$n
           done ) &
-        nc -l -p 5003 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+        nc -l -p 5003 | zstd -dc --long=31 | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     fi
     log "install: dd: $(tail -1 /tmp/dd.txt)"
     blockdev --rereadpt /dev/vda; sleep 2

@@ -34,6 +34,24 @@ if [ "${JOBS:-1}" -gt 1 ] && [ -z "${GPL_SOURCES_WORKER:-}" ]; then
 fi
 mkdir -p "$out"; out=$(cd "$out" && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+# GitHub often does not answer from here (connects time out after ~2 min):
+# for this run only, git and makepkg's downloads go to github.com through
+# gh-proxy.com (the user's own git and makepkg settings stay as they are)
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=url.https://gh-proxy.com/https://github.com/.insteadOf \
+       GIT_CONFIG_VALUE_0=https://github.com/
+cat > "$work/dl" <<'DL'
+#!/bin/bash
+# makepkg DLAGENT: curl, with github.com through gh-proxy
+out=$1 url=$2
+case $url in https://github.com/* | https://codeload.github.com/* | https://objects.githubusercontent.com/*) url=https://gh-proxy.com/$url ;; esac
+exec /usr/bin/curl -qgb "" -fLC - --retry 3 --retry-delay 3 -o "$out" "$url"
+DL
+chmod +x "$work/dl"
+{ cat /etc/makepkg.conf
+  echo "DLAGENTS=('file::/usr/bin/curl -qgC - -o %o %u' 'ftp::/usr/bin/curl -qgfC - --ftp-pasv --retry 3 --retry-delay 3 -o %o %u'"
+  echo "          'http::/usr/bin/curl -qgb \"\" -fLC - --retry 3 --retry-delay 3 -o %o %u' 'https::$work/dl %o %u'"
+  echo "          'rsync::/usr/bin/rsync --no-motd -z %u %o' 'scp::/usr/bin/scp -C %u %o')"; } > "$work/makepkg.conf"
+export MAKEPKG_CONF=$work/makepkg.conf
 : > "$out/MISSING.txt"; : > "$out/PACKAGES.txt"
 # ALARM's tree without file contents (a full clone takes many minutes here); the
 # directories of the packages asked for are fetched as they are needed
@@ -111,7 +129,7 @@ snapshot() {
             ;;
         http://* | https://* | ftp://*)
             local fn=${nm:-$(basename "$u")}
-            curl -fsSL --retry 2 -m 900 -o "$t/s/$fn" "$u" || { echo "$fn: download failed" >> "$log"; rm -rf "$t"; return 1; } ;;
+            "$work/dl" "$t/s/$fn" "$u" > /dev/null 2>&1 || { echo "$fn: download failed" >> "$log"; rm -rf "$t"; return 1; } ;;
         esac
     done < "$t/srcs"
     tar -C "$t" -czf "$out" --transform "s|^s|$(basename "$dir")|" s && rm -rf "$t"

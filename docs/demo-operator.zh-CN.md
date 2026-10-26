@@ -59,13 +59,14 @@
 | 1.6 | **Super+Space** 弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
 | 1.7 | **Super+Shift+F** | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
 | 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 15–20 秒**，别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，空闲 3 分钟自己关。我没敲任何 root 命令。" |
-| 1.9 | **确保 Docker 虚拟机已经停**（见下） | 没有可见变化 | 约 3 分钟 | |
+| 1.9 | 在同一个终端敲 `docker-vm stop`，回车 | **"Docker 虚拟机已关闭，现在可以开鸿融或 OSEasy 的虚拟机"** | 约 6 秒 | "用完就关，下一段的虚拟机就能开了。" |
 | 1.10 | 把"Omarchy (native)" **最小化**（不要关） | 回到鸿蒙桌面 | 2 秒 | |
 
-**1.9 怎么让 Docker 虚拟机停下来**（二选一）：
+**1.9 让 Docker 虚拟机停下来**（2026-10-26 彩排：hello-world 冷启动 19 秒，`docker-vm stop` 6 秒，之后 `pidof stratovirt` 为空）：
 
-- **方案甲（推荐）**：Yao 一说完"Hello from Docker"，【后台】助手执行 `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop`（约 10 秒），然后 `ssh ohdev pidof stratovirt` 确认没有输出，给 Yao 打个手势。
-- **方案乙（没有助手）**：hello-world 跑完后用手机计时 **3 分 30 秒**，这段时间讲"两条线"（见问答）或者回答提问。**期间不要再敲任何 `docker` 命令**，每敲一次空闲计时就重新开始。
+- **方案甲（推荐，Yao 自己敲）**：`docker-vm stop`。如果它说"还有 N 个容器在运行"，先 `docker ps` 看一眼，再 `docker stop <名字>`，然后重敲 `docker-vm stop`。想确认的话再敲 `docker-vm status`，应该显示"Docker 虚拟机没有运行"。菜单里也有：Super+Space → System → 停止 Docker 虚拟机。
+- **方案乙（后备）**：【后台】助手执行 `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop`（约 10 秒），再用 `ssh ohdev pidof stratovirt` 确认没有输出，然后给 Yao 打个手势。
+- **方案丙（什么都不做）**：hello-world 跑完后计时 **3 分 30 秒**，到点会自动关机。**期间不要再敲任何 `docker` 命令**，每敲一次，空闲计时就会重新开始。
 
 说明：键盘操作 1.3–1.7 用手按还没彩排过（彩排脚本用的是命令）。第 1 部分里所有的 "Super" 都按**右 Alt**；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。
 

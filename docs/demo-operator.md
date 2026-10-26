@@ -75,18 +75,20 @@ doesn't touch them.
 | 1.6 | **Super+Space** for the Omarchy menu, glance, **Esc** | the Omarchy menu appears and closes | 5 s | "That's Omarchy's own menu, unchanged." |
 | 1.7 | **Super+Shift+F** | Files (Nautilus) on the home directory | 5 s | |
 | 1.8 | Click back into the terminal, type `docker run --rm hello-world`, Enter | a pause (the background VM is starting), then **"Hello from Docker!"** | **first run about 15–20 s**, don't panic | "The HarmonyOS kernel can't run containers, so Docker borrows a small background VM that starts when it's used and stops after 3 idle minutes. I didn't type any root command." |
-| 1.9 | **Make sure the Docker VM has stopped** (below) | nothing visible | about 3 min | |
+| 1.9 | In the same terminal type `docker-vm stop`, Enter | **"Docker 虚拟机已关闭，现在可以开鸿融或 OSEasy 的虚拟机"** (the Docker VM is off; 鸿融 or OSEasy can start now) | about 6 s | "Done with it, so it is off, and the next VM can start." |
 | 1.10 | **Minimize** "Omarchy (native)" (don't close it) | back on the HarmonyOS desktop | 2 s | |
 
-**1.9 Getting the Docker VM to stop** (pick one):
+**1.9 Getting the Docker VM to stop** (rehearsed 2026-10-26: hello-world 19 s cold, `docker-vm stop` 6 s, then `pidof stratovirt` empty):
 
-- **Plan A (recommended)**: as soon as Yao has said "Hello from Docker",
-  [backstage] the helper runs `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop`
-  (about 10 s), checks that `ssh ohdev pidof stratovirt` prints nothing, and
-  signals Yao.
-- **Plan B (no helper)**: when hello-world has finished, start a **3 min 30 s**
-  timer on a phone and use the time for "the two directions" (see Q&A) or
-  questions. **Don't type any other `docker` command meanwhile**: each one
+- **Plan A (recommended, Yao types it)**: `docker-vm stop`. If it says a container
+  is still running ("还有 N 个容器在运行"), `docker ps`, `docker stop <name>`, then
+  `docker-vm stop` again. To check: `docker-vm status` says "Docker 虚拟机没有运行"
+  (not running). Also in the menu: Super+Space → System → 停止 Docker 虚拟机.
+- **Plan B (fallback)**: [backstage] the helper runs
+  `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop` (about 10 s), checks
+  that `ssh ohdev pidof stratovirt` prints nothing, and signals Yao.
+- **Plan C (do nothing)**: when hello-world has finished, wait **3 min 30 s**; the
+  VM stops by itself. **Don't type any other `docker` command meanwhile**: each one
   restarts the idle timer.
 
 Note: steps 1.3–1.7 by hand have not been rehearsed (the rehearsal script sent

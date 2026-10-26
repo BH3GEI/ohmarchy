@@ -5,7 +5,8 @@
 # left route B's vmwgfx screen black), ohmarchy-setpass.service opens a
 # terminal on the desktop and runs this through sudo (one NOPASSWD rule for
 # this file only). It sets the password, removes the autologin, the sudo rule
-# and the terminal unit, and installs 鸿融's guest agent when 鸿融's CD is
+# the terminal unit and the stay-awake switch (idle goes back to Omarchy's
+# screensaver and lock), and installs 鸿融's guest agent when 鸿融's CD is
 # attached. Replaces the tty1 prompt, which route B's vmwgfx console hides.
 # Not run yet.
 set -uo pipefail
@@ -15,20 +16,42 @@ L=/usr/local/lib/ohmarchy
 pending=/var/lib/ohmarchy/setpass-pending
 [ -e "$pending" ] || { echo "密码已经设置过了 / The password is already set."; exit 0; }
 
-cat <<'TXT'
-欢迎使用 Omarchy。请为用户 omarchy 设置密码（至少 8 位）。
-以后登录、sudo 都用这个密码。
-
-Welcome to Omarchy. Set the password for the user "omarchy" (8+ characters);
-it is used to log in and for sudo.
-TXT
+export LC_ALL=C.UTF-8
+cols=$(tput cols 2>/dev/null || echo 80); rows=$(tput lines 2>/dev/null || echo 24)
+center() { # center LINE: pad by display width (CJK counts double)
+  local w; w=$(printf '%s' "$1" | wc -L)
+  printf '%*s%s\n' $(( (cols - w) / 2 > 0 ? (cols - w) / 2 : 0 )) '' "$1"
+}
+ask() { # ask PROMPT VAR: centered prompt, hidden input
+  local w; w=$(printf '%s' "$1" | wc -L)
+  printf '%*s%s' $(( (cols - w - 12) / 2 > 0 ? (cols - w - 12) / 2 : 0 )) '' "$1"
+  IFS= read -rs "$2"; echo
+}
+clear
+for _ in $(seq $(( rows / 4 ))); do echo; done
+printf '\033[1m'
+center "请设置密码 / Set your password"
+printf '\033[0m'
+echo
+center "用户 omarchy 的密码：至少 8 位，输入两次。登录后 sudo 要用它。"
+center "Password for the user omarchy: at least 8 characters, typed twice; sudo asks for it."
+center "输入时屏幕上不显示字符。 / Nothing is shown while you type."
+echo
 while :; do
-  printf '\n新密码 / New password: '; read -rs p1; echo
-  [ ${#p1} -ge 8 ] || { echo "太短了 / Too short."; continue; }
-  printf '再输一次 / Again: '; read -rs p2; echo
-  [ "$p1" = "$p2" ] || { echo "两次不一致 / They do not match."; continue; }
+  ask "新密码 / New password: " p1
+  if [ ${#p1} -lt 8 ]; then
+    printf '\033[31m'; center "太短了：至少 8 位，请重新输入。 / Too short: at least 8 characters. Try again."; printf '\033[0m'
+    continue
+  fi
+  ask "再输一次 / Type it again: " p2
+  if [ "$p1" != "$p2" ]; then
+    printf '\033[31m'; center "两次输入不一致，请重新输入。 / The two entries differ. Try again."; printf '\033[0m'
+    continue
+  fi
   printf '%s:%s\n' "$user" "$p1" | chpasswd && break
+  printf '\033[31m'; center "设置失败，请重试。 / Could not set it. Try again."; printf '\033[0m'
 done
+printf '\033[32m'; center "密码已设置。 / Password set."; printf '\033[0m'
 unset p1 p2
 
 # route B keeps the autologin (the password is then for sudo); otherwise back
@@ -40,6 +63,8 @@ fi
 rm -f "$pending"
 rm -f "/home/$user/.config/systemd/user/graphical-session.target.wants/ohmarchy-setpass.service"
 touch /var/lib/ohmarchy/firstboot.done
+# back to Omarchy's idle defaults (screensaver, lock with this password)
+rm -f "/home/$user/.local/state/omarchy/indicators/stay-awake"
 
 cd=/dev/disk/by-label/鸿融
 if [ -b "$cd" ]; then
@@ -60,11 +85,11 @@ fi
 
 echo
 if [ -e /var/lib/ohmarchy/keep-autologin ]; then
-  echo "完成。开机仍会自动登录；sudo 用这个密码。按回车关闭窗口。"
-  echo "Done. Login stays automatic; sudo asks for this password. Press Enter to close."
+  center "完成。开机仍会自动登录；sudo 和锁屏用这个密码。按回车关闭。"
+  center "Done. Login stays automatic; sudo and the lock screen use this password. Press Enter."
 else
-  echo "完成。以后用这个密码登录。按回车关闭窗口。"
-  echo "Done. Log in with this password from now on. Press Enter to close."
+  center "完成。以后用这个密码登录。按回车关闭。"
+  center "Done. Log in with this password from now on. Press Enter."
 fi
 # the sudo rule goes last: this script runs under it
 rm -f /etc/sudoers.d/ohmarchy-setpass

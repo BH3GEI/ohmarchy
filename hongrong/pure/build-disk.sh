@@ -228,6 +228,11 @@ if [ -z "${WAYLAND_DISPLAY:-}" ] && [ "$(tty)" = /dev/tty1 ]; then
 fi
 PROFILE
     in_root chown "$user:$user" "/home/$user/.bash_profile"
+    # no screensaver, lock or display-off while idle (Omarchy's own stay-awake
+    # switch, as route B's bare image sets it): a trial VM in a window
+    install -d "$R/home/$user/.local/state/omarchy/indicators"
+    touch "$R/home/$user/.local/state/omarchy/indicators/stay-awake"
+    in_root chown -R "$user:$user" "/home/$user/.local/state/omarchy"
     install -D -m 440 /dev/stdin "$R/etc/sudoers.d/ohmarchy-setpass" <<SUDO
 $user ALL=(root) NOPASSWD: /usr/local/lib/ohmarchy/ohmarchy-setpass-root.sh
 SUDO

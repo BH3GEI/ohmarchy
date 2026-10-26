@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ohmarchy 阶段汇报</title>
+<meta name="description" content="在鸿蒙电脑上运行 Omarchy：现状、各团队需要做的事、对外发布计划。">
+<style>
+:root{
+  --bg:#fbfaf7;--surface:#ffffff;--ink:#1d1c1a;--muted:#5f5b54;--rule:#e4e0d8;
+  --accent:#b4532a;--accent-soft:rgba(180,83,42,.10);
+  --good:#2f7a4b;--good-soft:rgba(47,122,75,.12);
+  --warn:#9a6a00;--warn-soft:rgba(154,106,0,.12);
+  --bad:#a33a3a;--bad-soft:rgba(163,58,58,.10);
+  --idle:#6d6a64;--idle-soft:rgba(109,106,100,.10);
+  --code:#f1eee8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161513;--surface:#1f1e1b;--ink:#ece9e3;--muted:#a8a39a;--rule:#34322e;
+    --accent:#e08a5f;--accent-soft:rgba(224,138,95,.14);
+    --good:#6cc28f;--good-soft:rgba(108,194,143,.14);
+    --warn:#e0b44f;--warn-soft:rgba(224,180,79,.14);
+    --bad:#e07a7a;--bad-soft:rgba(224,122,122,.14);
+    --idle:#a8a39a;--idle-soft:rgba(168,163,154,.12);
+    --code:#2a2925;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161513;--surface:#1f1e1b;--ink:#ece9e3;--muted:#a8a39a;--rule:#34322e;
+  --accent:#e08a5f;--accent-soft:rgba(224,138,95,.14);
+  --good:#6cc28f;--good-soft:rgba(108,194,143,.14);
+  --warn:#e0b44f;--warn-soft:rgba(224,180,79,.14);
+  --bad:#e07a7a;--bad-soft:rgba(224,122,122,.14);
+  --idle:#a8a39a;--idle-soft:rgba(168,163,154,.12);
+  --code:#2a2925;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 16px 80px}
+header{border-bottom:1px solid var(--rule);padding-bottom:20px;margin-bottom:28px}
+.kicker{font-size:13px;letter-spacing:.08em;color:var(--accent);font-weight:600}
+h1{font-size:30px;line-height:1.3;margin:6px 0 8px}
+.byline{color:var(--muted);font-size:14px}
+h2{font-size:21px;margin:48px 0 12px;padding-top:8px;border-top:1px solid var(--rule)}
+h3{font-size:17px;margin:28px 0 8px}
+p{margin:10px 0}
+a{color:var(--accent)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin:4px 0}
+.lead{font-size:18px}
+.table-wrap{overflow-x:auto;margin:14px 0;border:1px solid var(--rule);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+th{font-weight:600;color:var(--muted);font-size:13px;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;white-space:nowrap}
+.ok{color:var(--good);background:var(--good-soft)}
+.wip{color:var(--warn);background:var(--warn-soft)}
+.no{color:var(--bad);background:var(--bad-soft)}
+.off{color:var(--idle);background:var(--idle-soft)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:15px}
+.card p,.card li{font-size:14.5px}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0}
+figure{margin:18px 0;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.svg-ink{fill:var(--ink)}.svg-muted{fill:var(--muted)}
+.svg-line{stroke:var(--muted);fill:none;stroke-width:1.2}
+.svg-box{fill:var(--surface);stroke:var(--rule);stroke-width:1.2}
+.svg-root{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.svg-ok{fill:var(--good)}.svg-wip{fill:var(--warn)}.svg-no{fill:var(--bad)}.svg-off{fill:var(--idle)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px;margin:8px 0}
+.flow span{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:2px 8px}
+.flow i{color:var(--muted);font-style:normal}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--rule);padding-top:16px}
+@media (max-width:560px){h1{font-size:24px}.lead{font-size:16.5px}td:first-child{white-space:normal}}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="kicker">ohmarchy 阶段汇报</div>
+  <h1>在鸿蒙电脑上运行 Omarchy</h1>
+  <div class="byline">截至 2026-10-26 · Li Yao（BH3GEI）与 ohmarchy 小组 · 代码与文档：<a href="https://github.com/BH3GEI/ohmarchy">github.com/BH3GEI/ohmarchy</a></div>
+</header>
+
+
+<section id="summary">
+<h2 style="border-top:0;margin-top:0;padding-top:0">现状</h2>
+<ul>
+  <li>测试机：HUAWEI MateBook 14，麒麟 X90，HongMeng 内核 1.11.13.0。</li>
+  <li>Omarchy 4.0.6（Arch Linux ARM + Hyprland 0.56.2）已通过以下方式运行：鸿融虚拟机（C）、OSEasy 虚拟机（B）、以 root 权限直接运行于 HongMeng 内核（D）。</li>
+  <li>B、C 无需 root 权限；D、I 需要 root 权限。</li>
+  <li>鸿融为内部版本，未公开发布。</li>
+</ul>
+
+<h3>当前三个交付物</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>交付物</th><th>完成标准</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td>1. 演示</td><td>按现场操作手册在测试机上完整彩排一遍：D + I → C → B</td><td>D 段已完成彩排；开机自启的整机重启验证尚未进行；C、B 段尚未彩排</td></tr>
+<tr><td>2. 汇报文档</td><td>本页</td><td>本页</td></tr>
+<tr><td>3. B 公开试用版</td><td>安装盘 &lt; 2 GiB；镜像无预设密码；GitHub 草稿 release + 用户说明；无需 root 完成全流程</td><td>无密码镜像正在构建；安装盘默认启动项已修（a854e99）；release 脚本已就绪（2f9696b）</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="routes">
+<h2>路线与状态</h2>
+<figure>
+<svg viewBox="0 0 760 470" role="img" aria-label="ohmarchy 路线树：三条线，12 条路线">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="svg-muted"/></marker>
+  </defs>
+  <rect class="svg-root" x="24" y="196" width="148" height="72" rx="8"/>
+  <text class="svg-ink" x="98" y="226" text-anchor="middle" font-size="15" font-weight="600">Omarchy</text>
+  <text class="svg-muted" x="98" y="248" text-anchor="middle" font-size="12.5">在鸿蒙电脑上运行</text>
+
+  <path class="svg-line" d="M172 232H196V84H224" marker-end="url(#arr)"/>
+  <path class="svg-line" d="M196 232H224" marker-end="url(#arr)"/>
+  <path class="svg-line" d="M196 232V380H224" marker-end="url(#arr)"/>
+
+  <rect class="svg-box" x="224" y="44" width="180" height="80" rx="8"/>
+  <text class="svg-ink" x="240" y="72" font-size="14.5" font-weight="600">一、虚拟机方式</text>
+  <text class="svg-muted" x="240" y="94" font-size="12.5">无需 root 权限</text>
+  <text class="svg-muted" x="240" y="111" font-size="12.5">经白名单内的虚拟机应用</text>
+
+  <rect class="svg-box" x="224" y="192" width="180" height="80" rx="8"/>
+  <text class="svg-ink" x="240" y="220" font-size="14.5" font-weight="600">二、原生方式</text>
+  <text class="svg-muted" x="240" y="242" font-size="12.5">直接运行于 HongMeng 内核</text>
+  <text class="svg-muted" x="240" y="259" font-size="12.5">GPU 经 virgl 至马良</text>
+
+  <rect class="svg-box" x="224" y="340" width="180" height="80" rx="8"/>
+  <text class="svg-ink" x="240" y="368" font-size="14.5" font-weight="600">三、其他方式</text>
+  <text class="svg-muted" x="240" y="390" font-size="12.5">其他尝试</text>
+  <text class="svg-muted" x="240" y="407" font-size="12.5"></text>
+
+  <path class="svg-line" d="M404 84H424V40H444M424 84H444M424 84V128H444"/>
+  <path class="svg-line" d="M404 232H424V188H444M424 232H444M424 232V276H444"/>
+  <path class="svg-line" d="M404 380H424V336H444M424 380H444M424 380V424H444"/>
+
+  <circle class="svg-ok" cx="452" cy="40" r="5"/><text class="svg-ink" x="464" y="44" font-size="13.5"><tspan font-weight="600">B OSEasy</tspan><tspan class="svg-muted"> · 可运行</tspan></text>
+  <circle class="svg-ok" cx="452" cy="84" r="5"/><text class="svg-ink" x="464" y="88" font-size="13.5"><tspan font-weight="600">C 鸿融</tspan><tspan class="svg-muted"> · 可运行</tspan></text>
+  <circle class="svg-off" cx="452" cy="128" r="5"/><text class="svg-ink" x="464" y="132" font-size="13.5"><tspan font-weight="600">G 铠大师</tspan><tspan class="svg-muted"> · 停止</tspan></text>
+
+  <circle class="svg-ok" cx="452" cy="188" r="5"/><text class="svg-ink" x="464" y="192" font-size="13.5"><tspan font-weight="600">D 原生桌面</tspan><tspan class="svg-muted"> · 需 root，可运行</tspan></text>
+  <circle class="svg-ok" cx="452" cy="232" r="5"/><text class="svg-ink" x="464" y="236" font-size="13.5"><tspan font-weight="600">I 自建虚拟机</tspan><tspan class="svg-muted"> · 需 root，可运行</tspan></text>
+  <circle class="svg-wip" cx="452" cy="276" r="5"/><text class="svg-ink" x="464" y="280" font-size="13.5"><tspan font-weight="600">J app 沙箱原生</tspan><tspan class="svg-muted"> · 无需 root，进行中</tspan></text>
+
+  <circle class="svg-off" cx="452" cy="336" r="5"/><text class="svg-ink" x="464" y="340" font-size="13.5"><tspan font-weight="600">A 融合开发引擎</tspan><tspan class="svg-muted"> · 仅终端</tspan></text>
+  <circle class="svg-no" cx="452" cy="380" r="5"/><text class="svg-ink" x="464" y="384" font-size="13.5"><tspan font-weight="600">F / H Aetherium</tspan><tspan class="svg-muted"> · 模拟器可运行，真机不可行</tspan></text>
+  <circle class="svg-off" cx="452" cy="424" r="5"/><text class="svg-ink" x="464" y="428" font-size="13.5"><tspan font-weight="600">K / L / E</tspan><tspan class="svg-muted"> · 未实施、暂停、未开始</tspan></text>
+
+  <circle class="svg-ok" cx="34" cy="452" r="5"/><text class="svg-muted" x="44" y="456" font-size="12">可用</text>
+  <circle class="svg-wip" cx="94" cy="452" r="5"/><text class="svg-muted" x="104" y="456" font-size="12">进行中</text>
+  <circle class="svg-no" cx="166" cy="452" r="5"/><text class="svg-muted" x="176" y="456" font-size="12">走不通</text>
+  <circle class="svg-off" cx="238" cy="452" r="5"/><text class="svg-muted" x="248" y="456" font-size="12">停止 / 未开始</text>
+</svg>
+<figcaption>12 条路线，按实现方式分三组。圆点颜色为当前状态。</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<thead><tr><th>路线</th><th>root</th><th>状态</th><th>事实</th></tr></thead>
+<tbody>
+<tr><td>B OSEasy</td><td>否</td><td><span class="pill wip">制作公开版</span></td><td>镜像打包于安装盘内，"再次安装"时写入系统盘；实测桌面刷新率 120Hz；关机后不保留数据</td></tr>
+<tr><td>C 鸿融</td><td>否</td><td><span class="pill ok">可运行</span></td><td>支持导入、开机、正常关机，卡片显示"运行中"</td></tr>
+<tr><td>D 原生桌面</td><td>是</td><td><span class="pill ok">可运行</span></td><td>以 chroot 方式运行于 HongMeng 内核，GPU 加速，Chromium testufo 118 fps</td></tr>
+<tr><td>I 自建虚拟机实现</td><td>是</td><td><span class="pill ok">可运行</span></td><td>直接通过 /dev/hmv 启动虚拟机，作为 D 的 Docker 后端；hello-world 冷启动 19 秒</td></tr>
+<tr><td>J app 沙箱原生</td><td>否</td><td><span class="pill wip">进行中</span></td><td>Hyprland 已用鸿蒙 musl 编译并签入 app；真机已测试 4 轮，尚未显示画面</td></tr>
+<tr><td>G 铠大师</td><td>否</td><td><span class="pill off">停止</span></td><td>其应用身份位于系统虚拟机白名单内</td></tr>
+<tr><td>A 融合开发引擎</td><td>否</td><td><span class="pill off">停止</span></td><td>仅提供终端</td></tr>
+<tr><td>F Aetherium（模拟器）</td><td>—</td><td><span class="pill off">停止</span></td><td>可在 DevEco 模拟器中运行</td></tr>
+<tr><td>H Aetherium（真机）</td><td>否</td><td><span class="pill no">不可行</span></td><td>QEMU 依赖 JIT，应用无法获得可写可执行内存</td></tr>
+<tr><td>K QEMU TCI</td><td>否</td><td><span class="pill off">未实施</span></td><td>—</td></tr>
+<tr><td>L ArkWeb / v86</td><td>否</td><td><span class="pill off">暂停</span></td><td>—</td></tr>
+<tr><td>E 裸机</td><td>—</td><td><span class="pill off">未开始</span></td><td>—</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="line1">
+<h2>虚拟机方式（B、C）</h2>
+<h3>系统虚拟机服务的访问控制</h3>
+<ul>
+  <li>调用方需要 <code>ohos.permission.MANAGE_VM</code>（system_basic，system_grant）。</li>
+  <li><code>libvm_manager.z.so</code> 内写死 8 个 appIdentifier，包括 OSEasy（<code>com.oseasy1.ohvm</code>）和铠大师（<code>com.sanway.ecoengine</code>）。</li>
+  <li>调试签名的第三方应用调用时返回 201，被拒绝。详见 <a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/vm-api.md">vm-api.md</a>。</li>
+  <li>系统同一时间只允许一台虚拟机，第二台返回 401 "Not support vm multi-instance"。</li>
+</ul>
+
+<h3>C 鸿融（版本 1.1.1.103）</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>问题</th><th>原因</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td>导入报"镜像可能已损坏"</td><td>导入检查 qcow2 头第 255 字节 os_type，须为 1；qemu-img 生成的是 0</td><td><code>stratovirt-img set DISK os_type=1</code></td></tr>
+<tr><td>压缩 qcow2 无法导入</td><td>StratoVirt 不支持压缩簇</td><td>使用非压缩 qcow2</td></tr>
+<tr><td>MSI 全部失败，vsock 无中断</td><td>ITS 报 32 位事件 ID，Linux 计算向量数得 0</td><td>上游补丁 5a9d62555e71；7.2.12 前需自行打</td></tr>
+<tr><td>6.9 及以后内核启动卡死</td><td>HMV 读取新 ID 寄存器（如 ID_AA64PFR2_EL1）时 vCPU 挂起</td><td>内核参数 <code>arm64.hmv_idreg_quirk</code>，按 0 处理</td></tr>
+<tr><td>卡片始终显示"已关机"，关机按钮不可用</td><td>未安装增强服务（vm-agent，vsock 3300）</td><td>仅安装鸿融光盘 deb 包中的 <code>/opt/vm-agent</code></td></tr>
+<tr><td>全屏显示 60Hz</td><td>guest 内 120Hz（自定义 EDID），鸿融全屏送屏 60Hz</td><td>未解决</td></tr>
+</tbody></table></div>
+
+<h3>B OSEasy</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>现象</th><th>原因</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td>Linux 安装完成后始终显示"正在安装 Windows 11…"</td><td>状态依赖 Windows guest agent 上报</td><td>未解决</td></tr>
+<tr><td>关机后仅有"再次安装"选项，该操作会清空系统盘</td><td>未提供 Linux 虚拟机的开机入口</td><td>镜像打包进安装盘，每次"再次安装"重新写入</td></tr>
+<tr><td>共享文件夹在 Linux 中无法读取（"response too short"）</td><td>virtiofsd 未带 <code>--passthrough-fs</code>，share_id 模式需 agent 注册</td><td>未解决</td></tr>
+<tr><td>显示设备仅提供 60Hz</td><td>SVGA / vmwgfx 模式列表</td><td>修改 vmwgfx 驱动；2026-10-26 实测 120Hz</td></tr>
+<tr><td>画面停止刷新</td><td>命令缓冲头部回收时机</td><td>a145d58，连续运行 4 小时 24 分钟未复现</td></tr>
+</tbody></table></div>
+<p>B 目前无可持久化存储。</p>
+</section>
+
+<section id="line2">
+<h2>原生方式（D、I、J）</h2>
+<h3>D 原生桌面</h3>
+<ul>
+  <li>Arch Linux ARM 用户态以 chroot 方式运行于 HongMeng 内核，需要 root 权限。</li>
+  <li>Hyprland 以无头模式渲染，经 dmabuf 交由鸿蒙应用 <code>com.ohmarchy.display</code> 显示。</li>
+  <li>GPU 链路：virgl → vtest → 系统 libvirglrenderer → zink → 马良 GPU。</li>
+  <li>Chromium testufo：修复前 60–73 fps，修复后 118 fps（e5416df）。</li>
+  <li>已修复：触控板滚动、三指切换工作区、按键粘滞。</li>
+  <li>Super 键被鸿蒙开始菜单占用，右 Alt 映射为 Super（f6ab403）。</li>
+  <li>pacman 使用清华 TUNA 源。</li>
+  <li>支持开机自启（f39ce23）；关闭应用后重新打开，约 6 秒恢复桌面。</li>
+</ul>
+<h3>I 自建虚拟机</h3>
+<ul>
+  <li>以 root 权限直接打开 <code>/dev/hmv</code>，使用系统自带 StratoVirt 启动。</li>
+  <li>作为 D 的 Docker 后端：首次使用时启动，空闲 30 秒后自动关闭（5687442）。</li>
+  <li>与鸿融、OSEasy 的虚拟机互斥。</li>
+</ul>
+<h3>J app 沙箱原生</h3>
+<ul>
+  <li>真机实测：普通应用无法获得可写可执行内存，无法 exec 未签名 ELF，也无法 dlopen 未签名 .so；签入 HAP 的 .so 可以加载。</li>
+  <li>Hyprland 0.56.2 及依赖用鸿蒙 musl 编译为 <code>libhyprland.so</code>，签入 <code>com.ohmarchy.display</code> 应用。</li>
+  <li>已解决的卡点：dma_heap 权限、vtest 句柄。</li>
+</ul>
+</section>
+
+
+<section id="release">
+<h2>B 公开试用版</h2>
+<ul>
+  <li>镜像不含预设密码，首次开机时在 tty1 设置；安装无需联网。</li>
+  <li>安装盘目标 &lt; 2 GiB（GitHub 单个附件上限 2 GiB；鸿蒙文件管理器无法解压分卷 zip）。</li>
+  <li>GitHub 草稿 release 附 GPL 源码包；缺少源码的包列于 release notes 首行，补齐后方可公开。</li>
+  <li>许可：MIT；内核及驱动相关代码 GPL-2.0。</li>
+</ul>
+<h3>演示顺序</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>段</th><th>内容</th><th>彩排时长</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>D 原生桌面 + I Docker</td><td>约 2 分钟</td></tr>
+<tr><td>2</td><td>C 鸿融</td><td>3 分 41 秒</td></tr>
+<tr><td>3</td><td>B OSEasy</td><td>尚未彩排</td></tr>
+</tbody></table></div>
+<p>操作步骤见<a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/demo-operator.zh-CN.md">现场操作手册</a>。</p>
+</section>
+
+<section id="links">
+<h2>附录：文档索引</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>文档</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/README.zh-CN.md">README</a></td><td>各方式的现状与技术说明</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/demo-operator.zh-CN.md">现场操作手册</a></td><td>演示操作步骤</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/native-desktop.md">native-desktop.md</a></td><td>D 原生桌面实现</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/vm-own.md">vm-own.md</a></td><td>I 自建虚拟机实现</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/no-root-routes.md">no-root-routes.md</a></td><td>J、L 无需 root 方式及 XPM 实测</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/vm-api.md">vm-api.md</a></td><td>系统虚拟机服务的访问控制</td></tr>
+<tr><td><a href="https://github.com/BH3GEI/ohmarchy/blob/main/docs/oseasy-install.md">oseasy-install.md</a></td><td>B 安装说明</td></tr>
+</tbody></table></div>
+</section>
+
+<footer>截至 2026-10-26。</footer>
+</main>
+</body>
+</html>

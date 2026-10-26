@@ -4,6 +4,9 @@ Every file in `docs/`, grouped by the same route tree as the
 [README](../README.md#the-routes-as-a-tree) ([中文](../README.zh-CN.md)). Documents
 marked (中文) are written in Chinese.
 
+- [report/index.html](report/index.html) (中文): status report (2026-10-26): routes, status,
+  technical facts per route, the B public try-out. Single HTML page, open it in a browser.
+
 ## 1. VM apps, plug and play, no root（一、虚拟机 app 即插即用，不用 root）
 
 ### B: Oseasy

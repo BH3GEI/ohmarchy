@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 01:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 02:29 PDT)
 
-Now: B (Oseasy) is the only public release line, since 鸿融 is not publicly released yet. Native desktop issues Yao found by hand are fixed. J is about to run Hyprland on the device without root.
+Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Fallback being built: the image goes inside the ISO, so each "再次安装" boots a fresh system in 1–2 min with no shared folder and no network push. Persistence needs either Oseasy's support for Linux guests or speaking its guest-agent protocol (decision pending) | **Oseasy's shared folder can't be read by a plain Linux guest**: its virtiofsd answers ENODEV from the first OPENDIR (guest: "virtio-fs: response too short"), so the root-image-on-the-share plan (1db5beb) doesn't work. With "再次安装" wiping the disk, the VM has no persistent storage today. Vendor request updated (01055d5) |
-| C. 鸿融 VM | Internal only: live test of the base image's first boot | Base image built (3f96a8a): tty1 asks for a password (no default one), installs Omarchy over TUNA, sets up the agent tools, installs 鸿融's guest agent, reboots. Internal brief for the 鸿融 team (da54407) |
-| D. Native | — | **Fixed what Yao found by hand**: right Alt works as Super since HarmonyOS keeps Super for its Start menu (f6ab403, checked 55d9d28); keys no longer stick (1744727); Chromium's testufo now 118 fps at 120 Hz instead of 60–73 — the headless backend reported refresh 0 (e5416df, f33e092); touchpad and three-finger swipes (f82c550, 40f9b2a); HarmonyOS desktop cleaned up to one "Omarchy (native)" icon |
-| I. Own VM | Done | Docker on demand |
-| J. Linux in an app sandbox (no root) | Going on the device: combined HAP (77 MB) with `--pb jl true` | **Hyprland 0.56.2 built for HarmonyOS musl** (845dc1b) and relinked as `libhyprland.so` loaded with dlopen inside D's display app (8d30450), with headless output, a minimal config and xkb data (06fffca); the app is its own GPU broker (15560ff). Libraries that could clash with HarmonyOS's own are renamed `*_ohm` |
+| B. OSEasy | Rebuilding the install ISO around the full public image (with waybar and wallpaper), so one "再次安装" lands on the complete desktop | **Install from the disc works end to end**: "再次安装" → the image on the disc is written to the VM's disk → automatic reboot → Hyprland at 120 Hz with auto-login. The old ISO booted a dead default entry; install-to-disk is now the only default (a854e99). The image used so far is a trimmed GPU-test build without waybar, wallpaper or the Omarchy menu, so the desktop looks empty |
+| C. 鸿融 | Building the passwordless full image shared with B (password set on tty1 at first boot) | NOPASS full image added to the build (9306e34); build in progress on the device |
+| D. Native | Waiting to reboot the whole machine to verify autostart (after C's build) | Demo segment rehearsed by keyboard with right Alt as Super (43065c0); closing and reopening the app brings the desktop back in about 6 s (6c3b296); Firefox no longer offers to restore a crashed session |
+| I. Own VM | — | The Docker VM now stops by itself 30 s after its last use instead of 3 min (5687442), so the presenter types no maintenance command |
+| J. Linux in an app sandbox (no root) | Background research; round 5 on the device | Four rounds on the device, each clearing one blocker: dma_heap permissions (86d2ece, 3c0a48a), Hyprland socket path too long (4d1d5ee), vtest hand-off (786aaee, 6bb893d), vtest protocol v2 rejected (4d3bafb). No picture yet |
 
-The README is now organised as a tree of routes (8f1368e). GPL source bundles are wired into the release script (58e6858).
+Release: drafts are now built even when some GPL sources are missing; they are listed at the top of the notes and the release is published only when the list is empty. A written offer of source is in the README and in each release (2f9696b).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

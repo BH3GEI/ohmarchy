@@ -66,6 +66,9 @@ if [ -n "${PROBE_AI_ENV:-}" ] && [ -f "$PROBE_AI_ENV" ]; then
 else
     : > "$W/empty.aienv"; install -D -m600 "$W/empty.aienv" "$R/oseasy/ai.env"
 fi
+# Shared agent-tool setup (Claude Code / Codex / opencode), same config on every
+# line. The install runs it as the desktop user with /oseasy/ai.env.
+install -D -m755 "$here/../../hongrong/pure/guest/setup-ai.sh" "$R/oseasy/setup-ai.sh"
 # the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"

@@ -155,7 +155,10 @@ mkdir -p "$L"
 install -D -m 644 /dev/stdin "$L/zz-hongrong.conf" <<'HOOKS'
 # 鸿融 VM (ohmarchy hongrong/pure/build-disk.sh): ext4 root, no btrfs-overlayfs, no LUKS;
 # no autodetect so the image does not depend on where it was generated.
-HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block filesystems fsck)
+# No kms and plymouth either: with them route B's vmwgfx loaded from the
+# initramfs and its HVM poll raced vmw_kms_init(); virtio-gpu (鸿融) still
+# comes in early through the virtio modules.
+HOOKS=(base udev keyboard microcode modconf keymap consolefont block filesystems fsck)
 HOOKS
 firstboot_files() {
   mkdir -p "$L"

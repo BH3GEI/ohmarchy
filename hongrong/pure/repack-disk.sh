@@ -7,6 +7,9 @@
 # hour on the zeros at its end; a disk sized to the data avoids that.
 # Runs where build-disk.sh ran. Not run yet.
 # Usage: repack-disk.sh WORKDIR [DISK_GIB, default 12]
+# Environment: EXTRA_CMDLINE, appended to the kernel command line in
+# boot/grub/grub.cfg (once), e.g. vmwgfx.hvm_flip_watchdog_us=0 until
+# vmwgfx-oseasy stops walking the CRTCs before vmw_kms_init().
 #   WORKDIR as given to build-disk.sh (has root/ and esp/); writes
 #   omarchy-small.img and omarchy-small.img.zst there
 set -euo pipefail
@@ -33,6 +36,9 @@ rm -f "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
 install -D -m 644 "$here/firstboot/ohmarchy-edid.service" "$R/etc/systemd/system/ohmarchy-edid.service"
 install -D -m 755 "$here/firstboot/ohmarchy-edid.sh" "$R/usr/local/lib/ohmarchy/ohmarchy-edid.sh"
 ln -sf ../ohmarchy-edid.service "$R/etc/systemd/system/multi-user.target.wants/ohmarchy-edid.service"
+for a in ${EXTRA_CMDLINE:-}; do
+  grep -q " ${a%%=*}=" "$R/boot/grub/grub.cfg" || sed -i "/^ *linux /s|\$| $a|" "$R/boot/grub/grub.cfg"
+done
 grep -n 'linux ' "$R/boot/grub/grub.cfg"
 
 rm -f "$W/esp-small.img" "$W/root-small.img" "$W/omarchy-small.img"

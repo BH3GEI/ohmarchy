@@ -386,11 +386,26 @@ protobuf, abseil, cJSON and securec; everything else it needs is in Arch) and
 its systemd unit. It leaves out the package's Mesa 19.2.6, dkms drivers and
 desktop tools. build-disk.sh runs it when `VM_TOOLS` points at a copy of
 `entry.hap`. The agent is a vsock server on guest port 3300 that 鸿融's
-vm_manager connects to; that needs the ITS patch, which this kernel has. Not
-tried in a VM yet. Expected from the 2026-10-23 run on deepin: on its first
-connection 鸿融 shuts the VM down and starts it again, and the agent rewrites
-`logind.conf`, masks the sleep targets and adds a DHCP NetworkManager profile
-for `enp0s6`, which must not replace the static `lan` profile.
+vm_manager connects to; that needs the ITS patch, which this kernel has.
+
+Tested 2026-10-26 in `omarchy-dev-7.2.12-os1.qcow2` as 鸿融's VM, installing
+from the CD 鸿融 attaches (`install-vm-agent.sh / /dev/sr1`; the guest sees
+two USB CD drives `sr0`/`sr1` labelled 鸿融, `/dev/disk/by-label/鸿融` points
+at `sr1`). On the agent's first connection 鸿融 powered the VM off and started
+it again. After that the card showed 当前状态：运行中 with 关机 and 暂停
+enabled, and 关机 shut the guest down through systemd; the card went back to
+已关机 and 开机. What the agent changed in the guest:
+
+- rewrote `/etc/systemd/logind.conf` (power key poweroff, suspend, hibernate
+  and lid ignored) without a `[Login]` header, so logind ignores it;
+  Omarchy's `logind.conf.d` drop-ins still apply;
+- masked `suspend.target` and `hibernate.target`;
+- added `enp0s6.nmconnection` with the host's settings (static
+  172.16.100.2/24, gateway 172.16.100.1, DNS 114.114.114.114); after a reboot
+  NetworkManager used it instead of `lan`, with the same address, and the
+  network worked;
+- mounted 鸿融's shared folder (virtiofs) at `/mnt/shared_dir`;
+- tried to update itself with `dpkg`, which Arch does not have; harmless.
 
 Workaround: shut the VM down from inside the guest (Omarchy: Super+Esc →
 Shutdown, or `systemctl poweroff`); 鸿融 then shows 已关机 and the VM can be

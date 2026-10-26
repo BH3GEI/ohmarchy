@@ -2,8 +2,8 @@
 # Install 鸿融's guest agent (虚拟机增强服务, Debian package vm-agent) into an
 # Arch root. Without it 鸿融 never moves the VM to STATE_RUNNING: the card says
 # 已关机 while the VM runs and 关机 is greyed out (docs/hongrong-whole-os.md,
-# "鸿融 shows the running VM as 已关机"). Not run yet: neither in a build nor
-# in a running VM.
+# "鸿融 shows the running VM as 已关机"). Tested 2026-10-26 in a running VM from
+# the 鸿融 CD (ROOT /, SOURCE /dev/sr1); not run in a build yet.
 #
 # The package ships inside 鸿融 itself (resources/rawfile/vm_tools_<ver>.iso in
 # entry.hap, also offered to the guest as a CD) and is not redistributed here;
@@ -22,7 +22,8 @@
 #
 # Usage: install-vm-agent.sh ROOT [SOURCE]
 #   ROOT    target root (/ for the running system)
-#   SOURCE  entry.hap, vm_tools_*.iso or the .deb; default: the installed 鸿融,
+#   SOURCE  entry.hap, vm_tools_*.iso, the .deb, or the 鸿融 CD in the guest
+#           (/dev/disk/by-label/鸿融); default: the installed 鸿融,
 #           /data/app/el1/bundle/public/com.huawei.medivh/entry.hap
 # Needs bsdtar (libarchive).
 set -euo pipefail
@@ -31,13 +32,14 @@ root=${1:?root}; src=${2:-/data/app/el1/bundle/public/com.huawei.medivh/entry.ha
 [ -r "$src" ] || { echo "cannot read $src" >&2; exit 1; }
 t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 
-case "$src" in
+if [ -b "$src" ]; then iso=$src
+else case "$src" in
   *.hap) bsdtar -xf "$src" -C "$t" 'resources/rawfile/vm_tools_*.iso'
          iso=$(ls "$t"/resources/rawfile/vm_tools_*.iso) ;;
   *.iso) iso=$src ;;
   *.deb) deb=$src ;;
   *) echo "unknown source $src" >&2; exit 1 ;;
-esac
+esac; fi
 if [ -z "${deb:-}" ]; then
   mkdir "$t/iso"; bsdtar -xf "$iso" -C "$t/iso"
   deb=$(ls "$t"/iso/*.deb)

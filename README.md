@@ -48,20 +48,19 @@ Headline results:
 | **L** Linux in ArkWeb | v86 (x86 → wasm JIT) with Arch Linux 32 in an ArkWeb page inside a HAP | paused by decision (2026-10-25), never run on the device | desktop Chrome: root shell in ~32 s | no | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-25 22:24 PDT)
+## Progress (updated hourly; last: 2026-10-25 23:28 PDT)
+
+Now: preparing a demo that works like real use (no scripts) and a public release of B and C.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Done for today | **Demo rehearsed, ~3 min from no VM** (73afc8e): create ~1.5 min of taps, install 61 s, Hyprland 6 s after reset, es2gears and workspace switching 60 frames/s on screen, foot 0.08 s, nautilus 0.6 s, chromium 0.8 s. The first attempt was refused although no VM process was running; the cause is still being investigated. Running next to another VM: refused (401, 4f8f079) |
-| C. 鸿融 VM | Offline: new os_type=1 image with the 120 Hz EDID and glmark2 baked in | **Demo C2 rehearsed: 3 min 41 s** (6df8c0d): Yao's main VM, login, terminal + fastfetch, Chromium over the network, workspace switching. The developer image imports through 鸿融's own UI (os_type byte fixed, c9ddc15); the guest renders at 120 Hz but 鸿融 shows its fullscreen VM at 60 Hz |
-| D. Native | Session at its usage limit until 2026-10-26 19:00 PDT | **Demo rehearsed: 80 s end to end, workspaces at 119 fps** (635265e). Fixed on the way: a closed Omarchy menu stayed drawn (now full repaints; idle CPU still to check), `start` kept ssh open, leftover inotifywait per restart. Earlier: screen off/on 20 of 20, 24 h soak passed |
-| I. Own VM | Done | **Demo rehearsed: all pass in 91 s** (f62265a): VM up in 10 s, hello-world, a compose service with a bind mount, files 0644 owned by builder, clean stop. `docker` run from the host over `ohmarchy-vm ssh` hangs when its output goes back through ssh; the demo redirects it (from D's terminal through the docker context there's no hang). 0660 share modes fixed with upstream virtiofsd 1.14.0 (2235eaf) |
-| J. Linux in an app sandbox (no root) | Session at its usage limit until 2026-10-26 19:00 PDT; next: the C support stack (cairo, pango, glib, fonts…), then aquamarine and Hyprland with D's patches | busybox runs inside D's display app via a single-threaded fork + dlopen spawner (9d4000c). Rebuild for HarmonyOS musl: stage 1 Wayland base (543a223), stage 2 Mesa virgl without LLVM, 16 MiB, with the vtest winsys D's app already uses (c6ff963), stage 3 toolchain: clang 23 + one shared, renamed C++ runtime `libc++_ohm.so.1` (1.9 MiB), hyprutils 2.6 MiB and hyprlang 0.3 MiB built (3da87ce, 6065767) |
-| L. Linux in ArkWeb (no root) | Paused by decision | v86 with Arch Linux 32 in an ArkWeb HAP (`webemu/`, 56dbf24, 561eb4b); never run on the device. On desktop Chrome: root shell in ~32 s, 400–1800 MIPS |
-| H. Aetherium on the device | Concluded | Without root, Aetherium cannot run on the device (HMV closed to third parties; no executable memory for TCG) |
-| G. 铠大师 VM | Concluded | Same `svga-pci` path as B; Linux only lives in an install session |
+| B. Oseasy VM | Testing the new ISO on the device; then a no-root install, a user guide and a walkthrough without root | Oseasy has no "start" button for a Linux VM (its lifecycle follows a Windows guest agent), so the ISO's default entry now boots an already installed Omarchy from the disk and only installs when there is none (eb758c7): "再次安装" becomes a ~10 s start. "Another VM is running" is the kit's 401 and only appears when a VM really runs; the one seen in the demo rehearsal was a stale dialog (8e61384). Release script for draft GitHub releases with split files, SHA256SUMS and a GPL source bundle (1575e6d) |
+| C. 鸿融 VM | Testing 鸿融's guest agent in the pure image; then a public release | 鸿融 shows a running VM as 已关机 because our images lack its guest agent; the official vm-agent (vsock) can be installed into Arch from 鸿融's own package (9f378f3, untested). Public image: StratoVirt can't read compressed qcow2, so the plan is a <2 GiB base image (estimated 1.3–1.5 GB) that installs Omarchy online at first boot |
+| D. Native | Session at its usage limit until 2026-10-26 19:00 PDT | **Starts by itself** (f39ce23): the boot hook brings up Hyprland, audio and the Docker gate in ~21 s; tapping "Omarchy (native)" shows the desktop. `docker-vm status/stop`, an Omarchy menu entry and a notification when the Docker VM starts (df0f0da). Not yet tested with a real reboot |
+| I. Own VM | Done | **Docker on demand** (caecc94): the first `docker` starts the VM (guest up in ~5 s, first run ~15–17 s), it stops after 3 min idle, and it doesn't start while 鸿融 or Oseasy runs (says so in Chinese) |
+| J. Linux in an app sandbox (no root) | Session at its usage limit until 2026-10-26 19:00 PDT | busybox runs inside D's display app; Hyprland stack rebuild for musl at stage 3 |
 
-No locks on the device (removed 2026-10-25): use the screen directly. The HMV hypervisor still runs one VM at a time, so stop the 鸿融 VM before starting another.
+Docs: [README](#two-directions) has a new "Two directions" section; demo operator manual draft in [docs/demo-operator.zh-CN.md](docs/demo-operator.zh-CN.md) (5d6af69).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

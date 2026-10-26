@@ -60,8 +60,10 @@ cp "$out/PACKAGES.txt" "$work/prev" 2>/dev/null || : > "$work/prev"
 # directories of the packages asked for are fetched as they are needed
 alarm=$work/alarm
 # (GitHub is not always reachable from here; gh-proxy.com as the fallback)
+# Every git gets `timeout -s KILL`: on the HarmonyOS host a git fetch once spun
+# for hours at 90% CPU and plain `timeout` (TERM) did not end it
 for u in https://github.com/archlinuxarm/PKGBUILDs https://gh-proxy.com/https://github.com/archlinuxarm/PKGBUILDs; do
-    timeout 300 git clone -q --depth 1 --filter=blob:none --sparse "$u" "$alarm" && break
+    timeout -s KILL 300 git clone -q --depth 1 --filter=blob:none --sparse "$u" "$alarm" && break
     rm -rf "$alarm"
 done
 [ -d "$alarm" ] || { echo "no ALARM PKGBUILDs" >&2; exit 1; }
@@ -94,14 +96,14 @@ snapshot() {
             local repo; repo=$(basename "${url%.git}"); nm=${nm:-$repo}
             local g="$t/g-$nm" ok=
             git init -q "$g" && git -C "$g" remote add o "$url" &&
-                { timeout 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null ||
-                  timeout 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null; } &&   # one retry: slow hosts
+                { timeout -s KILL 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null ||
+                  timeout -s KILL 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null; } &&   # one retry: slow hosts
                 git -C "$g" archive --prefix="$nm/" -o "$t/s/$nm-$(git -C "$g" rev-parse --short FETCH_HEAD).tar.gz" FETCH_HEAD &&
                 ok=$(git -C "$g" rev-parse --short FETCH_HEAD)
             local m=${GIT_MIRROR[$repo]:-}
             if [ -z "$ok" ] && [ -n "$m" ]; then  # a mirror (GitHub, through gh-proxy)
                 rm -rf "$g"; git init -q "$g" && git -C "$g" remote add o "https://gh-proxy.com/$m" &&
-                    timeout 900 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null &&
+                    timeout -s KILL 900 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null &&
                     git -C "$g" archive --prefix="$nm/" -o "$t/s/$nm-$(git -C "$g" rev-parse --short FETCH_HEAD).tar.gz" FETCH_HEAD &&
                     ok=$(git -C "$g" rev-parse --short FETCH_HEAD) && echo "$nm from mirror $m" >> "$log"
             fi

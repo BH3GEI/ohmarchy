@@ -88,8 +88,12 @@ snapshot() {
 declare -A GIT_MIRROR=([gnulib]=https://github.com/coreutils/gnulib)
 
 declare -A done=()
+min_free=${MIN_FREE_GB:-8}   # stop before the disk fills up (sources can be large)
 while IFS='|' read -r name ver base lic; do
     gpl "$lic" || continue
+    if [ "$(df -Pk "$out" | awk 'NR==2{print int($4/1048576)}')" -lt "$min_free" ]; then
+        echo "$name|$ver|$lic|not fetched: less than ${min_free} GB free on $out" >> "$out/MISSING.txt"; continue
+    fi
     [ -n "${done[$base]:-}" ] && continue
     done[$base]=1
     f=$out/$base-$ver.src.tar.gz

@@ -66,7 +66,13 @@ cmdline() {
   esac
   procread $1 cmdline
 }
-running() { [ -f $pidf ] && cmdline $(cat $pidf) | grep -q "$DISK"; }
+# (into a variable: a pipe into grep -q would kill procread before it cleans up)
+running() {
+  [ -f $pidf ] || return 1
+  local c; c=$(cmdline $(cat $pidf)) || return 1
+  case "$c" in *"$DISK"*) return 0 ;; esac
+  return 1
+}
 # ssh comes from route D's Arch root (archtest) until the host has its own
 AR=/proc/$(cat /data/local/archtest/session.pid 2>/dev/null)/root
 SSH() {

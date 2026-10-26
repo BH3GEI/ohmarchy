@@ -287,6 +287,33 @@ int main(int argc, char **argv)
             kill(stopping, SIGKILL);
             stopping = 0;
         }
+        struct stat sb;
+        if (stat(argv[1], &sb) < 0 || (ctl && stat(ctl, &sb) < 0)) {
+            say("%s is gone (session ended), exiting", argv[1]);
+            return 0;
+        }
+        /* idle: checked every 10 s once the idle time is up (each check asks the
+         * guest for its running containers); here, before the sockets are
+         * served, so that frequent control requests (docker-vm status) cannot
+         * keep it from ever running */
+        time_t now = time(NULL);
+        if (ours && !stopping && active == 0 && npending == 0 && now - last_used >= idle_s && now - last_check >= 10) {
+            last_check = now;
+            if (!vm_running()) {
+                ours = 0;
+                continue;
+            }
+            int c = containers_running();
+            if (c != 0) {
+                if (c > 0)
+                    printf("idle, but %d container(s) running: VM stays\n", c);
+                continue;
+            }
+            say("idle for %s, stopping the VM", "a while");
+            stopping = start_stop();
+            stop_started = now;
+            ours = 0;
+        }
         if (r < 0 && errno != EINTR) {
             perror("poll");
             return 1;
@@ -417,31 +444,6 @@ int main(int argc, char **argv)
             if (pid > 0)
                 active++;
             continue;
-        }
-        struct stat sb;
-        if (stat(argv[1], &sb) < 0 || (ctl && stat(ctl, &sb) < 0)) {
-            say("%s is gone (session ended), exiting", argv[1]);
-            return 0;
-        }
-        /* idle: checked every 10 s once the idle time is up (each check asks the
-         * guest for its running containers) */
-        time_t now = time(NULL);
-        if (ours && !stopping && active == 0 && npending == 0 && now - last_used >= idle_s && now - last_check >= 10) {
-            last_check = now;
-            if (!vm_running()) {
-                ours = 0;
-                continue;
-            }
-            int c = containers_running();
-            if (c != 0) {
-                if (c > 0)
-                    printf("idle, but %d container(s) running: VM stays\n", c);
-                continue;
-            }
-            say("idle for %s, stopping the VM", "a while");
-            stopping = start_stop();
-            stop_started = now;
-            ours = 0;
         }
     }
 }

@@ -29,6 +29,64 @@ done
 # GPL-2.0-only, GPL-3.0-or-later, LGPL-2.1, AGPL, and the old names GPL2, LGPL3, ...
 gpl() { grep -q -i -E '(^| )(A|L)?GPL' <<< "$1"; }
 
+# snapshot DIR OUT LOG: DIR's build files (no VCS checkouts) plus, for each
+# git+URL source of its PKGBUILD, URL at its #commit=/#tag= ref as a tarball;
+# an unpinned source at the current HEAD, its commit noted in LOG (the build's
+# exact one cannot be known). Plain sources are downloaded as makepkg would.
+snapshot() {
+    local dir=$1 out=$2 log=$3 t
+    : > "$log"
+    t=$(mktemp -d) || return 1
+    mkdir -p "$t/s"
+    # only the packaging repo's own files: a failed makepkg leaves bare clones here
+    (cd "$dir" && { git ls-files 2>/dev/null || find . -maxdepth 1 -type f -printf '%P\n'; } |
+        while read -r x; do mkdir -p "$t/s/$(dirname "$x")" && cp "$x" "$t/s/$x"; done)
+    (cd "$dir" && bash -c '. ./PKGBUILD >/dev/null 2>&1; printf "%s\n" "${source[@]}"') > "$t/srcs"
+    while read -r sr; do
+        local nm=${sr%%::*} u=${sr#*::}
+        [ "$nm" = "$sr" ] && nm=
+        case $u in
+        git+*)
+            u=${u#git+}; local ref=${u#*#} url=${u%%#*} r=HEAD
+            case $ref in commit=*) r=${ref#commit=} ;; tag=*) r=${ref#tag=} ;; branch=*) r=${ref#branch=} ;; esac
+            [ "$ref" = "$u" ] && r=HEAD
+            local repo; repo=$(basename "${url%.git}"); nm=${nm:-$repo}
+            local g="$t/g-$nm" ok=
+            git init -q "$g" && git -C "$g" remote add o "$url" &&
+                timeout 600 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null &&
+                git -C "$g" archive --prefix="$nm/" -o "$t/s/$nm-$(git -C "$g" rev-parse --short FETCH_HEAD).tar.gz" FETCH_HEAD &&
+                ok=$(git -C "$g" rev-parse --short FETCH_HEAD)
+            local m=${GIT_MIRROR[$repo]:-}
+            if [ -z "$ok" ] && [ -n "$m" ]; then  # a mirror (GitHub, through gh-proxy)
+                rm -rf "$g"; git init -q "$g" && git -C "$g" remote add o "https://gh-proxy.com/$m" &&
+                    timeout 900 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null &&
+                    git -C "$g" archive --prefix="$nm/" -o "$t/s/$nm-$(git -C "$g" rev-parse --short FETCH_HEAD).tar.gz" FETCH_HEAD &&
+                    ok=$(git -C "$g" rev-parse --short FETCH_HEAD) && echo "$nm from mirror $m" >> "$log"
+            fi
+            if [ -z "$ok" ]; then  # hosts' snapshot URLs
+                local sn= sr=$r
+                [ "$r" = HEAD ] && sr=master   # snapshot URLs want a branch name
+                case $url in
+                *savannah.gnu.org*) sn="https://git.savannah.gnu.org/cgit/$repo.git/snapshot/$repo-$sr.tar.gz" ;;
+                *github.com*) sn="https://gh-proxy.com/${url%.git}/archive/$sr.tar.gz" ;;
+                esac
+                [ -n "$sn" ] && curl -fsSL --retry 2 -m 900 -o "$t/s/$nm-$sr.tar.gz" "$sn" && ok=$sr
+            fi
+            [ -n "$ok" ] || { echo "$nm: no snapshot of $url $r" >> "$log"; rm -rf "$t"; return 1; }
+            [ "$r" = HEAD ] && echo "$nm unpinned, HEAD $ok" >> "$log" || echo "$nm $r" >> "$log"
+            ;;
+        http://* | https://* | ftp://*)
+            local fn=${nm:-$(basename "$u")}
+            curl -fsSL --retry 2 -m 900 -o "$t/s/$fn" "$u" || { echo "$fn: download failed" >> "$log"; rm -rf "$t"; return 1; } ;;
+        esac
+    done < "$t/srcs"
+    tar -C "$t" -czf "$out" --transform "s|^s|$(basename "$dir")|" s && rm -rf "$t"
+}
+
+# git sources whose own host does not serve a shallow fetch or snapshot here
+# (savannah's cgit snapshots answer 301/400; its gnulib fetch times out)
+declare -A GIT_MIRROR=([gnulib]=https://github.com/coreutils/gnulib)
+
 declare -A done=()
 while IFS='|' read -r name ver base lic; do
     gpl "$lic" || continue
@@ -54,13 +112,22 @@ while IFS='|' read -r name ver base lic; do
     if [ -z "$src" ]; then
         echo "$name|$ver|$lic|no build files at this version" >> "$out/MISSING.txt"; continue
     fi
-    # --allsource: PKGBUILD, local files and every downloaded source in one archive
-    if (cd "$d" && makepkg --allsource --skippgpcheck --nocheck > "$work/$base.log" 2>&1); then
+    # --allsource: PKGBUILD, local files and every downloaded source in one archive;
+    # with git sources it would clone whole repositories (libtool: gnulib, slow and
+    # failing here), so those go straight to snapshots of their pinned refs
+    : > "$work/$base.log"
+    if ! grep -q 'git+' "$d/PKGBUILD" &&
+        (cd "$d" && makepkg --allsource --skippgpcheck --nocheck > "$work/$base.log" 2>&1); then
         mv "$d"/*.src.tar.gz "$f"
         echo "$name|$ver|$lic|$src" >> "$out/PACKAGES.txt"
         echo "  $base $ver ($src)"
+    elif snapshot "$d" "$f" "$work/$base.snap.log"; then
+        # git sources too big or slow to clone whole here (libtool's gnulib):
+        # the build files plus a snapshot of each git source at its pinned ref
+        echo "$name|$ver|$lic|$src; git sources as snapshots ($(tr '\n' ' ' < "$work/$base.snap.log"))" >> "$out/PACKAGES.txt"
+        echo "  $base $ver ($src, git snapshots)"
     else
-        echo "$name|$ver|$lic|makepkg --allsource failed: $(tail -1 "$work/$base.log")" >> "$out/MISSING.txt"
+        echo "$name|$ver|$lic|makepkg --allsource failed: $(tail -1 "$work/$base.log"); snapshot: $(tail -1 "$work/$base.snap.log")" >> "$out/MISSING.txt"
     fi
 done < "$list"
 echo "$(wc -l < "$out/PACKAGES.txt") package bases with source, $(wc -l < "$out/MISSING.txt") missing (MISSING.txt)"

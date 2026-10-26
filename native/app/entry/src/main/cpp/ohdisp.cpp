@@ -25,6 +25,7 @@
 #include <cstddef>
 #include <map>
 #include <cstring>
+#include <bitset>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -1001,6 +1002,40 @@ void ImeToggle()
 }
 
 bool g_ctrlDown = false;
+// Keys the compositor holds as pressed. HarmonyOS keeps the release of the Super
+// (Meta) key for itself (it opens its start menu then, which takes the focus), so
+// Hyprland would keep Super pressed and turn every later key into a Super chord.
+// When the window loses the focus, everything still pressed is released.
+std::mutex g_heldMu;
+std::bitset<256> g_held;
+
+void SendKeyExport(uint32_t key, bool down)
+{
+    if (key < g_held.size()) {
+        std::lock_guard<std::mutex> lk(g_heldMu);
+        g_held[key] = down;
+    }
+    SendExportInput(4, static_cast<int32_t>(key), down);
+}
+
+void ReleaseHeldKeys()
+{
+    std::bitset<256> held;
+    {
+        std::lock_guard<std::mutex> lk(g_heldMu);
+        held = g_held;
+        g_held.reset();
+    }
+    for (size_t k = 0; k < held.size(); k++) {
+        if (held[k]) {
+            if (InputLog()) {
+                LOGI("input key evdev %{public}zu released (focus lost)", k);
+            }
+            SendExportInput(4, static_cast<int32_t>(k), 0);
+        }
+    }
+    g_ctrlDown = false;
+}
 
 // OpenHarmony key code -> Linux evdev KEY_* code (the compositor applies the keymap).
 uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
@@ -1107,7 +1142,7 @@ bool OnKey(OH_NativeXComponent *c, void *)
             LOGI("unmapped key %{public}d", static_cast<int>(code));
             return false;
         }
-        SendExportInput(4, static_cast<int32_t>(key), action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN);
+        SendKeyExport(key, action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN);
         return true;
     }
     uint32_t sym = KeySym(code);
@@ -1180,6 +1215,12 @@ napi_value Swipe(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+napi_value ReleaseKeys(napi_env, napi_callback_info)
+{
+    ReleaseHeldKeys();
+    return nullptr;
+}
+
 napi_value SetForeground(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -1202,6 +1243,7 @@ napi_value Init(napi_env env, napi_value exports)
         {"getStatus", nullptr, GetStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setForeground", nullptr, SetForeground, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"swipe", nullptr, Swipe, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"releaseKeys", nullptr, ReleaseKeys, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

@@ -1,12 +1,14 @@
 // The Linux desktop fills the window: libohdisp.so draws it into the XComponent and
 // handles input. Until the first frame arrives, a status line says what is going on.
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { window } from '@kit.ArkUI';
 import { startJl } from '../jl/jl';
 
 interface OhdispModule {
   getStatus(): string;
   setForeground(fg: boolean): void;
   swipe(phase: number, dx: number, dy: number, fingers: number): void;
+  releaseKeys(): void;
 }
 
 @Entry
@@ -39,6 +41,15 @@ struct Index {
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('jl') === true) { startJl(); }
+    // Losing the focus releases the keys still pressed in the desktop: HarmonyOS
+    // keeps the Super key's release (its start menu opens then and takes the focus).
+    window.getLastWindow(getContext(this)).then((w: window.Window) => {
+      w.on('windowEvent', (t: window.WindowEventType) => {
+        if (t === window.WindowEventType.WINDOW_INACTIVE || t === window.WindowEventType.WINDOW_HIDDEN) {
+          this.ohdisp?.releaseKeys();
+        }
+      });
+    });
     this.timer = setInterval(() => {
       if (this.ohdisp) {
         this.status = this.ohdisp.getStatus();
@@ -57,6 +68,7 @@ struct Index {
   }
 
   onPageHide(): void {
+    this.ohdisp?.releaseKeys();
     this.ohdisp?.setForeground(false);
   }
 

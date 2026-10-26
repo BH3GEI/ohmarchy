@@ -12,6 +12,8 @@
 #                            clients from the 鸿融 VM's network (remote virgl);
 #                            OHMARCHY_VTEST_TCP_ALLOW=NET/BITS (tests: 127.0.0.0/8)
 #   omarchy start|stop|status
+#   omarchy docker-refused APP  HarmonyOS notification that APP's VM keeps the
+#                            Docker VM from starting (the docker gate's --on-refuse)
 # The session is started on demand.
 B=${ARCH_BASE:-$(cd "$(dirname "$0")/.." && pwd)}
 R=$B/arch
@@ -19,6 +21,13 @@ user=${ARCH_USER:-builder}
 
 case "$1" in
 start|stop|status) exec sh "$B/arch.sh" "$1" ;;
+docker-refused)
+    # Through the display app (its onNewWant), only while it runs: starting it
+    # just for this would open a window. No spaces in the values (aa's --ps).
+    pidof com.ohmarchy.display > /dev/null || exit 0
+    exec aa start -b com.ohmarchy.display -a EntryAbility --ps notifyTitle "Docker虚拟机没能启动" \
+        --ps notify "${2:-另一个应用}的虚拟机正在运行，同一时间只能开一台虚拟机。关掉它以后再用docker。" > /dev/null 2>&1
+    ;;
 esac
 if [ "$1" = desktop ] && [ "$2" = restart ]; then
     sh "$0" desktop stop > /dev/null 2>&1
@@ -94,6 +103,7 @@ desktop)
             # starts the VM, the desktop gets a notification saying how it stops
             setsid "$gate" ${ug:+--uid "${ug%%:*}"} --ctl "/proc/$P/root/tmp/.ohmarchy-docker-vm.sock" \
                 --on-start "sh $B/bin/omarchy -c docker-vm notify-started" \
+                --on-refuse "sh $B/bin/omarchy docker-refused" \
                 "/proc/$P/root/tmp/.ohmarchy-docker.sock" \
                 < /dev/null >> /data/local/kaidashi/ownvm/svc/gate.log 2>&1 &
             echo $! > /data/local/kaidashi/ownvm/svc/gate.pid

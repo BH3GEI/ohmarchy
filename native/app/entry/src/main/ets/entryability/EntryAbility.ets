@@ -1,6 +1,7 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { notificationManager } from '@kit.NotificationKit';
 
 const DOMAIN = 0x0D0D;
 
@@ -11,6 +12,34 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('jl', jlp === true || jlp === 'true');
     const imp: Object | undefined = want?.parameters?.['immersive'];
     AppStorage.setOrCreate('immersive', imp === true || imp === 'true');
+    this.notify(want);
+  }
+
+  // `aa start -b com.ohmarchy.display -a EntryAbility --ps notify TEXT [--ps notifyTitle T]`:
+  // a HarmonyOS notification from the host, e.g. the docker gate's "another VM
+  // runs" (`omarchy docker-refused`). The first one asks the user to allow them.
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    this.notify(want);
+  }
+
+  private notify(want: Want): void {
+    const text: Object | undefined = want?.parameters?.['notify'];
+    if (typeof text !== 'string' || text === '') {
+      return;
+    }
+    const t: Object | undefined = want?.parameters?.['notifyTitle'];
+    const req: notificationManager.NotificationRequest = {
+      id: 1,
+      content: {
+        notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
+        normal: { title: typeof t === 'string' && t !== '' ? t : 'Omarchy', text: text }
+      }
+    };
+    notificationManager.isNotificationEnabled()
+      .then((on: boolean) => on ? Promise.resolve() : notificationManager.requestEnableNotification(this.context))
+      .then(() => notificationManager.publish(req))
+      .then(() => hilog.info(DOMAIN, 'ohdisp', 'notification: %{public}s', text))
+      .catch((e: object) => hilog.error(DOMAIN, 'ohdisp', 'notification: %{public}s', JSON.stringify(e)));
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {

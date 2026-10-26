@@ -19,11 +19,15 @@
 // route D's `docker-vm` command and its menu entry use it.
 // --on-start CMD: run (detached, through /system/bin/sh) after the gate started
 // the VM: route D's notification that the VM runs and how it stops.
+// --on-refuse CMD: run as `CMD APP` (detached, at most every 20 s) when another
+// VM runs, APP being the app that runs it (鸿融, OSEasy, or 另一个应用, from the
+// bundle name in that StratoVirt's command line): a HarmonyOS notification.
 //   ohmarchy-docker-gate [--uid UID] [--idle-s SEC | --idle MIN] [--ctl PATH]
-//                        [--on-start CMD] <socket path>
+//                        [--on-start CMD] [--on-refuse CMD] <socket path>
 //   (defaults: uid 60000, 30 s: in the demo 鸿融 starts right after Docker, and
 //   nobody types a command to stop the VM; supervisor, 2026-10-26)
 #define _GNU_SOURCE
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -41,7 +45,7 @@
 #include <unistd.h>
 
 #define VM "/data/local/kaidashi/bin/ohmarchy-vm"
-#define ANOTHER_VM "后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它"
+#define ANOTHER_VM "后台 Docker 虚拟机启动不了：%s 的虚拟机正在运行（同一时间只能开一台虚拟机），请先关掉它"
 
 /* sh -c CMD; with out, its stdout is captured there, else it goes to our log
  * (no pipe then: `ohmarchy-vm start` leaves the VM's processes behind) */
@@ -90,6 +94,44 @@ static int containers_running(void)
     if (sh("timeout -s KILL 20 sh " VM " ssh 'docker ps -q | wc -l' 2>/dev/null", out, sizeof(out)) != 0)
         return -1; /* unknown: treated as busy */
     return atoi(out);
+}
+
+/* the app whose VM runs, NULL if no StratoVirt runs: the VM apps' StratoVirt
+ * command lines name their bundle in every socket and disk path */
+static const char *other_vm(void)
+{
+    static const char *apps[][2] = {{"com.huawei.medivh", "鸿融"}, {"com.oseasy1.ohvm", "OSEasy"}};
+    const char *who = NULL;
+    DIR *d = opendir("/proc");
+    struct dirent *e;
+    while (d && (e = readdir(d))) {
+        char path[64], c[8192];
+        if (e->d_name[0] < '0' || e->d_name[0] > '9')
+            continue;
+        snprintf(path, sizeof(path), "/proc/%s/cmdline", e->d_name);
+        int fd = open(path, O_RDONLY);
+        if (fd < 0)
+            continue;
+        ssize_t n = read(fd, c, sizeof(c) - 1);
+        close(fd);
+        if (n <= 0)
+            continue;
+        c[n] = 0; /* argv[0] alone, then the rest with the NULs made spaces */
+        const char *base = strrchr(c, '/') ? strrchr(c, '/') + 1 : c;
+        if (strcmp(base, "stratovirt") != 0)
+            continue;
+        for (ssize_t i = 0; i < n; i++)
+            if (!c[i])
+                c[i] = ' ';
+        who = "另一个应用";
+        for (size_t i = 0; i < sizeof(apps) / sizeof(apps[0]); i++)
+            if (strstr(c, apps[i][0]))
+                who = apps[i][1];
+        break;
+    }
+    if (d)
+        closedir(d);
+    return who;
 }
 
 static void say(const char *fmt, const char *arg)
@@ -176,7 +218,7 @@ static void refuse(int fd, const char *why)
 int main(int argc, char **argv)
 {
     long uid = 60000, idle_s = 30;
-    const char *ctl = NULL, *on_start = NULL;
+    const char *ctl = NULL, *on_start = NULL, *on_refuse = NULL;
     while (argc > 2 && strncmp(argv[1], "--", 2) == 0) {
         if (strcmp(argv[1], "--uid") == 0)
             uid = strtol(argv[2], NULL, 10);
@@ -188,13 +230,15 @@ int main(int argc, char **argv)
             ctl = argv[2];
         else if (strcmp(argv[1], "--on-start") == 0)
             on_start = argv[2];
+        else if (strcmp(argv[1], "--on-refuse") == 0)
+            on_refuse = argv[2];
         else
             break;
         argv += 2;
         argc -= 2;
     }
     if (argc != 2) {
-        fprintf(stderr, "usage: %s [--uid UID] [--idle-s SEC] [--ctl PATH] [--on-start CMD] <socket path>\n", argv[0]);
+        fprintf(stderr, "usage: %s [--uid UID] [--idle-s SEC] [--ctl PATH] [--on-start CMD] [--on-refuse CMD] <socket path>\n", argv[0]);
         return 2;
     }
     signal(SIGPIPE, SIG_IGN);
@@ -206,7 +250,7 @@ int main(int argc, char **argv)
            ctl ? ", control on " : "", ctl ? ctl : "");
 
     int ours = 0, active = 0;
-    time_t last_used = time(NULL), last_fail = 0, last_check = 0;
+    time_t last_used = time(NULL), last_fail = 0, last_check = 0, last_refused = 0;
     for (;;) {
         struct pollfd p[2] = {{ls, POLLIN, 0}, {cs, POLLIN, 0}};
         int r = poll(p, cs >= 0 ? 2 : 1, 5000);
@@ -235,9 +279,10 @@ int main(int argc, char **argv)
             } else if (strcmp(line, "status") == 0) {
                 char t[256];
                 if (!up) {
-                    reply(fd, 0, sh("pidof stratovirt > /dev/null", NULL, 0) == 0
-                                     ? "Docker 虚拟机没有运行（鸿融或 OSEasy 的虚拟机正在运行）"
-                                     : "Docker 虚拟机没有运行，下次用 docker 时自动启动");
+                    const char *who = other_vm();
+                    if (who)
+                        snprintf(t, sizeof(t), "Docker 虚拟机没有运行（%s 的虚拟机正在运行）", who);
+                    reply(fd, 0, who ? t : "Docker 虚拟机没有运行，下次用 docker 时自动启动");
                     continue;
                 }
                 int c = containers_running();
@@ -281,9 +326,18 @@ int main(int argc, char **argv)
             last_used = time(NULL);
             if (!vm_running()) {
                 ours = 0;
-                if (sh("pidof stratovirt > /dev/null", NULL, 0) == 0) {
-                    printf("another VM runs: not starting\n");
-                    refuse(fd, ANOTHER_VM);
+                const char *who = other_vm();
+                if (who) {
+                    char why[256];
+                    snprintf(why, sizeof(why), ANOTHER_VM, who);
+                    say("another VM runs (%s): not starting", who);
+                    refuse(fd, why);
+                    if (on_refuse && time(NULL) - last_refused >= 20) {
+                        char cmd[512];
+                        snprintf(cmd, sizeof(cmd), "%s '%s'", on_refuse, who);
+                        run_detached(cmd);
+                        last_refused = time(NULL);
+                    }
                     continue;
                 }
                 if (time(NULL) - last_fail < 30) {

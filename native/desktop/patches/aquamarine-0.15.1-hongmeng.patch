@@ -133,7 +133,7 @@ new file mode 100644
 index 0000000..07ccdf4
 --- /dev/null
 +++ b/src/allocator/DMAHeap.cpp
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,163 @@
 +#include <aquamarine/allocator/DMAHeap.hpp>
 +#include <aquamarine/backend/Backend.hpp>
 +#include <aquamarine/allocator/Swapchain.hpp>
@@ -254,10 +254,17 @@ index 0000000..07ccdf4
 +    }
 +
 +    int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
++    if (fd < 0 && heapPath.empty()) {
++        // HarmonyOS's own mode-666 system heap (the chroot sees it as /dev/dma_heap/system;
++        // /dev/dma_heap/* themselves are 0660 for their group, closed to an app)
++        backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: cannot open {}: {}", path, strerror(errno)));
++        path = "/dev/system_heap2";
++        fd   = open(path.c_str(), O_RDONLY | O_CLOEXEC);
++    }
 +    if (fd < 0) {
-+        // without access to the heap (an app's sandbox: the device is 0660 for its own
-+        // group) buffers come from memfd; AQ_DMA_HEAP=none asks for that directly
++        // no heap at all: buffers come from memfd (AQ_DMA_HEAP=none asks for that directly)
 +        backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: cannot open {}: {}; using memfd buffers", path, strerror(errno)));
++        path = "memfd";
 +    }
 +
 +    auto a  = SP<CDMAHeapAllocator>(new CDMAHeapAllocator(fd, backend_));

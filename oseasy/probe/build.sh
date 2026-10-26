@@ -120,7 +120,7 @@ mkdir -p "$W/esp/EFI/BOOT"
 # own grub.cfg (which finds its root by fs-uuid); see oseasy/probe/grub.cfg.
 grub-mkstandalone -d "$W/t/usr/lib/grub/arm64-efi" -O arm64-efi \
     -o "$W/esp/EFI/BOOT/BOOTAA64.EFI" \
-    --modules="part_gpt part_msdos ext2 fat iso9660 search search_fs_file search_fs_uuid configfile linux normal echo all_video" \
+    --modules="part_gpt part_msdos ext2 fat iso9660 search search_fs_file search_fs_uuid configfile chain linux normal echo all_video" \
     "boot/grub/grub.cfg=$W/grub-early.cfg"
 
 # 5. ESP image, ISO and GPT disk
@@ -130,9 +130,12 @@ grub-mkstandalone -d "$W/t/usr/lib/grub/arm64-efi" -O arm64-efi \
 # ~160 MB kernel+initramfs OUT of this FAT image avoids duplicating them, so an
 # ISO carrying a ~1.7 GiB embedded disk image still fits under the 2 GiB limit.
 mkdir -p "$W/espmin"; cp -r "$W/esp/EFI" "$W/espmin/"
-mib=$(( $(du -sm "$W/espmin" | cut -f1) + 4 ))
+# The FAT image must be a valid FAT32 ESP or the firmware will not boot BOOTAA64
+# (it drops to the EFI shell). FAT32 needs >=65525 clusters, i.e. roughly >=36 MB
+# at 512 B/cluster, so floor the size at 48 MB even though BOOTAA64 alone is small.
+mib=$(( $(du -sm "$W/espmin" | cut -f1) + 4 )); [ "$mib" -lt 48 ] && mib=48
 truncate -s ${mib}M "$W/efiboot.img"
-mkfs.fat -F 32 -n PROBE "$W/efiboot.img" >/dev/null 2>&1 || mkfs.fat -n PROBE "$W/efiboot.img" >/dev/null
+mkfs.fat -F 32 -n PROBE "$W/efiboot.img" >/dev/null
 mcopy -s -i "$W/efiboot.img" "$W/espmin/"* ::/
 mkdir -p "$W/iso"; cp "$W/efiboot.img" "$W/iso/"; cp -r "$W/esp/"* "$W/iso/"
 # PROBE_IMGZST embeds a zstd-compressed raw disk image in the ISO data area (not in

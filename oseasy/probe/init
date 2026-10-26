@@ -214,16 +214,25 @@ case " $cmd " in
         fi
         umount /mnt/dev /mnt/sys /mnt/proc 2>/dev/null
         fi
-        # Mark a fully-installed disk, on the ext4 root so GRUB's search finds it.
-        # The default GRUB entry boots a marked disk directly instead of installing.
+        # Mark the install on the ESP (vda1, FAT) -- NOT on the ext4 root. This GRUB
+        # reads FAT but not the root ext4's metadata_csum_seed feature, so an ext4
+        # marker would be invisible to osmart. With the ESP marker present, osmart
+        # chainloads the image's own ESP GRUB (which does read that ext4).
         # Note: Oseasy's 再次安装 WIPES /dev/vda before this ISO boots, so the marker
-        # is gone by then and that path always reinstalls; the marker matters for the
-        # post-install auto-reboot below, which boots the just-written disk. Only on a
-        # clean mkinitcpio, so a broken install reinstalls next boot.
+        # is gone by then and that path reinstalls; the marker matters for the
+        # post-install auto-reboot below. Only on a clean install (mkrc==0).
         if [ "$mkrc" = 0 ]; then
-            printf 'ohmarchy-oseasy\ninstalled=%s\nkver=%s\n' \
-                "$(date -u +%FT%TZ)" "$kv" > /mnt/boot/ohmarchy-oseasy-installed
-            log "install: marked /boot/ohmarchy-oseasy-installed; next boot runs from vda"
+            modprobe vfat 2>/dev/null; modprobe nls_cp437 2>/dev/null; modprobe nls_iso8859-1 2>/dev/null
+            mkdir -p /espmark
+            if mount -t vfat /dev/vda1 /espmark 2>/dev/null; then
+                mkdir -p /espmark/EFI
+                printf 'ohmarchy-oseasy installed=%s kver=%s\n' \
+                    "$(date -u +%FT%TZ)" "$kv" > /espmark/EFI/ohmarchy-oseasy-installed
+                sync; umount /espmark
+                log "install: marked /EFI/ohmarchy-oseasy-installed on the ESP (vda1); next boot chainloads it"
+            else
+                log "install: WARNING could not mount ESP /dev/vda1 to write the marker; will reinstall next boot"
+            fi
         else
             log "install: mkinitcpio failed (rc=$mkrc); not marking, will reinstall next boot"
         fi

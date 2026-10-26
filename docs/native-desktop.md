@@ -217,7 +217,8 @@ for the focused text-input-v3 client. Built and running; not yet verified on scr
   help either, checked 2026-10-26). So the app sends right Alt to the desktop as
   Super (evdev 125); left Alt stays Alt. The file `files/super-key` in the app's
   data directory chooses the stand-in: `ralt` (default), `capslock`, or `off`
-  (only the Windows key).
+  (only the Windows key). Checked on ohdev: right Alt+5 switches to workspace 5 and
+  right Alt+Return opens a terminal, with no start menu.
 - The Windows key itself still works as Super, with the start menu opening as
   well. Without its release Hyprland kept Super pressed and read every later key as
   a Super chord; the app releases every key still pressed when its window loses

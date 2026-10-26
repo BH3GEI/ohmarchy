@@ -28,7 +28,8 @@
 # TRIM_PKGS: packages removed after the Omarchy install (pacman -Rns, leaf
 # apps only) to fit a size limit; SLIM=1 also keeps only the zh_CN and en
 # locales (with NoExtract in pacman.conf so updates do not bring the rest
-# back) and drops the user's mise caches (tools download again on first use).
+# back) and drops the user's mise caches and nvim plugins (downloaded again
+# on first use).
 # AI_ENV (demo machine only, never for a public image): env file for
 # guest/setup-ai.sh, copied into the base image for its first boot.
 # VMWGFX_KO: route B's patched vmwgfx.ko for this kernel (driver/
@@ -180,7 +181,7 @@ else
   if [ "$slim" = 1 ]; then
     find "$R/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name 'zh_CN' ! -name 'en' ! -name 'en_US' -exec rm -rf {} +
     sed -i '/^\[options\]$/a NoExtract = usr/share/locale/* !usr/share/locale/zh_CN/* !usr/share/locale/en/* !usr/share/locale/en_US/* !usr/share/locale/locale.alias' "$R/etc/pacman.conf"
-    rm -rf "$R/home/$user/.cache/mise" "$R/home/$user/.local/share/mise"
+    rm -rf "$R/home/$user/.cache/mise" "$R/home/$user/.local/share/mise" "$R/home/$user/.local/share/nvim"
   fi
   if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
   else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi

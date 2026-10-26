@@ -8,7 +8,9 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -61,17 +63,29 @@ static void launch_hyprland(const char *cfg){
     setenv("XDG_SESSION_TYPE", "wayland", 1);
     setenv("XDG_CURRENT_DESKTOP", "Hyprland", 1);
     setenv("OMARCHY_PATH", "/usr/share/omarchy", 1);
+    setenv("XKB_CONFIG_ROOT", "/data/storage/el2/base/files/xkb", 1); // bundled xkeyboard-config data
     if(!getenv("HOME")) setenv("HOME", RUNDIR, 1);
+    // Minimal J config (Lua, D's hl.* API): headless output + full-screen redraw. The caller
+    // may override with an explicit path; otherwise we write our own so Hyprland has a monitor.
+    char cfgpath[512];
+    if(cfg && cfg[0]){
+        snprintf(cfgpath, sizeof(cfgpath), "%s", cfg);
+    } else {
+        snprintf(cfgpath, sizeof(cfgpath), "%s/hypr-j.lua", RUNDIR);
+        int cf=open(cfgpath,O_CREAT|O_TRUNC|O_WRONLY,0644);
+        if(cf>=0){
+            const char *lua=
+                "hl.monitor({ output = \"HEADLESS-2\", mode = \"1920x1280@120\", position = \"0x0\", scale = 1 })\n"
+                "hl.config({ debug = { damage_tracking = 1 } })\n";
+            (void)!write(cf,lua,strlen(lua)); close(cf);
+        }
+    }
     void *h = dlopen(HY, RTLD_NOW | RTLD_GLOBAL);
     if(!h){ dprintf(2, "dlopen hyprland FAILED: %s\n", dlerror()); _exit(121); }
     int(*hymain)(int,char**) = (int(*)(int,char**))dlsym(h, "main");
     if(!hymain){ dprintf(2, "dlsym main FAILED: %s\n", dlerror()); _exit(122); }
-    char a0[]="Hyprland";
-    if(cfg && cfg[0]){
-        char c1[]="-c"; char *av[]={a0,c1,(char*)cfg,nullptr}; _exit(hymain(3,av)&0xff);
-    } else {
-        char *av[]={a0,nullptr}; _exit(hymain(1,av)&0xff);
-    }
+    char a0[]="Hyprland", c1[]="-c"; char *av[]={a0,c1,cfgpath,nullptr};
+    _exit(hymain(3,av)&0xff);
 }
 
 static int readn(int fd, void *p, size_t n){ char*b=(char*)p; size_t g=0; while(g<n){ ssize_t k=read(fd,b+g,n-g); if(k<=0) return -1; g+=k; } return 0; }
@@ -93,6 +107,36 @@ static void close_inherited_fds(int keep){
     closedir(d);
 }
 
+// After Hyprland starts, its headless backend has no output until one is created. There is no
+// Lua API to create one and J can't execve hyprctl, so talk the hyprctl socket1 protocol
+// directly: poll $XDG_RUNTIME_DIR/hypr/<sig>/.socket.sock for up to ~10s, then send the command.
+// Runs in the spawner (parent of the Hyprland grandchild); blocking here is fine during bring-up.
+static int hyprctl_cmd(const char *cmd){
+    char base[512]; snprintf(base,sizeof(base),"%s/hypr",RUNDIR);
+    char sockpath[640]={0};
+    for(int tries=0; tries<100 && !sockpath[0]; tries++){
+        DIR *d=opendir(base);
+        if(d){ struct dirent *e;
+            while((e=readdir(d))){
+                if(e->d_name[0]=='.') continue;
+                char cand[640]; snprintf(cand,sizeof(cand),"%s/%s/.socket.sock",base,e->d_name);
+                if(access(cand,F_OK)==0){ snprintf(sockpath,sizeof(sockpath),"%s",cand); break; }
+            }
+            closedir(d);
+        }
+        if(!sockpath[0]){ struct timespec ts={0,100*1000*1000}; nanosleep(&ts,nullptr); } // 100ms
+    }
+    if(!sockpath[0]){ LOGI("hyprctl: socket never appeared (%{public}s)",base); return -1; }
+    int fd=socket(AF_UNIX,SOCK_STREAM,0); if(fd<0) return -1;
+    struct sockaddr_un sa; memset(&sa,0,sizeof(sa)); sa.sun_family=AF_UNIX;
+    snprintf(sa.sun_path,sizeof(sa.sun_path),"%s",sockpath);
+    if(connect(fd,(struct sockaddr*)&sa,sizeof(sa))!=0){ LOGI("hyprctl connect fail errno=%{public}d",errno); close(fd); return -1; }
+    writen(fd,cmd,strlen(cmd));
+    char rep[256]={0}; ssize_t k=read(fd,rep,sizeof(rep)-1); if(k>0) rep[k]=0;
+    LOGI("hyprctl '%{public}s' -> %{public}s", cmd, rep);
+    close(fd); return 0;
+}
+
 // runs in the single-threaded spawner child; never returns
 static void spawner_loop(int s){
     for(;;){
@@ -106,6 +150,8 @@ static void spawner_loop(int s){
                 setsid(); close(s); launch_hyprland(cmd+1); _exit(0); // launch_hyprland never returns on success
             }
             free(cmd);
+            // headless backend creates no output on its own; make one via the hyprctl socket.
+            hyprctl_cmd("output create headless HEADLESS-2");
             uint32_t ok=0; writen(s,&ok,4);   // ack: launched. Hyprland runs for the app's
             continue;                         // lifetime; we don't wait on it (one zombie at most).
         }

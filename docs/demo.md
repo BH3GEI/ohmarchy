@@ -164,13 +164,11 @@ windows afterwards).
 ### Before the demo (not shown, about 1 min)
 
 - ohdev has just booted and is unlocked; HarmonyOS's own desktop is in front.
-- For the Docker step (8): start route I's VM, **on the host as root**:
-  `sh /data/local/kaidashi/bin/ohmarchy-vm start` (or `tests/demo/d.sh prep`).
-  The 鸿融 VM has to be shut down (one VM at a time). Wait
-  until `ohmarchy-vm status` shows a `dockerd:` version. Without the VM, `d.sh`
-  skips step 8 and says so.
+- For the Docker step: nothing to start. Route I's VM starts on demand the
+  first time `docker` runs (the docker gate, [vm-own.md](vm-own.md)); only the
+  鸿融 and OSEasy VMs have to be off (one VM at a time), or docker says so.
 
-### Steps (under 2 min)
+### Steps (under 2 min; rehearsed 2026-10-25: `d.sh` end to end in 80 s, 119 fps, 635265e)
 
 | # | Action | Expected | Time |
 |---|---|---|---|
@@ -180,7 +178,7 @@ windows afterwards).
 | 4 | Super+2, Super+1, a few times. | Workspaces slide back and forth smoothly. Measured rate (HarmonyOS's compositor, `tests/perf/workspace.sh`): 119 fps, `d.sh` prints it in the step-4 screenshot name. | 10 s |
 | 5 | Super+Shift+B. | Firefox opens on workspace 1, tiled next to the terminal. Open any page, e.g. omarchy.org. | 15 s |
 | 6 | Super+Space (Omarchy menu), then Escape; Super+Shift+F. | The Omarchy menu; then Files (Nautilus) on the home directory. | 15 s |
-| 7 | In the terminal: `docker run --rm hello-world`. | "Hello from Docker!": the container runs in route I's VM; the CLI here talks to it over ssh (context `ohmarchy`). The first run pulls the image. | 10 s |
+| 7 | In the terminal: `docker run --rm hello-world`. | "Hello from Docker!": the container runs in route I's VM, which the first `docker` starts by itself (context `ohmarchy`, the docker gate). | 17 s cold (VM start included), 1 s after |
 
 About 75 s of actions plus talking. Talking points: no hypervisor for the
 desktop itself, so it starts in about 8 s cold and idles at 0.5% CPU; the
@@ -188,13 +186,14 @@ HongMeng kernel runs Arch's own binaries; keyboard, mouse, sound and the
 HarmonyOS IME pass through the app; Docker is the one thing that needs a
 Linux kernel, so it borrows route I's small VM.
 
-Afterwards: `tests/demo/d.sh clean` (or close the windows with Super+W), and
-`sh /data/local/kaidashi/bin/ohmarchy-vm stop` on the host if the VM was
-started for the demo.
+Afterwards: `tests/demo/d.sh clean` (or close the windows with Super+W). Route
+I's VM stops by itself 3 minutes after the last docker command (no container
+left running), which frees the hypervisor for 鸿融 and OSEasy.
 
-Not yet rehearsed: the click on the dock icon (`d.sh` uses `aa start`), the
-Super-key shortcuts through `ohui key` (`d.sh` starts the same commands
-through Hyprland instead), and the timings above.
+Rehearsed with `d.sh` (80 s, 635265e), which uses `aa start` instead of the
+click on the dock icon and starts the Super-key commands through Hyprland
+instead of `ohui key`; those two by hand are not rehearsed. The 17 s Docker
+step was measured on 2026-10-26 from D's session, not yet inside `d.sh`.
 
 ## I: Docker on the native desktop
 
@@ -210,18 +209,19 @@ time: `tests/demo/i.sh`.
 
 ### Before the demo (not shown, 1 min)
 
-- The 鸿融 main VM is shut down (route I refuses to start next to another
-  StratoVirt), and route D's desktop is open with a terminal.
+- The 鸿融 and OSEasy VMs are shut down (route I does not start next to
+  another StratoVirt; docker then says `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它`),
+  and route D's desktop is open with a terminal. Route I's VM is off: it starts
+  by itself.
 
-### Steps (about 3 min; rehearsed 2026-10-26: `i.sh` all PASS in 91 s)
+### Steps (about 3 min; rehearsed 2026-10-26 with a manual start: `i.sh` all PASS in 91 s; the on-demand start below not yet rehearsed as a whole)
 
 | # | Action | Expected | Time |
 |---|---|---|---|
-| 1 | Start the VM, **on the host as root** (`ssh ohdev`): `sh /data/local/kaidashi/bin/ohmarchy-vm start`. D's terminal can't do this, see the note below. | `home share: virtiofsd pid …, uid 60000`, `started pid …`, `guest up after 5s`. | guest up in 5–10 s; dockerd answers right after (the rehearsal's number wasn't printed: HongMeng's sh can't parse `$((\$(date …) - t))`, fixed since) |
-| 2 | In D's terminal: `docker run --rm hello-world` | "Hello from Docker!" (the first run pulls the image through the VM's registry mirrors). | a few s |
+| 1–2 | In D's terminal: `docker run --rm hello-world` | It waits while route I's VM boots (the docker gate starts it), then "Hello from Docker!". | 17 s cold, measured 2026-10-26 |
 | 3 | In D's terminal, a compose service with a bind mount: `mkdir -p ~/demo-i/www && cd ~/demo-i`, then a `compose.yaml` with one `busybox` service: `ports: ["8080:8080"]`, `volumes: ["./www:/www"]`, `command: sh -c "echo hello-from-compose > /www/index.html; exec httpd -f -p 8080 -h /www"`. Then `docker compose up -d` and `curl http://172.16.100.2:8080/`. | `hello-from-compose`: the container wrote the page into `~/demo-i/www` on the desktop and serves it from there. | 10–20 s |
 | 4 | `ls -l www/index.html` | `-rw-r--r-- 1 builder builder … index.html`: 0644 and the desktop user's, although the container wrote it as root. | 5 s |
-| 5 | `docker compose down; cd; rm -rf ~/demo-i`, then on the host as root `sh /data/local/kaidashi/bin/ohmarchy-vm stop`. | `stopped`: the VM powered off from the inside; the tap and routing rules are gone. | 10 s |
+| 5 | `docker compose down; cd; rm -rf ~/demo-i` | Nothing else to do: 3 minutes later, with no container running, the gate powers the VM off from the inside (`/data/local/kaidashi/ownvm/svc/gate.log`). | 5 s |
 
 Pitfall, found in the rehearsal: on the host, `ohmarchy-vm ssh docker …` with
 docker's output going straight back through ssh can hang for good (four runs
@@ -237,12 +237,10 @@ user with no capabilities, so the VM can't reach anything else on the host.
 Files keep normal modes since the switch to upstream virtiofsd 1.14.0 (with
 HarmonyOS's own virtiofsd they were always 0660).
 
-Note, starting from D's terminal: `ohmarchy-vm` needs root on the host (the
-hypervisor, tap, routing, the share's bind mount), and D's terminal is the
-unprivileged desktop user. So for now step 1 and the stop run on the host.
-Doing them from D would need a small root helper on the host that accepts
-only `start`, `stop`, `status` from the desktop user. That opens a way from
-the desktop into host root, so it isn't built (supervisor, 2026-10-26: not
-worth it for one command in a demo). If the VM should later start with the
-desktop, build it like D's existing broker: SO_PEERCRED, accept uid 60000
-only, and only the three fixed commands.
+How D's terminal starts a root VM: it doesn't. `ohmarchy-vm` needs root on
+the host (hypervisor, tap, routing, the share's bind mount); the docker gate,
+a root daemon that starts with D's desktop, does it when the desktop user's
+docker connects (decided by Yao, 2026-10-26: used like a real user would,
+with no root shell; this replaces the earlier "no root helper" decision).
+Built like D's GPU broker: SO_PEERCRED, only uid 60000, and the only thing a
+connection gets is dockerd in the VM (`tools/ownvm/ohmarchy-docker-gate.c`).

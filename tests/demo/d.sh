@@ -1,8 +1,8 @@
 #!/bin/bash
 # Route D demo, automated (docs/demo.md): each step is one command on the
 # HarmonyOS host, then a screenshot into OUT (default tests/results/demo-<time>).
-#   tests/demo/d.sh prep    start route I's VM for the Docker step (not part of the
-#                           demo; needs the 鸿融 VM off)
+#   tests/demo/d.sh prep    start route I's VM ahead (optional: the Docker step
+#                           starts it on demand; needs the 鸿融 and OSEasy VMs off)
 #   tests/demo/d.sh         the demo, timed
 #   tests/demo/d.sh clean   close the demo's windows
 here=$(cd "$(dirname "$0")" && pwd)
@@ -73,12 +73,14 @@ print(f"{1000 / (sum(d) / len(d)):.0f}" if d else "?")')
     sleep 1.5  # the menu fades out; Files opening meanwhile leaves it half drawn in the shot
     launch "nautilus --new-window"
     step 07-files 2
-    # 8. Docker through route I's VM (d.sh prep first)
-    if echo "sh $VM status 2>/dev/null | grep -q 'dockerd: [0-9]' && echo up" | h | grep -q up; then
+    # 8. Docker through route I's VM, which the docker gate starts on demand
+    # (about 17 s cold); with another VM running docker prints why instead
+    if echo "sh $VM running && echo up" | h | grep -q up; then
         launch "foot -T demo-docker --hold docker run --rm hello-world"
         step 08-docker-hello-world 6
     else
-        echo "      route I's VM is not up: Docker step skipped (tests/demo/d.sh prep)"
+        launch "foot -T demo-docker --hold docker run --rm hello-world"
+        step 08-docker-hello-world 25
     fi
     echo "demo $(( $(date +%s) - t0 - shots )) s (plus $shots s for screenshots); screenshots in $OUT"
     ;;

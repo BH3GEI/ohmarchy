@@ -153,18 +153,20 @@ case " $cmd " in
         # private builds; it is EMPTY in the public image, so the key never ships. Write
         # the user's environment.d so opencode / Claude Code / Codex pick it up.
         if [ -n "$u" ]; then
-            OHM_AI_KEY=; OHM_AI_BASE=; OHM_AI_BASE_V1=; OHM_AI_CHAT=; OHM_AI_ANTHROPIC=
+            OHM_AI_KEY=; OHM_AI_BASE=; OHM_AI_BASE_V1=
             [ -f /oseasy/ai.env ] && . /oseasy/ai.env 2>/dev/null
             cfgd=/mnt/home/$u/.config/environment.d
             install -d -m700 "$cfgd"
             if [ -n "$OHM_AI_KEY" ]; then
+                # The relay speaks both OpenAI (/v1) and Anthropic (/v1/messages),
+                # verified against it; the Anthropic SDK appends /v1/messages to its
+                # base, so ANTHROPIC_BASE_URL is the bare host (OHM_AI_BASE).
                 { echo "OPENAI_API_KEY=$OHM_AI_KEY"
-                  echo "OPENAI_BASE_URL=${OHM_AI_BASE_V1:-$OHM_AI_BASE}"
-                  [ -n "$OHM_AI_CHAT" ] && echo "OPENAI_MODEL=$OHM_AI_CHAT"
-                  # Anthropic vars only when the relay supports them (OHM_AI_ANTHROPIC=1)
-                  [ -n "$OHM_AI_ANTHROPIC" ] && { echo "ANTHROPIC_API_KEY=$OHM_AI_KEY"; echo "ANTHROPIC_BASE_URL=$OHM_AI_BASE"; }
+                  echo "OPENAI_BASE_URL=${OHM_AI_BASE_V1:-$OHM_AI_BASE/v1}"
+                  echo "ANTHROPIC_API_KEY=$OHM_AI_KEY"
+                  echo "ANTHROPIC_BASE_URL=$OHM_AI_BASE"
                 } > "$cfgd/ai.conf"
-                log "install: wrote AI relay config to ~$u/.config/environment.d/ai.conf"
+                log "install: wrote AI relay config (OpenAI + Anthropic) to ~$u/.config/environment.d/ai.conf"
             else
                 printf '# Add your API relay here to use agent tools (opencode/Claude Code/Codex):\n# OPENAI_API_KEY=...\n# OPENAI_BASE_URL=https://your-relay/v1\n' > "$cfgd/ai.conf"
                 log "install: no AI key baked (public image); wrote ai.conf hint"

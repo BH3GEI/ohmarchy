@@ -52,7 +52,7 @@ Headline results:
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Done for today | **Demo rehearsed, ~3 min from no VM** (73afc8e): create ~1.5 min of taps, install 61 s, Hyprland 6 s after reset, es2gears and workspace switching 60 frames/s on screen, foot 0.08 s, nautilus 0.6 s, chromium 0.8 s. The first attempt was refused because 鸿融's app still listed its VM as running after a shutdown from inside the guest; a start and forced stop through 鸿融's UI cleared it. Running next to another VM: refused (401, 4f8f079) |
+| B. Oseasy VM | Done for today | **Demo rehearsed, ~3 min from no VM** (73afc8e): create ~1.5 min of taps, install 61 s, Hyprland 6 s after reset, es2gears and workspace switching 60 frames/s on screen, foot 0.08 s, nautilus 0.6 s, chromium 0.8 s. The first attempt was refused although no VM process was running; the cause is still being investigated. Running next to another VM: refused (401, 4f8f079) |
 | C. 鸿融 VM | Offline: new os_type=1 image with the 120 Hz EDID and glmark2 baked in | **Demo C2 rehearsed: 3 min 41 s** (6df8c0d): Yao's main VM, login, terminal + fastfetch, Chromium over the network, workspace switching. The developer image imports through 鸿融's own UI (os_type byte fixed, c9ddc15); the guest renders at 120 Hz but 鸿融 shows its fullscreen VM at 60 Hz |
 | D. Native | Session at its usage limit until 2026-10-26 19:00 PDT | **Demo rehearsed: 80 s end to end, workspaces at 119 fps** (635265e). Fixed on the way: a closed Omarchy menu stayed drawn (now full repaints; idle CPU still to check), `start` kept ssh open, leftover inotifywait per restart. Earlier: screen off/on 20 of 20, 24 h soak passed |
 | I. Own VM | Done | **Demo rehearsed: all pass in 91 s** (f62265a): VM up in 10 s, hello-world, a compose service with a bind mount, files 0644 owned by builder, clean stop. `docker` run from the host over `ohmarchy-vm ssh` hangs when its output goes back through ssh; the demo redirects it (from D's terminal through the docker context there's no hang). 0660 share modes fixed with upstream virtiofsd 1.14.0 (2235eaf) |
@@ -560,9 +560,14 @@ failures. There is no guest network (pacman would need a relay). Details:
 - **One VM at a time, system-wide.** Starting a second VM is refused with **401 "Not support
   vm multi-instance"** (Oseasy's `createVm` while 鸿融's VM ran, tested 2026-10-25). Check
   `pidof stratovirt` before starting one.
-- **鸿融 gets out of sync after a guest-side power-off.** After the main VM was shut down
-  from inside, 鸿融 still listed it as running, and Oseasy's next VM was refused. Starting it
-  once from 鸿融 and force-stopping it there cleared the state. **Stop VMs from 鸿融's UI.**
+- **鸿融 shows a running VM as 已关机 without its guest agent.** 鸿融 only moves a VM to
+  RUNNING after its in-guest agent (增强服务, vm-agent) reports; our images don't have it, so
+  the VM stays in VIEWING, the card says 已关机 and the normal 关机 button is greyed out.
+  Shut the VM down from inside the guest (Omarchy: Super+Esc → Shutdown); 鸿融 then shows
+  已关机 correctly. Force stop only when the guest doesn't respond. A guest-side power-off
+  goes through the same STOPPING → STOPPED states as a force stop
+  ([docs/hongrong-whole-os.md](docs/hongrong-whole-os.md), eb4646b). Why Oseasy's
+  `createVm` was sometimes refused although no VM process was running is still open.
   鸿融 also removes its bridge when its VM stops.
 - **HMV ID registers.** Since Linux 6.9 the kernel reads `ID_AA64ISAR3_EL1`,
   `ID_AA64PFR2_EL1` and `ID_AA64FPFR0_EL1` at boot, and 6.17 reads `ID_AA64PFR2_EL1`

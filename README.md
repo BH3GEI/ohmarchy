@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 00:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 01:28 PDT)
 
-Now: making every route work like real use (no scripts), fixing what Yao found when using the native desktop by hand, and preparing public releases of B and C. Repository license: MIT, GPL-2.0 for kernel-derived code (99cbf51).
+Now: B (Oseasy) is the only public release line, since 鸿融 is not publicly released yet. Native desktop issues Yao found by hand are fixed. J is about to run Hyprland on the device without root.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Next on the device: install from the shared folder, auto-reboot to the desktop, TUNA + agent tools; then a disk snapshot at every clean shutdown so "再次安装" resumes the last state | "再次安装" wipes the disk before booting (Oseasy has no start button for a Linux VM), so B can't boot an installed disk. New flow (1f78006, 1f6e1a1): the probe reads the image from Oseasy's shared folder (= HarmonyOS Documents), installs with no root, reboots straight to the desktop, and keeps ~/Documents on the shared folder. End-user guide drafted (89dc4f5). TUNA mirror and the API relay for agent tools (f31d5d1, 530c08a, ea01549) |
-| C. 鸿融 VM | Building the public <2 GiB base image that installs Omarchy online (TUNA) at first boot | **鸿融's guest agent works in our image** (e0e0b7b): installed from the tools disc 鸿融 attaches, the card shows 运行中 and the normal 关机 button shuts the VM down cleanly. Compressed qcow2 can't be read by StratoVirt and HarmonyOS's file manager can't extract split zips, so B and C will share one small base image. Shared agent-tool setup script `setup-ai.sh` (07563a4) |
-| D. Native | Keyboard shortcuts (HarmonyOS likely takes the Super key for its Start menu), testufo at 60 instead of 120 fps, desktop clean-up for the demo | From Yao's own use: touchpad scrolls smoothly (f82c550), three-finger swipes switch workspaces (40f9b2a), an app left open picks up a restarted desktop (325cb46), TUNA and mainland mirrors for rustup/Go/npm/pip — rustup installs (7b962d4, a69e347), agent tools answer through the relay (06dbd6b). Starts by itself at boot (f39ce23); real reboot test still pending |
-| I. Own VM | Done | Docker on demand; `docker-vm status/stop` and a notification (df0f0da) |
-| J. Linux in an app sandbox (no root) | Rest of stage 3: lua, libzip, scanners and protocols, then aquamarine and Hyprland 0.56.2 with D's patches | C/C++ support stack built for HarmonyOS musl: glib/gio, cairo, pango, harfbuzz, freetype, fontconfig, re2/abseil and more (306ba3b) |
+| B. Oseasy VM | Fallback being built: the image goes inside the ISO, so each "再次安装" boots a fresh system in 1–2 min with no shared folder and no network push. Persistence needs either Oseasy's support for Linux guests or speaking its guest-agent protocol (decision pending) | **Oseasy's shared folder can't be read by a plain Linux guest**: its virtiofsd answers ENODEV from the first OPENDIR (guest: "virtio-fs: response too short"), so the root-image-on-the-share plan (1db5beb) doesn't work. With "再次安装" wiping the disk, the VM has no persistent storage today. Vendor request updated (01055d5) |
+| C. 鸿融 VM | Internal only: live test of the base image's first boot | Base image built (3f96a8a): tty1 asks for a password (no default one), installs Omarchy over TUNA, sets up the agent tools, installs 鸿融's guest agent, reboots. Internal brief for the 鸿融 team (da54407) |
+| D. Native | — | **Fixed what Yao found by hand**: right Alt works as Super since HarmonyOS keeps Super for its Start menu (f6ab403, checked 55d9d28); keys no longer stick (1744727); Chromium's testufo now 118 fps at 120 Hz instead of 60–73 — the headless backend reported refresh 0 (e5416df, f33e092); touchpad and three-finger swipes (f82c550, 40f9b2a); HarmonyOS desktop cleaned up to one "Omarchy (native)" icon |
+| I. Own VM | Done | Docker on demand |
+| J. Linux in an app sandbox (no root) | Going on the device: combined HAP (77 MB) with `--pb jl true` | **Hyprland 0.56.2 built for HarmonyOS musl** (845dc1b) and relinked as `libhyprland.so` loaded with dlopen inside D's display app (8d30450), with headless output, a minimal config and xkb data (06fffca); the app is its own GPU broker (15560ff). Libraries that could clash with HarmonyOS's own are renamed `*_ohm` |
 
-The D and J sessions continue on another account after the first one hit its usage limit.
+The README is now organised as a tree of routes (8f1368e). GPL source bundles are wired into the release script (58e6858).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

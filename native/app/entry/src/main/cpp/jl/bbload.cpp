@@ -26,7 +26,10 @@
 static const char *LIBDIR = "/data/storage/el1/bundle/libs/arm64";
 static const char *BB = "/data/storage/el1/bundle/libs/arm64/libbusybox.so";
 static const char *HY = "/data/storage/el1/bundle/libs/arm64/libhyprland.so";
-static const char *RUNDIR = "/data/storage/el2/base/files/run";          // XDG_RUNTIME_DIR (0700)
+// Short XDG_RUNTIME_DIR: Hyprland's socket is $XDG_RUNTIME_DIR/hypr/<~61-char sig>/.socket2.sock,
+// and the sun_path limit is 108. files/run (…/base/files/run, 32) overflows ("Socket2 path is too
+// long, IPC will not work" -> no hyprctl -> no output). base/r (24) -> worst case 105, fits.
+static const char *RUNDIR = "/data/storage/el2/base/r";            // XDG_RUNTIME_DIR (0700)
 static const char *VTEST_SOCK = "/data/storage/el2/base/files/vtest.sock"; // app's in-proc vtest
 static int   g_sock = -1;      // app end of the socketpair
 static pid_t g_spawner = -1;

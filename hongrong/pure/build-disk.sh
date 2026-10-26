@@ -16,9 +16,13 @@
 # Environment: DISK_GIB, ESP_MIB, CMDLINE; EDID (default hongrong/edid/
 # omarchy-120.bin, empty for none): an EDID with a 2160x1440@120 mode for the
 # virtio-gpu output, loaded with drm.edid_firmware (see hongrong/edid);
-# EXTRA_PKGS (default "mesa-utils glmark2", the GPU checks in guest/gfx.sh).
-# The EDID and EXTRA_PKGS steps were added 2026-10-26 and have not been run
-# in a full build yet; the same steps done by hand in a running VM worked.
+# EXTRA_PKGS (default "mesa-utils glmark2", the GPU checks in guest/gfx.sh);
+# VM_TOOLS: 鸿融's entry.hap (or its vm_tools_*.iso, or the vm-agent .deb)
+# copied into the build environment, for its guest agent (install-vm-agent.sh);
+# empty: no agent, and 鸿融 then shows the running VM as 已关机.
+# The EDID and EXTRA_PKGS steps were added 2026-10-25 and VM_TOOLS on
+# 2026-10-25; none has been run in a full build yet. The EDID and packages
+# done by hand in a running VM worked; the agent has not been tried at all.
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
@@ -28,10 +32,11 @@ disk_gib=${DISK_GIB:-64} esp_mib=${ESP_MIB:-512}
 cmdline=${CMDLINE:-"rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200"}
 edid=${EDID-$here/edid/omarchy-120.bin}
 extra_pkgs=${EXTRA_PKGS-mesa-utils glmark2}
+vm_tools=${VM_TOOLS:-}
 [ -z "$edid" ] || cmdline="$cmdline drm.edid_firmware=Virtual-1:edid/$(basename "$edid")"
 R=$W/root
 
-pacman -S --needed --noconfirm mtools dosfstools e2fsprogs grub >/dev/null
+pacman -S --needed --noconfirm mtools dosfstools e2fsprogs grub libarchive >/dev/null
 mkdir -p "$W" "$R"
 chroot_up() {
   # / must be a mount point in the chroot, or pacman cannot check free space
@@ -124,6 +129,8 @@ sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/
 in_root bash /root/hongrong/20-install-omarchy.sh "$user"
 rm -rf "$R/root/hongrong"
 [ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
+if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
+else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
 # virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
 if [ -n "$edid" ]; then
   install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/$(basename "$edid")"

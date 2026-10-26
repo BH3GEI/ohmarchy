@@ -377,6 +377,21 @@ Repro: import or start any Linux guest without 鸿融's agent (Omarchy has
 none; the agent's postinst handles only UOS and Kylin), let it reach the
 login screen, open 鸿融's VM page.
 
+Fix in progress: put the agent into the image.
+[install-vm-agent.sh](../hongrong/pure/install-vm-agent.sh) takes the
+`vm-agent` package from the installed 鸿融 (`entry.hap` →
+`resources/rawfile/vm_tools_1.1.1.103.iso` → `虚拟机增强服务.deb`) and installs
+only `/opt/vm-agent` (`agent_service`, glibc/aarch64, with its bundled
+protobuf, abseil, cJSON and securec; everything else it needs is in Arch) and
+its systemd unit. It leaves out the package's Mesa 19.2.6, dkms drivers and
+desktop tools. build-disk.sh runs it when `VM_TOOLS` points at a copy of
+`entry.hap`. The agent is a vsock server on guest port 3300 that 鸿融's
+vm_manager connects to; that needs the ITS patch, which this kernel has. Not
+tried in a VM yet. Expected from the 2026-10-23 run on deepin: on its first
+connection 鸿融 shuts the VM down and starts it again, and the agent rewrites
+`logind.conf`, masks the sleep targets and adds a DHCP NetworkManager profile
+for `enp0s6`, which must not replace the static `lan` profile.
+
 Workaround: shut the VM down from inside the guest (Omarchy: Super+Esc →
 Shutdown, or `systemctl poweroff`); 鸿融 then shows 已关机 and the VM can be
 started again with 开机. Use 更多 → 强制关机 only when the guest does not

@@ -78,19 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 08:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 09:28 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Installing the new image and checking the picture, the disk growing to full size, the first-login password and sudo | **The black screen had two causes.** (1) A race in our `vmwgfx-oseasy` driver: the HVM poll timer started before `vmw_kms_init`, and the flip watchdog walked a CRTC list that wasn't set up yet, so the driver crashed whenever it loaded early. Fixed with a ready flag; the watchdog stays on (36cfb9d). (2) With the crash gone the screen was still black: turning off plymouth did not help, so the next suspect is SDDM. The trimmed image that showed a picture this afternoon starts Hyprland from a tty1 auto-login, and the new image now does the same |
-| C. 鸿融 / public image | Packing the new image (12 GiB, grows to the whole disk at first boot) | No kms or plymouth in the initramfs, so vmwgfx loads after the root switch while 鸿融's virtio-gpu still loads early (069d660); tty1 auto-login and uwsm instead of SDDM (07af297). In 鸿融 this means no login screen: the desktop comes up directly, and the first boot opens the full-screen password prompt |
+| B. OSEasy | Installing the next image, screenshots within 30–60 s of boot, then the password, sudo and disk checks; then the operator manual and the hand-off to the release | **The picture works.** With the patched `vmwgfx-oseasy` module (watchdog on) the desktop comes up. The "dark, frozen" screen in earlier checks was Omarchy's idle screensaver and display power-off (150 s), not a display fault: one key press brought back the first-login terminal. The other suspect was a crash log line that turned out to come from an earlier boot (the console log keeps every boot). The installer is back to the clean public settings (f07ab95) |
+| C. 鸿融 / public image | Packing the image with the first-login changes | First login (af58c58): the machine stays awake until the password is set, then Omarchy's defaults return (screensaver after 150 s, lock with the new password). The prompt is full screen at 22 pt with a bold centred "请设置密码 / Set your password" and the rules below it |
 | D. Native | — | — |
-| I. Own VM | Removing Docker's limits; waiting for the hypervisor to be free for the x86 and memory tests | Done: `docker` names the app that blocks it and sends a HarmonyOS notification (4303a96) |
+| I. Own VM | Waiting for the hypervisor to be free for the x86 and memory tests | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
-
-Release: the GPL source run keeps each archive's provenance line when it is rerun (14a5648).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

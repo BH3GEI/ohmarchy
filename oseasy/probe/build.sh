@@ -45,7 +45,7 @@ cp -a "$M"/modules.order "$M"/modules.builtin* "$R/lib/modules/$kver/"
     kernel/drivers/block/virtio_blk.ko* kernel/drivers/input kernel/drivers/hid \
     kernel/drivers/usb kernel/fs/fat kernel/fs/nls kernel/lib \
     kernel/drivers/scsi/scsi_mod.ko* kernel/drivers/scsi/sr_mod.ko* \
-    kernel/drivers/cdrom kernel/fs/isofs \
+    kernel/drivers/cdrom kernel/fs/isofs kernel/fs/fuse \
     "$R/lib/modules/$kver/" 2>/dev/null || true)
 cp -a "$M/updates" "$R/lib/modules/$kver/"
 # only the patched vmwgfx: the kernel's own autoload would otherwise pick the in-tree one

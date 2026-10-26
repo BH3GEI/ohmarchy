@@ -38,12 +38,15 @@ fi
 
 case " $cmd " in
 *" probe.install=1 "*)
-    # Get a zstd-compressed raw disk image and write it to /dev/vda. Prefer one
-    # embedded in this boot ISO (no host, no network, no root): the same ISO
-    # Oseasy boots is attached as a CD, so mount it and read the image. Fall back
-    # to a host push on tcp/5003 (oseasy/push-disk.sh) when the ISO has none.
+    # Get a zstd-compressed raw disk image and write it to /dev/vda, all without a
+    # host or root. Look for omarchy-pure.img.zst in three places, in order:
+    #   1. embedded in this boot ISO (the same ISO Oseasy attaches as a CD) -- one
+    #      download, but makes the ISO image-sized;
+    #   2. Oseasy's virtiofs share (tag shared_dir = HarmonyOS 文件管理器/Documents):
+    #      the user drops the image there with the file manager, ISO stays small;
+    #   3. a host push on tcp/5003 (oseasy/push-disk.sh), for development.
     modprobe virtio_blk 2>/dev/null
-    for m in usb_storage uas sr_mod isofs; do modprobe "$m" 2>/dev/null; done
+    for m in usb_storage uas sr_mod isofs virtiofs; do modprobe "$m" 2>/dev/null; done
     sleep 1
     imgzst=
     i=0; while [ $i -lt 10 ] && [ -z "$imgzst" ]; do
@@ -56,11 +59,20 @@ case " $cmd " in
         done
         [ -z "$imgzst" ] && { sleep 1; i=$((i+1)); }
     done
+    if [ -z "$imgzst" ]; then
+        mkdir -p /shared
+        if mount -t virtiofs shared_dir /shared 2>/dev/null; then
+            for f in /shared/omarchy-pure.img.zst /shared/Download/omarchy-pure.img.zst; do
+                [ -f "$f" ] && { imgzst=$f; break; }
+            done
+            [ -n "$imgzst" ] && log "install: found image on the shared folder: $imgzst"
+        fi
+    fi
     if [ -n "$imgzst" ]; then
         log "install: writing /dev/vda from $imgzst (embedded in the ISO)"
         zstd -dc "$imgzst" | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     else
-        log "install: no image in the ISO; waiting for a disk image on tcp/5003, writing /dev/vda"
+        log "install: no image on CD or shared folder; waiting for one on tcp/5003, writing /dev/vda"
         # busybox nc -l does not exit when the sender closes (and -w also bounds the wait
         # for the connection): a watchdog ends it once dd has seen no input for 20 s
         ( last=-1; while sleep 10; do

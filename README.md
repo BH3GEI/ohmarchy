@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 04:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 05:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | First boot moves to the desktop: auto-login once, a terminal pops up and asks for the new password, then auto-login is removed. Then the fullscreen test | **The new install ISO works up to first boot**: the fixed default entry boots the installer, the full image is read from the disc and written to the disk (64 GiB in 231 s, about 4 min in total with `zstd --long=31`, 6077fcd), then it reboots into Omarchy. **Blocker found**: once vmwgfx takes over the display, the text console on tty1 stops updating, so the first-boot password prompt can't be seen |
-| C. 鸿融 / public image | Rebuilding with qemu removed as well (qemu-user-static-binfmt had pulled it back in) and with the graphical first boot | **鸿融 started its VM by itself** when its main page was brought up: "自动启动虚拟机" is on in 鸿融's settings. Check 5b in the operator manual: both that switch and "闲置自动暂停" must be off before the demo (c6693c3). 鸿融 1.1.1.103 holds only one VM, so the demo will swap the Omarchy disk in and restore the main disk afterwards |
-| D. Native | Waiting for the second real reboot (after the image build and B's test) | Autostart fix in place (63b0f2c), not yet verified by a reboot |
+| B. OSEasy | Building the public install ISO from the final image as soon as its compression finishes | **No fullscreen in OSEasy**: OSEasy opens the Linux VM as a fixed-size floating window (window mode 102), hides the maximize button and turns off drag-to-resize. Four drags on the edges and corners changed nothing. The device itself supports fullscreen (it reports `2in1`; the system's own windows are fullscreen), so this goes to the vendor request. Inside the window the picture is 1:1 and sharp, and Hyprland reports 2100x1511 at 120 Hz. Release notes updated (45071d5). A new VM was created right after the previous one stopped, with no "another VM is running" refusal (53c8155) |
+| C. 鸿融 / public image | Final compression (`zstd -22 --long=31`) | **First boot moved to the desktop** (be4aaf9): SDDM logs in once, a full-screen terminal asks for the new password, then the helper and its sudo rule are removed; auto-login stays and the password is for sudo. qemu is gone from the image. No password hash in `/etc/shadow`. Compressed size so far about 1.79 GB, still finishing |
+| D. Native | Waiting for the second real reboot | Autostart fix in place (63b0f2c), not yet verified by a reboot |
 | I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 
-Release: the GPL source script now falls back to the upstream tarball when a git tag can't be fetched (e4ca59d), takes git sources as snapshots of their pinned refs (98c6dfe), runs several workers (22f2cbe) and stops before the disk fills (894ce49). The source run for B's 806 packages is under way.
+Release: the GPL source run for the B image works from the exact package list of the final image.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

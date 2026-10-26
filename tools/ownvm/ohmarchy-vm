@@ -45,8 +45,28 @@ SVDIR=/system/bin/virt_service/vm_engine/stratovirt
 pidf=$D/stratovirt.pid
 # ours only: the recorded pid, still a StratoVirt on our disk (never by name)
 # (HongMeng's grep does not match inside the NUL-separated cmdline: tr first)
-cmdline() { { tr '\0' ' ' < /proc/$1/cmdline; } 2>/dev/null; }
-running() { [ -f $pidf ] && [ -d /proc/$(cat $pidf) ] && cmdline $(cat $pidf) | grep -q "$DISK"; }
+# On HongMeng reading /proc/<pid>/cmdline of a process that is exiting can block
+# for good, even after the process is gone (2026-10-27: VM pid 35045, the idle
+# stop hung in running() and the docker gate with it), and such a read may not
+# even die on SIGKILL, so nothing may wait for it: procread runs the read in the
+# background into a file, waits at most 3 s and otherwise leaves it behind.
+# kill -0 first: a process that is gone is not read at all.
+procread() {  # PID FILE(stat|cmdline|status)
+  kill -0 $1 2>/dev/null || return 1
+  local o=$D/.procread.$$ i=0
+  rm -f $o $o.ok
+  ( tr '\0' ' ' < /proc/$1/$2 > $o 2>/dev/null && : > $o.ok ) < /dev/null > /dev/null 2>&1 &
+  while [ ! -f $o.ok ] && [ $i -lt 6 ]; do sleep 0.5; i=$((i+1)); done
+  [ -f $o.ok ] && cat $o; local r=$?; rm -f $o $o.ok; return $r
+}
+# exiting (Z/X) or unreadable counts as gone
+cmdline() {
+  case $(procread $1 stat | awk '{print $3}') in
+  ''|Z|X) return 1 ;;
+  esac
+  procread $1 cmdline
+}
+running() { [ -f $pidf ] && cmdline $(cat $pidf) | grep -q "$DISK"; }
 # ssh comes from route D's Arch root (archtest) until the host has its own
 AR=/proc/$(cat /data/local/archtest/session.pid 2>/dev/null)/root
 SSH() {
@@ -208,7 +228,7 @@ status() {
     echo "guest: no ssh"
   fi
   echo "balloon: $(qmp '{"execute":"query-balloon"}')"
-  echo "host RSS of the VM: $(awk '/VmRSS/{print $2/1024 " MiB"}' /proc/$(cat $pidf)/status)"
+  echo "host RSS of the VM: $(procread $(cat $pidf) status | awk '/VmRSS/{print $2/1024 " MiB"}')"
 }
 
 case "$1" in

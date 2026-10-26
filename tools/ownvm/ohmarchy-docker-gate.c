@@ -10,7 +10,8 @@
 // runs in the guest. A peer can do nothing but talk to that dockerd.
 // Idle: when the gate started the VM, no connection has been open for --idle-s
 // seconds and no container runs, `ohmarchy-vm stop`. A VM started by hand is
-// never stopped. While another VM runs (HMV runs one at a time: 鸿融, OSEasy)
+// never stopped. The stop runs beside the gate (hard timeout), and connections
+// that come meanwhile wait and then start the VM again. While another VM runs (HMV runs one at a time: 鸿融, OSEasy)
 // the gate does not try, and the client gets an HTTP 503 that docker prints as
 // "Error response from daemon: <the reason, in Chinese for the user>".
 // --ctl PATH: a second socket, same peer check, one line per connection:
@@ -79,7 +80,23 @@ static int sh(const char *cmd, char *out, size_t outlen)
     return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
 }
 
-static int vm_running(void) { return sh("sh " VM " running", NULL, 0) == 0; }
+static int vm_running(void) { return sh("timeout -s KILL 15 sh " VM " running", NULL, 0) == 0; }
+
+/* The stop runs in a child (with a hard timeout: on HongMeng a read of an exited
+ * process's /proc entry once blocked it for good, 2026-10-27) while the gate
+ * keeps accepting; connections that come meanwhile wait in `pending` and are
+ * served (the VM started again) once the stop is over. */
+#define STOP_S 150
+static pid_t start_stop(void)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        dup2(open("/dev/null", 0), 0);
+        execl("/system/bin/sh", "sh", "-c", "timeout -s KILL 150 sh " VM " stop", (char *)NULL);
+        _exit(127);
+    }
+    return pid > 0 ? pid : 0;
+}
 
 /* docker's output must not go straight into the ssh channel on this host
  * (it can hang there for good: docs/demo.md), hence the redirects and pipes */
@@ -249,14 +266,27 @@ int main(int argc, char **argv)
     printf("gate on %s for uid %ld, idle stop after %ld s%s%s\n", argv[1], uid, idle_s,
            ctl ? ", control on " : "", ctl ? ctl : "");
 
-    int ours = 0, active = 0;
+    int ours = 0, active = 0, pending[32], npending = 0;
+    pid_t stopping = 0;
+    time_t stop_started = 0;
     time_t last_used = time(NULL), last_fail = 0, last_check = 0, last_refused = 0;
     for (;;) {
         struct pollfd p[2] = {{ls, POLLIN, 0}, {cs, POLLIN, 0}};
-        int r = poll(p, cs >= 0 ? 2 : 1, 5000);
-        while (waitpid(-1, NULL, WNOHANG) > 0)
-            if (--active == 0)
+        int r = poll(p, cs >= 0 ? 2 : 1, stopping ? 500 : 5000); /* the end of a stop is seen by polling */
+        pid_t w;
+        while ((w = waitpid(-1, NULL, WNOHANG)) > 0) {
+            if (w == stopping) {
+                say("%s", vm_running() ? "stop over, but the VM still runs" : "VM stopped");
+                stopping = 0;
+            } else if (--active == 0) {
                 last_used = time(NULL);
+            }
+        }
+        if (stopping && time(NULL) - stop_started > STOP_S + 15) { /* timeout itself stuck */
+            say("%s", "stop did not end: giving up on it");
+            kill(stopping, SIGKILL);
+            stopping = 0;
+        }
         if (r < 0 && errno != EINTR) {
             perror("poll");
             return 1;
@@ -274,7 +304,9 @@ int main(int argc, char **argv)
             int up = vm_running();
             if (!up)
                 ours = 0;
-            if (strcmp(line, "running") == 0) { /* cheap, for menu conditions */
+            if (stopping && strcmp(line, "running") != 0) {
+                reply(fd, 0, "Docker 虚拟机正在关闭，下次用 docker 时会重新启动");
+            } else if (strcmp(line, "running") == 0) { /* cheap, for menu conditions */
                 reply(fd, up ? 0 : 1, up ? "running" : "stopped");
             } else if (strcmp(line, "status") == 0) {
                 char t[256];
@@ -310,19 +342,33 @@ int main(int argc, char **argv)
                     reply(fd, 1, t);
                 } else {
                     say("stop asked by %s", "docker-vm");
-                    int ok = sh("sh " VM " stop", NULL, 0) == 0 && !vm_running();
+                    if (!stopping)
+                        stopping = start_stop(), stop_started = time(NULL);
                     ours = 0;
-                    reply(fd, ok ? 0 : 1, ok ? "Docker 虚拟机已关闭，现在可以开鸿融或 OSEasy 的虚拟机" : "关闭失败，见 /data/local/kaidashi/ownvm/svc/gate.log");
+                    reply(fd, stopping ? 0 : 1, stopping ? "正在关闭 Docker 虚拟机（约 10 秒），之后可以开鸿融或 OSEasy 的虚拟机"
+                                                         : "关闭失败，见 /data/local/kaidashi/ownvm/svc/gate.log");
                 }
             } else {
                 reply(fd, 1, "usage: running | status | stop");
             }
             continue;
         }
+        int fd = -1;
         if (r > 0 && (p[0].revents & POLLIN)) {
-            int fd = accept_from(ls, uid);
-            if (fd < 0)
-                continue;
+            fd = accept_from(ls, uid);
+            if (fd >= 0 && (stopping || npending > 0)) {
+                if (npending < (int)(sizeof(pending) / sizeof(pending[0])))
+                    pending[npending++] = fd;
+                else
+                    refuse(fd, "后台 Docker 虚拟机正在关闭，请稍后再试");
+                fd = -1;
+            }
+        }
+        if (fd < 0 && !stopping && npending > 0) {
+            fd = pending[0];
+            memmove(pending, pending + 1, --npending * sizeof(pending[0]));
+        }
+        if (fd >= 0) {
             last_used = time(NULL);
             if (!vm_running()) {
                 ours = 0;
@@ -380,7 +426,7 @@ int main(int argc, char **argv)
         /* idle: checked every 10 s once the idle time is up (each check asks the
          * guest for its running containers) */
         time_t now = time(NULL);
-        if (ours && active == 0 && now - last_used >= idle_s && now - last_check >= 10) {
+        if (ours && !stopping && active == 0 && npending == 0 && now - last_used >= idle_s && now - last_check >= 10) {
             last_check = now;
             if (!vm_running()) {
                 ours = 0;
@@ -393,7 +439,8 @@ int main(int argc, char **argv)
                 continue;
             }
             say("idle for %s, stopping the VM", "a while");
-            sh("sh " VM " stop", NULL, 0);
+            stopping = start_stop();
+            stop_started = now;
             ours = 0;
         }
     }

@@ -811,5 +811,9 @@ docs/
 
 ## License
 
-`driver/` is derived from the Linux kernel and is GPL-2.0. Upstream projects used by the
-scripts keep their own licenses.
+[MIT](LICENSE) for this repository's scripts, tools, app code and documentation.
+Code derived from the Linux kernel is [GPL-2.0](LICENSES/GPL-2.0.txt): `driver/` (each
+file keeps its SPDX identifier; upstream vmwgfx files are "GPL-2.0 OR MIT") and every
+kernel patch here. Upstream projects that the scripts download or patch keep their own
+licenses. Released disk images contain GPL software; their sources are published with
+each release.

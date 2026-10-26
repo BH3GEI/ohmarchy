@@ -387,4 +387,4 @@ docs/
 
 ## 许可
 
-`driver/` 派生自 Linux 内核，采用 GPL-2.0。脚本用到的上游项目保留各自的许可。
+本仓库的脚本、工具、app 代码和文档用 [MIT](LICENSE)。从 Linux 内核衍生出来的代码用 [GPL-2.0](LICENSES/GPL-2.0.txt)：包括 `driver/`（每个文件保留自己的 SPDX 标识，上游 vmwgfx 的文件是"GPL-2.0 OR MIT"）和仓库里所有的内核补丁。脚本下载或打补丁的上游项目沿用各自的许可。发布的磁盘镜像里包含 GPL 软件，对应的源码会随每个 release 一起发布。

@@ -19,6 +19,10 @@ hl.monitor({
 -- the swapchain on the app's present path; until that is found, full frames.
 hl.config({ debug = { damage_tracking = 1 } })
 
+-- Three-finger touchpad swipes switch workspaces (the display app forwards them;
+-- Omarchy ships this gesture commented out in input.lua).
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+
 -- Route D's replacements for a few Omarchy commands (/opt/ohmarchy/overrides, e.g.
 -- omarchy-launch-webapp: web apps in Firefox, which can sandbox itself here).
 -- Omarchy puts its own bin directory first in the apps' PATH; this goes before it.

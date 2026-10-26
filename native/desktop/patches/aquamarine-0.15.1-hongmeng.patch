@@ -488,7 +488,7 @@ index 179b850..46cf05e 100644
  }
  
  int Aquamarine::CHeadlessBackend::drmFD() {
-@@ -151,7 +300,73 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
+@@ -151,7 +300,82 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
  }
  
  void Aquamarine::CHeadlessBackend::onReady() {
@@ -553,6 +553,15 @@ index 179b850..46cf05e 100644
 +                                                                     .source = IPointer::AQ_POINTER_AXIS_SOURCE_FINGER,
 +                                                                     .delta  = 0});
 +                exportPointer->events.frame.emit();
++                break;
++            case 7: // swipe begin: fingers
++                exportPointer->events.swipeBegin.emit(IPointer::SSwipeBeginEvent{.timeMs = t, .fingers = (uint32_t)ev.a});
++                break;
++            case 8: // swipe update: dx, dy in 1/100 px, fingers
++                exportPointer->events.swipeUpdate.emit(IPointer::SSwipeUpdateEvent{.timeMs = t, .fingers = (uint32_t)ev.c, .delta = {ev.a / 100.0, ev.b / 100.0}});
++                break;
++            case 9: // swipe end: cancelled
++                exportPointer->events.swipeEnd.emit(IPointer::SSwipeEndEvent{.timeMs = t, .cancelled = ev.a != 0});
 +                break;
 +            case 4: // key (evdev KEY_* code), pressed
 +                exportKeyboard->events.key.emit(IKeyboard::SKeyEvent{.timeMs = t, .key = (uint32_t)ev.a, .pressed = ev.b != 0});

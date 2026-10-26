@@ -164,6 +164,7 @@ void SendKey(uint32_t keysym, bool down)
 //   3 scroll axis (0 vertical, 1 horizontal), steps  4 key (evdev KEY_*), pressed
 //   5 smooth scroll (touchpad): axis, delta in 1/100 px, source (1 finger)
 //   6 scroll stop (touchpad fingers lifted): axis
+//   7 swipe begin: fingers  8 swipe update: dx, dy in 1/100 px, fingers  9 swipe end: cancelled
 bool SendExportInput(int32_t type, int32_t a, int32_t b, int32_t c = 0)
 {
     int fd = g_exportSock.load();
@@ -1150,6 +1151,35 @@ napi_value GetStatus(napi_env env, napi_callback_info)
 
 // The page in front or not (Index.ets onPageShow/onPageHide): desktop starts are
 // asked for only while the user looks at the app.
+// Multi-finger touchpad swipes, from the page's PanGesture (the native touch and axis
+// callbacks don't see them): swipe(phase 0 begin / 1 update / 2 end / 3 cancel,
+// dx, dy in px since the last call, fingers). Hyprland's gestures act on them.
+napi_value Swipe(napi_env env, napi_callback_info info)
+{
+    size_t argc = 4;
+    napi_value argv[4] = {nullptr};
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    int32_t phase = 0, fingers = 3;
+    double dx = 0, dy = 0;
+    if (argc < 4 || napi_get_value_int32(env, argv[0], &phase) != napi_ok ||
+        napi_get_value_double(env, argv[1], &dx) != napi_ok || napi_get_value_double(env, argv[2], &dy) != napi_ok ||
+        napi_get_value_int32(env, argv[3], &fingers) != napi_ok) {
+        return nullptr;
+    }
+    if (InputLog()) {
+        LOGI("input swipe phase %{public}d fingers %{public}d dx %{public}.1f dy %{public}.1f", phase, fingers, dx, dy);
+    }
+    if (!g_frameMode) {
+        return nullptr;
+    }
+    switch (phase) {
+        case 0: SendExportInput(7, fingers, 0); break;
+        case 1: SendExportInput(8, static_cast<int32_t>(dx * 100), static_cast<int32_t>(dy * 100), fingers); break;
+        default: SendExportInput(9, phase == 3 ? 1 : 0, 0); break;
+    }
+    return nullptr;
+}
+
 napi_value SetForeground(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -1171,6 +1201,7 @@ napi_value Init(napi_env env, napi_value exports)
     napi_property_descriptor desc[] = {
         {"getStatus", nullptr, GetStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setForeground", nullptr, SetForeground, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"swipe", nullptr, Swipe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

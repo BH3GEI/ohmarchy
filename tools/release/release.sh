@@ -53,7 +53,7 @@ if [ -n "${PKG_SOURCES:-}" ] && [ "${HOST_UPLOAD:-0}" != 1 ]; then
 fi
 gate=
 [ -n "${PKG_SOURCES:-}" ] || gate="no PKG_SOURCES (gpl-sources.sh) given"
-[ -z "${PKG_SOURCES:-}" ] || [ ! -s "$PKG_SOURCES/MISSING.txt" ] || gate="$(wc -l < "$PKG_SOURCES/MISSING.txt") packages without source ($PKG_SOURCES/MISSING.txt)"
+[ -z "${PKG_SOURCES:-}" ] || [ ! -s "$PKG_SOURCES/MISSING.txt" ] || gate="$(wc -l < "$PKG_SOURCES/MISSING.txt" | tr -d ' ') packages without source (MISSING.txt)"
 [ -z "$gate" ] || echo "release.sh: $gate; the draft says so and must not be published before it is fixed" >&2
 
 echo "== assets"

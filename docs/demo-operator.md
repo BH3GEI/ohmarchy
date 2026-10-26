@@ -67,11 +67,11 @@ doesn't touch them.
 
 | # | Do | Expect on screen | Wait | Say |
 |---|---|---|---|---|
-| 1.1 | Tap **"Omarchy (native)"** in the HarmonyOS dock | first a window saying what it waits for, then the Omarchy wallpaper and top bar | about 10 s | "This isn't a VM. Arch Linux programs run directly on the HarmonyOS kernel, and the desktop is drawn into an ordinary HarmonyOS app window." |
+| 1.1 | Double-click **"Omarchy (native)"** on the HarmonyOS desktop (it is in the dock only while it runs) | first a window saying what it waits for, then the Omarchy wallpaper and top bar | about 10 s | "This isn't a VM. Arch Linux programs run directly on the HarmonyOS kernel, and the desktop is drawn into an ordinary HarmonyOS app window." |
 | 1.2 | Click **maximize** on the window's title bar | the desktop fills the screen | 1 s | |
-| 1.3 | **Super+Return**, type `fastfetch`, Enter | a terminal; fastfetch shows Arch Linux ARM, the HongMeng kernel, Hyprland | 10 s | "Look at the kernel line: HongMeng, HarmonyOS's own kernel. The programs are Arch's own binaries, unchanged." |
-| 1.4 | **Super+2**, then **Super+1**, a few times | workspaces slide back and forth smoothly | 10 s | "This is 120 Hz, drawn by the Maleoon GPU; measured at 119 fps." |
-| 1.5 | **Super+Shift+B** | Firefox opens next to the terminal; open omarchy.org | 15 s | "The browser is Firefox, with its sandbox." |
+| 1.3 | **Super+Return**, type `fastfetch`, Enter | a terminal; fastfetch shows Arch Linux ARM, the HongMeng kernel, Hyprland | 10 s | "Look at the kernel line: HongMeng, HarmonyOS's own kernel. The programs are Arch's own binaries, unchanged." (Its GPU line says llvmpipe: that is the terminal drawing itself on the CPU; the desktop is composited on the GPU) |
+| 1.4 | **Super+2**, then **Super+1**, a few times | workspaces slide back and forth smoothly | 10 s | "This is 120 Hz, drawn by the Maleoon GPU; measured at 110–119 fps." |
+| 1.5 | **Super+Shift+B** | Firefox opens next to the terminal (a fresh window, never "Restore Session"); open omarchy.org. A first-run tip may show: click "Okay, Got It" | 15 s | "The browser is Firefox, with its sandbox." |
 | 1.6 | **Super+Space** for the Omarchy menu, glance, **Esc** | the Omarchy menu appears and closes | 5 s | "That's Omarchy's own menu, unchanged." |
 | 1.7 | **Super+Shift+F** | Files (Nautilus) on the home directory | 5 s | |
 | 1.8 | Click back into the terminal, type `docker run --rm hello-world`, Enter | a pause (the background VM is starting), then **"Hello from Docker!"** | **first run about 15–20 s**, don't panic | "The HarmonyOS kernel can't run containers, so Docker borrows a small background VM that starts when it's used and stops after 3 idle minutes. I didn't type any root command." |
@@ -91,9 +91,10 @@ doesn't touch them.
   VM stops by itself. **Don't type any other `docker` command meanwhile**: each one
   restarts the idle timer.
 
-Note: steps 1.3–1.7 by hand have not been rehearsed (the rehearsal script sent
-the commands through Hyprland). In part 1 every "Super" is **right Alt**: the
-Windows key opens HarmonyOS's start menu (click back into the desktop to close it).
+Rehearsed 2026-10-26 on ohdev with keys injected through HarmonyOS's input
+service (right Alt as Super): 1.1–1.7 all as described; the desktop was up about
+10 s after the double-click. In part 1 every "Super" is **right Alt**: the Windows
+key opens HarmonyOS's start menu (click back into the desktop to close it).
 
 ### Part 1: if this happens, do this
 

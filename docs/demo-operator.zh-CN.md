@@ -51,11 +51,11 @@
 
 | # | 手上做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
 |---|---|---|---|---|
-| 1.1 | 在鸿蒙 Dock 上点 **"Omarchy (native)"** | 先是一个写着"在等什么"的窗口，然后出现 Omarchy 壁纸和顶栏 | 约 10 秒 | "这不是虚拟机。Arch Linux 的程序直接跑在鸿蒙内核上，桌面画在一个普通的鸿蒙 app 窗口里。" |
+| 1.1 | 在鸿蒙桌面上**双击** **"Omarchy (native)"** 图标（app 没开时 Dock 里没有它） | 先是一个写着"在等什么"的窗口，然后出现 Omarchy 壁纸和顶栏 | 约 10 秒 | "这不是虚拟机。Arch Linux 的程序直接跑在鸿蒙内核上，桌面画在一个普通的鸿蒙 app 窗口里。" |
 | 1.2 | 点窗口标题栏上的**最大化** | 桌面铺满屏幕 | 1 秒 | |
-| 1.3 | **Super+Return**，输入 `fastfetch` 回车 | 一个终端，fastfetch 显示 Arch Linux ARM、HongMeng 内核、Hyprland | 10 秒 | "看内核那一行：HongMeng，鸿蒙自己的内核。程序是 Arch 官方仓库里原样的二进制。" |
-| 1.4 | **Super+2**，再 **Super+1**，来回几次 | 工作区左右滑动，很顺 | 10 秒 | "这是 120Hz，用马良 GPU 画的，实测 119 帧。" |
-| 1.5 | **Super+Shift+B** | Firefox 在终端旁边打开。可以打开 omarchy.org | 15 秒 | "浏览器是 Firefox，带沙箱。" |
+| 1.3 | **Super+Return**，输入 `fastfetch` 回车 | 一个终端，fastfetch 显示 Arch Linux ARM、HongMeng 内核、Hyprland | 10 秒 | "看内核那一行：HongMeng，鸿蒙自己的内核。程序是 Arch 官方仓库里原样的二进制。"（GPU 那一行写的是 llvmpipe：那是终端自己用 CPU 画字，整个桌面的合成走的是 GPU） |
+| 1.4 | **Super+2**，再 **Super+1**，来回几次 | 工作区左右滑动，很顺 | 10 秒 | "这是 120Hz，用马良 GPU 画的，实测 110～119 帧。" |
+| 1.5 | **Super+Shift+B** | Firefox 在终端旁边打开（新窗口，不会再出"恢复会话"页）。可以打开 omarchy.org。第一次可能弹一个小提示，点 "Okay, Got It" | 15 秒 | "浏览器是 Firefox，带沙箱。" |
 | 1.6 | **Super+Space** 弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
 | 1.7 | **Super+Shift+F** | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
 | 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 15–20 秒**，别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，空闲 3 分钟自己关。我没敲任何 root 命令。" |
@@ -68,7 +68,7 @@
 - **方案乙（后备）**：【后台】助手执行 `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop`（约 10 秒），再用 `ssh ohdev pidof stratovirt` 确认没有输出，然后给 Yao 打个手势。
 - **方案丙（什么都不做）**：hello-world 跑完后计时 **3 分 30 秒**，到点会自动关机。**期间不要再敲任何 `docker` 命令**，每敲一次，空闲计时就会重新开始。
 
-说明：键盘操作 1.3–1.7 用手按还没彩排过（彩排脚本用的是命令）。第 1 部分里所有的 "Super" 都按**右 Alt**；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。
+说明：2026-10-26 在 ohdev 上彩排过（按键经鸿蒙的输入服务注入，右 Alt 当 Super）：1.1–1.7 全部和表里一样，双击图标后约 10 秒出桌面。第 1 部分里所有的 "Super" 都按**右 Alt**；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。
 
 ### 第 1 段：出了状况怎么办
 

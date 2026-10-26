@@ -110,6 +110,9 @@ mkdir -p "$prefix/lib"
 clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c" -ldl
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
 runuser -u "$user" -- xdg-settings set default-web-browser firefox.desktop || true
+# The desktop may stop under a running Firefox (a desktop restart): open a fresh
+# window next time, not the "Restore Session" page.
+printf '%s\n' 'pref("browser.sessionstore.resume_from_crash", false);' > /usr/lib/firefox/defaults/pref/ohmarchy.js
 # Docker: no container runtime on HongMeng; the docker CLI (Omarchy installs it)
 # talks to dockerd in route I's VM through the host's gate at /tmp, which starts
 # the VM on demand (docs/vm-own.md, tools/ownvm/ohmarchy-docker-gate.c). The key

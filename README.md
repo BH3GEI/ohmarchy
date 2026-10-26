@@ -11,6 +11,12 @@ threads, 32 GB), Maleoon 916 GPU, a 2880x1920 panel that runs at up to 120 Hz, H
 
 Headline results:
 
+- **B, Oseasy (a third-party Windows VM app).** Omarchy installs from scratch in about
+  3 minutes and gets GPU 3D through a patched `vmwgfx` driver (three fixes plus a
+  watchdog). It ran 4 h 24 min under GPU load without a fault. 60 Hz on screen.
+- **C, 鸿融 (Huawei's Linux VM app).** A ready-made Omarchy disk image with a patched
+  7.2.12 kernel imports through 鸿融's own UI. No root needed. It has virgl 3D (glmark2
+  596) and Docker. The guest renders at 120 Hz, but 鸿融 shows it at 60 Hz.
 - **D, native, no VM.** Arch Linux ARM and Omarchy 4.0.6 run as ordinary processes on the
   HongMeng kernel. Omarchy's Hyprland desktop shows in a HarmonyOS app window at 120 Hz,
   rendered on the Maleoon GPU. Workspace switching runs at 119 fps on screen, cold start
@@ -19,33 +25,57 @@ Headline results:
 - **I, our own VM as D's back end.** Docker and a full Linux kernel for the native desktop.
   A headless Omarchy VM on the system hypervisor that D's `docker` reaches over ssh.
   Since caecc94 it starts on demand when `docker` is first used. Needs root.
-- **C, 鸿融 (Huawei's Linux VM app).** A ready-made Omarchy disk image with a patched
-  7.2.12 kernel imports through 鸿融's own UI. No root needed. It has virgl 3D (glmark2
-  596) and Docker. The guest renders at 120 Hz, but 鸿融 shows it at 60 Hz.
-- **B, Oseasy (a third-party Windows VM app).** Omarchy installs from scratch in about
-  3 minutes and gets GPU 3D through a patched `vmwgfx` driver (three fixes plus a
-  watchdog). It ran 4 h 24 min under GPU load without a fault. 60 Hz on screen.
 - **Routes concluded negative.** Without root no app can use the hypervisor (Huawei keeps
   a hardcoded partner allowlist) or get executable memory (XPM). So the no-root routes
   are the two VM apps (B, C) and J, which is still being built: Linux programs compiled
   as `.so` files and signed into an app.
 
+## The routes as a tree
+
+```
+Omarchy on a HarmonyOS PC
+├─ 1. Plug and play in VM apps (no root)
+│   ├─ B  Oseasy        ★ the public release line
+│   ├─ C  鸿融           internal result (the app is not publicly released yet)
+│   └─ G  铠大师         concluded: Linux only lives in an install session
+├─ 2. Native on the HongMeng kernel (best experience)
+│   ├─ D  native desktop                root; 120 Hz; the demo lead
+│   ├─ I  own background VM             root; Docker for D
+│   └─ J  native inside an app sandbox  no root; Hyprland built, going on device
+└─ 3. Other explorations (concluded or fallback)
+    ├─ A  HarmonyOS Linux engine            terminal tools only
+    ├─ F  Aetherium on the DevEco emulator  no hardware needed; slow
+    ├─ H  Aetherium on the device           negative: no executable memory
+    ├─ K  QEMU TCI                          idea only
+    ├─ L  Linux in ArkWeb                   paused
+    └─ E  bare metal                        not started
+```
+
+Line 1 runs Omarchy inside a VM app and needs no root (Oseasy is the line for the public
+release); line 2 runs it directly on the HongMeng kernel, the best experience, but D and I
+need root until HarmonyOS opens the pieces listed in
+[For the HarmonyOS teams](#for-the-harmonyos-teams); line 3 holds everything else we tried.
+Every document is listed by the same tree in [docs/README.md](docs/README.md).
+
 ## Status at a glance
 
 | Route | What it is | Status | Best numbers | Root? | Demo? |
 |---|---|---|---|---|---|
-| **A** Linux engine apps | Omarchy's neovim setup and CLI tools in HarmonyOS's own Linux container, each in a HarmonyOS window | works with limits (terminal tools only, no Hyprland session) | | no | no |
+| **1. VM apps (no root)** | | | | | |
 | **B** Oseasy VM | the whole Omarchy OS in the Oseasy app, 7.2.12 kernel, patched `vmwgfx` | works with limits (60 Hz on screen; Oseasy forgets the VM at power-off) | install 61 s, desktop 6 s after reset; guest 120 fps, screen 60; 4 h 24 min GPU soak, 0 faults | only to push the disk during install | yes, ~3 min |
 | **C** 鸿融 VM | the whole Omarchy OS in Huawei's Linux VM app, virgl GPU | works with limits (60 Hz on screen) | import under 1 min (9.6 GB); glmark2 596; Docker; 30 min soak | no | yes, 3 min 41 s |
-| **D** Native | Arch + Omarchy in a chroot on the HongMeng kernel; Hyprland shown by a HarmonyOS app | works | 119 fps workspaces, es2gears 117-120 fps on screen; cold start ~8 s; 74/78 apps, P95 1.13 s; 24 h soak | yes | yes, ~80 s |
-| **E** Bare metal | Linux directly on the hardware | not started | | | no |
-| **F** Aetherium on the DevEco emulator | QEMU TCG in a HAP inside the HarmonyOS PC emulator on a Mac | works with limits (software only, slow) | first-boot setup 14-50 min | no (no device) | no |
 | **G** 铠大师 VM | Omarchy's disk in sanway's Windows VM app | concluded negative | 7.2.12 boots, but every VM is an install session that is deleted at power-off | no | no |
-| **H** Aetherium on the device | the route-F QEMU app on the real machine | concluded negative | QEMU aborts in `tcg_region_init` (no executable memory) | no | no |
+| **2. Native on the HongMeng kernel** | | | | | |
+| **D** Native | Arch + Omarchy in a chroot on the HongMeng kernel; Hyprland shown by a HarmonyOS app | works | 119 fps workspaces, es2gears 117-120 fps on screen; cold start ~8 s; 74/78 apps, P95 1.13 s; 24 h soak | yes | yes, ~80 s |
 | **I** Our own VM | StratoVirt on `/dev/hmv` as root, headless; Docker back end for D, started on demand | works | guest up in 5-10 s; idle ~1.2 GiB host RSS; balloon returns 3 GiB in ~6 s; demo 91 s | yes | yes, with D |
-| **J** Linux in an app sandbox | Linux programs built as `.so`, signed into the HAP, run by fork + dlopen | prototype works (busybox); Hyprland rebuild in progress | busybox `sh` inside D's display app; stage 3 of 4 | no | no |
+| **J** Linux in an app sandbox | Linux programs built as `.so`, signed into the HAP, run by fork + dlopen | prototype works (busybox); Hyprland 0.56.2 built for OHOS musl, not yet run on the device | busybox `sh` inside D's display app; Hyprland links against the self-built stack (845dc1b) | no | no |
+| **3. Other explorations** | | | | | |
+| **A** Linux engine apps | Omarchy's neovim setup and CLI tools in HarmonyOS's own Linux container, each in a HarmonyOS window | works with limits (terminal tools only, no Hyprland session) | | no | no |
+| **F** Aetherium on the DevEco emulator | QEMU TCG in a HAP inside the HarmonyOS PC emulator on a Mac | works with limits (software only, slow) | first-boot setup 14-50 min | no (no device) | no |
+| **H** Aetherium on the device | the route-F QEMU app on the real machine | concluded negative | QEMU aborts in `tcg_region_init` (no executable memory) | no | no |
 | **K** QEMU TCI | QEMU's interpreter, which needs no executable memory | not started (idea only, deprioritised) | | no | no |
 | **L** Linux in ArkWeb | v86 (x86 → wasm JIT) with Arch Linux 32 in an ArkWeb page inside a HAP | paused by decision (2026-10-25), never run on the device | desktop Chrome: root shell in ~32 s | no | no |
+| **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
 ## Progress (updated hourly; last: 2026-10-26 00:29 PDT)
@@ -65,9 +95,11 @@ The D and J sessions continue on another account after the first one hit its usa
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
-## Two directions
+## For the HarmonyOS teams
 
-The routes boil down to two lines of work.
+The routes boil down to two lines of work, and each needs something from a different team.
+
+### Line 1: what the VM apps are asked for
 
 **1. Plug and play in the VM apps (B Oseasy, C 鸿融).** A user installs a VM app from
 AppGallery and boots our image; no root. This works today. What keeps it from perfect is in
@@ -76,6 +108,20 @@ at 60 Hz; Oseasy's lifecycle is built around a Windows guest agent (no "start" b
 Linux VM; "再次安装" is being changed to boot the installed disk); 鸿融 needs its guest agent
 (增强服务) in the VM to show it as running and to shut it down. Being prepared for public
 release: no-root install, images on GitHub Releases, a user guide.
+
+- **鸿融 team** ([docs/internal/hongrong-team-brief.md](docs/internal/hongrong-team-brief.md),
+  Chinese): present a fullscreen VM at the guest's (or the panel's) 120 Hz; make the guest
+  agent (增强服务) install on any distribution, without dpkg; document the 本地文件 import
+  format (the qcow2 os_type byte); write `logind.conf` as a drop-in instead of replacing it;
+  show the real VM state and shut down through ACPI when no agent is installed; pass the
+  HMV ID-register and ITS issues on.
+- **Oseasy vendor** ([docs/oseasy-vendor-request.md](docs/oseasy-vendor-request.md),
+  Chinese): a real start/shut-down lifecycle for Linux guests (no disk wipe before
+  "再次安装"); a Linux guest agent or the published agent protocol; 120 Hz display modes;
+  a shared folder that keeps owners and permissions; optionally, importing an existing
+  disk image.
+
+### Line 2: what HarmonyOS would need to provide for native
 
 **2. Native (D, with I as its Docker backend).** The best result: 120 Hz, the Maleoon GPU
 directly, 74 of 78 apps open in under 3 s, Docker from the native terminal. It needs root.
@@ -114,24 +160,13 @@ launcher, not Omarchy's desktop. E is not started. F runs only in the emulator a
 14-50 min to its first desktop. G and H are concluded negative. J runs only busybox so
 far. K is not started. L is paused and has never run on the device.
 
-## Route A: Omarchy apps in HarmonyOS's Linux engine
+For the person at the keyboard on stage: the operator manual,
+[docs/demo-operator.md](docs/demo-operator.md) (中文:
+[docs/demo-operator.zh-CN.md](docs/demo-operator.zh-CN.md)).
 
-**How it works.** HarmonyOS PCs ship an official Linux engine (融合开发引擎): an openEuler
-container with a terminal and no GUI. A third-party launcher from AppGallery
-(融合开发图像引擎, `com.mikannqaq.developer.linuxEngine`) installs an X11 bridge into it
-and shows each Linux app as its own HarmonyOS window. The container sees the GPU as
-"Virtio-GPU Venus".
+## 1. VM apps: plug and play, no root
 
-**What was built.** `linux-engine/install-omarchy-nvim.sh` and `install-omarchy-cli.sh`
-install Omarchy's neovim configuration, plus static ARM64 builds of neovim, fastfetch,
-btop and lazygit (openEuler has no neovim package). They retry GitHub downloads through
-`gh-proxy.com` and replace Omarchy's theme symlink with a fixed theme.
-
-**Limits.** Each app is a separate HarmonyOS window, so a nested Hyprland session does not
-fit. Driving XTerm with `uitest inputText` loses the first characters after focus.
-Details: [docs/linux-engine-apps.md](docs/linux-engine-apps.md).
-
-## Route B: the whole OS in the Oseasy VM
+### Route B: the whole OS in the Oseasy VM
 
 **How it works.** Oseasy虚拟机 (`com.oseasy1.ohvm` 3.1.1.7, from AppGallery) is a
 Windows-on-ARM VM app. It has no VMM of its own. It describes the VM to the system
@@ -228,7 +263,7 @@ On the host, a root shell streams the image (`oseasy/push-disk.sh`). A reinstall
 Details: [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md) (every run, from the first on
 the Fold to the fifteenth).
 
-## Route C: the whole OS in the 鸿融 VM
+### Route C: the whole OS in the 鸿融 VM
 
 **How it works.** 鸿融 (`com.huawei.medivh`, now 1.1.1.103) is Huawei's own Linux VM app.
 It also runs StratoVirt on HMV, but Linux guests get `vhost-user-gpu-pci,virgl=true`. The
@@ -294,9 +329,24 @@ terminate-session` sent 鸿融 into a greeter loop; restarting the VM from 鸿�
 Details: [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md), and the report to
 Huawei: [docs/hmv-idreg-report.md](docs/hmv-idreg-report.md).
 
-## Route D: native on the HongMeng kernel
+### Route G: the 铠大师 VM (concluded)
 
-### The chroot
+铠大师 (`com.sanway.ecoengine` 3.5.8.14) uses the same `vm_manager` and `svga-pci` path as
+Oseasy. Its Windows 11 24H2 check reads only the WIM XML, so a 2.5 KB fake
+`sources/install.wim` (`tools/kaidashi/make-fake-wim.sh`, `wrap-iso.sh`) gets any UEFI ISO
+accepted. Secure Boot is off, and the 7.2.12 quirk kernel boots. But every VM the wizard
+starts is an **install session**. In `libvm_manager.z.so` it ends successfully only when
+铠大师's Windows guest service reports back. Otherwise a power-off or closing the window
+makes the app delete the VM. Install sessions also get a NIC with no MAC and no iothreads,
+which never receives. A persistent Omarchy VM would mean impersonating its Windows guest
+service, which is out of scope. It would offer nothing over B anyway: same device, 60 Hz.
+Closed 2026-10-24. Details: [docs/vm-kaidashi.md](docs/vm-kaidashi.md).
+
+## 2. Native on the HongMeng kernel
+
+### Route D: native on the HongMeng kernel
+
+#### The chroot
 
 The HongMeng kernel implements enough of the Linux ABI to run an unmodified Arch Linux ARM
 userland. Threads, futexes, epoll, eventfd, timerfd, signalfd, inotify, sealed memfd,
@@ -329,7 +379,7 @@ HongMeng quirks met, and the fixes in `native/`:
 | **SELinux: root's `su` domain is permissive; no transition to a narrower domain** (`/proc/self/attr/exec` refused) | the broker and session init stay in `su`; their work runs as uid 60000 where possible |
 | g++ 16.1 crashes (ICE) on aquamarine/Hyprland | build with clang |
 
-### The desktop
+#### The desktop
 
 ```
 HarmonyOS app "Omarchy (native)" (native/app)       Arch chroot (route D)
@@ -374,7 +424,7 @@ HarmonyOS app "Omarchy (native)" (native/app)       Arch chroot (route D)
   and a debug profile bound to the device's UDID (`native/app/sign/sign.sh`), installed with
   `bm install` as root.
 
-### Acceptance results ([docs/acceptance.md](docs/acceptance.md))
+#### Acceptance results ([docs/acceptance.md](docs/acceptance.md))
 
 | Item | Result |
 |---|---|
@@ -399,69 +449,7 @@ after reopening it. Screenshots read a CPU copy that is no longer filled. The bo
 Details: [docs/native-chroot.md](docs/native-chroot.md),
 [docs/native-desktop.md](docs/native-desktop.md).
 
-## Route E: bare metal
-
-Linux directly on the hardware, with no HarmonyOS underneath. Not started; nothing in the
-repo.
-
-## Route F: Aetherium on the DevEco emulator
-
-**How it works.** No HarmonyOS hardware is needed. DevEco Studio's HarmonyOS 7.0 "2in1"
-emulator runs on a Mac. Inside it, [Aetherium](https://github.com/AetheriumSimulator/qemu-hmos)
-runs QEMU 10.1 in-process with TCG (the emulator exposes no EL2) and boots the stock Omarchy
-4.0.3 disk on its own 7.2.3 kernel through Limine. The guest's screen is shown by the
-HarmonyOS VNC client RemoteDesk.
-
-**What was patched.** `emulator/lib/patch_aetherium.py` patches the pinned Aetherium HAP:
-the unconditional `-tpmdev emulator` becomes `-L`, `virtio-gpu-pci` replaces the
-legacy-MMIO virtio-gpu (which the guest rejects with status `0x83`), and the firmware is
-padded to 64 MiB. Reported upstream as issues #49-#53. `emulator/10..60` script everything,
-including the first-boot wizard over VNC, and autologin into uwsm, because SDDM's greeter is
-killed after 21 s under TCG.
-
-**Result.** The Hyprland desktop runs on llvmpipe. First-boot setup took 14 min scripted and
-50 min the first time (mkinitcpio under TCG). It proves the stack works; it is not a usable
-desktop. Details: [docs/emulator-aetherium.md](docs/emulator-aetherium.md).
-
-## Route G: the 铠大师 VM (concluded)
-
-铠大师 (`com.sanway.ecoengine` 3.5.8.14) uses the same `vm_manager` and `svga-pci` path as
-Oseasy. Its Windows 11 24H2 check reads only the WIM XML, so a 2.5 KB fake
-`sources/install.wim` (`tools/kaidashi/make-fake-wim.sh`, `wrap-iso.sh`) gets any UEFI ISO
-accepted. Secure Boot is off, and the 7.2.12 quirk kernel boots. But every VM the wizard
-starts is an **install session**. In `libvm_manager.z.so` it ends successfully only when
-铠大师's Windows guest service reports back. Otherwise a power-off or closing the window
-makes the app delete the VM. Install sessions also get a NIC with no MAC and no iothreads,
-which never receives. A persistent Omarchy VM would mean impersonating its Windows guest
-service, which is out of scope. It would offer nothing over B anyway: same device, 60 Hz.
-Closed 2026-10-24. Details: [docs/vm-kaidashi.md](docs/vm-kaidashi.md).
-
-## Route H: Aetherium on the device (concluded)
-
-The route-F app signed for the device (`device/sign-hap.sh`) and installed as root. The goals
-were a TCG baseline and an HMV accelerator. Results:
-
-- **TCG cannot start.** QEMU aborts with SIGABRT in `tcg_region_init`, at 4 vCPU/4 GB and at
-  1/2 GB alike. The HAP is not allowed writable-executable memory (confirmed directly by
-  route J's probe).
-- **No 3D and no 120 Hz in this QEMU.** `libqemu_full.so` links no virglrenderer, EGL or
-  Vulkan.
-- **HMV.** `/dev/hmv` is not KVM-compatible: every KVM ioctl returns `ENOSYS`. It uses the
-  `0xAE` magic with its own command numbers; the run loop is `hmv_join_actvpool_thread` /
-  `hmv_wait_next_vmexit` in `libhmlibs.so.0`. A root process in the `su` domain opens it,
-  and its ioctls fail with `ENOSYS`/`EINVAL`, not `EPERM`. So there is no permission gate
-  for root, only an undocumented ABI. A custom accelerator was judged feasible in principle
-  and not built: route I already runs on the system StratoVirt.
-- **The no-root VM service is closed.** A test app (`native/vmtest`) compiles against a stub
-  of `@hms:virtService.vmManager`, installs, loads the module and reaches the service, but
-  privileged calls return `201 Permission denied`. `libvm_manager.z.so` requires
-  `ohos.permission.MANAGE_VM` **and** an appIdentifier from a hardcoded list of eight
-  (Oseasy and 铠大师 are on it).
-
-Details: [docs/device-aetherium.md](docs/device-aetherium.md),
-[docs/vm-api.md](docs/vm-api.md).
-
-## Route I: our own VM on the hypervisor
+### Route I: our own VM on the hypervisor
 
 **How it works.** As root, `tools/ownvm/ohmarchy-vm` starts the system's StratoVirt on
 `/dev/hmv` with no VM app: 6 vCPUs, 8 GiB, virtio-blk, virtio-net on its own tap `ohmvm0`
@@ -512,7 +500,7 @@ the output comes back over ssh; this does not happen from D's terminal.
 
 Details: [docs/vm-own.md](docs/vm-own.md).
 
-## Route J: Linux in an app sandbox (no root)
+### Route J: Linux in an app sandbox (no root)
 
 **What the sandbox allows.** A probe HAP (`native/xpmprobe`) tested every way to run new code
 in a normal debug app:
@@ -547,17 +535,80 @@ libinput. The target is about 25-40 MiB instead of the 272 MiB of D's libraries.
 | 0 | toolchain: OHOS clang 15 is too old for C++26; upstream clang 23 + libc++ built for musl | done |
 | 1 | libffi, pixman, libdrm, libxkbcommon, wayland 1.23.1 | done (543a223) |
 | 2 | Mesa 24.3.4, virgl only, no LLVM: ~16 MiB, vtest winsys | done (c6ff963) |
-| 3 | one shared C++ runtime `libc++_ohm.so.1` (1.9 MiB, own SONAME), hyprutils 2.6 MiB, hyprlang 0.3 MiB; next the C support stack (cairo, pango, glib, fonts), then aquamarine and Hyprland with D's patches and the HongMeng shims built in | in progress (3da87ce, 6065767) |
+| 3 | one shared C++ runtime `libc++_ohm.so.1` (1.9 MiB, own SONAME), hyprutils 2.6 MiB, hyprlang 0.3 MiB; next the C support stack (cairo, pango, glib, fonts), then aquamarine and Hyprland with D's patches and the HongMeng shims built in. Hyprland 0.56.2 now compiles and links (18 MiB stripped); next is loading it on the device through D's app | built (3da87ce, 6065767, 845dc1b); not yet run on the device |
 
 Details: [docs/no-root-routes.md](docs/no-root-routes.md).
 
-## Route K: QEMU TCI (idea)
+## 3. Other explorations
+
+### Route A: Omarchy apps in HarmonyOS's Linux engine
+
+**How it works.** HarmonyOS PCs ship an official Linux engine (融合开发引擎): an openEuler
+container with a terminal and no GUI. A third-party launcher from AppGallery
+(融合开发图像引擎, `com.mikannqaq.developer.linuxEngine`) installs an X11 bridge into it
+and shows each Linux app as its own HarmonyOS window. The container sees the GPU as
+"Virtio-GPU Venus".
+
+**What was built.** `linux-engine/install-omarchy-nvim.sh` and `install-omarchy-cli.sh`
+install Omarchy's neovim configuration, plus static ARM64 builds of neovim, fastfetch,
+btop and lazygit (openEuler has no neovim package). They retry GitHub downloads through
+`gh-proxy.com` and replace Omarchy's theme symlink with a fixed theme.
+
+**Limits.** Each app is a separate HarmonyOS window, so a nested Hyprland session does not
+fit. Driving XTerm with `uitest inputText` loses the first characters after focus.
+Details: [docs/linux-engine-apps.md](docs/linux-engine-apps.md).
+
+### Route F: Aetherium on the DevEco emulator
+
+**How it works.** No HarmonyOS hardware is needed. DevEco Studio's HarmonyOS 7.0 "2in1"
+emulator runs on a Mac. Inside it, [Aetherium](https://github.com/AetheriumSimulator/qemu-hmos)
+runs QEMU 10.1 in-process with TCG (the emulator exposes no EL2) and boots the stock Omarchy
+4.0.3 disk on its own 7.2.3 kernel through Limine. The guest's screen is shown by the
+HarmonyOS VNC client RemoteDesk.
+
+**What was patched.** `emulator/lib/patch_aetherium.py` patches the pinned Aetherium HAP:
+the unconditional `-tpmdev emulator` becomes `-L`, `virtio-gpu-pci` replaces the
+legacy-MMIO virtio-gpu (which the guest rejects with status `0x83`), and the firmware is
+padded to 64 MiB. Reported upstream as issues #49-#53. `emulator/10..60` script everything,
+including the first-boot wizard over VNC, and autologin into uwsm, because SDDM's greeter is
+killed after 21 s under TCG.
+
+**Result.** The Hyprland desktop runs on llvmpipe. First-boot setup took 14 min scripted and
+50 min the first time (mkinitcpio under TCG). It proves the stack works; it is not a usable
+desktop. Details: [docs/emulator-aetherium.md](docs/emulator-aetherium.md).
+
+### Route H: Aetherium on the device (concluded)
+
+The route-F app signed for the device (`device/sign-hap.sh`) and installed as root. The goals
+were a TCG baseline and an HMV accelerator. Results:
+
+- **TCG cannot start.** QEMU aborts with SIGABRT in `tcg_region_init`, at 4 vCPU/4 GB and at
+  1/2 GB alike. The HAP is not allowed writable-executable memory (confirmed directly by
+  route J's probe).
+- **No 3D and no 120 Hz in this QEMU.** `libqemu_full.so` links no virglrenderer, EGL or
+  Vulkan.
+- **HMV.** `/dev/hmv` is not KVM-compatible: every KVM ioctl returns `ENOSYS`. It uses the
+  `0xAE` magic with its own command numbers; the run loop is `hmv_join_actvpool_thread` /
+  `hmv_wait_next_vmexit` in `libhmlibs.so.0`. A root process in the `su` domain opens it,
+  and its ioctls fail with `ENOSYS`/`EINVAL`, not `EPERM`. So there is no permission gate
+  for root, only an undocumented ABI. A custom accelerator was judged feasible in principle
+  and not built: route I already runs on the system StratoVirt.
+- **The no-root VM service is closed.** A test app (`native/vmtest`) compiles against a stub
+  of `@hms:virtService.vmManager`, installs, loads the module and reaches the service, but
+  privileged calls return `201 Permission denied`. `libvm_manager.z.so` requires
+  `ohos.permission.MANAGE_VM` **and** an appIdentifier from a hardcoded list of eight
+  (Oseasy and 铠大师 are on it).
+
+Details: [docs/device-aetherium.md](docs/device-aetherium.md),
+[docs/vm-api.md](docs/vm-api.md).
+
+### Route K: QEMU TCI (idea)
 
 QEMU's TCG interpreter needs no executable memory. Aetherium's `libqemu_full.so` is a JIT
 build (no `tci_*` symbols). A TCI build would have to be signed into a HAP as a `.so`, under
 route J's rules. Not started, deprioritised.
 
-## Route L: Linux in ArkWeb (paused)
+### Route L: Linux in ArkWeb (paused)
 
 **How it would work.** An ordinary HAP (`webemu/app`, `com.ohmarchy.webemu`) with an ArkWeb
 `Web` component serves a page, the v86 emulator, the BIOS, the kernel and the disk (with HTTP
@@ -571,6 +622,11 @@ busy), so whether ArkWeb gives a third-party HAP a wasm JIT is unknown. On deskt
 reached a root shell in 32-37 s at 400-1800 MIPS, with 928 JIT modules compiled and 0
 failures. There is no guest network (pacman would need a relay). Details:
 [docs/route-l-arkweb.md](docs/route-l-arkweb.md).
+
+### Route E: bare metal
+
+Linux directly on the hardware, with no HarmonyOS underneath. Not started; nothing in the
+repo.
 
 ## Shared findings
 
@@ -586,14 +642,15 @@ failures. There is no guest network (pacman would need a relay). Details:
   vm multi-instance"** (Oseasy's `createVm` while 鸿融's VM ran, tested 2026-10-25). Check
   `pidof stratovirt` before starting one.
 - **鸿融 shows a running VM as 已关机 without its guest agent.** 鸿融 only moves a VM to
-  RUNNING after its in-guest agent (增强服务, vm-agent) reports; our images don't have it, so
-  the VM stays in VIEWING, the card says 已关机 and the normal 关机 button is greyed out.
+  RUNNING after its in-guest agent (增强服务, vm-agent) reports. Without it the VM stays in VIEWING, the card says 已关机 and the normal 关机 button is greyed out.
   Shut the VM down from inside the guest (Omarchy: Super+Esc → Shutdown); 鸿融 then shows
   已关机 correctly. Force stop only when the guest doesn't respond. A guest-side power-off
   goes through the same STOPPING → STOPPED states as a force stop
   ([docs/hongrong-whole-os.md](docs/hongrong-whole-os.md), eb4646b). Why Oseasy's
   `createVm` was sometimes refused although no VM process was running is still open.
-  鸿融 also removes its bridge when its VM stops.
+  鸿融 also removes its bridge when its VM stops. Since e0e0b7b the agent, installed from
+  the tools CD 鸿融 attaches, works in our developer image: the card shows 运行中 and the
+  normal 关机 button shuts the VM down.
 - **HMV ID registers.** Since Linux 6.9 the kernel reads `ID_AA64ISAR3_EL1`,
   `ID_AA64PFR2_EL1` and `ID_AA64FPFR0_EL1` at boot, and 6.17 reads `ID_AA64PFR2_EL1`
   again. HMV hangs the vCPU on at least `ID_AA64PFR2_EL1` instead of reading it as zero.
@@ -649,7 +706,11 @@ Everything else runs remotely. From [docs/acceptance.md](docs/acceptance.md#on-s
    desktop (`native/boot/`). It was not done remotely: the last reboot replaced 鸿融
    1.3.1.80 with 1.1.1.103 by itself.
 
-## Route B quick start
+## Quick starts
+
+One per route, in the order of the tree. Routes A, K and E have none.
+
+### Route B quick start
 
 Current path (7.2.12 kernel + `vmwgfx-oseasy`, MateBook 14). In Arch Linux ARM (route D's
 environment works), with the HMV-patched `linux-aarch64` 7.2.12 package and its headers:
@@ -680,7 +741,7 @@ live in `oseasy/config.sh`; outputs go to `work/`. Host tools: bash, python3, cu
 bsdtar, cpio, gzip, qemu-img, sfdisk/blkid, mtools, xorriso, kmod, make, clang (aarch64
 target), hdc.
 
-## Route C quick start
+### Route C quick start
 
 Developer image (no root on the device): build it with `hongrong/pure/build-disk.sh`, then
 `hongrong/pure/make-qcow2.sh RAW OUT` (it sets os_type 1). Copy the qcow2 to the file
@@ -694,7 +755,18 @@ address on `172.16.100.0/24`. Then, as root in deepin, run
 `~USER/hongrong/20-install-omarchy.sh USER`. Details:
 [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md#install).
 
-## Route D quick start
+### Route G quick start
+
+Concluded; the tools remain:
+
+```sh
+tools/kaidashi/wrap-iso.sh IN.iso OUT.iso            # any UEFI ISO passes 铠大师's Windows-only check
+tools/kaidashi/installer/build.sh WORKDIR linux-aarch64-7.2.12-*.pkg.tar.xz   # 7.2.12 probe/installer ISO
+perl -e 'alarm 180; exec @ARGV' ssh ohdev sh -s < tools/kaidashi/probe.sh       # read-only survey
+tools/kaidashi/kds-run.sh start ROW ENTRY            # drive the wizard
+```
+
+### Route D quick start
 
 As root on the HarmonyOS machine (a root shell that may `unshare`, `mount` and `chroot`; see
 [docs/native-chroot.md](docs/native-chroot.md#getting-a-root-shell-on-the-host)), in a copy of
@@ -723,7 +795,22 @@ Install the app with `native/app/build.sh` and open "Omarchy (native)". `native/
 USER GPU_BIN_DIR` does all of it in one go (about 30 min); `native/reset.sh` returns to a
 clean image. Docker needs route I's VM running.
 
-## Route F quick start
+### Route I quick start
+
+On the host, as root, with `omarchy-own.img` prepared (`tools/ownvm/prep-disk.sh`):
+
+    sh /data/local/kaidashi/bin/ohmarchy-vm start     # returns when the guest's ssh answers
+    sh /data/local/kaidashi/bin/ohmarchy-vm status    # VM, guest, dockerd, balloon, host RSS
+    sh /data/local/kaidashi/bin/ohmarchy-vm stop
+
+In D's terminal: `docker run --rm hello-world` (context `ohmarchy`; with the docker gate running, this starts the VM by itself).
+
+### Route J quick start
+
+`device/jloader/build-busybox.sh`, then `native/jloader/build.sh` and
+`device/jloader-run.sh`. The Hyprland-stack stages are `device/userspace/build-stage{1,2,3}.sh`.
+
+### Route F quick start
 
 On a Mac (or any DevEco host) with DevEco Studio, `hdc`, `gh` and `python3`:
 
@@ -736,18 +823,7 @@ emulator/50-first-boot.sh USER PASS  # answer Omarchy's first-boot wizard over V
 emulator/60-desktop.sh USER PASS     # wait for the first-boot setup (15-50 min), boot straight into Hyprland
 ```
 
-## Route G quick start
-
-Concluded; the tools remain:
-
-```sh
-tools/kaidashi/wrap-iso.sh IN.iso OUT.iso            # any UEFI ISO passes 铠大师's Windows-only check
-tools/kaidashi/installer/build.sh WORKDIR linux-aarch64-7.2.12-*.pkg.tar.xz   # 7.2.12 probe/installer ISO
-perl -e 'alarm 180; exec @ARGV' ssh ohdev sh -s < tools/kaidashi/probe.sh       # read-only survey
-tools/kaidashi/kds-run.sh start ROW ENTRY            # drive the wizard
-```
-
-## Route H quick start
+### Route H quick start
 
 Concluded: on the device the in-app QEMU aborts at `tcg_region_init`. The steps document the
 flow, which works in the route-F emulator:
@@ -761,21 +837,9 @@ device/install.sh                  # bm install the signed HAP as root
 HMV probes: `device/hmv/`, `device/hmv-permtest.sh`; VM-service probe: `native/vmtest/`,
 `device/vmapi/probe-run.sh`.
 
-## Route I quick start
+### Route L quick start
 
-On the host, as root, with `omarchy-own.img` prepared (`tools/ownvm/prep-disk.sh`):
-
-    sh /data/local/kaidashi/bin/ohmarchy-vm start     # returns when the guest's ssh answers
-    sh /data/local/kaidashi/bin/ohmarchy-vm status    # VM, guest, dockerd, balloon, host RSS
-    sh /data/local/kaidashi/bin/ohmarchy-vm stop
-
-In D's terminal: `docker run --rm hello-world` (context `ohmarchy`; with the docker gate running, this starts the VM by itself).
-
-## Route J and L quick start
-
-J: `device/jloader/build-busybox.sh`, then `native/jloader/build.sh` and
-`device/jloader-run.sh`. The Hyprland-stack stages are `device/userspace/build-stage{1,2,3}.sh`.
-L: see [docs/route-l-arkweb.md](docs/route-l-arkweb.md#reproduce).
+See [docs/route-l-arkweb.md](docs/route-l-arkweb.md#reproduce).
 
 ## Layout
 
@@ -806,7 +870,7 @@ webemu/              route L: image, page, HAP
 linux-engine/        route A install scripts
 tools/fold/ tools/ohdev/ tools/hongrong/ tools/kbuild/   device helpers, kernel builds and bisects
 tests/               route D acceptance (run-all.sh), demo scripts (demo/)
-docs/
+docs/                every document, indexed by route: docs/README.md
 ```
 
 ## License

@@ -6,28 +6,54 @@
 
 一句话总结现在的结果：
 
+- **B OSEasy（第三方 Windows 虚拟机 app）**：从零安装到桌面约 3 分钟，靠打过补丁的 `vmwgfx` 显卡驱动拿到 GPU 3D（修了三个问题，外加一个看门狗），带 GPU 负载连续 4 小时 24 分钟没出错。屏幕上 60Hz。
+- **C 鸿融（华为自己的 Linux 虚拟机 app）**：做好的 Omarchy 磁盘镜像（打了补丁的 7.2.12 内核）用鸿融自己的界面就能导入，不要 root。有 virgl 3D（glmark2 596 分）和 Docker；虚拟机里按 120Hz 画，鸿融只按 60Hz 显示。
 - **D 原生，不用虚拟机**：Arch Linux ARM 和 Omarchy 4.0.6 直接当普通进程跑在鸿蒙内核上，Omarchy 的 Hyprland 桌面显示在一个鸿蒙 app 窗口里，120Hz，用马良 GPU 画。切工作区屏幕上 119 帧，冷启动约 8 秒，78 个 app 里 74 个 3 秒内打开，24 小时长测通过。需要宿主机 root。
 - **I 自建虚拟机给 D 当后台**：给原生桌面补上 Docker 和完整的 Linux 内核。系统虚拟化层上跑一台没有界面的 Omarchy 虚拟机，D 的 `docker` 通过 ssh 用它；从 caecc94 起，第一次用 `docker` 时它会自己启动。需要 root。
-- **C 鸿融（华为自己的 Linux 虚拟机 app）**：做好的 Omarchy 磁盘镜像（打了补丁的 7.2.12 内核）用鸿融自己的界面就能导入，不要 root。有 virgl 3D（glmark2 596 分）和 Docker；虚拟机里按 120Hz 画，鸿融只按 60Hz 显示。
-- **B OSEasy（第三方 Windows 虚拟机 app）**：从零安装到桌面约 3 分钟，靠打过补丁的 `vmwgfx` 显卡驱动拿到 GPU 3D（修了三个问题，外加一个看门狗），带 GPU 负载连续 4 小时 24 分钟没出错。屏幕上 60Hz。
 - **确认走不通的路**：不用 root 的话，app 既用不了虚拟化层（华为写死了一个合作伙伴白名单），也拿不到可执行内存（XPM 代码完整性保护）。所以不用 root 的路只有两个虚拟机 app（B、C），以及还在做的 J：把 Linux 程序编成 `.so` 签进 app 里。
+
+## 路线一览（树）
+
+```
+鸿蒙电脑上的 Omarchy
+├─ 一、虚拟机 app 即插即用（不用 root）
+│   ├─ B  OSEasy        ★ 公开发布走这条
+│   ├─ C  鸿融           内部成果（鸿融 app 还没公开发布）
+│   └─ G  铠大师         已结束：Linux 只能活在一次"安装会话"里
+├─ 二、原生：直接跑在鸿蒙内核上（效果最好）
+│   ├─ D  原生桌面            要 root；120Hz；演示的主角
+│   ├─ I  自建后台虚拟机       要 root；给 D 提供 Docker
+│   └─ J  在 app 沙箱里原生跑  不用 root；Hyprland 已编好，正在上真机
+└─ 三、其它探索（已有结论或备选）
+    ├─ A  鸿蒙 Linux 引擎              只有终端工具
+    ├─ F  DevEco 模拟器里的 Aetherium  不需要真机；很慢
+    ├─ H  真机上的 Aetherium           走不通：拿不到可执行内存
+    ├─ K  QEMU 解释模式                只是个想法
+    ├─ L  鸿蒙浏览器内核里的 Linux     暂停
+    └─ E  裸机                         没开始
+```
+
+第一条线是把 Omarchy 装进虚拟机 app 里跑，不用 root（对外公开发布走 OSEasy）；第二条线是直接跑在鸿蒙内核上，效果最好，但 D 和 I 在鸿蒙放开[对内对接](#对内对接给鸿蒙各团队)里列的那几样之前要 root；第三条线是其它试过的路。所有文档按同一棵树列在 [docs/README.md](docs/README.md)。
 
 ## 现状一览
 
 | 路线 | 是什么 | 状态 | 最好的数字 | 要 root 吗 | 能演示吗 |
 |---|---|---|---|---|---|
-| **A** Linux 引擎 | 鸿蒙自带的 Linux 容器里跑 Omarchy 的 neovim 配置和命令行工具，每个工具一个鸿蒙窗口 | 能用，有限制（只有终端工具，没有 Hyprland 桌面） | | 不要 | 不演示 |
+| **一、虚拟机 app（不用 root）** | | | | | |
 | **B** OSEasy 虚拟机 | 完整 Omarchy 系统跑在 OSEasy 里，7.2.12 内核，打补丁的 `vmwgfx` | 能用，有限制（屏幕 60Hz；关机后 OSEasy 就忘了这台虚拟机） | 安装 61 秒，重启后 6 秒进桌面；虚拟机里 120 帧、屏幕 60 帧；GPU 长测 4 小时 24 分钟零故障 | 只有安装时往虚拟机推磁盘要 | 能，约 3 分钟 |
 | **C** 鸿融虚拟机 | 完整 Omarchy 系统跑在华为的 Linux 虚拟机 app 里，virgl GPU | 能用，有限制（屏幕 60Hz） | 导入不到 1 分钟（9.6 GB）；glmark2 596；Docker；30 分钟长测 | 不要 | 能，3 分 41 秒 |
-| **D** 原生 | Arch + Omarchy 在鸿蒙内核上的 chroot 里跑，Hyprland 由鸿蒙 app 显示 | 能用 | 切工作区 119 帧，es2gears 屏幕上 117-120 帧；冷启动约 8 秒；78 个 app 74 个 3 秒内打开，P95 1.13 秒；24 小时长测 | 要 | 能，约 80 秒 |
-| **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
-| **F** DevEco 模拟器里的 Aetherium | 在 Mac 上的鸿蒙 PC 模拟器里，用 app 里的 QEMU 纯软件模拟 | 能用，有限制（纯软件，很慢） | 首次开机配置 14-50 分钟 | 不要（不需要真机） | 不演示 |
 | **G** 铠大师虚拟机 | Omarchy 磁盘跑在 sanway 的 Windows 虚拟机 app 里 | 已结束，走不通 | 7.2.12 能启动，但每台虚拟机都只是"安装会话"，一关机就被删 | 不要 | 不演示 |
-| **H** 真机上的 Aetherium | F 那个 QEMU app 放到真机上 | 已结束，走不通 | QEMU 在 `tcg_region_init` 直接退出（拿不到可执行内存） | 不要 | 不演示 |
+| **二、原生：直接跑在鸿蒙内核上** | | | | | |
+| **D** 原生 | Arch + Omarchy 在鸿蒙内核上的 chroot 里跑，Hyprland 由鸿蒙 app 显示 | 能用 | 切工作区 119 帧，es2gears 屏幕上 117-120 帧；冷启动约 8 秒；78 个 app 74 个 3 秒内打开，P95 1.13 秒；24 小时长测 | 要 | 能，约 80 秒 |
 | **I** 自建虚拟机 | root 直接在 `/dev/hmv` 上起 StratoVirt，没有界面；给 D 当 Docker 后台，用到时才启动 | 能用 | 虚拟机 5-10 秒起来；空闲占宿主约 1.2 GiB；balloon 6 秒左右还回 3 GiB；演示 91 秒 | 要 | 能，和 D 一起 |
-| **J** app 沙箱里的 Linux | Linux 程序编成 `.so` 签进 HAP，用 fork + dlopen 运行 | 原型能跑（busybox）；Hyprland 正在重新编译 | busybox `sh` 已在 D 的显示 app 里跑；4 步里做到第 3 步 | 不要 | 不演示 |
+| **J** app 沙箱里的 Linux | Linux 程序编成 `.so` 签进 HAP，用 fork + dlopen 运行 | 原型能跑（busybox）；Hyprland 0.56.2 已经用鸿蒙 musl 编出来了，还没上真机 | busybox `sh` 已在 D 的显示 app 里跑；Hyprland 能链接上自己编的整套库（845dc1b） | 不要 | 不演示 |
+| **三、其它探索** | | | | | |
+| **A** Linux 引擎 | 鸿蒙自带的 Linux 容器里跑 Omarchy 的 neovim 配置和命令行工具，每个工具一个鸿蒙窗口 | 能用，有限制（只有终端工具，没有 Hyprland 桌面） | | 不要 | 不演示 |
+| **F** DevEco 模拟器里的 Aetherium | 在 Mac 上的鸿蒙 PC 模拟器里，用 app 里的 QEMU 纯软件模拟 | 能用，有限制（纯软件，很慢） | 首次开机配置 14-50 分钟 | 不要（不需要真机） | 不演示 |
+| **H** 真机上的 Aetherium | F 那个 QEMU app 放到真机上 | 已结束，走不通 | QEMU 在 `tcg_region_init` 直接退出（拿不到可执行内存） | 不要 | 不演示 |
 | **K** QEMU 解释模式（TCI） | QEMU 的解释器，不需要可执行内存 | 没开始（只是想法，已降低优先级） | | 不要 | 不演示 |
 | **L** 鸿蒙浏览器内核里的 Linux | app 里的 ArkWeb 网页跑 v86（把 x86 翻译成 WebAssembly 执行），里面是 Arch Linux 32 | 2026-10-25 决定暂停，从没在真机上跑过 | 电脑上的 Chrome：约 32 秒进 root 命令行 | 不要 | 不演示 |
+| **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
 ## 进展（每小时更新；最近一次：2026-10-26 00:29 PDT）
@@ -47,11 +73,18 @@ D 和 J 两条线原来的账号用量到了上限，换到另一个账号上接
 
 试过哪些路、为什么走不通：[docs/findings.md](docs/findings.md)（英文）。
 
-## 两条线
+## 对内对接（给鸿蒙各团队）
 
-这么多路线，归结起来就是两条线。
+这么多路线，归结起来就是两条线，每条线要找的团队不一样。
+
+### 线一：希望虚拟机 app 做的事
 
 **线一：在虚拟机 app 里即插即用（B OSEasy、C 鸿融）。** 用户从应用市场装一个虚拟机 app，导入我们的镜像就能用，不用 root，现在就能做到。离完美还差的都在这两个 app 自己身上：它们都不向系统申请高刷新率，所以屏幕停在 60Hz；OSEasy 的流程是按 Windows 设计的（Linux 虚拟机没有"开机"按钮，我们正在把"再次安装"改成直接从装好的硬盘启动）；鸿融要在虚拟机里装它的增强服务，才能正常显示"运行中"、正常关机。对外发布正在准备：安装不用 root、镜像放到 GitHub Releases、写给普通用户的说明。
+
+- **鸿融团队**（[docs/internal/hongrong-team-brief.md](docs/internal/hongrong-team-brief.md)）：全屏虚拟机按虚拟机自己的刷新率（或屏幕的 120Hz）显示，别卡在 60Hz；增强服务在任何发行版上都能装，不依赖 dpkg；把"本地文件"导入对 qcow2 的要求（os_type 那个字节）写成文档；别整个重写 `logind.conf`，改用 drop-in；没装增强服务时卡片也显示真实状态、普通关机走 ACPI 电源键；把 HMV 的 ID 寄存器和 ITS 问题转给相关团队。
+- **OSEasy 厂商**（[docs/oseasy-vendor-request.md](docs/oseasy-vendor-request.md)）：给 Linux 虚拟机正常的开机、关机（"再次安装"前别清空磁盘）；提供 Linux 版客户端代理，或者公开代理协议；提供 120Hz 的显示模式；共享文件夹保留文件属主和权限；可选：能直接导入现成的磁盘镜像。
+
+### 线二：原生要鸿蒙提供什么
 
 **线二：原生（D，加上 I 当 Docker 后台）。** 效果最好：120Hz、直接用马良 GPU、78 个 app 有 74 个 3 秒内打开、原生终端里直接用 Docker。但要 root。要做到"应用市场装一个 app，打开就是 Omarchy 桌面"，需要鸿蒙提供这些：
 
@@ -79,15 +112,11 @@ D 加 I 一共约 3 分钟，C 约 4 分钟，B 约 4 分钟，合计 10 到 11 
 
 其他路线为什么不演示：A 只有第三方启动器里的终端工具，不是 Omarchy 桌面；E 没开始；F 只在模拟器里跑，第一次进桌面要 14-50 分钟；G、H 已确认走不通；J 目前只有 busybox；K 没开始；L 暂停了，也从没上过真机。
 
-## 路线 A：鸿蒙 Linux 引擎里跑 Omarchy 的工具
+台上亲手操作的人看这份：[docs/demo-operator.zh-CN.md](docs/demo-operator.zh-CN.md)（English: [docs/demo-operator.md](docs/demo-operator.md)）。
 
-**原理**：鸿蒙电脑自带一个官方的 Linux 引擎（融合开发引擎），其实是一个 openEuler 容器，只有终端没有图形界面。应用市场里有个第三方启动器"融合开发图像引擎"（`com.mikannqaq.developer.linuxEngine`），它往容器里装一个 X11 转接层，把每个 Linux 程序显示成一个单独的鸿蒙窗口。容器看到的 GPU 叫"Virtio-GPU Venus"。
+## 一、虚拟机 app 即插即用（不用 root）
 
-**做了什么**：`linux-engine/install-omarchy-nvim.sh` 和 `install-omarchy-cli.sh` 装上 Omarchy 的 neovim 配置，以及 neovim、fastfetch、btop、lazygit 的静态 ARM64 版本（openEuler 没有 neovim 包）。GitHub 下载失败时自动换 `gh-proxy.com` 镜像重试；Omarchy 的主题软链接换成一个固定主题。
-
-**限制**：每个程序都是单独的鸿蒙窗口，套一整个 Hyprland 桌面进去不合适。用 `uitest inputText` 往 XTerm 里打字，刚切到窗口时头几个字符会丢。详见 [docs/linux-engine-apps.md](docs/linux-engine-apps.md)。
-
-## 路线 B：OSEasy 虚拟机里的完整系统
+### 路线 B：OSEasy 虚拟机里的完整系统
 
 **原理**：OSEasy虚拟机（`com.oseasy1.ohvm` 3.1.1.7，应用市场下载）本来是跑 Windows on ARM 的。它自己不带虚拟机程序（VMM），而是把虚拟机配置交给系统的 `@ohos.virtualization` 接口，由系统服务 `vm_manager` 在鸿蒙的虚拟化层（HMV，Huawei 自研的 hypervisor）上启动 StratoVirt（华为的虚拟机程序）：`accel=hmv`，6 个 vCPU，8 GB，UEFI 启动。
 
@@ -134,7 +163,7 @@ D 加 I 一共约 3 分钟，C 约 4 分钟，B 约 4 分钟，合计 10 到 11 
 
 详见 [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md)（从 Fold 上的第一次到第十五次，每一次都有记录）。
 
-## 路线 C：鸿融虚拟机里的完整系统
+### 路线 C：鸿融虚拟机里的完整系统
 
 **原理**：鸿融（`com.huawei.medivh`，现在是 1.1.1.103）是华为自己的 Linux 虚拟机 app。它也是在 HMV 上跑 StratoVirt，但给 Linux 虚拟机的显卡是 `vhost-user-gpu-pci,virgl=true`。后端是系统自带的 `vhost-device-gpu`（rust-vmm 0.2.0），它调用系统里移植到鸿蒙的 virglrenderer，经 Mesa 的 zink（把 OpenGL 翻译成 Vulkan）跑在马良的 Vulkan 驱动上，再通过 `libhwf_kits.z.so` 显示到鸿融的窗口里。没有 Venus，所以虚拟机里没有 Vulkan；没有 blob 资源，所以每帧要拷贝；Hyprland 最后用的是 GLES 3.0。网络也是 `172.16.100.0/24` 网桥、NAT、无 DHCP。另外还有 virtio 声卡、vsock（客户机工具用）、virtiofs（共享"文档"文件夹）和 balloon。
 
@@ -166,9 +195,15 @@ D 加 I 一共约 3 分钟，C 约 4 分钟，B 约 4 分钟，合计 10 到 11 
 
 详见 [docs/hongrong-whole-os.md](docs/hongrong-whole-os.md)（英文），给华为的问题报告：[docs/hmv-idreg-report.md](docs/hmv-idreg-report.md)（中文）。
 
-## 路线 D：直接跑在鸿蒙内核上
+### 路线 G：铠大师虚拟机（已结束）
 
-### chroot 环境
+铠大师（`com.sanway.ecoengine` 3.5.8.14）和 OSEasy 用的是同一个 `vm_manager` 和 `svga-pci`。它检查"必须是 Windows 11 24H2"时只读 WIM 文件里的 XML，所以塞一个 2.5 KB 的假 `sources/install.wim`（`tools/kaidashi/make-fake-wim.sh`、`wrap-iso.sh`），任何 UEFI 的 ISO 都能过；安全启动是关的，7.2.12 补丁内核能启动。但向导启动的每台虚拟机都是一个**安装会话**：按 `libvm_manager.z.so` 里的逻辑，只有铠大师自己的 Windows 客户端服务报告"装好了"才算成功，否则一关机或一关窗口，app 就把虚拟机删了。安装会话的网卡还没有 MAC 地址和收发线程，只能发不能收。要想留住 Omarchy 虚拟机，就得冒充它的 Windows 服务，超出范围；而且就算做到也不比 B 强（同样的显卡，60Hz）。2026-10-24 结束。详见 [docs/vm-kaidashi.md](docs/vm-kaidashi.md)。
+
+## 二、原生：直接跑在鸿蒙内核上（效果最好）
+
+### 路线 D：直接跑在鸿蒙内核上
+
+#### chroot 环境
 
 鸿蒙内核实现了足够多的 Linux 系统调用（syscall，程序向内核要服务的接口），没改过的 Arch Linux ARM 程序可以直接跑：线程、futex、epoll、eventfd、timerfd、signalfd、inotify、带封印的 memfd、io_uring、ptrace（gdb、strace）、大块稀疏 mmap、伪终端、网络都正常；内存页 4K。Arch 的根目录放在一个 64 GB 的稀疏 ext4 镜像里（`/data/local/archtest/arch.img`），因为 `/data` 是 hmfs，挂载时禁止了设备文件和 setuid。`native/arch.sh` 用 `losetup` 挂上镜像，进入一个私有的 **mount + pid 命名空间**（`unshare -m -p`，相当于一个隔离的小世界），里面 1 号进程是 catatonit，然后 `chroot`（把根目录换成这个镜像）。`bin/omarchy` 用 `nsenter` 进去，再用 coreutils 的 `chroot --userspec` 切用户。网络和宿主共用。桌面用户叫 `builder`，uid 60000，因为鸿蒙把 10000 以下的 uid 大都占了。
 
@@ -191,7 +226,7 @@ Omarchy 4.0.6 从它签过名的 AArch64 软件源安装，约 900 个包；宿�
 | **SELinux：root 的 `su` 域是宽松模式，而且切不到更窄的域**（写 `/proc/self/attr/exec` 被拒） | broker 和会话初始化只能留在 `su` 域；能降权的活都用 uid 60000 做 |
 | g++ 16.1 编 aquamarine/Hyprland 会崩（编译器内部错误） | 用 clang 编 |
 
-### 桌面
+#### 桌面
 
 ```
 鸿蒙 app "Omarchy (native)"（native/app）            Arch chroot（路线 D）
@@ -210,7 +245,7 @@ Omarchy 4.0.6 从它签过名的 AArch64 软件源安装，约 900 个包；宿�
 - **输入**：鼠标位置、按键、滚轮、evdev 键码送进 aquamarine 的 headless 设备。fcitx5 拼音能用（Ctrl+Space 切换）；用鸿蒙自己的输入法（`ohime`，`OHMARCHY_IME=harmony`）已经做好，还没在屏幕上验证。
 - **签名**：这台研究用的机器接受用 SDK 里 OpenHarmony 测试密钥签名、绑定本机 UDID 的调试 profile 的 HAP（`native/app/sign/sign.sh`），root 用 `bm install` 安装。
 
-### 验收结果（[docs/acceptance.md](docs/acceptance.md)）
+#### 验收结果（[docs/acceptance.md](docs/acceptance.md)）
 
 | 项目 | 结果 |
 |---|---|
@@ -229,34 +264,7 @@ Omarchy 4.0.6 从它签过名的 AArch64 软件源安装，约 900 个包；宿�
 
 详见 [docs/native-chroot.md](docs/native-chroot.md)、[docs/native-desktop.md](docs/native-desktop.md)（英文）。
 
-## 路线 E：裸机
-
-不要鸿蒙，Linux 直接装在硬件上。没开始，仓库里没有相关内容。
-
-## 路线 F：DevEco 模拟器里的 Aetherium
-
-**原理**：不需要鸿蒙真机。DevEco Studio 在 Mac 上跑一个鸿蒙 7.0 "2in1"（PC）模拟器；模拟器里的 [Aetherium](https://github.com/AetheriumSimulator/qemu-hmos) app 在进程内跑 QEMU 10.1，纯软件模拟（TCG，因为模拟器不提供硬件虚拟化），启动原版 Omarchy 4.0.3 磁盘，用它自己的 7.2.3 内核，经 Limine 启动。画面由鸿蒙的 VNC 客户端 RemoteDesk 显示。
-
-**打了什么补丁**：`emulator/lib/patch_aetherium.py` 修改固定版本的 Aetherium HAP：总是带上的 `-tpmdev emulator` 改成 `-L`；把走老式 MMIO 的 virtio-gpu（虚拟机会拒绝，状态 `0x83`）换成 `virtio-gpu-pci`；固件补齐到 64 MiB。已经向上游报告（#49-#53）。`emulator/10..60` 全程脚本化，包括通过 VNC 回答首次开机向导，以及开机自动登录进 uwsm（软件模拟下 SDDM 的登录界面 21 秒就被杀掉）。
-
-**结果**：Hyprland 桌面能跑（CPU 渲染）；首次开机配置脚本跑用了 14 分钟，第一次手动跑用了 50 分钟（软件模拟下 mkinitcpio 很慢）。证明这套能跑通，但不是能日常用的桌面。详见 [docs/emulator-aetherium.md](docs/emulator-aetherium.md)。
-
-## 路线 G：铠大师虚拟机（已结束）
-
-铠大师（`com.sanway.ecoengine` 3.5.8.14）和 OSEasy 用的是同一个 `vm_manager` 和 `svga-pci`。它检查"必须是 Windows 11 24H2"时只读 WIM 文件里的 XML，所以塞一个 2.5 KB 的假 `sources/install.wim`（`tools/kaidashi/make-fake-wim.sh`、`wrap-iso.sh`），任何 UEFI 的 ISO 都能过；安全启动是关的，7.2.12 补丁内核能启动。但向导启动的每台虚拟机都是一个**安装会话**：按 `libvm_manager.z.so` 里的逻辑，只有铠大师自己的 Windows 客户端服务报告"装好了"才算成功，否则一关机或一关窗口，app 就把虚拟机删了。安装会话的网卡还没有 MAC 地址和收发线程，只能发不能收。要想留住 Omarchy 虚拟机，就得冒充它的 Windows 服务，超出范围；而且就算做到也不比 B 强（同样的显卡，60Hz）。2026-10-24 结束。详见 [docs/vm-kaidashi.md](docs/vm-kaidashi.md)。
-
-## 路线 H：真机上的 Aetherium（已结束）
-
-把路线 F 的 app 签成真机可装的版本（`device/sign-hap.sh`），用 root 装上。目标是测一个软件模拟的基准，再看能不能接上 HMV 硬件加速。结论：
-
-- **软件模拟起不来**：QEMU 在 `tcg_region_init` 处 SIGABRT 退出，4 核 4 GB 和 1 核 2 GB 都一样。普通 app 不允许有"可写又可执行"的内存（路线 J 的探针直接证实了）。
-- **这个 QEMU 没有 3D，也没有 120Hz**：`libqemu_full.so` 没链接 virglrenderer、EGL 或 Vulkan。
-- **HMV**：`/dev/hmv` 不兼容 KVM，所有 KVM 的 ioctl 都返回 `ENOSYS`。它沿用 `0xAE` 这个魔数，但命令号是自己的；运行循环是 `libhmlibs.so.0` 里的 `hmv_join_actvpool_thread` / `hmv_wait_next_vmexit`。`su` 域的 root 进程能打开它，ioctl 失败的原因是 `ENOSYS`/`EINVAL`，不是 `EPERM`：对 root 来说没有权限关卡，只是接口没有公开。自己写一个加速器理论上可行，但没做，因为路线 I 已经用系统自带的 StratoVirt 跑起来了。
-- **不用 root 的虚拟机服务是关着的**：测试 app（`native/vmtest`）用一个手写的接口声明就能编译、安装、加载模块、连上服务，但有权限的调用返回 `201 Permission denied`。`libvm_manager.z.so` 同时要求 `ohos.permission.MANAGE_VM` **和**调用方的 appIdentifier 在一个写死的 8 个值的名单里（OSEasy 和铠大师都在）。
-
-详见 [docs/device-aetherium.md](docs/device-aetherium.md)、[docs/vm-api.md](docs/vm-api.md)。
-
-## 路线 I：自建虚拟机
+### 路线 I：自建虚拟机
 
 **原理**：`tools/ownvm/ohmarchy-vm` 以 root 身份直接在 `/dev/hmv` 上启动系统自带的 StratoVirt，不经过任何虚拟机 app：6 个 vCPU，8 GiB，virtio 磁盘，virtio 网卡（自己的 tap `ohmvm0`，带收发线程），vsock，以及 `virtio-balloon-pci,deflate-on-oom=true,free-page-reporting=true`（balloon 就是把虚拟机里没用的内存还给宿主）。GPU 可选（`OVM_GPU=1` 加上 `vhost-device-gpu`，`virgl=true`）。磁盘 `omarchy-own.img` 就是路线 C 的开发者镜像，加上不标首选的 120Hz EDID，用 `debugfs` 离线改好（`tools/ownvm/prep-disk.sh`）。
 
@@ -271,7 +279,7 @@ Omarchy 4.0.6 从它签过名的 AArch64 软件源安装，约 900 个包；宿�
 
 详见 [docs/vm-own.md](docs/vm-own.md)。
 
-## 路线 J：app 沙箱里的 Linux（不用 root）
+### 路线 J：app 沙箱里的 Linux（不用 root）
 
 **沙箱允许什么**：用一个探针 app（`native/xpmprobe`）把普通调试 app 能运行新代码的办法都试了一遍：
 
@@ -295,19 +303,52 @@ Omarchy 4.0.6 从它签过名的 AArch64 软件源安装，约 900 个包；宿�
 | 0 | 工具链：鸿蒙 SDK 的 clang 15 太老，编不了 C++26；用上游 clang 23 + 为 musl 编的 libc++ | 完成 |
 | 1 | libffi、pixman、libdrm、libxkbcommon、wayland 1.23.1 | 完成（543a223） |
 | 2 | Mesa 24.3.4，只要 virgl、不要 LLVM：约 16 MiB，带 vtest 通道 | 完成（c6ff963） |
-| 3 | 一个共享的 C++ 运行库 `libc++_ohm.so.1`（1.9 MiB，改了名避免和系统的冲突），hyprutils 2.6 MiB、hyprlang 0.3 MiB；接下来是 C 的支撑库（cairo、pango、glib、字体），然后 aquamarine 和带 D 补丁、内置鸿蒙内核补丁的 Hyprland | 进行中（3da87ce、6065767） |
+| 3 | 一个共享的 C++ 运行库 `libc++_ohm.so.1`（1.9 MiB，改了名避免和系统的冲突），hyprutils 2.6 MiB、hyprlang 0.3 MiB；接下来是 C 的支撑库（cairo、pango、glib、字体），然后 aquamarine 和带 D 补丁、内置鸿蒙内核补丁的 Hyprland。Hyprland 0.56.2 现在已经能编译链接（去掉符号后 18 MiB），下一步是通过 D 的 app 在真机上加载 | 编好了（3da87ce、6065767、845dc1b），还没上真机 |
 
 详见 [docs/no-root-routes.md](docs/no-root-routes.md)。
 
-## 路线 K：QEMU 解释模式（想法）
+## 三、其它探索（已有结论或备选）
+
+### 路线 A：鸿蒙 Linux 引擎里跑 Omarchy 的工具
+
+**原理**：鸿蒙电脑自带一个官方的 Linux 引擎（融合开发引擎），其实是一个 openEuler 容器，只有终端没有图形界面。应用市场里有个第三方启动器"融合开发图像引擎"（`com.mikannqaq.developer.linuxEngine`），它往容器里装一个 X11 转接层，把每个 Linux 程序显示成一个单独的鸿蒙窗口。容器看到的 GPU 叫"Virtio-GPU Venus"。
+
+**做了什么**：`linux-engine/install-omarchy-nvim.sh` 和 `install-omarchy-cli.sh` 装上 Omarchy 的 neovim 配置，以及 neovim、fastfetch、btop、lazygit 的静态 ARM64 版本（openEuler 没有 neovim 包）。GitHub 下载失败时自动换 `gh-proxy.com` 镜像重试；Omarchy 的主题软链接换成一个固定主题。
+
+**限制**：每个程序都是单独的鸿蒙窗口，套一整个 Hyprland 桌面进去不合适。用 `uitest inputText` 往 XTerm 里打字，刚切到窗口时头几个字符会丢。详见 [docs/linux-engine-apps.md](docs/linux-engine-apps.md)。
+
+### 路线 F：DevEco 模拟器里的 Aetherium
+
+**原理**：不需要鸿蒙真机。DevEco Studio 在 Mac 上跑一个鸿蒙 7.0 "2in1"（PC）模拟器；模拟器里的 [Aetherium](https://github.com/AetheriumSimulator/qemu-hmos) app 在进程内跑 QEMU 10.1，纯软件模拟（TCG，因为模拟器不提供硬件虚拟化），启动原版 Omarchy 4.0.3 磁盘，用它自己的 7.2.3 内核，经 Limine 启动。画面由鸿蒙的 VNC 客户端 RemoteDesk 显示。
+
+**打了什么补丁**：`emulator/lib/patch_aetherium.py` 修改固定版本的 Aetherium HAP：总是带上的 `-tpmdev emulator` 改成 `-L`；把走老式 MMIO 的 virtio-gpu（虚拟机会拒绝，状态 `0x83`）换成 `virtio-gpu-pci`；固件补齐到 64 MiB。已经向上游报告（#49-#53）。`emulator/10..60` 全程脚本化，包括通过 VNC 回答首次开机向导，以及开机自动登录进 uwsm（软件模拟下 SDDM 的登录界面 21 秒就被杀掉）。
+
+**结果**：Hyprland 桌面能跑（CPU 渲染）；首次开机配置脚本跑用了 14 分钟，第一次手动跑用了 50 分钟（软件模拟下 mkinitcpio 很慢）。证明这套能跑通，但不是能日常用的桌面。详见 [docs/emulator-aetherium.md](docs/emulator-aetherium.md)。
+
+### 路线 H：真机上的 Aetherium（已结束）
+
+把路线 F 的 app 签成真机可装的版本（`device/sign-hap.sh`），用 root 装上。目标是测一个软件模拟的基准，再看能不能接上 HMV 硬件加速。结论：
+
+- **软件模拟起不来**：QEMU 在 `tcg_region_init` 处 SIGABRT 退出，4 核 4 GB 和 1 核 2 GB 都一样。普通 app 不允许有"可写又可执行"的内存（路线 J 的探针直接证实了）。
+- **这个 QEMU 没有 3D，也没有 120Hz**：`libqemu_full.so` 没链接 virglrenderer、EGL 或 Vulkan。
+- **HMV**：`/dev/hmv` 不兼容 KVM，所有 KVM 的 ioctl 都返回 `ENOSYS`。它沿用 `0xAE` 这个魔数，但命令号是自己的；运行循环是 `libhmlibs.so.0` 里的 `hmv_join_actvpool_thread` / `hmv_wait_next_vmexit`。`su` 域的 root 进程能打开它，ioctl 失败的原因是 `ENOSYS`/`EINVAL`，不是 `EPERM`：对 root 来说没有权限关卡，只是接口没有公开。自己写一个加速器理论上可行，但没做，因为路线 I 已经用系统自带的 StratoVirt 跑起来了。
+- **不用 root 的虚拟机服务是关着的**：测试 app（`native/vmtest`）用一个手写的接口声明就能编译、安装、加载模块、连上服务，但有权限的调用返回 `201 Permission denied`。`libvm_manager.z.so` 同时要求 `ohos.permission.MANAGE_VM` **和**调用方的 appIdentifier 在一个写死的 8 个值的名单里（OSEasy 和铠大师都在）。
+
+详见 [docs/device-aetherium.md](docs/device-aetherium.md)、[docs/vm-api.md](docs/vm-api.md)。
+
+### 路线 K：QEMU 解释模式（想法）
 
 QEMU 的 TCG 解释器（TCI）不需要可执行内存。Aetherium 的 `libqemu_full.so` 是 JIT 版本（没有 `tci_*` 函数）。要做 TCI 版，也得按路线 J 的规矩编成 `.so` 签进 HAP。没开始，已降低优先级。
 
-## 路线 L：鸿蒙浏览器内核里的 Linux（暂停）
+### 路线 L：鸿蒙浏览器内核里的 Linux（暂停）
 
 **设想的原理**：一个普通 app（`webemu/app`，`com.ohmarchy.webemu`），里面放一个 ArkWeb 的 `Web` 组件，通过 `onInterceptRequest` 在 `https://routel.local/` 下提供网页、v86 模拟器、BIOS、内核和磁盘（磁盘支持按字节范围读取）。v86 在运行时把 x86 代码块编译成 WebAssembly。虚拟机里是 Arch Linux 32（i686，pacman 7.1，systemd 259，内核 6.19.11），由 `webemu/image/build-image.sh` 做出来，initramfs 只有 6 MB。网页里有 xterm.js 终端，还有一个探针，能判断浏览器引擎有没有 wasm 和 JIT。
 
 **现状**：2026-10-25 Yao 决定暂停。从没在真机上跑过（那段时间屏幕一直被占用），所以还不知道 ArkWeb 会不会给第三方 app 开 wasm JIT。在电脑上的 Chrome 里：32-37 秒进 root 命令行，速度 400-1800 MIPS，编译了 928 个 JIT 模块、0 个失败。虚拟机里没有网络（pacman 要联网得另做转发）。详见 [docs/route-l-arkweb.md](docs/route-l-arkweb.md)。
+
+### 路线 E：裸机
+
+不要鸿蒙，Linux 直接装在硬件上。没开始，仓库里没有相关内容。
 
 ## 共性发现
 
@@ -315,7 +356,7 @@ QEMU 的 TCG 解释器（TCI）不需要可执行内存。Aetherium 的 `libqemu
 
 - **谁能跑虚拟机**：app 只能通过系统的虚拟机服务（`@hms:virtService.vmManager` / `@ohos.virtualization`）用虚拟化层，这个接口不在公开 SDK 里。`libvm_manager.z.so` 要求 `ohos.permission.MANAGE_VM`，并且调用方的 appIdentifier 必须在一个**写死的 8 个值的白名单**里。OSEasy 和铠大师在名单上，它们是应用市场的合作伙伴，自己没声明任何虚拟机权限。调试签名的 app 只会拿到 `201 Permission denied`。root 可以直接在 `/dev/hmv` 上起 StratoVirt（路线 I），但只有 app 才能拥有窗口。
 - **整个系统同一时间只能跑一台虚拟机**：再起第二台会被拒绝，报 **401 "Not support vm multi-instance"**（2026-10-25 实测：鸿融的虚拟机在跑时，OSEasy 的 `createVm` 被拒）。起虚拟机前先 `pidof stratovirt` 看一下。
-- **没有"增强服务"时，鸿融把正在运行的虚拟机显示成"已关机"**：鸿融要等虚拟机里的增强服务（vm-agent）报到以后，才把状态切成"运行中"。我们的镜像里没有这个服务，所以卡片一直显示"已关机"，普通的"关机"按钮也是灰的。关机请在虚拟机里面关（Omarchy 里按 Super+Esc 选 Shutdown），关完鸿融就会正常显示"已关机"；只有虚拟机没反应时才用强制关机。在虚拟机里关机和强制关机，在日志里走的是同一套状态（[docs/hongrong-whole-os.md](docs/hongrong-whole-os.md)，eb4646b）。OSEasy 有时明明没有虚拟机进程却被拒绝开机，原因还在查。另外鸿融的虚拟机一停，它的网桥也会被删掉。
+- **没有"增强服务"时，鸿融把正在运行的虚拟机显示成"已关机"**：鸿融要等虚拟机里的增强服务（vm-agent）报到以后，才把状态切成"运行中"。没装这个服务时，卡片一直显示"已关机"，普通的"关机"按钮也是灰的。关机请在虚拟机里面关（Omarchy 里按 Super+Esc 选 Shutdown），关完鸿融就会正常显示"已关机"；只有虚拟机没反应时才用强制关机。在虚拟机里关机和强制关机，在日志里走的是同一套状态（[docs/hongrong-whole-os.md](docs/hongrong-whole-os.md)，eb4646b）。OSEasy 有时明明没有虚拟机进程却被拒绝开机，原因还在查。另外鸿融的虚拟机一停，它的网桥也会被删掉。从 e0e0b7b 起，用鸿融挂进来的工具光盘把增强服务装进我们的开发者镜像就能用了：卡片显示"运行中"，普通"关机"按钮能正常关机。
 - **HMV 的 ID 寄存器问题**：Linux 从 6.9 起启动时会读 `ID_AA64ISAR3_EL1`、`ID_AA64PFR2_EL1`、`ID_AA64FPFR0_EL1`，6.17 起还会再直接读一次 `ID_AA64PFR2_EL1`。按 Arm 的规定，不认识的 ID 寄存器应该读出 0，HMV 却把 vCPU 卡死了，至少 `ID_AA64PFR2_EL1` 是这样。现象是 EFI stub 之后就没动静了。这是二分法查出来的（合并提交 `0c5ade742e91`，然后是 GICv5 检测），已写成报告给华为：[docs/hmv-idreg-report.md](docs/hmv-idreg-report.md)。规避办法是内核补丁 `arm64.hmv_idreg_quirk`，B、C、G、I 都在用。
 - **GIC ITS 报告 32 位事件号**：在 Linux 修复 `5a9d62555e71` 之前，这会让 MSI 中断全部失效。
 - **GPU 后端**：鸿融给 Linux 虚拟机用的是 virgl → zink → 马良（只有 OpenGL）；Windows 类型的虚拟机（OSEasy、铠大师）用的是 `svga-pci` → D3D11 → DXVK → Vulkan。
@@ -343,15 +384,19 @@ QEMU 的 TCG 解释器（TCI）不需要可执行内存。Aetherium 的 `libqemu
 
 ## 快速开始
 
-命令和英文版一样，下面只说怎么用；完整命令见 [README.md](README.md) 里的 "Route X quick start" 各节，每条路线的细节和坑都在对应的 `docs/` 文档里。
+命令和英文版一样，下面只说怎么用；完整命令见英文版的 ["Quick starts" 一节](README.md#quick-starts)，每条路线的细节和坑都在对应的 `docs/` 文档里。
+
+下面按树的顺序排；A、K、E 没有快速开始。
 
 - **路线 B**：现在的做法（7.2.12 内核 + `vmwgfx-oseasy`）：在 Arch 环境里用 `oseasy/vmwgfx-7.2/build.sh` 打驱动包，再用 `PROBE_DEFAULT=4 oseasy/probe/build.sh OUTDIR 内核包 驱动包` 做安装 ISO；把 `oseasy-probe.iso` 放进设备的"下载"，把 `omarchy-pure.img.zst`（由 `hongrong/pure/build-disk.sh` 做出）和 `oseasy/push-disk.sh` 放进 `/data/local/oseasy/`，然后按 [docs/demo.md](docs/demo.md#b-omarchy-in-oseasy) 在 OSEasy 里建虚拟机；`tests/demo/b.sh` 能全自动跑完。最早在 Fold 上的做法（Debian 6.1 内核，只有 EFI 帧缓冲）：在 Linux 主机上依次跑 `oseasy/10` 到 `oseasy/60`，再按 [docs/oseasy-whole-os.md](docs/oseasy-whole-os.md#install-in-oseasy) 安装；设置在 `oseasy/config.sh`，输出在 `work/`；主机需要 bash、python3、curl、unzip、bsdtar、cpio、gzip、qemu-img、sfdisk/blkid、mtools、xorriso、kmod、make、带 aarch64 目标的 clang 和 hdc。
 - **路线 C**：开发者镜像（设备上不要 root）：`hongrong/pure/build-disk.sh` 做盘，`hongrong/pure/make-qcow2.sh RAW OUT` 转 qcow2（会把 os_type 设成 1），放进文件管理的"下载"；鸿融里先删掉已有的虚拟机（它只能放一台），然后 本地文件 → 选 qcow2 → 打开 → 开始安装。和 deepin 共存的做法（Yao 的主虚拟机）：鸿融里装 deepin 25 并配静态地址，deepin 里用 root 跑 `hongrong/10-bootstrap-arch.sh USER PASSWORD`，重启后在 Arch 里跑 `~USER/hongrong/20-install-omarchy.sh USER`。
+- **路线 G**（已结束，工具还在）：用 `tools/kaidashi/`（`wrap-iso.sh`、`installer/build.sh`、`probe.sh`、`kds-run.sh`）。
 - **路线 D**：在鸿蒙电脑的 root shell 里，用 `native/` 的 `10`、`20`、`30` 建环境、装 Omarchy，`40-install-desktop.sh` 编打补丁的 aquamarine 和 Hyprland，`native/vtest/build-vtest.sh` 编 `vtest-broker`，`native/app/build.sh` 编显示 app；`omarchy desktop start` 后打开"Omarchy (native)"。`native/install.sh USER GPU_BIN_DIR` 一次做完（约 30 分钟），`native/reset.sh` 恢复干净镜像。要 Docker 得先起路线 I 的虚拟机。
-- **路线 F**：在装了 DevEco Studio 的 Mac 上依次跑 `emulator/10` 到 `emulator/60`。
-- **路线 G、H**（已结束，工具还在）：G 用 `tools/kaidashi/`（`wrap-iso.sh`、`installer/build.sh`、`probe.sh`、`kds-run.sh`）；H 用 `device/sign-hap.sh`、`push-inputs.sh`、`install.sh`，HMV 探针在 `device/hmv/`、`device/hmv-permtest.sh`，虚拟机服务探针在 `native/vmtest/`、`device/vmapi/probe-run.sh`。
 - **路线 I**：宿主上以 root 运行 `sh /data/local/kaidashi/bin/ohmarchy-vm start|status|stop`（磁盘用 `tools/ownvm/prep-disk.sh` 准备）；D 的终端里直接 `docker run --rm hello-world`（docker gate 在跑的话，它会自己把虚拟机开起来）。
-- **路线 J、L**：J 用 `device/jloader/build-busybox.sh`、`native/jloader/build.sh`、`device/jloader-run.sh`，Hyprland 全家的各步是 `device/userspace/build-stage{1,2,3}.sh`；L 见 [docs/route-l-arkweb.md](docs/route-l-arkweb.md#reproduce)。
+- **路线 J**：用 `device/jloader/build-busybox.sh`、`native/jloader/build.sh`、`device/jloader-run.sh`，Hyprland 全家的各步是 `device/userspace/build-stage{1,2,3}.sh`。
+- **路线 F**：在装了 DevEco Studio 的 Mac 上依次跑 `emulator/10` 到 `emulator/60`。
+- **路线 H**（已结束，工具还在）：用 `device/sign-hap.sh`、`push-inputs.sh`、`install.sh`，HMV 探针在 `device/hmv/`、`device/hmv-permtest.sh`，虚拟机服务探针在 `native/vmtest/`、`device/vmapi/probe-run.sh`。
+- **路线 L**：见 [docs/route-l-arkweb.md](docs/route-l-arkweb.md#reproduce)。
 
 ## 目录结构
 
@@ -382,7 +427,7 @@ webemu/              路线 L：镜像、网页、app
 linux-engine/        路线 A 的安装脚本
 tools/fold/ tools/ohdev/ tools/hongrong/ tools/kbuild/   设备辅助工具、内核编译和二分查找
 tests/               路线 D 的验收测试（run-all.sh）、演示脚本（demo/）
-docs/
+docs/                所有文档，按路线分好的索引：docs/README.md
 ```
 
 ## 许可

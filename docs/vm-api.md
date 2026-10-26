@@ -203,6 +203,13 @@ and runs `/bin/pgrep -f|-x|-P` (strings); on 2026-10-26 13:20, with nothing
 running, those `pgrep` patterns matched no process and vm_manager logged
 `lxVmState: 0`.
 
+**Right after another VM stops** (2026-10-26, agent-84): with HMV just freed,
+OSEasy's 开始安装 called `createVm` and got `called createVm() success, state:
+STATE_STOPPED`, no 401: nothing of the previous VM is left in the kit. Still open:
+whether the kit refuses while only route I's VM runs (StratoVirt started without the
+kit). OSEasy's 立即创建 makes no kit call at all (it only reopened its stored
+dialog), so that needs a full 开始安装 with route I up.
+
 **Workaround.**
 - Before opening OSEasy or 鸿融: no other VM may run (`pidof stratovirt` empty;
   route I's Docker VM stops 3 minutes after the last docker command).

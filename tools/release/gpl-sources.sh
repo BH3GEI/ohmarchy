@@ -11,8 +11,27 @@
 # that version. OUTDIR gets PKGBASE-VERSION.src.tar.gz each, MISSING.txt for
 # what could not be fetched (to be resolved by hand before publishing) and
 # PACKAGES.txt (package, version, licenses, where the build files came from).
+#   JOBS=6 tools/release/gpl-sources.sh PKGLIST OUTDIR   in parallel
 set -uo pipefail
 list=${1:?pkglist} out=${2:?outdir}
+# JOBS=N: N workers on interleaved shares of the list (most time is waiting on
+# slow hosts), each into OUTDIR/part-K, merged into OUTDIR at the end
+if [ "${JOBS:-1}" -gt 1 ] && [ -z "${GPL_SOURCES_WORKER:-}" ]; then
+    mkdir -p "$out"
+    for k in $(seq 1 "$JOBS"); do
+        awk -v n="$JOBS" -v k="$k" 'NR % n == k % n' "$list" > "$out/list-$k"
+        GPL_SOURCES_WORKER=1 bash "$0" "$out/list-$k" "$out/part-$k" > "$out/part-$k.log" 2>&1 &
+    done
+    wait
+    : > "$out/PACKAGES.txt"; : > "$out/MISSING.txt"
+    for k in $(seq 1 "$JOBS"); do
+        cat "$out/part-$k/PACKAGES.txt" >> "$out/PACKAGES.txt"; cat "$out/part-$k/MISSING.txt" >> "$out/MISSING.txt"
+        mv "$out/part-$k"/*.src.tar.gz "$out/" 2>/dev/null
+        rm -rf "$out/part-$k" "$out/list-$k"
+    done
+    echo "$(wc -l < "$out/PACKAGES.txt") package bases with source, $(wc -l < "$out/MISSING.txt") missing (MISSING.txt)"
+    exit 0
+fi
 mkdir -p "$out"; out=$(cd "$out" && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 : > "$out/MISSING.txt"; : > "$out/PACKAGES.txt"
@@ -54,7 +73,8 @@ snapshot() {
             local repo; repo=$(basename "${url%.git}"); nm=${nm:-$repo}
             local g="$t/g-$nm" ok=
             git init -q "$g" && git -C "$g" remote add o "$url" &&
-                timeout 600 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null &&
+                { timeout 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null ||
+                  timeout 300 git -C "$g" fetch -q --depth 1 o "$r" 2>/dev/null; } &&   # one retry: slow hosts
                 git -C "$g" archive --prefix="$nm/" -o "$t/s/$nm-$(git -C "$g" rev-parse --short FETCH_HEAD).tar.gz" FETCH_HEAD &&
                 ok=$(git -C "$g" rev-parse --short FETCH_HEAD)
             local m=${GIT_MIRROR[$repo]:-}

@@ -17,6 +17,12 @@ omarchy_key=40DFB630FF42BCFFB047046CF0134EE680CAC571
 # 1. Repositories and keys
 install -m 644 "$here/etc/pacman.conf" /etc/pacman.conf
 install -m 644 "$here/etc/mirrorlist" /etc/pacman.d/mirrorlist
+# Omarchy's omarchy-refresh-pacman (Update menu) overwrites both with its stock
+# files; its pre-refresh-pacman hook puts these back before the upgrade.
+install -D -m 644 "$here/etc/pacman.conf" /opt/ohmarchy/etc/pacman.conf
+install -D -m 644 "$here/etc/mirrorlist" /opt/ohmarchy/etc/mirrorlist
+runuser -u "$user" -- install -D -m 755 "$here/desktop/hooks/pre-refresh-pacman-ohmarchy-mirrors" \
+    "$(getent passwd "$user" | cut -d: -f6)/.config/omarchy/hooks/pre-refresh-pacman.d/10-ohmarchy-mirrors"
 # dirmngr's keyserver fetch fails here ("Server indicated a failure"); get
 # the key over HTTPS instead. Only this fingerprint is signed below.
 curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/$omarchy_key" -o /tmp/omarchy.asc

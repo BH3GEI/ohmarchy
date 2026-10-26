@@ -1,0 +1,8 @@
+#!/bin/bash
+# Route D (native/30-install-omarchy.sh): omarchy-refresh-pacman (Update menu)
+# has just put Omarchy's stock pacman.conf and mirrorlist in place, without the
+# mainland mirrors; route D's go back before its upgrade runs: TUNA first for
+# Arch Linux ARM, pkgs.omarchy.cn first for Omarchy (stable channel).
+sudo install -m 644 /opt/ohmarchy/etc/pacman.conf /etc/pacman.conf
+sudo install -m 644 /opt/ohmarchy/etc/mirrorlist /etc/pacman.d/mirrorlist
+echo "route D: mainland mirrors restored (TUNA, pkgs.omarchy.cn)"

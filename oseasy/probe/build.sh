@@ -94,12 +94,16 @@ search --no-floppy --file /oseasy-probe --set=root
 set prefix=($root)/
 configfile ($root)/grub.cfg
 EOF
-# PROBE_DEFAULT picks the default menu entry (0-based; 4 = install mode)
-sed "s/^set default=.*/set default=${PROBE_DEFAULT:-1}/" "$here/grub.cfg" > "$W/esp/grub.cfg"
+# PROBE_DEFAULT picks the default menu entry (0-based). Entries: 0 = smart boot
+# (boot an installed Omarchy on vda, else install) -- the install ISO's default;
+# 1 = EFI framebuffer; 2-4 = vmwgfx diagnostics; 5 = plain install mode.
+sed "s/^set default=.*/set default=${PROBE_DEFAULT:-0}/" "$here/grub.cfg" > "$W/esp/grub.cfg"
 mkdir -p "$W/esp/EFI/BOOT"
+# ext2 + search_fs_uuid let the smart entry read the ext4 vda and run the disk's
+# own grub.cfg (which finds its root by fs-uuid); see oseasy/probe/grub.cfg.
 grub-mkstandalone -d "$W/t/usr/lib/grub/arm64-efi" -O arm64-efi \
     -o "$W/esp/EFI/BOOT/BOOTAA64.EFI" \
-    --modules="part_gpt part_msdos fat iso9660 search search_fs_file configfile linux normal echo all_video" \
+    --modules="part_gpt part_msdos ext2 fat iso9660 search search_fs_file search_fs_uuid configfile linux normal echo all_video" \
     "boot/grub/grub.cfg=$W/grub-early.cfg"
 
 # 5. ESP image, ISO and GPT disk

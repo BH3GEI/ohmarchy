@@ -69,8 +69,8 @@ case " $cmd " in
         ln -sf /proc/self/fd/1 /mnt/dev/stdout; ln -sf /proc/self/fd/2 /mnt/dev/stderr
         chroot /mnt /usr/bin/depmod -a "$kv"
         log "install: vmwgfx-oseasy added for $kv; modinfo -> $(chroot /mnt /usr/bin/modinfo -k "$kv" -n vmwgfx)"
-        chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1
-        log "install: mkinitcpio rc=$?; initramfs vmwgfx: $(chroot /mnt /usr/bin/lsinitcpio /boot/initramfs-linux.img | grep vmwgfx | tr '\n' ' ')"
+        chroot /mnt /usr/bin/mkinitcpio -P > /tmp/mkinitcpio.txt 2>&1; mkrc=$?
+        log "install: mkinitcpio rc=$mkrc; initramfs vmwgfx: $(chroot /mnt /usr/bin/lsinitcpio /boot/initramfs-linux.img | grep vmwgfx | tr '\n' ' ')"
         # boot straight into Hyprland (tty1 autologin + uwsm; SDDM's greeter exits here)
         u=$(awk -F: '$3 == 1000 {print $1}' /mnt/etc/passwd)
         [ -n "$u" ] && chroot /mnt /bin/bash /dev/stdin "$u" < /oseasy/desktop-autostart.sh > /tmp/autostart.txt 2>&1
@@ -93,6 +93,17 @@ case " $cmd " in
             log "install: boot diagnostics enabled" ;;
         *) log "install: boot diagnostics installed, not enabled" ;;
         esac
+        # Mark a fully-installed disk, on the ext4 root so GRUB's search finds it.
+        # The probe's default GRUB entry boots this disk directly next time instead
+        # of reinstalling (Oseasy reuses the VM's qcow2, so it persists across stop /
+        # 再次安装). Only on a clean mkinitcpio, so a broken install reinstalls.
+        if [ "$mkrc" = 0 ]; then
+            printf 'ohmarchy-oseasy\ninstalled=%s\nkver=%s\n' \
+                "$(date -u +%FT%TZ)" "$kv" > /mnt/boot/ohmarchy-oseasy-installed
+            log "install: marked /boot/ohmarchy-oseasy-installed; next boot runs from vda"
+        else
+            log "install: mkinitcpio failed (rc=$mkrc); not marking, will reinstall next boot"
+        fi
         umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else

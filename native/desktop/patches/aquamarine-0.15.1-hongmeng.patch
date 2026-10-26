@@ -133,7 +133,7 @@ new file mode 100644
 index 0000000..07ccdf4
 --- /dev/null
 +++ b/src/allocator/DMAHeap.cpp
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,156 @@
 +#include <aquamarine/allocator/DMAHeap.hpp>
 +#include <aquamarine/backend/Backend.hpp>
 +#include <aquamarine/allocator/Swapchain.hpp>
@@ -144,6 +144,7 @@ index 0000000..07ccdf4
 +#include <cstring>
 +#include <cstdlib>
 +#include <sys/ioctl.h>
++#include <unistd.h>
 +#include <sys/mman.h>
 +#include <linux/dma-buf.h>
 +#include <linux/dma-heap.h>
@@ -161,12 +162,22 @@ index 0000000..07ccdf4
 +    const uint32_t stride = ((uint32_t)params.size.x * 4 + 63) & ~63u;
 +    bufferLen             = (size_t)stride * (size_t)params.size.y;
 +
-+    struct dma_heap_allocation_data alloc = {.len = bufferLen, .fd = 0, .fd_flags = O_RDWR | O_CLOEXEC, .heap_flags = 0};
-+    if (ioctl(allocator->heapFD, DMA_HEAP_IOCTL_ALLOC, &alloc) < 0) {
-+        allocator->backend->log(AQ_LOG_ERROR, std::format("dma-heap: failed to allocate {} bytes: {}", bufferLen, strerror(errno)));
-+        return;
++    if (allocator->heapFD < 0) {
++        // no dma-heap (an app sandbox): plain shared memory; the compositor's GPU path
++        // presents from GL storage and never looks at these pixels
++        fd = memfd_create("aq-buffer", MFD_CLOEXEC);
++        if (fd < 0 || ftruncate(fd, (off_t)bufferLen) != 0) {
++            allocator->backend->log(AQ_LOG_ERROR, std::format("dma-heap: memfd fallback failed: {}", strerror(errno)));
++            return;
++        }
++    } else {
++        struct dma_heap_allocation_data alloc = {.len = bufferLen, .fd = 0, .fd_flags = O_RDWR | O_CLOEXEC, .heap_flags = 0};
++        if (ioctl(allocator->heapFD, DMA_HEAP_IOCTL_ALLOC, &alloc) < 0) {
++            allocator->backend->log(AQ_LOG_ERROR, std::format("dma-heap: failed to allocate {} bytes: {}", bufferLen, strerror(errno)));
++            return;
++        }
++        fd = (int)alloc.fd;
 +    }
-+    fd = (int)alloc.fd;
 +
 +    data = (uint8_t*)mmap(nullptr, bufferLen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 +    if (data == MAP_FAILED) {
@@ -244,8 +255,9 @@ index 0000000..07ccdf4
 +
 +    int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
 +    if (fd < 0) {
-+        backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: cannot open {}: {}", path, strerror(errno)));
-+        return nullptr;
++        // without access to the heap (an app's sandbox: the device is 0660 for its own
++        // group) buffers come from memfd; AQ_DMA_HEAP=none asks for that directly
++        backend_->log(AQ_LOG_DEBUG, std::format("dma-heap: cannot open {}: {}; using memfd buffers", path, strerror(errno)));
 +    }
 +
 +    auto a  = SP<CDMAHeapAllocator>(new CDMAHeapAllocator(fd, backend_));

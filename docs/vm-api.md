@@ -168,3 +168,44 @@ themselves) all rely on an app whose appIdentifier is on Huawei's VM-partner all
 `device/vmapi/probe-run.sh` (launch + app/service hilog capture). The allowlist is in
 `/system/lib64/libvm_manager.z.so` `.rodata`; the permission in
 `/system/etc/access_token/permission_definitions.json`.
+
+## "检测到有其它虚拟机正在运行" / 401 `Not support vm multi-instance` (2026-10-26)
+
+Why OSEasy refused to start during the B demo preparation although no
+`stratovirt` ran, from OSEasy's own log
+(`/data/app/el2/100/base/com.oseasy1.ohvm/haps/entry/files/applogs/appLog.log`),
+StratoVirt's logs (`/data/log/hwf_service/vmlog`, route I's
+`/data/local/kaidashi/ownvm/svc/stratovirt.log`) and the persisted hilog
+(`/data/log/hilog/hilog.*.gz`, readable with `zcat | strings`). Times CST.
+
+**The dialog is the kit's 401, translated.** In OSEasy's `ets/modules.abc`
+the text `检测到有其它虚拟机正在运行，请先将其关闭后再试。` sits in its
+error-message table right after the kit's `Not support vm multi-instance.`.
+It is not a check of OSEasy's own.
+
+**Three different cases behind it:**
+
+| When | What ran | What happened | Verdict |
+|---|---|---|---|
+| 03:25:44–51 | 鸿融's main VM (pid 8744, exit 04:23:42) | `createVm` → 401, OSEasy `destroyVm` + retry, four times, then the dialog stays | real refusal: one VM system-wide |
+| 05:17:55 (the B demo blocker) | nothing (route I's last VM exited 05:05:02; 鸿融's next one ran 05:25:03–05:32:44, agent-2a's UI power cycle) | no kit call at all: OSEasy's log has only `received new want`, the hilog of 05:11–05:25 no `createVm` or vm_manager call before 05:20 | **stale**: the 03:25 dialog, shown again when OSEasy was brought to the front |
+| 05:35:19 | nothing | `createVm` succeeds at once, VM to `STATE_VIEWING` | normal |
+| 13:47:04 | nothing (route I's VM exited 13:45:54) | `createVm` → 401, OSEasy `destroyVm('com.oseasy1.ohvm')` + retry → success 3 s later | the kit still held OSEasy's own previous VM object; OSEasy recovers by itself |
+
+So "no stratovirt, yet refused" was not a wrong state in the system service:
+the refusal on screen was hours old. The guest power-off of 鸿融's VM is not
+involved either (agent-2a, eb4646b: it is logged as `STOPPING` → `STOPPED`, the
+same as 强制关机).
+
+**What decides "another VM runs".** `libvm_manager.z.so` (vm_manager SA in
+`sa_main`) has `GetActiveVmState`, `GetLxVmStateByUserId`, `HandleSetLxVmState`
+and runs `/bin/pgrep -f|-x|-P` (strings); on 2026-10-26 13:20, with nothing
+running, those `pgrep` patterns matched no process and vm_manager logged
+`lxVmState: 0`.
+
+**Workaround.**
+- Before opening OSEasy or 鸿融: no other VM may run (`pidof stratovirt` empty;
+  route I's Docker VM stops 3 minutes after the last docker command).
+- If OSEasy shows the dialog: it may be old. Close it and press 安装 / 开机
+  again once nothing runs; OSEasy destroys its stale VM object and retries by
+  itself.

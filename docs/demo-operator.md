@@ -24,7 +24,10 @@ hands do, what your eyes check, and what to say.
    (native)" cuts Hyprland's GPU connection and the desktop then needs a
    backstage restart.
 
-"Super" is the Windows logo key on the keyboard.
+"Super" is the Windows logo key on the keyboard. **On the native desktop (part 1)
+press right Alt instead of Super**: HarmonyOS keeps the Windows key (its start menu
+opens) and many of its chords; the app turns right Alt into Super. In the VMs
+(parts 2 and 3) Super is the Windows key as usual.
 
 ## Order (about 10 min)
 
@@ -87,8 +90,8 @@ doesn't touch them.
   restarts the idle timer.
 
 Note: steps 1.3–1.7 by hand have not been rehearsed (the rehearsal script sent
-the commands through Hyprland). **Whether HarmonyOS grabs the Super key is to
-be confirmed in rehearsal.**
+the commands through Hyprland). In part 1 every "Super" is **right Alt**: the
+Windows key opens HarmonyOS's start menu (click back into the desktop to close it).
 
 ### Part 1: if this happens, do this
 
@@ -96,7 +99,7 @@ be confirmed in rehearsal.**
 |---|---|
 | The app window keeps saying it is waiting; no desktop | The native desktop isn't running in the background (autostart didn't work, to be confirmed in rehearsal). [backstage] `omarchy desktop start`, wait 10 s. Still nothing: close the app window, [backstage] `omarchy desktop stop; omarchy desktop start`, tap the icon again. On stage: "let's change the order", go straight to part 2 (鸿融) |
 | "Omarchy (native)" was closed by accident | Hyprland lost its GPU connection. Tap the icon again; if the desktop doesn't come back, [backstage] `omarchy desktop stop; omarchy desktop start`, then tap the icon (with the autostart setup, tapping the icon should restart the desktop by itself, to be confirmed in rehearsal) |
-| Super+Return and other shortcuts do nothing | Click inside the Omarchy window first so it has focus. Still nothing: HarmonyOS may be grabbing Super (to be confirmed in rehearsal); skip the shortcuts and show what is already open |
+| Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | A window is stuck | **Super+W** closes it; go on to the next step |
 | `docker` shows nothing for 15–20 s | Expected: the first run starts the background VM. Keep talking |
 | `docker` says `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | Another VM is running (checklist item 5 was missed). On stage: "this is exactly the one-VM-at-a-time limit", skip Docker. [backstage] find which VM it is; it has to be off before part 2 |

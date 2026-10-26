@@ -210,14 +210,35 @@ for the focused text-input-v3 client. Built and running; not yet verified on scr
 
 ## Keyboard shortcuts and touchpad
 
-- Super chords (Omarchy's shortcuts) reach Hyprland: Super is evdev 125, and
-  Super+Return opens a terminal (checked 2026-10-26 with injected keys). HarmonyOS
-  keeps the Super key's *release* for itself and opens its start menu then, which
-  takes the focus. No API lets an app keep that key (`inputConsumer` only lists and
-  watches system hotkeys). Without the release, Hyprland kept Super pressed and read
-  every later key as a Super chord; the app now releases every key still pressed
-  when its window loses the focus (1744727). What remains: the start menu also opens
-  after a Super shortcut; click back into the desktop (or Esc) to close it.
+- **Use right Alt for Super.** HarmonyOS keeps the Windows (Super) key: it opens its
+  start menu on the key's release, which takes the focus, and it keeps many Super
+  chords for itself (Settings → 键盘 → 键盘快捷键 lists them; there is no switch to
+  turn them off, and no API lets an app keep them; immersive full screen doesn't
+  help either, checked 2026-10-26). So the app sends right Alt to the desktop as
+  Super (evdev 125); left Alt stays Alt. The file `files/super-key` in the app's
+  data directory chooses the stand-in: `ralt` (default), `capslock`, or `off`
+  (only the Windows key).
+- The Windows key itself still works as Super, with the start menu opening as
+  well. Without its release Hyprland kept Super pressed and read every later key as
+  a Super chord; the app releases every key still pressed when its window loses
+  the focus (1744727).
+- Omarchy shortcuts that HarmonyOS takes when pressed with the Windows key (so only
+  right Alt gives them on HarmonyOS):
+
+  | Omarchy | does | HarmonyOS uses ○ (Windows key) + it for |
+  |---|---|---|
+  | Super+Space | Omarchy menu | switch input method |
+  | Super+Tab | next workspace | task center |
+  | Super+Up / Super+Down | focus above / below | maximize / minimize window |
+  | Super+F | full screen | open the file manager |
+  | Super+L | toggle workspace layout | lock screen |
+  | Super+S | toggle scratchpad | 小艺 search |
+  | Super+C / Super+V | universal copy / paste | control center / clipboard history |
+  | Super+P | pseudo window | projection |
+  | Super+Backspace | toggle window transparency | back |
+  | Super+/ | monitor scaling up | shortcut help panel |
+  | Super+Shift+S | Google Maps | screenshot |
+
 - Touchpad: two-finger scrolling is smooth on both axes with a stop at the end
   (f82c550). Three-finger left/right swipes switch workspaces: the page's
   PanGesture(fingers 3) goes to Hyprland as swipe events (export input 7/8/9) and

@@ -1037,6 +1037,35 @@ void ReleaseHeldKeys()
     g_ctrlDown = false;
 }
 
+// A stand-in key for Super: HarmonyOS opens its start menu on the Super key's
+// release and keeps many Super chords for itself, so Omarchy's Super shortcuts are
+// typed with another key here. The file files/super-key in the app's data directory
+// says which: "ralt" (right Alt, the default), "capslock", or "off" (only the real
+// Super key). Left Alt stays Alt.
+enum class SuperKey { RightAlt, CapsLock, Off };
+SuperKey SuperStandIn()
+{
+    static int64_t checked = -1;
+    static SuperKey key = SuperKey::RightAlt;
+    int64_t now = NowS();
+    if (now != checked) {
+        checked = now;
+        key = SuperKey::RightAlt;
+        if (FILE *f = fopen("/data/storage/el2/base/files/super-key", "r")) {
+            char b[16] = {0};
+            if (fgets(b, sizeof(b), f) != nullptr) {
+                if (strncmp(b, "capslock", 8) == 0) {
+                    key = SuperKey::CapsLock;
+                } else if (strncmp(b, "off", 3) == 0) {
+                    key = SuperKey::Off;
+                }
+            }
+            fclose(f);
+        }
+    }
+    return key;
+}
+
 // OpenHarmony key code -> Linux evdev KEY_* code (the compositor applies the keymap).
 uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
 {
@@ -1079,9 +1108,9 @@ uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
         case KEY_SHIFT_RIGHT: return 54;
         case KEY_CTRL_LEFT: return 29;
         case KEY_CTRL_RIGHT: return 97;
-        case KEY_CAPS_LOCK: return 58;
+        case KEY_CAPS_LOCK: return SuperStandIn() == SuperKey::CapsLock ? 125 : 58;
         case KEY_ALT_LEFT: return 56;
-        case KEY_ALT_RIGHT: return 100;
+        case KEY_ALT_RIGHT: return SuperStandIn() == SuperKey::RightAlt ? 125 : 100;
         case KEY_META_LEFT: return 125;
         case KEY_META_RIGHT: return 126;
         case KEY_MENU: return 127;

@@ -44,6 +44,7 @@ commit=$(cd "$root" && git rev-parse HEAD)
 [ -z "$(cd "$root" && git status --porcelain -- "${GPL_PATHS[@]}")" ] ||
     { echo "release.sh: uncommitted changes in the GPL paths; the source archive must match a commit" >&2; exit 1; }
 rm -rf "$OUT"; mkdir -p "$OUT/up"
+: > "$OUT/whole.sha256"
 if [ -n "${PKG_SOURCES:-}" ] && [ "${HOST_UPLOAD:-0}" != 1 ]; then
     [ -s "$PKG_SOURCES/PACKAGES.txt" ] || { echo "release.sh: $PKG_SOURCES has no PACKAGES.txt (gpl-sources.sh)" >&2; exit 1; }
     pk=$OUT/ohmarchy-$TAG-package-sources.tar

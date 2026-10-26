@@ -53,7 +53,7 @@ doesn't touch them.
 | 4 | Nobody else is driving the machine | [backstage] tell every remote session and automation script to stop; nobody touches the screen over ssh during the demo |
 | 5 | **No VM running** | Look: in 鸿融 the VM card's preview is **not a live desktop** and 开机 can be tapped. Note: 鸿融's card says 已关机 **even while** the VM runs, so the label alone proves nothing. [backstage] definitive: `ssh ohdev pidof stratovirt` prints nothing |
 | 5b | **鸿融 does not start a VM by itself** | In 鸿融, 虚拟机 → 功能设置 → 启动与闲置: both "auto-start VM" (自动启动虚拟机) and "pause when idle" (闲置自动暂停) are off (found on 2026-10-26: with them on, the VM starts whenever 鸿融 is opened or launched, taking the HMV that part 1's Docker needs). Do not tap 鸿融 in the dock before the start. [backstage] if `ssh ohdev pidof stratovirt` prints something and `ps -ef \| grep stratovirt` shows com.huawei.medivh, shut it down from 鸿融: 关机 for the Omarchy disk (it has the guest agent), 更多 → 强制关机 for the main disk (no agent); then check `pidof stratovirt` is empty again |
-| 6 | Native desktop already running in the background | ideally started at boot (**to be confirmed in rehearsal**: the boot service has not been verified by a real reboot). [backstage] `ssh ohdev sh /data/local/archtest/bin/omarchy desktop status`; if it is down, `... omarchy desktop start` (about 3 s) |
+| 6 | Native desktop already running in the background | it starts at boot by itself (verified by a real reboot on 2026-10-26: the desktop was running about 50 s after power-on; after login, double-clicking the icon showed it at once). [backstage] `ssh ohdev sh /data/local/archtest/bin/omarchy desktop status`; if it is down, `... omarchy desktop start` (about 3 s) |
 | 7 | Clean desktop | only HarmonyOS's own desktop; no 鸿融, OSEasy or "Omarchy (native)" window open; notifications cleared |
 | 8 | The three icons are in the dock | "Omarchy (native)", 鸿融 (orange-yellow), OSEasy |
 | 9 | 鸿融 auto-update is off | AppGallery has swapped 鸿融's version on its own before. It should be 1.1.1.103 |
@@ -90,7 +90,7 @@ key opens HarmonyOS's start menu (click back into the desktop to close it).
 
 | Symptom | Do |
 |---|---|
-| The app window keeps saying it is waiting; no desktop | The native desktop isn't running in the background (autostart didn't work, to be confirmed in rehearsal). [backstage] `omarchy desktop start`, wait 10 s. Still nothing: close the app window, [backstage] `omarchy desktop stop; omarchy desktop start`, tap the icon again. On stage: "let's change the order", go straight to part 2 (鸿融) |
+| The app window keeps saying it is waiting; no desktop | The native desktop isn't running in the background (autostart didn't work; shouldn't happen, except within the first minute after boot). [backstage] `omarchy desktop start`, wait 10 s. Still nothing: close the app window, [backstage] `omarchy desktop stop; omarchy desktop start`, tap the icon again. On stage: "let's change the order", go straight to part 2 (鸿融) |
 | "Omarchy (native)" was closed by accident | Double-click the icon again: the desktop starts afresh by itself, about 6 s (rehearsed 2026-10-26, no backstage command). Windows that were open are gone; open them again (Super = right Alt) |
 | Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | A window is stuck | **Super+W** closes it; go on to the next step |
@@ -275,13 +275,15 @@ images on GitHub Releases plus instructions for ordinary users.
 
 ## To be confirmed in rehearsal
 
-1. The native desktop starts by itself at boot (the boot service hasn't been
-   verified by a real reboot).
-2. With the autostart setup, reopening the app after closing it restarts the
-   desktop by itself.
-3. Super-key shortcuts by hand in the native desktop (Super+Return, Super+2,
-   Super+Shift+B, Super+Space, Super+Shift+F, Super+W) aren't intercepted by
-   HarmonyOS.
+1. ~~The native desktop starts by itself at boot~~ Confirmed (real reboot on
+   2026-10-26: running 50 s after power-on; after a normal login, the first
+   screenshot after double-clicking the icon shows the desktop; `pidof
+   stratovirt` empty; no backstage commands).
+2. ~~Reopening the app after closing it restarts the desktop~~ Confirmed (same
+   reboot: closed, double-clicked again, desktop back).
+3. Super-key shortcuts in the native desktop: HarmonyOS intercepts the Windows
+   key (start menu), so right Alt stands in for Super; verified with injected
+   keys, still to be pressed by hand on the physical keyboard.
 4. Where Do Not Disturb and auto screen-off live on the HarmonyOS PC.
 5. What 鸿融 shows when 开机 is tapped while another VM (Docker) still runs.
 6. Whether 鸿融 leaves fullscreen by itself after a shutdown from inside.

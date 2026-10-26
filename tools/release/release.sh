@@ -149,7 +149,7 @@ if gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
     [ "$(gh release view "$TAG" -R "$REPO" --json isDraft -q .isDraft)" = true ] ||
         { echo "release.sh: $TAG is already published; not touching it" >&2; exit 1; }
     gh release upload "$TAG" -R "$REPO" --clobber "${files[@]}"
-    gh release edit "$TAG" -R "$REPO" --notes-file "$OUT/notes.md" --title "$TITLE"
+    gh release edit "$TAG" -R "$REPO" --notes-file "$OUT/notes.md" --title "$TITLE" --target "$commit"
 else
     gh release create "$TAG" -R "$REPO" --draft --target "$commit" --title "$TITLE" \
         --notes-file "$OUT/notes.md" "${files[@]}"

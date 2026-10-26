@@ -22,7 +22,7 @@ The current development machine (`ohdev`) is a HUAWEI MateBook 14 HM740 (Harmony
 | **L. Linux in ArkWeb**: [docs/route-l-arkweb.md](docs/route-l-arkweb.md) | Arch Linux 32 (pacman, systemd) in the v86 x86 emulator (JIT to WebAssembly) inside an ordinary HAP's ArkWeb `Web` component; no root, no VM permission | Paused by decision 2026-10-25. Image, page and signed HAP built; boots to a root shell in 32 s in desktop Chrome; never run on the device (the screen was busy with other tests), so whether ArkWeb gives a third-party HAP wasm JIT is not known |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-25 19:24 PDT)
+## Progress (updated hourly; last: 2026-10-25 20:24 PDT)
 
 | Route | Now | Latest |
 |---|---|---|

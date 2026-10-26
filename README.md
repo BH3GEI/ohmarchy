@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 02:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 03:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Rebuilding the install ISO around the full public image (with waybar and wallpaper), so one "再次安装" lands on the complete desktop | **Install from the disc works end to end**: "再次安装" → the image on the disc is written to the VM's disk → automatic reboot → Hyprland at 120 Hz with auto-login. The old ISO booted a dead default entry; install-to-disk is now the only default (a854e99). The image used so far is a trimmed GPU-test build without waybar, wallpaper or the Omarchy menu, so the desktop looks empty |
-| C. 鸿融 | Building the passwordless full image shared with B (password set on tty1 at first boot) | NOPASS full image added to the build (9306e34); build in progress on the device |
-| D. Native | Waiting to reboot the whole machine to verify autostart (after C's build) | Demo segment rehearsed by keyboard with right Alt as Super (43065c0); closing and reopening the app brings the desktop back in about 6 s (6c3b296); Firefox no longer offers to restore a crashed session |
-| I. Own VM | — | The Docker VM now stops by itself 30 s after its last use instead of 3 min (5687442), so the presenter types no maintenance command |
-| J. Linux in an app sandbox (no root) | Background research; round 5 on the device | Four rounds on the device, each clearing one blocker: dma_heap permissions (86d2ece, 3c0a48a), Hyprland socket path too long (4d1d5ee), vtest hand-off (786aaee, 6bb893d), vtest protocol v2 rejected (4d3bafb). No picture yet |
+| B. OSEasy | Making OSEasy's fullscreen work (the Omarchy desktop must fill the screen at the screen's resolution), tested on an ISO built from the untrimmed full image; then the final ISO from the trimmed image | Install from the disc works end to end (a854e99). The test machine's reboot reset OSEasy to "点击创建虚拟机", so the VM has to be created again from the new ISO |
+| C. 鸿融 / public image | Trimmed rebuild of the passwordless full image | First full build: no password hash, no relay key, but 2.66 GB compressed, too big for a GitHub asset. Trimmed by uninstalling with pacman (qemu-user-static, LibreOffice, Obsidian, superwhisper, .NET runtime, LocalSend, theme intro videos), locales cut to zh_CN and en, mise caches cleared (31e78f6). Users can install any of them back. Target: the whole ISO under 2 GiB |
+| D. Native | Second real reboot to verify autostart | **The first real reboot failed to autostart**: the desktop service used a "condition" start that never fired, so the boot script never ran (it had only been dry-run before). Now it starts in boot mode like the ssh service and waits for boot-completed itself (63b0f2c); run by hand it brings up the Arch session and the desktop in 36 s |
+| I. Own VM | Done | Verified: the Docker VM stops by itself about 35 s after hello-world; the demo manual says "nothing to do" at step 1.9 (8aa3829) |
+| J. Linux in an app sandbox (no root) | Background research | Unchanged: four rounds on the device, no picture yet |
 
-Release: drafts are now built even when some GPL sources are missing; they are listed at the top of the notes and the release is published only when the list is empty. A written offer of source is in the README and in each release (2f9696b).
+Release: the GPL source bundle for the B image is being prepared; libtool's source is fetched by hand from the upstream tarball because the git clone fails.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

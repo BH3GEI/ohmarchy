@@ -1244,6 +1244,15 @@ napi_value Swipe(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+// Route J: the app is its own vtest broker; returns the socket path for clients.
+napi_value LocalGpuNapi(napi_env env, napi_callback_info)
+{
+    std::string path = LocalGpu();
+    napi_value v = nullptr;
+    napi_create_string_utf8(env, path.c_str(), path.size(), &v);
+    return v;
+}
+
 napi_value ReleaseKeys(napi_env, napi_callback_info)
 {
     ReleaseHeldKeys();
@@ -1273,6 +1282,7 @@ napi_value Init(napi_env env, napi_value exports)
         {"setForeground", nullptr, SetForeground, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"swipe", nullptr, Swipe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"releaseKeys", nullptr, ReleaseKeys, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"localGpu", nullptr, LocalGpuNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

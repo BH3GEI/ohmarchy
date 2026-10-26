@@ -78,17 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 13:50 PDT)
+## Progress (updated hourly; last: 2026-10-26 14:29 PDT)
 
-Now: **the full demo rehearsal is running** on the test machine (part 1 D + I, then part 2 C, then part 3 B). The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out waits for an upload token.
+Now: **the full demo rehearsal is in part 3** (B, OSEasy). Parts 1 and 2 are done. The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out waits for an upload token.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Part 3 of the rehearsal, after 鸿融 | Final ISO verified (2,006,953,984 bytes); draft release waiting for the upload |
-| C. 鸿融 | Part 2 of the rehearsal | Rehearsal prep done: Omarchy disk swapped in, password screen 48 s after power-on, guest agent installed, card shows 运行中, shut down with 鸿融's button. This time 鸿融 showed only a toast in the corner instead of the guest-agent dialog, and the toast went away once the agent was in; the manual now says either may appear (206d357) |
-| D. Native | Part 1 of the rehearsal | Steps 1.1–1.7 matched the manual except that Firefox opened on "Restore Session" again; being fixed |
-| I. Own VM | Fix for a hang found in the rehearsal | **Rehearsal found a hang**: the Docker VM's idle shutdown at 03:16 never finished (it got stuck reading the already-exited VM process), and new `docker` commands waited on it. Killing the stuck step let the VM start for the waiting command. The fix (handle an exited process, a timeout for the whole shutdown) is built and will be installed between rehearsal parts. The new display app with the Docker-refused notification is installed (94f245c) |
+| B. OSEasy | Part 3 of the rehearsal | The machine is heavily loaded by the GPL source build, which slows remote control; the source run is paused during the rehearsal |
+| C. 鸿融 | Part 2 done | **Rehearsed**: power on goes straight to the Omarchy desktop with no password and no guest-agent prompt; fastfetch, the browser and workspaces work; the card shows 运行中 and 关机 ends the VM in 18 s. Manual fixes (185926c): 鸿融 is opened from its desktop icon (it's not on the Dock while closed), Omarchy locks after a long idle, and the address bar is reached with Ctrl+L because two notifications cover the toolbar. **Found**: in 鸿融 this disk now runs at 1920x1280, 60 Hz instead of 2160x1440 at 120 Hz, so the boot-time EDID for virtio-gpu is not taking effect; to be fixed after the rehearsal |
+| D. Native | Part 1 done; re-run after the fixes | Steps matched the manual apart from two issues, both fixed: Firefox opened on "Restore Session" because the old setting does not cover Firefox 158, so the desktop now removes the crashed session at start (08a9af9); and `docker` hung behind an unfinished idle stop (see I) |
+| I. Own VM | Installing the fix after part 3 | An idle stop can no longer hang the Docker gate (063390d) |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
+
+Release: the source run now kills a git fetch that times out (one had spun for hours) (ddd2a66).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

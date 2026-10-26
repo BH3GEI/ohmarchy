@@ -119,6 +119,25 @@ h=unix:///tmp/.ohmarchy-docker.sock d="route I VM dockerd, started on demand"
 docker context inspect ohmarchy > /dev/null 2>&1 && docker context update ohmarchy --description "$d" --docker host=$h > /dev/null ||
     docker context create ohmarchy --description "$d" --docker host=$h > /dev/null
 docker context use ohmarchy > /dev/null' || true
+# docker-vm status/stop, and "停止 Docker 虚拟机" in the Omarchy menu (System),
+# shown while the VM runs
+install -m 755 "$here/desktop/docker-vm" /usr/local/bin/docker-vm
+runuser -u "$user" -- python3 - <<'PY'
+import os, pwd, re
+home = pwd.getpwuid(os.getuid()).pw_dir   # runuser keeps root's HOME
+p = os.path.join(home, ".config/omarchy/extensions/omarchy-menu.jsonc")
+entry = ('  "system.docker-vm-stop": {"icon":"󰡨","label":"停止 Docker 虚拟机",'
+         '"description":"Stop the Docker VM (route I) now","when":"docker-vm running",'
+         '"action":"docker-vm stop --notify"}')
+s = open(p).read() if os.path.exists(p) else "{\n}\n"
+if "system.docker-vm-stop" not in s:
+    body = re.sub(r"//.*", "", s)
+    more = re.search(r'"[^"]+"\s*:', body) is not None   # other entries follow
+    i = s.index("{") + 1
+    s = s[:i] + "\n" + entry + ("," if more else "") + s[i:]
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    open(p, "w").write(s)
+PY
 # Sound to the display app over an abstract socket, to its uid only
 cc -O2 -o "$prefix/bin/ohmarchy-audio-relay" "$here/desktop/ohmarchy-audio-relay.c"
 # System D-Bus, started and stopped with the desktop (ohmarchy-sysbus): only these

@@ -1,0 +1,46 @@
+#!/bin/bash
+# docker-vm: route I's Docker VM as seen from route D's desktop. The VM starts
+# by itself on the first docker command and stops 3 minutes after the last one
+# with no container running; this shows it and stops it earlier, e.g. before
+# opening 鸿融 or OSEasy (one VM at a time). Through the host's docker gate
+# (tools/ownvm/ohmarchy-docker-gate.c), which takes only this user.
+#   docker-vm status
+#   docker-vm stop               refused while containers run or docker is in use
+#   docker-vm stop --notify      the same, answer as a notification (menu entry)
+#   docker-vm running            exit 0 if the VM runs (menu condition)
+#   docker-vm notify-started     the gate's notification when it starts the VM
+s=/tmp/.ohmarchy-docker-vm.sock
+ask() {
+    python3 -c 'import socket, sys
+c = socket.socket(socket.AF_UNIX)
+c.settimeout(120)
+c.connect(sys.argv[1])
+c.sendall((sys.argv[2] + "\n").encode())
+print(c.makefile(encoding="utf-8").read(), end="")' "$s" "$1" 2>/dev/null
+}
+case "$1" in
+status | stop)
+    if [ ! -S "$s" ]; then
+        out="1 Docker 网关没有运行（桌面启动时会一起启动：omarchy desktop start）"
+    else
+        out=$(ask "$1") || out="1 Docker 网关没有应答"
+    fi
+    code=${out%% *} text=${out#* }
+    if [ "$2" = --notify ]; then
+        notify-send -a Docker "Docker 虚拟机" "$text"
+    else
+        echo "$text"
+    fi
+    [ "$code" = 0 ]
+    ;;
+running)
+    [ -S "$s" ] && [ "$(ask running)" = "0 running" ]
+    ;;
+notify-started)
+    notify-send -a Docker "Docker 虚拟机已启动" "用完 3 分钟后自动关闭，或执行 docker-vm stop（菜单：System → 停止 Docker 虚拟机）"
+    ;;
+*)
+    sed -n '7,11p' "$0" | sed 's/^#  *//'
+    exit 2
+    ;;
+esac

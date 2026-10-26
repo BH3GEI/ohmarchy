@@ -90,7 +90,11 @@ desktop)
         gate=/data/local/kaidashi/bin/ohmarchy-docker-gate
         if [ -x "$gate" ] && ! pgrep -f "$gate" > /dev/null; then
             mkdir -p /data/local/kaidashi/ownvm/svc
-            setsid "$gate" ${ug:+--uid "${ug%%:*}"} "/proc/$P/root/tmp/.ohmarchy-docker.sock" \
+            # docker-vm (status/stop) talks to the control socket; when the gate
+            # starts the VM, the desktop gets a notification saying how it stops
+            setsid "$gate" ${ug:+--uid "${ug%%:*}"} --ctl "/proc/$P/root/tmp/.ohmarchy-docker-vm.sock" \
+                --on-start "sh $B/bin/omarchy -c docker-vm notify-started" \
+                "/proc/$P/root/tmp/.ohmarchy-docker.sock" \
                 < /dev/null >> /data/local/kaidashi/ownvm/svc/gate.log 2>&1 &
             echo $! > /data/local/kaidashi/ownvm/svc/gate.pid
         fi

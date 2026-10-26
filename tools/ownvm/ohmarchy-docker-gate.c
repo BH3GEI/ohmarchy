@@ -1,6 +1,8 @@
 // ohmarchy-docker-gate: route D's docker CLI reaches route I's dockerd through
-// this socket, and route I's VM runs only while it is used. Root on the host,
-// started at boot by route D's boot-start.sh.
+// this socket, and route I's VM runs only while it is used. Root on the host;
+// `omarchy desktop start` (also at boot) runs it with the socket at /tmp in
+// route D's Arch, reached as /proc/<session>/root/tmp/...: when that session
+// ends, the path is gone and so is the gate, until the next desktop start.
 // Each connection: only from uid --uid (SO_PEERCRED; route D's desktop user);
 // if the VM is down, `ohmarchy-vm start` and wait for dockerd (about 10 s the
 // first time), then the connection becomes the stdin/stdout of
@@ -11,7 +13,14 @@
 // never stopped. While another VM runs (HMV runs one at a time: 鸿融, OSEasy)
 // the gate does not try, and the client gets an HTTP 503 that docker prints as
 // "Error response from daemon: <the reason, in Chinese for the user>".
-//   ohmarchy-docker-gate [--uid UID] [--idle MIN] <socket path>
+// --ctl PATH: a second socket, same peer check, one line per connection:
+// `running` (quick), `status` or `stop` (only with no container running and
+// no docker connection open); the answer is one line, "0 " or "1 " (failed/refused) and the text.
+// route D's `docker-vm` command and its menu entry use it.
+// --on-start CMD: run (detached, through /system/bin/sh) after the gate started
+// the VM: route D's notification that the VM runs and how it stops.
+//   ohmarchy-docker-gate [--uid UID] [--idle MIN] [--ctl PATH] [--on-start CMD]
+//                        <socket path>
 //   (defaults: uid 60000, 3 min: 鸿融 and OSEasy need the hypervisor soon after)
 #define _GNU_SOURCE
 #include <errno.h>
@@ -92,6 +101,61 @@ static void say(const char *fmt, const char *arg)
     printf("\n");
 }
 
+/* CMD in a grandchild, so that waitpid(-1) in the main loop only sees proxies */
+static void run_detached(const char *cmd)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        if (fork() == 0) {
+            setsid();
+            dup2(open("/dev/null", 0), 0);
+            execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
+            _exit(127);
+        }
+        _exit(0);
+    }
+    if (pid > 0)
+        waitpid(pid, NULL, 0);
+}
+
+static int listen_on(const char *path, long uid)
+{
+    struct sockaddr_un a = {.sun_family = AF_UNIX};
+    snprintf(a.sun_path, sizeof(a.sun_path), "%s", path);
+    unlink(path);
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd < 0 || bind(fd, (struct sockaddr *)&a, sizeof(a)) < 0 || listen(fd, 32) < 0) {
+        perror(path);
+        return -1;
+    }
+    /* the peer check is what counts; the mode keeps others from even connecting */
+    if (chown(path, uid, uid) < 0 || chmod(path, 0600) < 0)
+        perror("chown/chmod");
+    return fd;
+}
+
+/* accept, and keep the connection only from uid */
+static int accept_from(int ls, long uid)
+{
+    int fd = accept4(ls, NULL, NULL, SOCK_CLOEXEC);
+    struct ucred cr = {0};
+    socklen_t crlen = sizeof(cr);
+    if (fd >= 0 && (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &crlen) < 0 || (long)cr.uid != uid)) {
+        printf("refused pid %d uid %u\n", (int)cr.pid, (unsigned)cr.uid);
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+static void reply(int fd, int code, const char *text)
+{
+    char b[512];
+    int n = snprintf(b, sizeof(b), "%d %s\n", code, text);
+    (void)!write(fd, b, n);
+    close(fd);
+}
+
 static void refuse(int fd, const char *why)
 {
     char req[4096], resp[512];
@@ -111,40 +175,38 @@ static void refuse(int fd, const char *why)
 int main(int argc, char **argv)
 {
     long uid = 60000, idle_min = 3;
+    const char *ctl = NULL, *on_start = NULL;
     while (argc > 2 && strncmp(argv[1], "--", 2) == 0) {
         if (strcmp(argv[1], "--uid") == 0)
             uid = strtol(argv[2], NULL, 10);
         else if (strcmp(argv[1], "--idle") == 0)
             idle_min = strtol(argv[2], NULL, 10);
+        else if (strcmp(argv[1], "--ctl") == 0)
+            ctl = argv[2];
+        else if (strcmp(argv[1], "--on-start") == 0)
+            on_start = argv[2];
         else
             break;
         argv += 2;
         argc -= 2;
     }
     if (argc != 2) {
-        fprintf(stderr, "usage: %s [--uid UID] [--idle MIN] <socket path>\n", argv[0]);
+        fprintf(stderr, "usage: %s [--uid UID] [--idle MIN] [--ctl PATH] [--on-start CMD] <socket path>\n", argv[0]);
         return 2;
     }
     signal(SIGPIPE, SIG_IGN);
     setvbuf(stdout, NULL, _IOLBF, 0);
-    struct sockaddr_un a = {.sun_family = AF_UNIX};
-    snprintf(a.sun_path, sizeof(a.sun_path), "%s", argv[1]);
-    unlink(argv[1]);
-    int ls = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (ls < 0 || bind(ls, (struct sockaddr *)&a, sizeof(a)) < 0 || listen(ls, 32) < 0) {
-        perror(argv[1]);
+    int ls = listen_on(argv[1], uid), cs = ctl ? listen_on(ctl, uid) : -1;
+    if (ls < 0 || (ctl && cs < 0))
         return 1;
-    }
-    /* the peer check is what counts; the mode keeps others from even connecting */
-    if (chown(argv[1], uid, uid) < 0 || chmod(argv[1], 0600) < 0)
-        perror("chown/chmod");
-    printf("gate on %s for uid %ld, idle stop after %ld min\n", argv[1], uid, idle_min);
+    printf("gate on %s for uid %ld, idle stop after %ld min%s%s\n", argv[1], uid, idle_min,
+           ctl ? ", control on " : "", ctl ? ctl : "");
 
     int ours = 0, active = 0;
     time_t last_used = time(NULL), last_fail = 0, last_check = 0;
     for (;;) {
-        struct pollfd p = {ls, POLLIN, 0};
-        int r = poll(&p, 1, 5000);
+        struct pollfd p[2] = {{ls, POLLIN, 0}, {cs, POLLIN, 0}};
+        int r = poll(p, cs >= 0 ? 2 : 1, 5000);
         while (waitpid(-1, NULL, WNOHANG) > 0)
             if (--active == 0)
                 last_used = time(NULL);
@@ -152,17 +214,67 @@ int main(int argc, char **argv)
             perror("poll");
             return 1;
         }
-        if (r > 0 && (p.revents & POLLIN)) {
-            int fd = accept4(ls, NULL, NULL, SOCK_CLOEXEC);
-            struct ucred cr = {0};
-            socklen_t crlen = sizeof(cr);
+        if (r > 0 && cs >= 0 && (p[1].revents & POLLIN)) {
+            int fd = accept_from(cs, uid);
+            char line[32] = "";
+            struct timeval tv = {2, 0};
             if (fd < 0)
                 continue;
-            if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &crlen) < 0 || (long)cr.uid != uid) {
-                printf("refused pid %d uid %u\n", (int)cr.pid, (unsigned)cr.uid);
-                close(fd);
-                continue;
+            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            ssize_t n = read(fd, line, sizeof(line) - 1);
+            line[n > 0 ? n : 0] = 0;
+            line[strcspn(line, "\r\n")] = 0;
+            int up = vm_running();
+            if (!up)
+                ours = 0;
+            if (strcmp(line, "running") == 0) { /* cheap, for menu conditions */
+                reply(fd, up ? 0 : 1, up ? "running" : "stopped");
+            } else if (strcmp(line, "status") == 0) {
+                char t[256];
+                if (!up) {
+                    reply(fd, 0, sh("pidof stratovirt > /dev/null", NULL, 0) == 0
+                                     ? "Docker 虚拟机没有运行（鸿融或 OSEasy 的虚拟机正在运行）"
+                                     : "Docker 虚拟机没有运行，下次用 docker 时自动启动");
+                    continue;
+                }
+                int c = containers_running();
+                long left = idle_min * 60 - (time(NULL) - last_used);
+                if (!ours)
+                    snprintf(t, sizeof(t), "Docker 虚拟机正在运行（手动启动的，不会自动关闭），%d 个容器在运行", c);
+                else if (active > 0 || c != 0)
+                    snprintf(t, sizeof(t), "Docker 虚拟机正在运行，%d 个容器在运行，%d 个 docker 连接；都结束 %ld 分钟后自动关闭", c, active, idle_min);
+                else
+                    snprintf(t, sizeof(t), "Docker 虚拟机正在运行，没有容器；约 %ld 秒后自动关闭", left > 0 ? left : 0);
+                reply(fd, 0, t);
+            } else if (strcmp(line, "stop") == 0) {
+                char t[256];
+                int c = up ? containers_running() : 0;
+                if (!up) {
+                    reply(fd, 0, "Docker 虚拟机没有运行");
+                } else if (active > 0) {
+                    snprintf(t, sizeof(t), "没有关闭：还有 %d 个 docker 连接在用（比如 docker logs -f），先结束它们", active);
+                    reply(fd, 1, t);
+                } else if (c != 0) {
+                    if (c > 0)
+                        snprintf(t, sizeof(t), "没有关闭：还有 %d 个容器在运行，先用 docker stop 停掉（docker ps 查看）", c);
+                    else
+                        snprintf(t, sizeof(t), "没有关闭：查不到容器状态");
+                    reply(fd, 1, t);
+                } else {
+                    say("stop asked by %s", "docker-vm");
+                    int ok = sh("sh " VM " stop", NULL, 0) == 0 && !vm_running();
+                    ours = 0;
+                    reply(fd, ok ? 0 : 1, ok ? "Docker 虚拟机已关闭，现在可以开鸿融或 OSEasy 的虚拟机" : "关闭失败，见 /data/local/kaidashi/ownvm/svc/gate.log");
+                }
+            } else {
+                reply(fd, 1, "usage: running | status | stop");
             }
+            continue;
+        }
+        if (r > 0 && (p[0].revents & POLLIN)) {
+            int fd = accept_from(ls, uid);
+            if (fd < 0)
+                continue;
             last_used = time(NULL);
             if (!vm_running()) {
                 ours = 0;
@@ -188,6 +300,8 @@ int main(int argc, char **argv)
                     continue;
                 }
                 say("%s", "VM up, dockerd answers");
+                if (on_start)
+                    run_detached(on_start);
             }
             pid_t pid = fork();
             if (pid == 0) {
@@ -202,7 +316,7 @@ int main(int argc, char **argv)
             continue;
         }
         struct stat sb;
-        if (stat(argv[1], &sb) < 0) {
+        if (stat(argv[1], &sb) < 0 || (ctl && stat(ctl, &sb) < 0)) {
             say("%s is gone (session ended), exiting", argv[1]);
             return 0;
         }

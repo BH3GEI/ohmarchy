@@ -124,10 +124,16 @@ grub-mkstandalone -d "$W/t/usr/lib/grub/arm64-efi" -O arm64-efi \
     "boot/grub/grub.cfg=$W/grub-early.cfg"
 
 # 5. ESP image, ISO and GPT disk
-mib=$(( $(du -sm "$W/esp" | cut -f1) + 32 ))
+# The El Torito EFI boot image only needs the GRUB binary: GRUB then finds the
+# ISO9660 volume by the /oseasy-probe marker and reads grub.cfg, Image and
+# initramfs.img from it (the loose files copied into $W/iso below). Keeping the
+# ~160 MB kernel+initramfs OUT of this FAT image avoids duplicating them, so an
+# ISO carrying a ~1.7 GiB embedded disk image still fits under the 2 GiB limit.
+mkdir -p "$W/espmin"; cp -r "$W/esp/EFI" "$W/espmin/"
+mib=$(( $(du -sm "$W/espmin" | cut -f1) + 4 ))
 truncate -s ${mib}M "$W/efiboot.img"
 mkfs.fat -F 32 -n PROBE "$W/efiboot.img" >/dev/null 2>&1 || mkfs.fat -n PROBE "$W/efiboot.img" >/dev/null
-mcopy -s -i "$W/efiboot.img" "$W/esp/"* ::/
+mcopy -s -i "$W/efiboot.img" "$W/espmin/"* ::/
 mkdir -p "$W/iso"; cp "$W/efiboot.img" "$W/iso/"; cp -r "$W/esp/"* "$W/iso/"
 # PROBE_IMGZST embeds a zstd-compressed raw disk image in the ISO data area (not in
 # the El Torito ESP, which stays small). The install mode mounts this same CD and

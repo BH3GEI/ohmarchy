@@ -1,0 +1,11 @@
+# Route D: Codex through Yao's API relay (its Responses API; native/desktop/ai/setup.sh).
+# Alternative model: ark/ark-code-latest.
+# The address and key come from the environment (~/.config/environment.d/60-ai.conf).
+model = "kimi/kimi-for-coding"
+model_provider = "relay"
+
+[model_providers.relay]
+name = "relay"
+base_url = "https://relay.liyao.space/v1"
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"

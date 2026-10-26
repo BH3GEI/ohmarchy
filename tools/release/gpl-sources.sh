@@ -48,6 +48,7 @@ snapshot() {
         case $u in
         git+*)
             u=${u#git+}; local ref=${u#*#} url=${u%%#*} r=HEAD
+            url=${url%%\?*}; ref=${ref%%\?*}   # "?signed": a verification hint, not part of the URL
             case $ref in commit=*) r=${ref#commit=} ;; tag=*) r=${ref#tag=} ;; branch=*) r=${ref#branch=} ;; esac
             [ "$ref" = "$u" ] && r=HEAD
             local repo; repo=$(basename "${url%.git}"); nm=${nm:-$repo}

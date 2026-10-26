@@ -10,11 +10,11 @@ tied to one machine.
 Test machine: HUAWEI HM740 (Kirin X90, 20 threads, 32 GB), HarmonyOS 7.0
 (HongMeng kernel 1.11.13.0).
 
-## Summary (2026-10-24 21:45)
+## Summary (2026-10-24 21:45; Docker rows updated 2026-10-26)
 
 | Item | Status | What | Evidence |
 |---|---|---|---|
-| A1 every app opens in 3 s | pass | 2026-10-24 10:28: 74 of 78 pass, 0 failed, 3 unsupported (no camera; systemd user units and timers), 1 skip (foot-server); P95 1.13 s. Docker works through route I's VM (A1b) | [dc65767](https://github.com/BH3GEI/ohmarchy/commit/dc65767), [1d70b74](https://github.com/BH3GEI/ohmarchy/commit/1d70b74) |
+| A1 every app opens in 3 s | pass | 2026-10-24 10:28: 74 of 78 pass, 0 failed, 3 unsupported (no camera; systemd user units and timers), 1 skip (foot-server); P95 1.13 s. Docker works through route I's VM, started on demand (A1b) | [dc65767](https://github.com/BH3GEI/ohmarchy/commit/dc65767), [1d70b74](https://github.com/BH3GEI/ohmarchy/commit/1d70b74) |
 | A2 core operations | pass | files (LibreOffice, Neovim), clipboard, Chinese input, sound, file chooser: 6 of 6 | [83432cf](https://github.com/BH3GEI/ohmarchy/commit/83432cf), [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5) |
 | A3 sound | pass, plus on site | over the app-only socket (23:45): first sound median 101 ms (max 133), during playback median 72 ms (max 77); A/V within 100 ms; not yet heard by ear (host volume 0) | [5bfbae5](https://github.com/BH3GEI/ohmarchy/commit/5bfbae5), [e1605aa](https://github.com/BH3GEI/ohmarchy/commit/e1605aa) |
 | B cold start <= 10 s | pass | about 8 s (session 2.0 s + desktop 5.7-6.1 s) | [68e71a7](https://github.com/BH3GEI/ohmarchy/commit/68e71a7) |
@@ -119,23 +119,33 @@ Unsupported, with the reason (reported as such by the test, not as failures):
 
 The HongMeng kernel cannot run containers (no cgroup v2, no user namespaces). Route
 I runs a small Arch VM on the HarmonyOS hypervisor (`ohmarchy-vm`, agent-a4's
-line, docs/vm-own.md) with dockerd; route D's docker CLI uses it over ssh: context
-`ohmarchy` = `ssh://yao@172.16.100.2`, the desktop user's own key, the VM's host
-key pinned (no daemon port on the network). `40-install-desktop.sh` sets it up.
+line, docs/vm-own.md) with dockerd. Since 2026-10-26 ([caecc94](https://github.com/BH3GEI/ohmarchy/commit/caecc94))
+route D's docker CLI reaches it through the docker gate: context `ohmarchy` =
+`unix:///tmp/.ohmarchy-docker.sock`, a root daemon on the host that accepts only
+the desktop user (SO_PEERCRED), starts the VM on the first connection and stops
+it after 3 idle minutes with no container running (no daemon port on the
+network). Before, the context was `ssh://yao@172.16.100.2` and the VM had to be
+started by hand. `40-install-desktop.sh` sets it up.
 
 `tests/compat/docker.sh`, 2026-10-24 09:52, from the desktop session: `docker run
 --rm hello-world` 1.2 s; `docker compose up` of a one-service file ran. Omarchy's
 Docker entry (lazydocker) runs against it: Omarchy's launcher wants the local
 socket through pkexec, so route D's override (`/opt/ohmarchy/overrides`) runs it
-directly when the current context is remote. Needs the VM running
-(`ohmarchy-vm start`, about a minute).
+directly when the current context is remote or the gate. Nothing to start by
+hand: from a stopped VM, `docker run --rm hello-world` took 17 s (VM boot
+included) and 1 s after that (2026-10-26). With 鸿融's or OSEasy's VM running,
+docker answers `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它`
+(one VM at a time; tested 2026-10-26).
 
 Bind mounts (`tests/compat/docker-mount.sh`, 10:58): the VM shares the desktop
 user's home at the same path (virtiofs, its daemon as that user), so `docker run
 -v $PWD:/w` and a compose `.:/w` volume work from anywhere under the home
 directory: the container read a file written in route D, and files it wrote show
-up here owned by the desktop user (uid 60000). They come out as mode 0660, not the
-usual 0644. Paths outside the home directory are not shared.
+up here owned by the desktop user (uid 60000). They came out as mode 0660 with
+HarmonyOS's own virtiofsd; since the switch to upstream virtiofsd 1.14.0
+([2235eaf](https://github.com/BH3GEI/ohmarchy/commit/2235eaf)) they are the usual
+0644/0755 and chmod works (demo rehearsal 2026-10-26: `644 builder`). Paths
+outside the home directory are not shared.
 
 ### A2. Core operations
 

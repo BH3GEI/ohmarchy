@@ -28,7 +28,7 @@ pacman -S --noconfirm --needed qt6-5compat dua-cli
 # Default browser: Firefox. Chromium cannot sandbox itself here (no user
 # namespaces; its setuid sandbox's zygote fails a check) and runs with
 # --no-sandbox; Firefox's content processes get their seccomp-bpf sandbox.
-# Web apps (omarchy-launch-webapp) still use Chromium.
+# Web apps open in Firefox too (desktop/shims/omarchy-launch-webapp).
 pacman -S --noconfirm --needed firefox
 # lazydocker for Omarchy's Docker entry (the daemon is in route I's VM)
 pacman -S --noconfirm --needed lazydocker

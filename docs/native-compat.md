@@ -31,11 +31,11 @@ The root causes behind most ❌ rows:
 | Terminal (SUPER+RETURN) | ✅ | 0.35 s. `xdg-terminal-exec` picks foot; Omarchy's ghostty/alacritty aren't installed. |
 | Tmux, Herdr (SUPER+ALT/CTRL+RETURN) | ✅ | 0.4 s. |
 | Browser (SUPER+SHIFT+RETURN, Chromium) | ⚠️ | 1.0 s cold (new profile), 0.9 s for a new window. Needs `--no-sandbox` (`~/.config/chromium-flags.conf`). Logs system-bus errors (UPower), which are harmless. The `chromium.desktop` entry with Chromium already running opens a tab, not a window. |
-| Web apps (SUPER+SHIFT+A etc., webapp `.desktop` entries) | ✅ | 1.0-1.3 s, as Chromium `--app` windows. Whether a site loads depends on the network. |
+| Web apps (SUPER+SHIFT+A etc., webapp `.desktop` entries) | ✅ | 1.2-1.6 s, in a new Firefox window (sandboxed), through route D's override of `omarchy-launch-webapp` ([caee075](https://github.com/BH3GEI/ohmarchy/commit/caee075)); `OHMARCHY_WEBAPP_BROWSER=chromium` gives Omarchy's Chromium `--app` window (no sandbox). Whether a site loads depends on the network. |
 | File manager (SUPER+SHIFT+F, and cwd variant) | ⚠️ | Nautilus, 1.0 s. No removable media or disks (udisks). |
 | Editor (SUPER+SHIFT+N) | ✅ | nvim in foot, 0.35 s. |
 | btop, lazygit (`omarchy-launch-tui`) | ✅ | 0.4 s. btop shows no CPU clock (no cpufreq). |
-| Docker | ⚠️ | No container runtime on HongMeng; the docker CLI uses dockerd in route I's VM over ssh (`docker run`, `docker compose`, lazydocker work; needs `ohmarchy-vm start`). See acceptance.md A1b. |
+| Docker | ⚠️ | No container runtime on HongMeng; the docker CLI uses dockerd in route I's VM, which starts on the first `docker` (17 s cold, then 1 s) and stops after 3 idle minutes (`docker run`, `docker compose`, lazydocker work). Not while 鸿融's or OSEasy's VM runs (one VM at a time; docker says so). See acceptance.md A1b. |
 | Music TUI cliamp (SUPER+SHIFT+ALT+M) | ⚠️ | Was: exits without ALSA/PipeWire. PipeWire now runs; not re-tested. |
 | Spotify, Signal, 1Password (SUPER+SHIFT+M/G/SLASH) | ❌ | Not installed (no aarch64 packages in the repo). |
 | Obsidian (SUPER+SHIFT+O) | ⚠️ | 1.2 s with `--no-sandbox`. Without it Electron's setuid sandbox aborts. Fix: `/usr/local/bin/obsidian` wrapper (below). |
@@ -59,11 +59,11 @@ The root causes behind most ❌ rows:
 | Install > Package / Remove > Package | ✅ | Terminal with pacman and fzf, 0.4 s. pacman works. |
 | Install > AUR | ❌ | `yay` reaches the AUR, but builds hang in `fakeroot` (SysV IPC). |
 | Install > Web App, TUI | ✅ | Floating terminal, 0.4 s. |
-| Install > Development > Docker DB | ❌ | No docker daemon. |
+| Install > Development > Docker DB | ❓ | Was: no docker daemon. The CLI now reaches route I's dockerd; this entry is not retested. |
 | Update > Omarchy (`omarchy-update`) | ⚠️ | Not run. `omarchy-update-available` answers in 0.4 s (`checkupdates` shim). The update itself would run pacman (works), AUR (fakeroot, fails) and mise (works). |
 | Update > Process > Shell | ✅ | Restarts Quickshell. |
 | Update > Hardware (Audio, Wi-Fi, Bluetooth), Time, Timezone | ❌ | By inspection: systemctl/timedatectl. |
-| Update > Password > User | ⚠️ | `passwd` works. The chroot user has no password by default (sudo needs none). |
+| Update > Password > User | ⚠️ | `passwd` works. sudo asks for the user's password (acceptance.md E); Omarchy's own narrow NOPASSWD rules still work without one. |
 | System > Lock | ❌ | Turned off by the desktop setup: HarmonyOS locks the machine. On its own it couldn't unlock: no `/etc/pam.d/omarchy-lock-password` and no user password. |
 | System > Suspend, Hibernate | ❌ | `systemctl` fails without systemd; nothing happens. HarmonyOS owns power. |
 | System > Logout, Reboot, Shutdown | ❌ | By inspection: they close all windows, then `uwsm stop` / `systemctl` fail. The session stays and the host is untouched. To stop: `omarchy desktop stop` from the host. |
@@ -95,11 +95,11 @@ The root causes behind most ❌ rows:
 | LocalSend | ✅ | 1.0 s. |
 | Superwhisper (settings) | ⚠️ | 0.9 s. Dictation needs a microphone, and there is none. |
 | Print Settings (system-config-printer) | ⚠️ | 1.3 s with the statx fix. No cupsd. |
-| CUPS (web) | ❌ | Opens `localhost:631` in Chromium; nothing listens. |
+| CUPS (web) | ❌ | Opens `localhost:631` in the browser; nothing listens. |
 | Disks (gnome-disks) | ⚠️ | Opens in 1.0 s on the system D-Bus (udisks2); lists no disks: the session has no block devices. |
-| Disk Usage (`dua`) | ❌ | `dua` isn't installed. |
+| Disk Usage (`dua`) | ✅ | Fixed: `40-install-desktop.sh` installs `dua-cli` ([f88ff4b](https://github.com/BH3GEI/ohmarchy/commit/f88ff4b)). |
 | uuctl | ❌ | Needs systemd --user and dmenu. |
-| qv4l2 | ❌ | Missing `libQt6Core5Compat.so.6`. |
+| qv4l2 | ✅ | Fixed: `40-install-desktop.sh` installs `qt6-5compat` ([f88ff4b](https://github.com/BH3GEI/ohmarchy/commit/f88ff4b)); opens, but there is no V4L2 camera to show. |
 | qvidcap | ❌ | No `/dev/video0`. |
 | signed | ⚠️ | Needs a PDF argument; from the launcher it prints its help and exits. |
 | Fcitx 5 configuration | ⚠️ | No config GUI installed; the entry opens Nautilus. |
@@ -118,14 +118,14 @@ The root causes behind most ❌ rows:
 | Brightness | ❌ | No backlight device; HarmonyOS controls the panel. |
 | Printing | ❌ | cupsd not running. |
 | Removable media | ❌ | udisks2 runs but the session's `/dev` has no block devices (on purpose: HarmonyOS owns the disks). |
-| Polkit / pkexec | ⚠️ | polkitd starts on the system bus; no authentication agent tested. Use `sudo` (no password). |
+| Polkit / pkexec | ⚠️ | polkitd starts on the system bus; no authentication agent tested. Use `sudo` (asks for the user's password). |
 | Portals | ⚠️ | xdg-desktop-portal with the gtk and hyprland backends; FileChooser, Screenshot, OpenURI, Settings, etc. are on the bus. Not exercised from an app. ScreenCast needs PipeWire. |
 | Xwayland | ✅ | X11 client (`QT_QPA_PLATFORM=xcb cmake-gui`) maps in 0.4 s. |
 | Chinese input | ✅ | fcitx5 pinyin, started by the desktop with Omarchy's environment; Ctrl+Space switches. "nihao" + space gives 你好 in foot. The HarmonyOS IME through `ohime` is an option (`OHMARCHY_IME=harmony`), not verified on screen. |
 | Multi-monitor | ❌ | One headless output shown in one app window. |
 | Clipboard to/from HarmonyOS | ❌ | Not bridged. Wayland clipboard inside works. |
 | HarmonyOS files | ⚠️ | Not mounted. A bind mount from the host (e.g. `/storage/media/100/local/files/Docs` into the session's mount namespace) works, but only root can read it (uid 60000 gets EACCES). |
-| Docker | ⚠️ | No daemon here (dockerd would need cgroups and would change the HarmonyOS network: shared namespace). The CLI uses dockerd in route I's VM over ssh instead; see acceptance.md A1b. |
+| Docker | ⚠️ | No daemon here (dockerd would need cgroups and would change the HarmonyOS network: shared namespace). The CLI uses dockerd in route I's VM instead, started on demand through the host's docker gate; see acceptance.md A1b. |
 | Podman, flatpak | ❌ | Not installed; both need user namespaces (bwrap fails: "Creating new namespace failed"). |
 | AUR / makepkg | ⚠️ | `fakeroot` hangs: `faked` talks over a SysV message queue, and makepkg's packaging step blocks in `msgrcv` for good (`/proc/<pid>/wchan`: `ipcmgr_msgrcv`; seen 2026-10-24 packaging linux-aarch64). ALARM has no `fakeroot-tcp`. Workaround for local packages: run a copy of makepkg with its root check removed, as root, so it needs no fakeroot (`sed 's/^\(\s*\)if (( EUID == 0 )); then/\1if false; then/' /usr/bin/makepkg`). `yay -Si` works. |
 | pacman | ✅ | Omarchy and ALARM repositories. |

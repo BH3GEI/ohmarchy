@@ -20,9 +20,9 @@ hands do, what your eyes check, and what to say.
 2. **Always shut a VM down from inside**: in Omarchy press **Super+Esc →
    Shutdown**. Don't use 鸿融's 关机 (it is greyed out; that is expected),
    don't reboot inside the VM, don't log out.
-3. **Don't close the native desktop's window**, minimize it. Closing "Omarchy
-   (native)" cuts Hyprland's GPU connection and the desktop then needs a
-   backstage restart.
+3. **Don't close the native desktop's window**, minimize it. Opening "Omarchy
+   (native)" again brings the desktop back by itself in about 6 s, but the
+   windows that were open in it are gone.
 
 "Super" is the Windows logo key on the keyboard. **On the native desktop (part 1)
 press right Alt instead of Super**: HarmonyOS keeps the Windows key (its start menu
@@ -101,7 +101,7 @@ key opens HarmonyOS's start menu (click back into the desktop to close it).
 | Symptom | Do |
 |---|---|
 | The app window keeps saying it is waiting; no desktop | The native desktop isn't running in the background (autostart didn't work, to be confirmed in rehearsal). [backstage] `omarchy desktop start`, wait 10 s. Still nothing: close the app window, [backstage] `omarchy desktop stop; omarchy desktop start`, tap the icon again. On stage: "let's change the order", go straight to part 2 (鸿融) |
-| "Omarchy (native)" was closed by accident | Hyprland lost its GPU connection. Tap the icon again; if the desktop doesn't come back, [backstage] `omarchy desktop stop; omarchy desktop start`, then tap the icon (with the autostart setup, tapping the icon should restart the desktop by itself, to be confirmed in rehearsal) |
+| "Omarchy (native)" was closed by accident | Double-click the icon again: the desktop starts afresh by itself, about 6 s (rehearsed 2026-10-26, no backstage command). Windows that were open are gone; open them again (Super = right Alt) |
 | Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | A window is stuck | **Super+W** closes it; go on to the next step |
 | `docker` shows nothing for 15–20 s | Expected: the first run starts the background VM. Keep talking |

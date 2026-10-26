@@ -1,6 +1,8 @@
 #!/bin/bash
-# First login of the NOPASS image (build-disk.sh NOPASS=1): SDDM logs the user
-# "omarchy" in without a password once, ohmarchy-setpass.service opens a
+# First login of the NOPASS image (build-disk.sh NOPASS=1): tty1 logs the user
+# "omarchy" in without a password (getty autologin, its login shell execs
+# Omarchy's uwsm session, as route B's bare image does; SDDM's Hyprland greeter
+# left route B's vmwgfx screen black), ohmarchy-setpass.service opens a
 # terminal on the desktop and runs this through sudo (one NOPASSWD rule for
 # this file only). It sets the password, removes the autologin, the sudo rule
 # and the terminal unit, and installs 鸿融's guest agent when 鸿融's CD is
@@ -29,8 +31,12 @@ while :; do
 done
 unset p1 p2
 
-# route B keeps the autologin (the password is then for sudo)
-[ -e /var/lib/ohmarchy/keep-autologin ] || rm -f /etc/sddm.conf.d/zz-ohmarchy-firstboot.conf
+# route B keeps the autologin (the password is then for sudo); otherwise back
+# to SDDM's password login
+if [ ! -e /var/lib/ohmarchy/keep-autologin ]; then
+  rm -f /etc/systemd/system/getty@tty1.service.d/ohmarchy-autologin.conf
+  systemctl enable sddm.service
+fi
 rm -f "$pending"
 rm -f "/home/$user/.config/systemd/user/graphical-session.target.wants/ohmarchy-setpass.service"
 touch /var/lib/ohmarchy/firstboot.done

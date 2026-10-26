@@ -2,7 +2,7 @@
 Description=Grow the root partition to the whole disk (first boot)
 ConditionPathExists=!/var/lib/ohmarchy/growroot.done
 After=local-fs.target
-Before=display-manager.service
+Before=display-manager.service getty@tty1.service
 
 [Service]
 Type=oneshot

@@ -208,13 +208,26 @@ else
     touch "$R/var/lib/ohmarchy/omarchy-installed" "$R/var/lib/ohmarchy/setpass-pending"
     if [ "$keep_autologin" = 1 ]; then touch "$R/var/lib/ohmarchy/keep-autologin"
     else rm -f "$R/var/lib/ohmarchy/keep-autologin"; fi
-    install -D -m 644 /dev/stdin "$R/etc/sddm.conf.d/zz-ohmarchy-firstboot.conf" <<'SDDM'
-# SDDM autologin for omarchy; with /var/lib/ohmarchy/keep-autologin it stays
-# after the first login, otherwise ohmarchy-setpass-root.sh removes it
-[Autologin]
-User=omarchy
-Session=omarchy.desktop
-SDDM
+    # login: tty1 autologin and Omarchy's uwsm session from the login shell, as
+    # route B's bare image does (SDDM's Hyprland greeter left vmwgfx black).
+    # With keep-autologin it stays; otherwise ohmarchy-setpass-root.sh goes back
+    # to SDDM.
+    rm -f "$R/etc/sddm.conf.d/zz-ohmarchy-firstboot.conf"
+    in_root systemctl disable sddm.service
+    install -D -m 644 /dev/stdin "$R/etc/systemd/system/getty@tty1.service.d/ohmarchy-autologin.conf" <<GETTY
+[Service]
+ExecStart=
+ExecStart=-/usr/bin/agetty -o '-p -f -- \\\\u' --noclear --autologin $user %I \$TERM
+GETTY
+    p=$R/home/$user/.bash_profile
+    touch "$p"
+    grep -q ohmarchy-tty1-session "$p" || cat >> "$p" <<'PROFILE'
+# ohmarchy-tty1-session: start Omarchy's Hyprland session on tty1
+if [ -z "${WAYLAND_DISPLAY:-}" ] && [ "$(tty)" = /dev/tty1 ]; then
+    exec uwsm start -g -1 -e -D Hyprland hyprland.desktop > /tmp/uwsm.log 2>&1
+fi
+PROFILE
+    in_root chown "$user:$user" "/home/$user/.bash_profile"
     install -D -m 440 /dev/stdin "$R/etc/sudoers.d/ohmarchy-setpass" <<SUDO
 $user ALL=(root) NOPASSWD: /usr/local/lib/ohmarchy/ohmarchy-setpass-root.sh
 SUDO

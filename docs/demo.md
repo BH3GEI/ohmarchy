@@ -99,7 +99,7 @@ lives in an environment variable on the presenting machine only (`PW` below).
   a time), and nobody else drives the screen during the demo.
 - Close or minimize other windows so 鸿融 is in front. Clear notifications.
 - C1 only: 鸿融 1.1.1.103 holds one VM, so Yao's main VM has to go first. Back
-  it up and verify sha256, delete it in 鸿融 (更多 → 删除), and have the Developer
+  it up (check that the copy has the same size), delete it in 鸿融 (更多 → 删除), and have the Developer
   image `omarchy-dev-7.2.12-os1.qcow2` in the file manager's 下载 folder.
   That image has neither glmark2 nor the 120 Hz EDID (build-disk.sh adds
   both from now on, not yet rebuilt). With it, do one dry-run import before

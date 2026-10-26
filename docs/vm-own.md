@@ -295,7 +295,9 @@ have D's native 120 Hz desktop; what D lacks is Docker and a full kernel. So
 route I is a headless VM that D's desktop uses in the background.
 
 **Service.** `tools/ownvm/ohmarchy-vm` (installed in `/data/local/kaidashi/bin`):
-`start` (idempotent; returns when the guest's ssh answers, about a minute),
+`start` (idempotent; returns when the guest's ssh answers: 5–10 s after
+StratoVirt starts, measured in every run on 2026-10-26; dockerd answers about
+15 s after `start`),
 `stop` (power-off from inside the guest via a sudo rule limited to
 `systemctl poweroff|reboot`, QMP and kill as fallbacks), `status` (VM,
 guest, dockerd, guest memory, `query-balloon`, host RSS), `ssh`, `balloon MiB`,

@@ -415,3 +415,26 @@ Built the rest of the tree (offline, aarch64-ohos). Key sub-stacks and the musl-
 
 **Next: libeis, the xcursor question (another X11-only dep — likely patched out like librsvg),
 then Hyprland 0.56.2 itself with D's two patches + the HongMeng shims.**
+
+#### Stage 3 — Hyprland 0.56.2 dependency versions + xcursor shim
+
+Hyprland 0.56.2 pins **current Arch versions**, so several deps were rebuilt newer than first
+cut: **xkbcommon 1.11.0** (was 1.7), **wayland-protocols 1.49** (was 1.38), **libinput 1.29.0**
+(was 1.26), **glaze 7.2.0** (header-only, installed via its CMake package so `find_package(glaze
+7...<8)` resolves), plus **udis86**, **readline 8.2** (`--with-curses=no`; its `.pc` wrongly
+`Requires.private: termcap` which is bundled — stripped it), **hyprwire 0.3.1** (needs target
+**pugixml**, which must be built with the clang23/libc++_ohm toolchain, not the C one, or its
+wchar stream symbols mismatch), **hyprland-protocols 0.8.0** (now CMake, not meson), **libeis
+1.3.0**, **libuuid**.
+
+**xcursor without X11.** Hyprland's `CXCursorManager` calls libXcursor's file reader
+(`XcursorFileLoadImages`, `XcursorLibraryPath`, `XcursorImagesDestroy`; `XcursorShapeLoadImages`
+is the legacy cursor-font path). libXcursor drags in libX11. Instead,
+`device/userspace/shim/xcursor_file.c` is a standalone ~150-line reader of the documented XCursor
+binary format (header → TOC → ARGB image chunks, best-size match) exposed as `libXcursor.a` +
+`X11/Xcursor/Xcursor.h`. So a normal PNG-based XCursor theme loads and the pointer is visible;
+`XcursorShapeLoadImages` returns null (no cursor-font), which Hyprland tolerates. (SVG cursors are
+separately off — see the no-svg note.)
+
+Hyprland then **configures** with `-DNO_XWAYLAND -DNO_SYSTEMD -DNO_HYPRPM -DNO_TESTS` against the
+full OHOS-musl stack. Build in progress.

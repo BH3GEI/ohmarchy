@@ -21,6 +21,10 @@
 # for a GitHub release asset. ROOT_IMG=1 also writes omarchy-root.img, the
 # same tree as a bare ext4 filesystem of minimal size without / and /boot/efi
 # in fstab, for route B (OSEasy loop-mounts it from the shared folder).
+# NOPASS=1 (with the full install, not BASE): the user gets no password; the
+# first-boot service only asks for one on tty1 and then lets SDDM start. With
+# the docs, man pages and pacman cache left out this is the image route B
+# ships. The user name is still the USER argument (omarchy for releases).
 # AI_ENV (demo machine only, never for a public image): env file for
 # guest/setup-ai.sh, copied into the base image for its first boot.
 # VMWGFX_KO: route B's patched vmwgfx.ko for this kernel (driver/
@@ -38,7 +42,7 @@
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
-base=${BASE:-0} root_img=${ROOT_IMG:-0} ai_env=${AI_ENV:-} vmwgfx_ko=${VMWGFX_KO:-}
+base=${BASE:-0} nopass=${NOPASS:-0} root_img=${ROOT_IMG:-0} ai_env=${AI_ENV:-} vmwgfx_ko=${VMWGFX_KO:-}
 pkgs=("$@"); [ ${#pkgs[@]} -gt 0 ] || { echo "no kernel packages given"; exit 1; }
 here=$(cd "$(dirname "$0")/.." && pwd)        # hongrong/
 disk_gib=${DISK_GIB:-64} esp_mib=${ESP_MIB:-512}
@@ -123,11 +127,12 @@ in_root bash -c "
   systemctl enable NetworkManager sshd
 "
 # the base image gets its user (and password) at first boot
-[ "$base" = 1 ] || in_root bash -c "
-  id $user >/dev/null 2>&1 || useradd -m -G wheel $user
-  echo '$user:$password' | chpasswd
-  echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
-"
+if [ "$base" != 1 ]; then
+  in_root bash -c "id $user >/dev/null 2>&1 || useradd -m -G wheel $user
+    echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel"
+  if [ "$nopass" = 1 ]; then in_root passwd -l "$user"
+  else in_root bash -c "echo '$user:$password' | chpasswd"; fi
+fi
 install -D -m 600 "$here/etc/lan.nmconnection" "$R/etc/NetworkManager/system-connections/lan.nmconnection"
 
 # 3. Omarchy, the same way as on the deepin-based VM. omarchy-settings adds
@@ -142,16 +147,19 @@ install -D -m 644 /dev/stdin "$L/zz-hongrong.conf" <<'HOOKS'
 # no autodetect so the image does not depend on where it was generated.
 HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block filesystems fsck)
 HOOKS
-if [ "$base" = 1 ]; then
-  # first boot does step 3 (plymouth, named in the hooks above, comes with
-  # Omarchy, so the hooks file goes in place only then)
+firstboot_files() {
   cp -r "$here/20-install-omarchy.sh" "$here/etc" "$here/pure/install-vm-agent.sh" \
     "$here/pure/guest/setup-ai.sh" "$here/pure/firstboot/ohmarchy-firstboot.sh" "$L/"
   install -m 644 "$here/pure/firstboot/ohmarchy-firstboot.service" "$R/etc/systemd/system/"
   in_root systemctl enable ohmarchy-firstboot.service
   [ -z "$ai_env" ] || install -m 600 "$ai_env" "$L/ai.env"
-  # documentation is the bulk of what is not needed to boot
+  # documentation is the bulk of what is not needed to run
   rm -rf "$R"/usr/share/{doc,man,info,gtk-doc}
+}
+if [ "$base" = 1 ]; then
+  # first boot does step 3 (plymouth, named in the hooks above, comes with
+  # Omarchy, so the hooks file goes in place only then)
+  firstboot_files
 else
   install -m 644 "$L/zz-hongrong.conf" "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf"; rm -rf "$L"
   mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
@@ -161,6 +169,14 @@ else
   [ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
   if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
   else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
+  if [ "$nopass" = 1 ]; then
+    # Omarchy is in place: first boot only asks for the password (and installs
+    # 鸿融's agent when its CD is there); the coding agents get the relay
+    # config now and install on first use
+    firstboot_files
+    mkdir -p "$R/var/lib/ohmarchy"; touch "$R/var/lib/ohmarchy/omarchy-installed"
+    in_root runuser -u "$user" -- bash /usr/local/lib/ohmarchy/setup-ai.sh ${ai_env:+/usr/local/lib/ohmarchy/ai.env}
+  fi
 fi
 kver=$(ls "$R/usr/lib/modules" | grep -v '^\.' | head -1)
 if [ -n "$vmwgfx_ko" ]; then

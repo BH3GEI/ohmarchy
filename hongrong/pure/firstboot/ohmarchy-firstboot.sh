@@ -4,8 +4,9 @@
 # installed from the network (Arch Linux ARM from TUNA), the coding agents are
 # set up, 鸿融's guest agent is installed when 鸿融's CD is there, and the VM
 # reboots into the SDDM login. Shared by the 鸿融 qcow2 and the OSEasy root
-# image. Not run yet.
-# Also needs zz-hongrong.conf (mkinitcpio hooks) next to it.
+# image. With /var/lib/ohmarchy/omarchy-installed (NOPASS=1 builds, Omarchy
+# already installed) it only asks for the password and lets SDDM start.
+# Not run yet. Also needs zz-hongrong.conf (mkinitcpio hooks) next to it.
 #
 # Files (installed by build-disk.sh): /usr/local/lib/ohmarchy/ holds this
 # script, 20-install-omarchy.sh with etc/, install-vm-agent.sh, setup-ai.sh and,
@@ -17,6 +18,7 @@ user=omarchy
 log=/var/log/ohmarchy-firstboot.log
 done_flag=/var/lib/ohmarchy/firstboot.done
 extra_pkgs=${EXTRA_PKGS-mesa-utils glmark2}
+installed=/var/lib/ohmarchy/omarchy-installed
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() {
@@ -34,7 +36,13 @@ retry() { # retry N CMD...: network steps fail now and then
 
 clear
 say "欢迎使用 Omarchy / Welcome to Omarchy"
-cat <<'TXT'
+if [ -e "$installed" ]; then cat <<'TXT'
+这是第一次开机。请为用户 omarchy 设置密码，设好后进入登录界面，用户名 omarchy。
+
+This is the first boot. Set the password for the user "omarchy"; the login
+screen comes next.
+TXT
+else cat <<'TXT'
 这是第一次开机。接下来：
   1. 为用户 omarchy 设置密码；
   2. 联网安装 Omarchy 桌面，大约 15–30 分钟，取决于网速；
@@ -45,6 +53,7 @@ This is the first boot. Set the password for the user "omarchy"; Omarchy is
 then installed from the network (about 15-30 minutes) and the VM reboots into
 the login screen. Do not shut the VM down while it installs.
 TXT
+fi
 
 # 1. User and password (asked again after a failed run only if not set yet)
 id "$user" >/dev/null 2>&1 || useradd -m -G wheel "$user"
@@ -63,6 +72,7 @@ fi
 
 exec > >(tee -a "$log") 2>&1
 
+if [ ! -e "$installed" ]; then
 # 2. Network
 say "检查网络 / Checking the network"
 until curl -fsI -m 10 https://mirrors.tuna.tsinghua.edu.cn/ >/dev/null; do
@@ -91,6 +101,7 @@ ai_env=
 [ -r "$L/ai.env" ] && { install -m 600 -o "$user" "$L/ai.env" /tmp/ai.env; ai_env=/tmp/ai.env; }
 runuser -u "$user" -- bash -lc "bash $L/setup-ai.sh $ai_env --install" || echo "setup-ai.sh failed; the tools install on first use"
 rm -f /tmp/ai.env "$L/ai.env"
+fi
 
 # 5. Done; 鸿融's guest agent comes last: on its first connection 鸿融 powers
 #    the VM off and starts it again, which is the reboot.
@@ -111,6 +122,8 @@ HandleLidSwitchExternalPower=ignore
 HandleLidSwitchDocked=ignore
 CONF
 fi
-say "完成，正在重启 / Done, rebooting"
-sleep 5
-systemctl reboot
+if [ -e "$installed" ]; then
+  say "完成 / Done"   # the unit runs before SDDM, which starts next
+else
+  say "完成，正在重启 / Done, rebooting"; sleep 5; systemctl reboot
+fi

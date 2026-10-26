@@ -66,6 +66,32 @@ No locks on the device (removed 2026-10-25): use the screen directly. The HMV hy
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).
 
+## Two directions
+
+The routes boil down to two lines of work.
+
+**1. Plug and play in the VM apps (B Oseasy, C 鸿融).** A user installs a VM app from
+AppGallery and boots our image; no root. This works today. What keeps it from perfect is in
+the apps themselves: neither asks the system for a higher refresh rate, so the screen stays
+at 60 Hz; Oseasy's lifecycle is built around a Windows guest agent (no "start" button for a
+Linux VM; "再次安装" is being changed to boot the installed disk); 鸿融 needs its guest agent
+(增强服务) in the VM to show it as running and to shut it down. Being prepared for public
+release: no-root install, images on GitHub Releases, a user guide.
+
+**2. Native (D, with I as its Docker backend).** The best result: 120 Hz, the Maleoon GPU
+directly, 74 of 78 apps open in under 3 s, Docker from the native terminal. It needs root.
+For it to become "install one app from AppGallery and get the Omarchy desktop", HarmonyOS
+would have to provide:
+
+| What HarmonyOS would need to provide | Why | How we work around it now |
+|---|---|---|
+| **Let an app run the Linux programs it ships** (relax XPM for this case, or a dedicated signature or permission) | Today an app can only run code signed into its HAP | J: rebuild the whole stack as .so files signed into the app — works, but it's a lot of porting and there's no `pacman` at run time |
+| **Kernel features: user namespaces, cgroup v2, shared `CLONE_FS`** | Needed for sandboxes, containers and Chromium's sandbox | A root chroot; Docker in I's VM; Firefox as the browser |
+| **Open the VM API** (`MANAGE_VM` is a hard-coded allowlist of 8 apps) | I's background VM | Root on `/dev/hmv` |
+| **Fix two HMV issues** (unknown ID registers hang the vCPU; ITS event IDs) | Current Linux kernels hang on HMV | Kernel patches; report: [docs/hmv-idreg-report.md](docs/hmv-idreg-report.md) |
+
+With the first two, D would run without root at today's performance.
+
 ## Recommended demo (about 10 minutes)
 
 Scripts and click coordinates are in [docs/demo.md](docs/demo.md); `tests/demo/{d,i,b}.sh`

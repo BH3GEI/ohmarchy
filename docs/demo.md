@@ -87,8 +87,9 @@ on the HarmonyOS PC, on a linux-aarch64 7.2.12 kernel with the 鸿融 patches
 
 Two versions. **C1** imports the Developer image through 鸿融's UI (works
 since 2026-10-25: the os_type 1 image, see
-[hongrong-whole-os.md](hongrong-whole-os.md#developer-image)); **C2** shows
-Yao's existing main VM and needs no deletion or restore.
+[hongrong-whole-os.md](hongrong-whole-os.md#developer-image)); **C2** runs the
+public route B image in place of the main VM's disk (swapped in with
+`hrswap.sh`, restored afterwards); with its guest agent 鸿融 shows it 运行中.
 
 Never written into any file, including this one: the VM login password. It
 lives in an environment variable on the presenting machine only (`PW` below).
@@ -107,7 +108,31 @@ lives in an environment variable on the presenting machine only (`PW` below).
   `sudo hongrong/edid/install-edid.sh`, or skip steps 7–8.
   After the demo, restore the main VM with `hrswap.sh restore-main IMGDIR BACKUPDIR`
   (see hongrong-whole-os.md).
-- C2 only: the main VM shows 已关机 in 鸿融.
+- C2 only (about 10 min): put the public route B image into 鸿融's VM and
+  set its password once, so the demo starts from a desktop that 鸿融 reports
+  as 运行中. With 鸿融's VM shut down (`pidof stratovirt` empty):
+  1. Back up the main VM: copy `vm.qcow2` and `stratovirt-vars` from
+     `/data/service/el0/virt_service/100/vm_manager/<id>/com.huawei.medivh/img`
+     to a backup dir and check both copies have the same size.
+  2. `qemu-img`-convert the image (`omarchy-small.img` from
+     `omarchy-small.img.zst`) with `hongrong/pure/make-qcow2.sh RAW OUT.qcow2`
+     (10 s in the Arch environment), then
+     `hrswap.sh use-dev IMGDIR OUT.qcow2`. 鸿融 then shows 已使用 6 GB.
+  3. 开机 in 鸿融. After about 45 s: 增强服务 guide dialog (知道了) over a
+     fullscreen "请设置密码 / Set your password" terminal. Type a password of
+     at least 8 characters twice (`ohui type "$PW"` + newline, twice). It
+     prints 密码已设置, installs 鸿融's guest agent from 鸿融's CD and says
+     鸿融 restarts the VM once; press Enter. About a minute later the VM is
+     back on the Omarchy desktop without a login screen (autologin stays; the
+     password is for sudo and the lock screen), and the card says 运行中.
+  4. Shut it down with 鸿融's 关机 and check the card says 已关机.
+  Rehearsed 2026-10-27 (screenshots k01–k09): setpass window 45 s after
+  开机, desktop and 运行中 after the agent's restart, 关机 done in under
+  20 s. Omarchy's idle defaults are back after the password is set
+  (screensaver at 150 s, lock at 300 s): keep the demo moving or type the
+  password at the lock screen.
+  After the demo, restore the main VM with
+  `hrswap.sh restore-main IMGDIR BACKUPDIR` and check the sizes.
 
 ### C1: import the Developer image (about 6 min)
 
@@ -128,21 +153,22 @@ the host, no deepin. The kernel is Arch's own `linux-aarch64` with two small
 patches. The import used to fail on a single header byte (os_type). 120 Hz
 reaches the guest's display; 鸿融 itself presents the VM at 60 Hz.
 
-### C2: Yao's main VM (about 4 min; rehearsed 2026-10-25: 3 min 41 s)
+### C2: the public route B image in 鸿融 (about 3 min)
 
-This is the existing deepin + Arch disk; it boots Omarchy on deepin's
-6.6.143 kernel, not on the patched 7.2.12, so it shows the desktop, not the
-kernel work.
+The same image OSEasy installs (route B), prepared as above. It boots
+straight to the Omarchy desktop, and with the guest agent 鸿融 shows it as
+运行中 and can shut it down. (The earlier C2 on Yao's deepin + Arch main
+VM had no agent: the card stayed 已关机 and 关机 was greyed out.)
 
 | # | Action | Expected | Time |
 |---|---|---|---|
-| 1 | Open 鸿融 from the dock. If another app's window is in front, tap 鸿融's dock icon first. | VM page: Linux, 当前状态 已关机. If the VM already runs, the preview shows it live but the label still says 已关机 and 关机 is greyed out (no guest agent, see [hongrong-whole-os.md](hongrong-whole-os.md#鸿融-shows-the-running-vm-as-已关机)). | 5 s |
-| 2 | 开机 (836, 393); if the VM already runs, tap its preview (650, 323) instead. Then take a screenshot and check 鸿融's fullscreen VM window is in front before typing anything. | Full-screen VM window; 增强服务 guide dialog after about 1 min; 知道了 (719, 685). A 增强服务 toast stays in the lower right; ignore it. | 1–1.5 min (10 s if already running) |
-| 3 | Omarchy login screen (lock icon and password field). Log in with uitest: click the field (737, 565), then `ohui type "$PW"` plus a newline. The password comes from the environment, never from a file. | Hyprland desktop (Omarchy wallpaper, top bar with workspaces 1–5). | 15 s |
-| 4 | Terminal: Super+Return (`keyEvent 2076 2054`), then `ohui type "fastfetch"` + newline. | foot terminal fullscreen; fastfetch: KVM Virtual Machine (StratoVirt), Omarchy 4.0.6, Hyprland 0.56.2, Linux 6.6.143. Talk through it here: the next window halves the terminal and reflows the output. | 20 s |
-| 5 | Browser: Super+Shift+B (`keyEvent 2076 2047 2018`). Chromium tiles to the right. It shows "Restore pages?" (the VM was powered off with Chromium open); leave it, tapping its X did not close it. Click the address bar (1050, 118), type `omarchy.org` + newline. | omarchy.org loads over 鸿融's network. | 30 s |
-| 6 | Workspaces: Super+2 (`keyEvent 2076 2002`), then Super+1 (`keyEvent 2076 2001`). | Empty workspace 2, then back to the tiled terminal and browser. | 10 s |
-| 7 | Leave it running, or shut down from Omarchy: Super+Esc → Shutdown. 鸿融's own 关机 is greyed out for this VM (no guest agent); 更多 → 强制关机 only if the guest hangs. | stratovirt exits; 鸿融's 开机 button is active again. | 20 s |
+| 1 | Open 鸿融 from the dock. If another app's window is in front, tap 鸿融's dock icon first. | VM page: Linux, 当前状态 已关机, 已使用 6 GB. | 5 s |
+| 2 | 开机 (870, 427 in a 1440-wide screenshot). Take a screenshot and check 鸿融's fullscreen VM window is in front before typing. | Omarchy desktop, no login screen. A 增强服务 toast may stay in the lower right; ignore it. | about 1 min |
+| 3 | Terminal: Super+Return (`keyEvent 2076 2054`), then `ohui type "fastfetch"` + newline. | foot terminal; fastfetch shows the StratoVirt VM, Omarchy and Hyprland. | 20 s |
+| 4 | Browser: Super+Shift+B (`keyEvent 2076 2047 2018`). Click the address bar, type `omarchy.org` + newline. | omarchy.org loads over 鸿融's network. | 30 s |
+| 5 | Workspaces: Super+2 (`keyEvent 2076 2002`), then Super+1 (`keyEvent 2076 2001`). | Empty workspace 2, then back. | 10 s |
+| 6 | Bring 鸿融's main window forward (`aa start -b com.huawei.medivh -a EntryAbility`). | The card says 运行中 (green), 关机 and 暂停 are active. | 5 s |
+| 7 | 关机 (870, 427). | The VM shuts down normally (systemd shutdown messages); the card says 已关机 within 20 s. | 20 s |
 
 All shortcuts were sent with `ssh ohdev uitest uiInput keyEvent ...` from the
 presenting machine and worked (Omarchy bindings: Super+Return terminal,

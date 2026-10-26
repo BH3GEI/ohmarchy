@@ -12,7 +12,7 @@
 #   COMPONENTS=(...)    "name|license|where its source is" rows for LICENSES.md
 #   LICENSE_NOTE        optional paragraph at the end of LICENSES.md
 # ASSETs are the built files (from the route's build). Files over SPLIT_MIB
-# (default 1900: GitHub takes at most 2 GiB per asset) go up in parts,
+# (default 2000: GitHub takes under 2 GiB per asset) go up in parts,
 # NAME.part00, NAME.part01, ...; `cat NAME.part* > NAME` joins them.
 # Every uploaded file and every joined asset is in SHA256SUMS.
 # PKG_SOURCES: directory from gpl-sources.sh (the GPL/LGPL packages in the
@@ -20,6 +20,11 @@
 # made even without it or with packages in its MISSING.txt: the notes then list
 # what is missing at the top, and the draft must not be published until that list
 # is empty (supervisor, 2026-10-26). LICENSES.md carries the written offer too.
+# Big files that sit on the HarmonyOS host (the Mac's link to it is slow):
+# HOST_UPLOAD=1 makes the draft with the local files only (no ASSET needed), and
+# PKG_SOURCES may then hold only PACKAGES.txt and MISSING.txt (the archives are
+# tarred and uploaded on the host). Then upload-on-host.sh there, and sums.sh
+# here for SHA256SUMS from GitHub's digests; the commands are printed at the end.
 # Staging: OUT (default work/release/TAG). Needs gh logged in, with push rights.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -27,19 +32,19 @@ root=$(cd "$here/../.." && pwd)
 [ $# -ge 1 ] || { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 manifest=$1; shift
 dry=0; [ "${1:-}" = --dry-run ] && { dry=1; shift; }
-[ $# -ge 1 ] || { echo "release.sh: no assets given" >&2; exit 2; }
+[ $# -ge 1 ] || [ "${HOST_UPLOAD:-0}" = 1 ] || { echo "release.sh: no assets given" >&2; exit 2; }
 GPL_PATHS=() UPSTREAM=() COMPONENTS=()
 # shellcheck source=/dev/null
 . "$manifest"
 : "${TAG:?manifest sets TAG}" "${TITLE:?manifest sets TITLE}" "${NOTES:?manifest sets NOTES}"
 REPO=${REPO:-$(cd "$root" && gh repo view --json nameWithOwner -q .nameWithOwner)}
 OUT=${OUT:-$root/work/release/$TAG}
-SPLIT_MIB=${SPLIT_MIB:-1900}
+SPLIT_MIB=${SPLIT_MIB:-2000}
 commit=$(cd "$root" && git rev-parse HEAD)
 [ -z "$(cd "$root" && git status --porcelain -- "${GPL_PATHS[@]}")" ] ||
     { echo "release.sh: uncommitted changes in the GPL paths; the source archive must match a commit" >&2; exit 1; }
 rm -rf "$OUT"; mkdir -p "$OUT/up"
-if [ -n "${PKG_SOURCES:-}" ]; then
+if [ -n "${PKG_SOURCES:-}" ] && [ "${HOST_UPLOAD:-0}" != 1 ]; then
     [ -s "$PKG_SOURCES/PACKAGES.txt" ] || { echo "release.sh: $PKG_SOURCES has no PACKAGES.txt (gpl-sources.sh)" >&2; exit 1; }
     pk=$OUT/ohmarchy-$TAG-package-sources.tar
     tar -C "$PKG_SOURCES" -cf "$pk" .
@@ -149,3 +154,9 @@ else
         --notes-file "$OUT/notes.md" "${files[@]}"
 fi
 gh release view "$TAG" -R "$REPO" --json url,isDraft -q '.url + " (draft: " + (.isDraft|tostring) + ")"'
+if [ "${HOST_UPLOAD:-0}" = 1 ]; then
+    id=$(gh api "repos/$REPO/releases" --jq ".[] | select(.tag_name == \"$TAG\" and .draft) | .id" | head -1)
+    echo "== next: on the host, with a token for $REPO as the first line of stdin:"
+    echo "   upload-on-host.sh $REPO $id LOG ISO=NAME... ohmarchy-$TAG-package-sources.tar=ohmarchy-$TAG-package-sources.tar"
+    echo "   then here: tools/release/sums.sh $REPO $TAG"
+fi

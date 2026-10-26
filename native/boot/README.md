@@ -2,8 +2,11 @@
 
 `ohmarchy-desktop.cfg` is an init service in the format of the existing root ssh
 service: after `bootevent.boot.completed` it runs `boot-start.sh`, which starts
-route D's session, `vtest-broker` and the desktop. Opening the display app then
-(re)starts the desktop for it.
+route D's session, `vtest-broker`, the desktop and route I's docker gate (the VM
+itself starts only when docker is used). Opening the display app then
+(re)starts the desktop for it. A run of the hook without a reboot, with the app
+and docker used as a user would: `tests/demo/autostart.sh` (2026-10-26, pass;
+docs/native-desktop.md).
 
 Install (takes effect at the next boot). Installed on the test machine on
 2026-10-24, checked statically (JSON valid, same bytes as here); not yet

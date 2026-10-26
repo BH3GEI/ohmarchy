@@ -153,6 +153,28 @@ Then open "Omarchy (native)" on the HarmonyOS desktop (with the broker, Hyprland
 waits for it). It opens as a window (maximize it from the title bar) and says what
 it is waiting for until the first frame arrives.
 
+### Starting by itself (no root shell)
+
+At boot, init runs `native/boot/ohmarchy-desktop.cfg` → `boot-start.sh` →
+`omarchy desktop start`: the Arch session, the GPU broker, Hyprland, the sound
+relay and the docker gate for route I. A user then only clicks "Omarchy
+(native)": the app's connection to the broker (only its uid, SO_PEERCRED)
+restarts the desktop for it. `docker` in the desktop starts route I's VM on
+demand and the VM stops after 3 idle minutes ([vm-own.md](vm-own.md)).
+
+Checked without a reboot on 2026-10-26 (`tests/demo/autostart.sh`; screenshots: [stopped](img/autostart/00-stopped.jpeg),
+[after the hook](img/autostart/01-after-boot-hook.jpeg), [app open](img/autostart/02-app-open.jpeg),
+[docker](img/autostart/03-docker-cold.jpeg), [after the idle stop](img/autostart/04-after-idle-stop.jpeg)): desktop, docker gate, VM and the
+display app stopped; the boot hook run as init runs it (clean environment, cwd
+`/`, detached): Hyprland, sound relay and gate up 21 s later (the hook waits
+20 s first); the app opened: the fresh desktop in its window; `docker run --rm
+hello-world` in a desktop terminal: VM started by the gate, "Hello from Docker!"
+in the terminal (guest up 5 s after StratoVirt started); 160 s after the docker
+step the gate powered the VM off. Not covered: the Arch session and the GPU
+broker were left running (other work shares the session; `boot-start.sh` only
+starts what is missing), and init loading the cfg at a real boot. The reboot
+test waits for the D line.
+
 Display size: `OHMARCHY_DISPLAY_MODE` and `OHMARCHY_DISPLAY_SCALE` in the desktop's
 environment (default `1920x1280@120` and `1`; `2880x1920@120` and `1.5` is the
 panel's resolution, sharper and slower).

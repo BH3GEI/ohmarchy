@@ -92,6 +92,7 @@ desktop)
             mkdir -p /data/local/kaidashi/ownvm/svc
             setsid "$gate" ${ug:+--uid "${ug%%:*}"} "/proc/$P/root/tmp/.ohmarchy-docker.sock" \
                 < /dev/null >> /data/local/kaidashi/ownvm/svc/gate.log 2>&1 &
+            echo $! > /data/local/kaidashi/ownvm/svc/gate.pid
         fi
         cmd="HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe $cmd"
         # The app presents each frame when Hyprland reads it back: one pixel will do.

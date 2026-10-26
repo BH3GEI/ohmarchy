@@ -111,9 +111,13 @@ clang -O2 -shared -fPIC -o "$prefix/lib/libohzc.so" "$here/desktop/ohzc-memcpy.c
 install -m 755 "$here/desktop/ohmarchy-gpu" "$prefix/bin/"
 runuser -u "$user" -- xdg-settings set default-web-browser firefox.desktop || true
 # Docker: no container runtime on HongMeng; the docker CLI (Omarchy installs it)
-# talks to dockerd in route I's VM over ssh (docs/vm-own.md). The VM adds the key.
+# talks to dockerd in route I's VM through the host's gate at /tmp, which starts
+# the VM on demand (docs/vm-own.md, tools/ownvm/ohmarchy-docker-gate.c). The key
+# is for ssh into the VM by hand; the VM adds it.
 runuser -u "$user" -- sh -c '[ -f ~/.ssh/id_ed25519 ] || ssh-keygen -q -t ed25519 -N "" -C "$(id -un)@ohmarchy-route-d" -f ~/.ssh/id_ed25519
-docker context inspect ohmarchy > /dev/null 2>&1 || docker context create ohmarchy --description "route I VM dockerd over ssh" --docker host=ssh://yao@172.16.100.2 > /dev/null
+h=unix:///tmp/.ohmarchy-docker.sock d="route I VM dockerd, started on demand"
+docker context inspect ohmarchy > /dev/null 2>&1 && docker context update ohmarchy --description "$d" --docker host=$h > /dev/null ||
+    docker context create ohmarchy --description "$d" --docker host=$h > /dev/null
 docker context use ohmarchy > /dev/null' || true
 # Sound to the display app over an abstract socket, to its uid only
 cc -O2 -o "$prefix/bin/ohmarchy-audio-relay" "$here/desktop/ohmarchy-audio-relay.c"

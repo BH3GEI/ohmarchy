@@ -1,10 +1,10 @@
 #!/bin/bash
-# Route D: Docker runs in route I's VM and the docker CLI reaches it over ssh
-# (context "ohmarchy"). Omarchy's launcher guards the local root-owned socket with
+# Route D: Docker runs in route I's VM and the docker CLI reaches it through the
+# host's gate socket (context "ohmarchy"). Omarchy's launcher guards the local root-owned socket with
 # pkexec, which does not apply to a remote daemon: with a remote current context,
 # run lazydocker as the user against it; otherwise Omarchy's launcher.
 host=$(docker context inspect -f '{{.Endpoints.docker.Host}}' 2>/dev/null)
 case "$host" in
-ssh://* | tcp://*) DOCKER_HOST=$host exec lazydocker ;;
+ssh://* | tcp://* | unix:///tmp/.ohmarchy-docker.sock) DOCKER_HOST=$host exec lazydocker ;;
 *) exec /usr/bin/omarchy-launch-docker-tui "$@" ;;
 esac

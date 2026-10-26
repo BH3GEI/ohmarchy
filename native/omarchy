@@ -83,6 +83,16 @@ desktop)
             i=0; while [ $i -lt 30 ] && ! nsenter -t "$P" -m -- test -S "$sock"; do sleep 0.1; i=$((i+1)); done
         fi
         nsenter -t "$P" -m -- chmod 666 "$sock"
+        # Docker: the CLI's context is the gate's socket at /tmp in Arch; the gate
+        # starts route I's VM on the first connection and stops it when idle
+        # (tools/ownvm/ohmarchy-docker-gate.c). It binds from the host's mount
+        # namespace (the VM's mounts belong there) through /proc/<session>/root.
+        gate=/data/local/kaidashi/bin/ohmarchy-docker-gate
+        if [ -x "$gate" ] && ! pgrep -f "$gate" > /dev/null; then
+            mkdir -p /data/local/kaidashi/ownvm/svc
+            setsid "$gate" ${ug:+--uid "${ug%%:*}"} "/proc/$P/root/tmp/.ohmarchy-docker.sock" \
+                < /dev/null >> /data/local/kaidashi/ownvm/svc/gate.log 2>&1 &
+        fi
         cmd="HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe $cmd"
         # The app presents each frame when Hyprland reads it back: one pixel will do.
         case $vtest in *broker) cmd="HYPRLAND_READBACK_PRESENT=1 $cmd" ;; esac

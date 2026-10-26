@@ -336,10 +336,37 @@ text lists `virtio-balloon-pci,…,deflate-on-oom=…,free-page-reporting=…`.
 
 **D's side** (native-desktop line, in `native/40-install-desktop.sh`): D's
 terminal runs in the archtest session as `builder` (uid 60000), with Omarchy's
-docker 29.9.2 and docker-compose 5.6.1 clients; context `ohmarchy` =
-`ssh://yao@172.16.100.2` as the default, builder's key in yao's
-`authorized_keys` on the disk, the guest host key in builder's `known_hosts`.
-dockerd is not exposed on TCP.
+docker 29.9.2 and docker-compose 5.6.1 clients; context `ohmarchy` as the
+default. Until 2026-10-26 it was `ssh://yao@172.16.100.2` (builder's key in
+yao's `authorized_keys` on the disk, the guest host key in builder's
+`known_hosts`; still there for ssh by hand); now it is the gate below,
+`unix:///tmp/.ohmarchy-docker.sock`. dockerd is not exposed on TCP.
+
+**On demand: the docker gate (2026-10-26).** Yao wants D used like a real
+user would, with no root shell. So the VM starts when D's docker needs it and
+stops when it is idle: `tools/ownvm/ohmarchy-docker-gate.c`, a root daemon
+that `omarchy desktop start` (so also boot, `native/boot/`) runs next to the
+GPU broker, built like it (NDK clang, `/data/local/kaidashi/bin/`):
+
+- Socket `/tmp/.ohmarchy-docker.sock` in D's Arch, mode 0600, owner builder,
+  and SO_PEERCRED: only uid 60000. Bound from the host's mount namespace
+  through `/proc/<session>/root/tmp/` (the VM's bind mount and virtiofsd
+  belong there); when the session ends that path is gone and the gate exits.
+- A connection while the VM is down: `ohmarchy-vm start`, then wait until
+  `docker info` answers; then, as for every connection, the socket becomes the
+  stdin/stdout of `ohmarchy-vm ssh docker system dial-stdio` (what docker's
+  own `ssh://` transport runs). A peer gets that dockerd and nothing else:
+  no commands, no other host access.
+- Another VM running (鸿融, OSEasy): the gate does not try; docker prints
+  `Error response from daemon: 后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它`.
+- Idle: a VM the gate started, with no connection for 3 minutes and no
+  running container (`docker ps -q`), is stopped (supervisor, 2026-10-26: the
+  demo opens 鸿融 and OSEasy right after D's Docker step). A VM started by
+  hand is never stopped by the gate. `--idle MIN` changes it.
+- Log: `/data/local/kaidashi/ownvm/svc/gate.log`.
+
+So the start-at-boot service above stays uninstalled: booting the VM would
+hold the hypervisor that 鸿融 and OSEasy need.
 
 **Run as a service (2026-10-24 09:52–09:55 PDT):**
 

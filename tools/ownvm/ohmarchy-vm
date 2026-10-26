@@ -5,6 +5,7 @@
 #   ohmarchy-vm start      start the VM (idempotent: does nothing if running)
 #   ohmarchy-vm stop       power off from inside the guest, QMP/kill as fallback
 #   ohmarchy-vm status     VM, guest ssh, dockerd, balloon
+#   ohmarchy-vm running    exit 0 if the VM runs (quick, no output)
 #   ohmarchy-vm ssh [CMD]  ssh into the guest as yao (host-only key)
 #   ohmarchy-vm balloon MiB   set the guest's memory target (QMP balloon)
 #   ohmarchy-vm net-up | net-down   only the host network part (idempotent)
@@ -200,7 +201,7 @@ status() {
   fi
   if SSH true 2>/dev/null; then
     echo "guest: $(SSH 'uname -r; uptime -p' 2>/dev/null | tr '\n' ' ')"
-    echo "dockerd: $(SSH 'docker info --format "{{.ServerVersion}}, {{.Containers}} containers ({{.ContainersRunning}} running)"' 2>/dev/null || echo unreachable)"
+    echo "dockerd: $(SSH 'docker info --format "{{.ServerVersion}}, {{.Containers}} containers ({{.ContainersRunning}} running)" | cat' 2>/dev/null || echo unreachable)"
     echo "home share: $(SSH 'findmnt -n -o SOURCE,FSTYPE /home/builder' 2>/dev/null || echo none)"
     echo "guest memory: $(SSH "free -m | awk '/^Mem/{print \$3\" MiB used, \"\$7\" MiB available of \"\$2}'" 2>/dev/null)"
   else
@@ -214,6 +215,7 @@ case "$1" in
 start) start ;;
 stop) stop ;;
 status) status ;;
+running) running ;;
 ssh) shift; SSH "$@" ;;
 balloon) qmp "{\"execute\":\"balloon\",\"arguments\":{\"value\":$((${2:?MiB} * 1048576))}}" ;;
 net-up) net_up ;;

@@ -115,7 +115,14 @@ cat "$OUT/up/SHA256SUMS"
 
 { if [ -n "$gate" ]; then
       echo "> **补齐后才公开 / not to be published until fixed:** $gate"
-      [ -s "${PKG_SOURCES:-/nonexistent}/MISSING.txt" ] && cut -d'|' -f1,2 "$PKG_SOURCES/MISSING.txt" | sed 's/|/ /; s/^/> - /'
+      if [ -s "${PKG_SOURCES:-/nonexistent}/MISSING.txt" ]; then
+          echo ">"
+          echo "> <details><summary>缺源码的包 / packages without source ($(wc -l < "$PKG_SOURCES/MISSING.txt" | tr -d ' '))</summary>"
+          echo ">"
+          cut -d'|' -f1,2,4 "$PKG_SOURCES/MISSING.txt" | awk -F'|' '{ r = $3; if (length(r) > 90) r = substr(r, 1, 90) "…"; print "> - " $1 " " $2 ": " r }'
+          echo ">"
+          echo "> </details>"
+      fi
       echo
   fi
   cat "$NOTES"; echo

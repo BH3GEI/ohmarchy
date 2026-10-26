@@ -119,6 +119,11 @@ h=unix:///tmp/.ohmarchy-docker.sock d="route I VM dockerd, started on demand"
 docker context inspect ohmarchy > /dev/null 2>&1 && docker context update ohmarchy --description "$d" --docker host=$h > /dev/null ||
     docker context create ohmarchy --description "$d" --docker host=$h > /dev/null
 docker context use ohmarchy > /dev/null' || true
+# Mainland mirrors for rustup, Go, npm and pip in the user's environment.d (the
+# desktop reads it, ohdisplay.lua), and the same for login shells
+runuser -u "$user" -- install -D -m 644 "$here/desktop/environment.d/50-mirrors.conf" \
+    "$(getent passwd "$user" | cut -d: -f6)/.config/environment.d/50-mirrors.conf"
+install -m 644 "$here/desktop/profile-environment.sh" /etc/profile.d/ohmarchy-environment.sh
 # docker-vm status/stop, and "停止 Docker 虚拟机" in the Omarchy menu (System),
 # shown while the VM runs
 install -m 755 "$here/desktop/docker-vm" /usr/local/bin/docker-vm

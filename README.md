@@ -62,7 +62,7 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | Route | What it is | Status | Best numbers | Root? | Demo? |
 |---|---|---|---|---|---|
 | **1. VM apps (no root)** | | | | | |
-| **B** Oseasy VM | the whole Omarchy OS in the Oseasy app, 7.2.12 kernel, patched `vmwgfx` | works with limits (60 Hz on screen; Oseasy forgets the VM at power-off) | install 61 s, desktop 6 s after reset; guest 120 fps, screen 60; 4 h 24 min GPU soak, 0 faults | only to push the disk during install | yes, ~3 min |
+| **B** Oseasy VM | the whole Omarchy OS in the Oseasy app, 7.2.12 kernel, patched `vmwgfx`; the image is inside the install ISO | works with limits (60 Hz on screen; fixed-size window, no fullscreen; nothing kept after power-off) | public ISO 1.855 GiB; disk written from the ISO in 231 s, ~4 min to the desktop; 2100x1511 at 120 Hz in the guest; 4 h 24 min GPU soak, 0 faults | no | yes, ~4 min |
 | **C** 鸿融 VM | the whole Omarchy OS in Huawei's Linux VM app, virgl GPU | works with limits (60 Hz on screen) | import under 1 min (9.6 GB); glmark2 596; Docker; 30 min soak | no | yes, 3 min 41 s |
 | **G** 铠大师 VM | Omarchy's disk in sanway's Windows VM app | concluded negative | 7.2.12 boots, but every VM is an install session that is deleted at power-off | no | no |
 | **2. Native on the HongMeng kernel** | | | | | |
@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 05:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 06:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Building the public install ISO from the final image as soon as its compression finishes | **No fullscreen in OSEasy**: OSEasy opens the Linux VM as a fixed-size floating window (window mode 102), hides the maximize button and turns off drag-to-resize. Four drags on the edges and corners changed nothing. The device itself supports fullscreen (it reports `2in1`; the system's own windows are fullscreen), so this goes to the vendor request. Inside the window the picture is 1:1 and sharp, and Hyprland reports 2100x1511 at 120 Hz. Release notes updated (45071d5). A new VM was created right after the previous one stopped, with no "another VM is running" refusal (53c8155) |
-| C. 鸿融 / public image | Final compression (`zstd -22 --long=31`) | **First boot moved to the desktop** (be4aaf9): SDDM logs in once, a full-screen terminal asks for the new password, then the helper and its sudo rule are removed; auto-login stays and the password is for sudo. qemu is gone from the image. No password hash in `/etc/shadow`. Compressed size so far about 1.79 GB, still finishing |
-| D. Native | Waiting for the second real reboot | Autostart fix in place (63b0f2c), not yet verified by a reboot |
+| B. OSEasy | Re-installing from the fixed public ISO in OSEasy, with screenshots and timing; then the operator manual's section 3 | **Public install ISO built: 1.855 GiB**, under GitHub's 2 GiB asset limit. It carries the final image; the installer skips its own customisation when the image is already set up (52c2303). The ISO had copies of the kernel and initramfs both in the El Torito FAT image and in ISO9660; dropping the FAT copies saved ~160 MB (2563b62). **First install attempt failed**: the shrunk FAT image fell below FAT32's minimum size and the firmware stopped at the EFI shell. Being fixed with a FAT32 boot image of at least 48 MB (ISO about 1.89 GiB) |
+| C. 鸿融 / public image | Turning off 鸿融's two auto-start switches and swapping the Omarchy disk in for the demo | **Public image done**: 1,787,920,408 bytes (1.665 GiB) with `zstd --ultra -22 --long=31`, verified with `zstd -t`. No password hash, no key; first login on the desktop; exact list of 793 packages handed over for the GPL sources. For faster rebuilds: a 12 GiB image that grows to the whole disk at first boot (2b07799), not yet tried on a VM |
+| D. Native | — | **Autostart verified by a real reboot** (305f15b): the start script ran 4 s after boot, the desktop was running in the background 50 s after boot, and double-clicking "Omarchy (native)" after the normal lock-screen login showed the desktop with no command. Closing and reopening the app also brings it back. Left for the presenter: right Alt and three-finger swipes on the physical keyboard and touchpad |
 | I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 
-Release: the GPL source run for the B image works from the exact package list of the final image.
+Release: GPL sources for the 793 packages are being fetched; the draft is built once the ISO install passes.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

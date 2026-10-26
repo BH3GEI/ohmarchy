@@ -26,6 +26,14 @@ install -D -m 755 "$here/firstboot/ohmarchy-growroot.sh" "$R/usr/local/lib/ohmar
 mkdir -p "$R/etc/systemd/system/multi-user.target.wants"
 ln -sf ../ohmarchy-growroot.service "$R/etc/systemd/system/multi-user.target.wants/ohmarchy-growroot.service"
 rm -f "$R/var/lib/ohmarchy/growroot.done"
+# the EDID goes to virtio-gpu only, at boot (firstboot/ohmarchy-edid.sh), not
+# on the command line, where it also reached route B's vmwgfx
+sed -i 's| drm.edid_firmware=[^ ]*||' "$R/boot/grub/grub.cfg"
+rm -f "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
+install -D -m 644 "$here/firstboot/ohmarchy-edid.service" "$R/etc/systemd/system/ohmarchy-edid.service"
+install -D -m 755 "$here/firstboot/ohmarchy-edid.sh" "$R/usr/local/lib/ohmarchy/ohmarchy-edid.sh"
+ln -sf ../ohmarchy-edid.service "$R/etc/systemd/system/multi-user.target.wants/ohmarchy-edid.service"
+grep -n 'linux ' "$R/boot/grub/grub.cfg"
 
 rm -f "$W/esp-small.img" "$W/root-small.img" "$W/omarchy-small.img"
 truncate -s ${esp_mib}M "$W/esp-small.img"

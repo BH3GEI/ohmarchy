@@ -1,0 +1,11 @@
+[Unit]
+Description=120 Hz EDID for 鸿融's virtio-gpu (not for SVGA)
+After=systemd-udev-settle.service systemd-modules-load.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /usr/local/lib/ohmarchy/ohmarchy-edid.sh
+
+[Install]
+WantedBy=multi-user.target

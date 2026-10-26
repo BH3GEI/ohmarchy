@@ -59,7 +59,8 @@ cmdline=${CMDLINE:-"rw arm64.hmv_idreg_quirk console=tty0 console=ttyAMA0,115200
 edid=${EDID-$here/edid/omarchy-120.bin}
 extra_pkgs=${EXTRA_PKGS-mesa-utils glmark2}
 vm_tools=${VM_TOOLS:-}
-[ -z "$edid" ] || cmdline="$cmdline drm.edid_firmware=Virtual-1:edid/$(basename "$edid")"
+# the EDID is set at boot for virtio-gpu only (firstboot/ohmarchy-edid.sh): on
+# the command line it also reached route B's vmwgfx connector (also Virtual-1)
 R=$W/root
 
 pacman -S --needed --noconfirm mtools dosfstools e2fsprogs grub libarchive >/dev/null
@@ -233,8 +234,11 @@ if [ -n "$vmwgfx_ko" ]; then
 fi
 # virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
 if [ -n "$edid" ]; then
-  install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/$(basename "$edid")"
-  echo "FILES+=(/usr/lib/firmware/edid/$(basename "$edid"))" > "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
+  install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/omarchy-120.bin"
+  rm -f "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
+  install -D -m 644 "$here/pure/firstboot/ohmarchy-edid.service" "$R/etc/systemd/system/ohmarchy-edid.service"
+  install -D -m 755 "$here/pure/firstboot/ohmarchy-edid.sh" "$R/usr/local/lib/ohmarchy/ohmarchy-edid.sh"
+  in_root systemctl enable ohmarchy-edid.service
 fi
 # omarchy-apply-system may regenerate the initramfs with autodetect again
 sed -i 's/^HOOKS=(\(.*\)autodetect \(.*\))/HOOKS=(\1\2)/' "$R/etc/mkinitcpio.conf"

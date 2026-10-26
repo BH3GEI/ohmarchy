@@ -159,13 +159,14 @@ Mirrors: rustup from TUNA, `GOPROXY=goproxy.cn`, npm from npmmirror, pip from
 TUNA (`native/desktop/environment.d/50-mirrors.conf`; proxy.golang.org does not
 answer from here). Coding agents: Omarchy's launchers in `~/.local/bin`
 install opencode, Codex and Claude Code through mise on first use;
-`native/desktop/ai/setup.sh` (root on the host) points them at Yao's API relay,
-reading its address and key from `/data/local/secrets/ai.env` and writing them
-only to the user's `~/.config/environment.d/60-ai.conf` (mode 600). All three are
-pinned to `kimi/kimi-for-coding` (the relay knows only its own model IDs;
-`ark/ark-code-latest` is the alternative) and answered a test prompt on
-2026-10-26: opencode 2.1.4, Codex 0.163.0 (Responses API), Claude Code
-2.1.310 (Anthropic API).
+`native/desktop/ai/setup.sh` (root on the host) configures them for Yao's API
+relay with the script every route uses (`hongrong/pure/guest/setup-ai.sh`),
+reading the relay's address and key from `/data/local/secrets/ai.env`; they end up
+only in the user's `~/.config/environment.d/ai.conf` (mode 600) and the agents'
+configs in the home directory. All three are pinned to `kimi/kimi-for-coding`
+(the relay knows only its own model IDs; `ark/ark-code-latest` is the
+alternative) and answered a test prompt on 2026-10-26: opencode 2.1.4, Codex
+0.163.0 (Responses API), Claude Code 2.1.310 (Anthropic API).
 
 ### Starting by itself (no root shell)
 

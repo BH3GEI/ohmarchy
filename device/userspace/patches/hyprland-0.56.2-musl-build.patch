@@ -1,0 +1,33 @@
+Build fixes for Hyprland 0.56.2 on OHOS musl (clang23 + libc++_ohm), on top of
+D's hyprland-0.56.2-hongmeng.patch. All are target/portability fixes:
+
+1) src/xwayland/XWM.cpp: the <xcb/*> includes sat before the `#ifndef NO_XWAYLAND`
+   guard, so a NO_XWAYLAND build (no xcb/X11 in the sysroot) failed. Move them inside.
+
+--- a/src/xwayland/XWM.cpp
++++ b/src/xwayland/XWM.cpp
+@@ -2,9 +2,9 @@
+ #include <cstdint>
+ #include <memory>
+ #include <string>
+-#include <xcb/xfixes.h>
+-#include <xcb/xproto.h>
+ #ifndef NO_XWAYLAND
++#include <xcb/xfixes.h>
++#include <xcb/xproto.h>
+ 
+ #include <fcntl.h>
+ #include <cstring>
+
+2) scripts/generateShaderIncludes.sh: `echo -n 'R"#('` writes a literal "-n " under a
+   POSIX /bin/sh whose echo lacks -n (macOS); the shader .inc then won't compile. Use
+   printf 'R"#(' instead.
+
+3) macOS build host only: Hyprland's generated protocol wrappers (protocols/foo.hpp) and
+   hand-written implementations (src/protocols/Foo.hpp) collide on a case-insensitive
+   filesystem, as does the `VERSION` file with libc++'s <version>. Build on a
+   case-sensitive volume (hdiutil create -fs "Case-sensitive APFS"). No source change
+   needed there. (On a case-sensitive Linux host none of this applies.)
+
+4) The dma-buf sync-file ioctls (DMA_BUF_IOCTL_EXPORT_SYNC_FILE) that src/helpers/Drm.cpp
+   uses are absent from OHOS kernel uapi; provided via device/userspace/uapi-fix/linux/dma-buf.h.

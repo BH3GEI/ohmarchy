@@ -438,3 +438,28 @@ separately off — see the no-svg note.)
 
 Hyprland then **configures** with `-DNO_XWAYLAND -DNO_SYSTEMD -DNO_HYPRPM -DNO_TESTS` against the
 full OHOS-musl stack. Build in progress.
+
+### Stage 3 — Hyprland 0.56.2 BUILT for OHOS musl ✅
+
+Hyprland 0.56.2 (D's two hongmeng patches + the build fixes in
+`device/userspace/patches/hyprland-0.56.2-musl-build.patch`) **compiles and links** for
+`aarch64-linux-ohos` with clang 23 + libc++_ohm, against the fully self-built dependency stack —
+no root, no chroot, no Arch packages.
+
+- `Hyprland`: AArch64 **PIE**, interpreter `/lib/ld-musl-aarch64.so.1`, **31M** (18M stripped).
+- `NEEDED`: libc++_ohm, libaquamarine, libhyprlang, libhyprutils, libhyprcursor, libhyprgraphics,
+  libexpat, libinput, libgbm, libEGL, libGLESv2, libc — every one built in this stack.
+- Config: `-DNO_XWAYLAND -DNO_SYSTEMD -DNO_HYPRPM -DNO_TESTS`.
+
+Build fixes (all target/host portability, none touch Hyprland logic): XWM.cpp xcb includes moved
+inside the `NO_XWAYLAND` guard; `generateShaderIncludes.sh` `echo -n`→`printf` (macOS `/bin/sh`
+wrote a literal `-n` into the shader `.inc`); `src/helpers/Drm.cpp`'s dma-buf sync-file ioctls
+supplied via the uapi-fix; liblua rebuilt complete (5.5.1, to match D's Arch Hyprland). **Built on
+a case-sensitive APFS volume** — Hyprland's `protocols/foo.hpp` vs `src/protocols/Foo.hpp` (and
+`VERSION` vs `<version>`) collide on the default case-insensitive macOS FS; a Linux host needs
+none of that.
+
+**This completes the offline build goal: a no-root, self-built Omarchy/Hyprland userspace for
+HarmonyOS.** Next is on-device: D's display app spawner `dlopen`s Hyprland + the stack (signed
+into the HAP `libs/`), with `VTEST_SOCKET`/virpipe pointed at the app's in-process virgl server.
+That step needs the device + screen time (coordinate with D).

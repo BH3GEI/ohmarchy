@@ -58,15 +58,11 @@
 | 1.5 | **Super+Shift+B** | Firefox 在终端旁边打开（新窗口，不会再出"恢复会话"页）。可以打开 omarchy.org。第一次可能弹一个小提示，点 "Okay, Got It" | 15 秒 | "浏览器是 Firefox，带沙箱。" |
 | 1.6 | **Super+Space** 弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
 | 1.7 | **Super+Shift+F** | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
-| 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 15–20 秒**，别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，空闲 3 分钟自己关。我没敲任何 root 命令。" |
-| 1.9 | 在同一个终端敲 `docker-vm stop`，回车 | **"Docker 虚拟机已关闭，现在可以开鸿融或 OSEasy 的虚拟机"** | 约 6 秒 | "用完就关，下一段的虚拟机就能开了。" |
+| 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 15–20 秒**，别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，用完半分钟自己关。我没敲任何 root 命令。" |
+| 1.9 | **不用管**，Docker 虚拟机会自己关 | 没有可见变化 | 约 30 秒，讲 1.8 的说辞时就过去了 | "用完它自己就关了，下一段的虚拟机马上能开。" |
 | 1.10 | 把"Omarchy (native)" **最小化**（不要关） | 回到鸿蒙桌面 | 2 秒 | |
 
-**1.9 让 Docker 虚拟机停下来**（2026-10-26 彩排：hello-world 冷启动 19 秒，`docker-vm stop` 6 秒，之后 `pidof stratovirt` 为空）：
-
-- **方案甲（推荐，Yao 自己敲）**：`docker-vm stop`。如果它说"还有 N 个容器在运行"，先 `docker ps` 看一眼，再 `docker stop <名字>`，然后重敲 `docker-vm stop`。想确认的话再敲 `docker-vm status`，应该显示"Docker 虚拟机没有运行"。菜单里也有：Super+Space → System → 停止 Docker 虚拟机。
-- **方案乙（后备）**：【后台】助手执行 `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop`（约 10 秒），再用 `ssh ohdev pidof stratovirt` 确认没有输出，然后给 Yao 打个手势。
-- **方案丙（什么都不做）**：hello-world 跑完后计时 **3 分 30 秒**，到点会自动关机。**期间不要再敲任何 `docker` 命令**，每敲一次，空闲计时就会重新开始。
+**1.9 Docker 虚拟机自己关**（2026-10-26 彩排：hello-world 冷启动 21 秒，跑完后什么都不碰，约 35 秒 `pidof stratovirt` 为空）：没有容器在跑、也没有 docker 连着，就在 30 秒后自动关机。**这期间别再敲 `docker` 命令**，每敲一次都会重新计时。万一没关，见下面故障表最后一行。
 
 说明：2026-10-26 在 ohdev 上彩排过（按键经鸿蒙的输入服务注入，右 Alt 当 Super）：1.1–1.7 全部和表里一样，双击图标后约 10 秒出桌面。第 1 部分里所有的 "Super" 都按**右 Alt**；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。
 
@@ -81,6 +77,7 @@
 | `docker` 停了 15–20 秒没输出 | 正常，第一次要开后台虚拟机。边等边讲 |
 | `docker` 报：`后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | 有别的虚拟机在跑（违反了检查项 5）。台上：说"这正是一次只能跑一台虚拟机的限制"，跳过 Docker。【后台】看是哪台；进下一段鸿融前要先关掉它 |
 | `docker` 超过 1 分钟还没输出 | 按 Ctrl+C，跳过 Docker，放备用截图（`docs/img/autostart/03-docker-cold.jpeg`）。【后台】`ohmarchy-vm stop`，确认 `pidof stratovirt` 为空再进第 2 段 |
+| hello-world 之后过了 1 分钟，鸿融开机提示有别的虚拟机在跑 | Docker 虚拟机还没关（比如中间又敲过 `docker`）。在终端敲 `docker-vm stop`（约 6 秒，提示"Docker 虚拟机已关闭"）；如果它说还有容器在跑，先 `docker ps`、`docker stop <名字>`。或者【后台】`ohmarchy-vm stop` |
 
 ---
 
@@ -186,7 +183,7 @@
 **Q：A 到 L 这么多路线是什么？为什么只演示 D、I、C、B？**
 A：A 是鸿蒙自带 Linux 容器里的命令行工具，没有桌面；E 裸机没开始；F 只在 Mac 上的模拟器里、纯软件很慢；G 铠大师和 H 真机上的 Aetherium 确认走不通；J（把 Linux 程序签进 app，不要 root）现在只跑到 busybox；K 没开始；L 浏览器内核里跑 Linux 暂停了。能拿出来演示的就是 D、I、C、B。
 
-**Q：可以归纳一下吗？**（适合 1.9 方案乙的 3 分钟）
+**Q：可以归纳一下吗？**
 A：两条线。**线一：在虚拟机 app 里即插即用**（B、C），不要 root，今天就能用，差的是 app 自己（60Hz、OSEasy 按 Windows 设计、鸿融要增强服务）。**线二：原生**（D + I），效果最好（120Hz、直接用 GPU、78 个 app 有 74 个 3 秒内打开），但要 root。
 
 **Q：为什么虚拟机里只有 60Hz？**
@@ -205,7 +202,7 @@ A：四件事：
 有了前两项，D 就能不用 root、以现在的性能跑。
 
 **Q：原生桌面上的 Docker 是怎么回事？**
-A：鸿蒙内核没有容器需要的命名空间和 cgroup，所以 Docker 跑在一台我们自己起的、没有界面的小虚拟机里：root 直接在 `/dev/hmv`（鸿蒙的虚拟化层）上启动系统自带的 StratoVirt。**不是鸿融**，也**不是鸿蒙自带的融合开发引擎**（那个是容器，跑不了 Docker）。第一次敲 `docker` 时它自己开机（约 15 秒），空闲 3 分钟自己关，个人目录共享进去，挂载目录照常能用。空闲时只占宿主约 1.2 GB 内存。
+A：鸿蒙内核没有容器需要的命名空间和 cgroup，所以 Docker 跑在一台我们自己起的、没有界面的小虚拟机里：root 直接在 `/dev/hmv`（鸿蒙的虚拟化层）上启动系统自带的 StratoVirt。**不是鸿融**，也**不是鸿蒙自带的融合开发引擎**（那个是容器，跑不了 Docker）。第一次敲 `docker` 时它自己开机（约 20 秒），用完 30 秒自己关，个人目录共享进去，挂载目录照常能用。空闲时只占宿主约 1.2 GB 内存。
 
 **Q：为什么一次只能开一台虚拟机？**
 A：鸿蒙的虚拟化层系统级只允许一台，第二台直接被拒（401 "Not support vm multi-instance"）。所以演示是一段一段交接的。
@@ -232,5 +229,5 @@ A：线一（B、C）不要 root，对外发布正在准备：镜像放 GitHub R
 10. OSEasy 从里面关机后界面显示什么，下次还能不能"再次安装"直接启动。
 11. OSEasy 试用是否还有效。
 12. "检测到有其它虚拟机正在运行"误报的原因（已知未解决）；彩排时看看出现频率。
-13. 方案乙：hello-world 后 3 分 30 秒 Docker 虚拟机确实已停。
+13. hello-world 跑完 1 分钟内 Docker 虚拟机确实已停（`pidof stratovirt` 为空）。
 14. 备用视频录好并放到另一台电脑上。

@@ -243,7 +243,7 @@ The scripts follow the ISO's order: repositories and keys, packages,
 A ready-made Omarchy disk for the 鸿融 app: download one qcow2 file, import it
 in 鸿融, start it. No root on the HarmonyOS PC, no deepin, no build step.
 
-**Status (2026-10-26): imports through 鸿融 1.1.1.103's own UI and runs.**
+**Status (2026-10-25): imports through 鸿融 1.1.1.103's own UI and runs.**
 (Checks below from 2026-10-24, 08:00–08:45 PDT, unless dated.) The image, booted as 鸿融's own VM (started from the 鸿融
 UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 
@@ -253,13 +253,13 @@ UI, its bridge network and virtio-gpu), on a HUAWEI MateBook 14:
 | Desktop | SDDM → Hyprland (Omarchy 4.0.6) as `yao` on the 鸿融 screen |
 | Network | 172.16.100.2 on 鸿融's bridge; `pacman -Sy` from the mirrors works |
 | GPU | Mesa 26.2.5, `virgl (zink Vulkan 1.2 (Maleoon 916))`; glmark2-es2-wayland fullscreen: **596** |
-| Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`); with the 120 Hz EDID still 60 on screen, see 120 Hz below (2026-10-26) |
+| Display rate | 60 fps on screen (`hidumper -s RenderService -a "composer fps"`); with the 120 Hz EDID still 60 on screen, see 120 Hz below (2026-10-25) |
 | Docker | 29.9.2, overlayfs, cgroup v2: `hello-world`, `postgres:16-alpine` (`pg_isready`), `docker compose` with nginx; through registry mirrors |
 | Soak | 30 min, all 6 vCPUs busy (load 6.0): `running` throughout, no RCU stall, soft lockup, hung task or Oops |
-| 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) Hyprland runs `Virtual-1` at 2160x1440@119.98; 鸿融 shows the fullscreen VM at 60 Hz (2026-10-26) |
-| Import | 2026-10-26, 03:06 CST: 本地文件 → `omarchy-dev-7.2.12-os1.qcow2` (9.6 GB) → 开始安装; imported, started by itself and at the SDDM login in under a minute |
+| 120 Hz mode | with `hongrong/edid/omarchy-120.bin` (no preferred timing) Hyprland runs `Virtual-1` at 2160x1440@119.98; 鸿融 shows the fullscreen VM at 60 Hz (2026-10-25) |
+| Import | 2026-10-25, 12:06 PDT: 本地文件 → `omarchy-dev-7.2.12-os1.qcow2` (9.6 GB) → 开始安装; imported, started by itself and at the SDDM login in under a minute |
 
-**Why import failed before (fixed 2026-10-26).** "导入 qcow2" rejected every variant tried (zlib-compressed,
+**Why import failed before (fixed 2026-10-25).** "导入 qcow2" rejected every variant tried (zlib-compressed,
 uncompressed 64 GiB, resized to 256 GiB, StratoVirt-shaped header) with
 "镜像可能在传输过程中损坏" or "disk is damaged". The persisted hilog
 (`/data/log/hilog/hilog.*.gz`, read with `zcat | strings`) shows the steps:
@@ -293,7 +293,7 @@ scanout by more than 16 px (found by the Route I line, docs/vm-own.md).
 `mkedid.py` now marks no timing preferred; then the probed modes are
 2160x1440@120 and @60, and the active CRTC mode is the 120 Hz one.
 
-On screen (2026-10-26, es2gears fullscreen in the guest, host composer rate
+On screen (2026-10-25, es2gears fullscreen in the guest, host composer rate
 from `hidumper -s RenderService -a "composer fps"`): with the VM fullscreen
 in 鸿融 the screen runs at **60 fps**. A 120 Hz vote window
 (`com.ohmarchy.vote120`) only counts while it is visible, and bringing any
@@ -343,13 +343,54 @@ sudo systemctl enable --now docker
 ```
 
 Docker Hub is slow or unreachable from mainland China: add registry mirrors
-in `/etc/docker/daemon.json` (for example `docker.m.daocloud.io`). The current
-image has neither Docker nor this file; whether the next one should is decided
-after the Docker test.
+in `/etc/docker/daemon.json` (for example `docker.m.daocloud.io`). The Docker
+results in the table above come from a VM where both were installed this way;
+build-disk.sh does not put Docker into the image.
+
+### 鸿融 shows the running VM as 已关机
+
+Seen on 2026-10-25 (PDT) every time the VM page was opened while the VM ran:
+the card says 当前状态：已关机, IP is empty, 关机 and 暂停 are greyed out,
+and 更多 offers only 强制关机. It happened after a dock tap back from the
+fullscreen VM (right after the 12:06 import, no `aa start` involved) as well
+as after `aa start -b com.huawei.medivh -a EntryAbility`.
+
+Cause, from the persisted hilog (`vmStateChange callback, vmState: N`,
+`HandleSetVmState`, `AGENT_INACTIVE`) and the strings in 鸿融's
+`ets/modules.abc`: 鸿融 moves a VM to `STATE_RUNNING` (vmState 1) only when
+its guest agent, the 虚拟机增强服务 (`vm-agent`), reports in. Every start of
+this VM goes `STARTING` (3) → `VIEWING` (9) → `AGENT_INACTIVE`
+("set isAgentInstalled as false") and stays at 9. The card's status text is
+running only for `STATE_RUNNING` (paused for `STATE_PAUSED`) and falls back
+to 已关机 for anything else, and the normal 关机 needs the agent. For
+comparison, on 2026-10-23 a deepin VM with `vm-agent` (half) installed went
+`VIEWING` → "isAgentInstalled change callback: true" → `RUNNING` (1), and its
+关机 then sent `StopVm`.
+
+Same behaviour under 鸿融 1.3.1.80 (2026-10-23 starts without the agent also
+stop at 9) and 1.1.1.103, so it is not the version change. It is not caused by
+how we bring 鸿融 to the front, and not by shutting down from the guest: a
+guest `poweroff` is logged as `STOPPING` (4) → `STOPPED` (0), the same as
+强制关机.
+
+Repro: import or start any Linux guest without 鸿融's agent (Omarchy has
+none; the agent's postinst handles only UOS and Kylin), let it reach the
+login screen, open 鸿融's VM page.
+
+Workaround: shut the VM down from inside the guest (Omarchy: Super+Esc →
+Shutdown, or `systemctl poweroff`); 鸿融 then shows 已关机 and the VM can be
+started again with 开机. Use 更多 → 强制关机 only when the guest does not
+respond, and run `sync` in the guest first if it is reachable. To get back
+from the fullscreen VM to the VM page: tap 鸿融 in the dock if it shows; the
+Home key and edge swipes did not leave the fullscreen VM, and from the host
+`aa start -b com.huawei.medivh -a EntryAbility` does.
 
 ### Known limits
 
-- 60 Hz: 鸿融's virtual display offers only 60 Hz modes.
+- 120 Hz: the guest runs at 2160x1440@119.98 with the EDID above, but 鸿融
+  presents the fullscreen VM at 60 Hz.
+- No guest agent: 鸿融 shows the running VM as 已关机 and greys out 关机
+  (see above); shut down from inside the guest.
 - One VM: 鸿融 1.1.1.103 holds one VM at a time.
 - AppGallery updates 鸿融 on its own, and has replaced a newer sideloaded
   build with 1.1.1.103; turn off automatic updates for 鸿融 to keep a version.

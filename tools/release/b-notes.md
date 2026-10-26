@@ -7,6 +7,6 @@ Known limits: 60 Hz on screen (the guest renders at 120); Oseasy forgets the
 VM at power-off, so each start is an install session; one VM at a time on the
 whole machine (close 鸿融's VM and the Docker VM first).
 
-**Draft.** Check the files and the license note before publishing: the disk
-image contains unmodified Arch Linux ARM and Omarchy packages, whose GPL
-sources this release does not carry.
+**Draft.** Check the files before publishing. Licenses: LICENSES.md (the
+repository is MIT, kernel-derived code GPL-2.0); the sources of the GPL and LGPL
+packages in the disk image are attached (package-sources tar).

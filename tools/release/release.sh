@@ -15,6 +15,10 @@
 # (default 1900: GitHub takes at most 2 GiB per asset) go up in parts,
 # NAME.part00, NAME.part01, ...; `cat NAME.part* > NAME` joins them.
 # Every uploaded file and every joined asset is in SHA256SUMS.
+# PKG_SOURCES: directory from gpl-sources.sh (the GPL/LGPL packages in the
+# image, as makepkg --allsource archives); attached as one more asset. Without
+# it, or with packages listed in its MISSING.txt, only --dry-run runs: the
+# binaries in an image must come with their source (supervisor, 2026-10-26).
 # Staging: OUT (default work/release/TAG). Needs gh logged in, with push rights.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -34,7 +38,16 @@ commit=$(cd "$root" && git rev-parse HEAD)
 [ -z "$(cd "$root" && git status --porcelain -- "${GPL_PATHS[@]}")" ] ||
     { echo "release.sh: uncommitted changes in the GPL paths; the source archive must match a commit" >&2; exit 1; }
 rm -rf "$OUT"; mkdir -p "$OUT/up"
-up=()   # files to upload
+if [ -n "${PKG_SOURCES:-}" ]; then
+    [ -s "$PKG_SOURCES/PACKAGES.txt" ] || { echo "release.sh: $PKG_SOURCES has no PACKAGES.txt (gpl-sources.sh)" >&2; exit 1; }
+    pk=$OUT/ohmarchy-$TAG-package-sources.tar
+    tar -C "$PKG_SOURCES" -cf "$pk" .
+    set -- "$@" "$pk"
+fi
+gate=
+[ -n "${PKG_SOURCES:-}" ] || gate="no PKG_SOURCES (gpl-sources.sh) given"
+[ -z "${PKG_SOURCES:-}" ] || [ ! -s "$PKG_SOURCES/MISSING.txt" ] || gate="$(wc -l < "$PKG_SOURCES/MISSING.txt") packages without source ($PKG_SOURCES/MISSING.txt)"
+[ -z "$gate" ] || [ "$dry" = 1 ] || { echo "release.sh: $gate; only --dry-run" >&2; exit 1; }
 
 echo "== assets"
 for a in "$@"; do
@@ -103,6 +116,7 @@ cat "$OUT/up/SHA256SUMS"
 
 files=("$OUT"/up/*)
 if [ "$dry" = 1 ]; then
+    [ -z "$gate" ] || echo "== not releasable yet: $gate"
     echo "== dry run: would create draft $TAG on $REPO with ${#files[@]} files"
     exit 0
 fi

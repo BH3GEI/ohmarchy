@@ -122,11 +122,12 @@ off throughout (`pidof stratovirt` empty).
 2. **Swap**: `hrswap.sh use-dev <IMGDIR> /data/local/vmtest/omarchy-b-nopass-os1.qcow2`
    (made from the public image with `hongrong/pure/make-qcow2.sh`, about
    10 s). Open 鸿融: the disk shows 已使用 6 GB.
-3. **Set the password**: tap **开机**. After about 45 s a 增强服务 guide
-   dialog appears: **知道了**. Behind it is a fullscreen "请设置密码 / Set your
-   password". Type a password of at least 8 characters twice (Yao's choice,
+3. **Set the password**: tap **开机**. After about 45 s a fullscreen "请设置密码 /
+   Set your password" appears. 鸿融 may show its 增强服务 guide dialog
+   (**知道了**) or only a toast at the bottom right (the second preparation on
+   2026-10-27 showed only the toast); click the VM picture before typing. Type a password of at least 8 characters twice (Yao's choice,
    memorized, never written down). It shows 密码已设置, installs 鸿融's guest agent and
-   says 鸿融 restarts the VM once; press Enter. About a minute later the VM
+   says 鸿融 restarts the VM once; press Enter. The toast goes away. About a minute later the VM
    is back on the Omarchy desktop, with no login screen.
 4. **Check and shut down**: bring 鸿融 to the front (`aa start -b
    com.huawei.medivh -a EntryAbility`): the card says **运行中** (green). Tap

@@ -78,19 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 12:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 13:50 PDT)
 
-Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
+Now: **the full demo rehearsal is running** on the test machine (part 1 D + I, then part 2 C, then part 3 B). The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out waits for an upload token.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | **Final ISO verified; waiting for an upload token to attach it to the draft release** | Final ISO: 2,006,953,984 bytes (1.869 GiB). Checked inside the installed system: the password screen, `sudo` with the new password, the temporary NOPASSWD rule removed, the disk grown to 252 GB, Hyprland running. **A reboot inside Omarchy keeps data**: a file survived `systemctl reboot` into the same installed system. After power-off OSEasy only offers "再次安装", which wipes the disk. The install guide and operator manual part 3 follow these measurements; OSEasy's "install.wim 损坏" pop-up is a false alarm and the guide says to press 确定, never 取消 (which deletes the VM) (39f1bb9) |
-| C. 鸿融 | Demo part 2 ready | **Rehearsed with the public image swapped into 鸿融** (2dc4a42): password screen 45 s after power-on, 鸿融's guest agent installed during first login, then the card shows 运行中 and 鸿融's 关机 shuts down in 20 s. The main VM was backed up first and swapped back afterwards. Operator manual part 2 updated (e596929) |
-| D. Native | — | — |
-| I. Own VM | GPU in containers: assessed, not done | **Docker's limits lifted** (48eee76, a2b6d0f): x86-64 images run under qemu-user with `--platform linux/amd64` (pure Python ~50x slower, C ~4x); the VM may use 12 GiB and still costs ~1.2 GiB when idle; when 鸿融 or OSEasy holds the hypervisor, `docker` names the app and a HarmonyOS notification says the same |
+| B. OSEasy | Part 3 of the rehearsal, after 鸿融 | Final ISO verified (2,006,953,984 bytes); draft release waiting for the upload |
+| C. 鸿融 | Part 2 of the rehearsal | Rehearsal prep done: Omarchy disk swapped in, password screen 48 s after power-on, guest agent installed, card shows 运行中, shut down with 鸿融's button. This time 鸿融 showed only a toast in the corner instead of the guest-agent dialog, and the toast went away once the agent was in; the manual now says either may appear (206d357) |
+| D. Native | Part 1 of the rehearsal | Steps 1.1–1.7 matched the manual except that Firefox opened on "Restore Session" again; being fixed |
+| I. Own VM | Fix for a hang found in the rehearsal | **Rehearsal found a hang**: the Docker VM's idle shutdown at 03:16 never finished (it got stuck reading the already-exited VM process), and new `docker` commands waited on it. Killing the stuck step let the VM start for the waiting command. The fix (handle an exited process, a timeout for the whole shutdown) is built and will be installed between rehearsal parts. The new display app with the Docker-refused notification is installed (94f245c) |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
-
-Release: the B draft (tag `b-20261027`, not published) has the small attachments; the ISO and the GPL source bundle go up from the HarmonyOS machine once a short-lived token for this repository is available.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

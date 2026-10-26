@@ -8,8 +8,8 @@
 // first time), then the connection becomes the stdin/stdout of
 // `ohmarchy-vm ssh docker system dial-stdio`, what docker's own ssh:// transport
 // runs in the guest. A peer can do nothing but talk to that dockerd.
-// Idle: when the gate started the VM, no connection has been open for --idle
-// minutes and no container runs, `ohmarchy-vm stop`. A VM started by hand is
+// Idle: when the gate started the VM, no connection has been open for --idle-s
+// seconds and no container runs, `ohmarchy-vm stop`. A VM started by hand is
 // never stopped. While another VM runs (HMV runs one at a time: 鸿融, OSEasy)
 // the gate does not try, and the client gets an HTTP 503 that docker prints as
 // "Error response from daemon: <the reason, in Chinese for the user>".
@@ -19,9 +19,10 @@
 // route D's `docker-vm` command and its menu entry use it.
 // --on-start CMD: run (detached, through /system/bin/sh) after the gate started
 // the VM: route D's notification that the VM runs and how it stops.
-//   ohmarchy-docker-gate [--uid UID] [--idle MIN] [--ctl PATH] [--on-start CMD]
-//                        <socket path>
-//   (defaults: uid 60000, 3 min: 鸿融 and OSEasy need the hypervisor soon after)
+//   ohmarchy-docker-gate [--uid UID] [--idle-s SEC | --idle MIN] [--ctl PATH]
+//                        [--on-start CMD] <socket path>
+//   (defaults: uid 60000, 30 s: in the demo 鸿融 starts right after Docker, and
+//   nobody types a command to stop the VM; supervisor, 2026-10-26)
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -174,13 +175,15 @@ static void refuse(int fd, const char *why)
 
 int main(int argc, char **argv)
 {
-    long uid = 60000, idle_min = 3;
+    long uid = 60000, idle_s = 30;
     const char *ctl = NULL, *on_start = NULL;
     while (argc > 2 && strncmp(argv[1], "--", 2) == 0) {
         if (strcmp(argv[1], "--uid") == 0)
             uid = strtol(argv[2], NULL, 10);
         else if (strcmp(argv[1], "--idle") == 0)
-            idle_min = strtol(argv[2], NULL, 10);
+            idle_s = 60 * strtol(argv[2], NULL, 10);
+        else if (strcmp(argv[1], "--idle-s") == 0)
+            idle_s = strtol(argv[2], NULL, 10);
         else if (strcmp(argv[1], "--ctl") == 0)
             ctl = argv[2];
         else if (strcmp(argv[1], "--on-start") == 0)
@@ -191,7 +194,7 @@ int main(int argc, char **argv)
         argc -= 2;
     }
     if (argc != 2) {
-        fprintf(stderr, "usage: %s [--uid UID] [--idle MIN] [--ctl PATH] [--on-start CMD] <socket path>\n", argv[0]);
+        fprintf(stderr, "usage: %s [--uid UID] [--idle-s SEC] [--ctl PATH] [--on-start CMD] <socket path>\n", argv[0]);
         return 2;
     }
     signal(SIGPIPE, SIG_IGN);
@@ -199,7 +202,7 @@ int main(int argc, char **argv)
     int ls = listen_on(argv[1], uid), cs = ctl ? listen_on(ctl, uid) : -1;
     if (ls < 0 || (ctl && cs < 0))
         return 1;
-    printf("gate on %s for uid %ld, idle stop after %ld min%s%s\n", argv[1], uid, idle_min,
+    printf("gate on %s for uid %ld, idle stop after %ld s%s%s\n", argv[1], uid, idle_s,
            ctl ? ", control on " : "", ctl ? ctl : "");
 
     int ours = 0, active = 0;
@@ -238,11 +241,11 @@ int main(int argc, char **argv)
                     continue;
                 }
                 int c = containers_running();
-                long left = idle_min * 60 - (time(NULL) - last_used);
+                long left = idle_s - (time(NULL) - last_used);
                 if (!ours)
                     snprintf(t, sizeof(t), "Docker 虚拟机正在运行（手动启动的，不会自动关闭），%d 个容器在运行", c);
                 else if (active > 0 || c != 0)
-                    snprintf(t, sizeof(t), "Docker 虚拟机正在运行，%d 个容器在运行，%d 个 docker 连接；都结束 %ld 分钟后自动关闭", c, active, idle_min);
+                    snprintf(t, sizeof(t), "Docker 虚拟机正在运行，%d 个容器在运行，%d 个 docker 连接；都结束 %ld 秒后自动关闭", c, active, idle_s);
                 else
                     snprintf(t, sizeof(t), "Docker 虚拟机正在运行，没有容器；约 %ld 秒后自动关闭", left > 0 ? left : 0);
                 reply(fd, 0, t);
@@ -320,9 +323,10 @@ int main(int argc, char **argv)
             say("%s is gone (session ended), exiting", argv[1]);
             return 0;
         }
-        /* idle: checked once a minute after the idle time is up */
+        /* idle: checked every 10 s once the idle time is up (each check asks the
+         * guest for its running containers) */
         time_t now = time(NULL);
-        if (ours && active == 0 && now - last_used >= idle_min * 60 && now - last_check >= 60) {
+        if (ours && active == 0 && now - last_used >= idle_s && now - last_check >= 10) {
             last_check = now;
             if (!vm_running()) {
                 ours = 0;

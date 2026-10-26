@@ -1,6 +1,6 @@
 #!/bin/bash
 # docker-vm: route I's Docker VM as seen from route D's desktop. The VM starts
-# by itself on the first docker command and stops 3 minutes after the last one
+# by itself on the first docker command and stops about 30 s after the last one
 # with no container running; this shows it and stops it earlier, e.g. before
 # opening 鸿融 or OSEasy (one VM at a time). Through the host's docker gate
 # (tools/ownvm/ohmarchy-docker-gate.c), which takes only this user.
@@ -37,7 +37,7 @@ running)
     [ -S "$s" ] && [ "$(ask running)" = "0 running" ]
     ;;
 notify-started)
-    notify-send -a Docker "Docker 虚拟机已启动" "用完 3 分钟后自动关闭，或执行 docker-vm stop（菜单：System → 停止 Docker 虚拟机）"
+    notify-send -a Docker "Docker 虚拟机已启动" "用完约 30 秒后自己关闭（没有容器在跑时）"
     ;;
 *)
     sed -n '7,11p' "$0" | sed 's/^#  *//'

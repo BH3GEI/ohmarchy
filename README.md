@@ -105,7 +105,7 @@ The routes boil down to two lines of work, and each needs something from a diffe
 AppGallery and boots our image; no root. This works today. What keeps it from perfect is in
 the apps themselves: neither asks the system for a higher refresh rate, so the screen stays
 at 60 Hz; Oseasy's lifecycle is built around a Windows guest agent (no "start" button for a
-Linux VM; "再次安装" is being changed to boot the installed disk); 鸿融 needs its guest agent
+Linux VM; "再次安装" wipes the disk, so the system is being moved into an ext4 image file in Oseasy's shared folder that the probe boots directly, ~10 s, state kept); 鸿融 needs its guest agent
 (增强服务) in the VM to show it as running and to shut it down. Being prepared for public
 release: no-root install, images on GitHub Releases, a user guide.
 

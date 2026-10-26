@@ -153,6 +153,21 @@ Then open "Omarchy (native)" on the HarmonyOS desktop (with the broker, Hyprland
 waits for it). It opens as a window (maximize it from the title bar) and says what
 it is waiting for until the first frame arrives.
 
+### Browsers at 120 Hz (testufo, 2026-10-26)
+
+Chromium's testufo showed 60-73 fps although the output is 1920x1280@120 and
+Firefox reached 121. Measured layer by layer: Chromium 73 fps with its GPU path,
+65 with `--disable-gpu`, 65 with Hyprland drawing every frame (`debug.vfr`
+off, HarmonyOS composer 119), two windows ~60 each but 112 on screen together,
+730 with its frame limiter off. So the stack had the frames and Chromium's own
+scheduler held it: aquamarine's headless backend reported presents without a
+refresh interval, Hyprland's `wp_presentation` feedback said refresh 0, and
+Chromium fell back to 60 Hz. The headless backend now reports time, sequence
+and the mode's interval (`native/desktop/patches/aquamarine-0.15.1-hongmeng.patch`,
+[e5416df](https://github.com/BH3GEI/ohmarchy/commit/e5416df)). After it:
+Chromium's testufo 118 fps, "Refresh Rate 120 Hz", composer 119
+([before](img/testufo/chromium-before-73.jpeg), [after](img/testufo/chromium-120.jpeg)).
+
 ### Developer tools and coding agents
 
 Mirrors: rustup from TUNA, `GOPROXY=goproxy.cn`, npm from npmmirror, pip from

@@ -111,6 +111,8 @@ snapshot() {
                 case $url in
                 *savannah.gnu.org*) sn="https://git.savannah.gnu.org/cgit/$repo.git/snapshot/$repo-$sr.tar.gz" ;;
                 *github.com*) sn="https://gh-proxy.com/${url%.git}/archive/$sr.tar.gz" ;;
+                *sourceware.org/git/*) sn="https://sourceware.org/git/?p=$repo.git;a=snapshot;h=$sr;sf=tgz" ;;
+                *gitlab.*) sn="${url%.git}/-/archive/$sr/$repo-$sr.tar.gz" ;;
                 esac
                 [ -n "$sn" ] && curl -fsSL --retry 2 -m 900 -o "$t/s/$nm-$sr.tar.gz" "$sn" && ok=$sr
             fi
@@ -140,7 +142,8 @@ snapshot() {
 
 # git sources whose own host does not serve a shallow fetch or snapshot here
 # (savannah's cgit snapshots answer 301/400; its gnulib fetch times out)
-declare -A GIT_MIRROR=([gnulib]=https://github.com/coreutils/gnulib)
+declare -A GIT_MIRROR=([gnulib]=https://github.com/coreutils/gnulib [gcc]=https://github.com/gcc-mirror/gcc
+                       [glibc]=https://github.com/bminor/glibc [binutils-gdb]=https://github.com/bminor/binutils-gdb)
 
 declare -A done=()
 min_free=${MIN_FREE_GB:-8}   # stop before the disk fills up (sources can be large)

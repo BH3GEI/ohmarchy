@@ -69,7 +69,7 @@ case " $cmd " in
         fi
     fi
     if [ -n "$imgzst" ]; then
-        log "install: writing /dev/vda from $imgzst (embedded in the ISO)"
+        log "install: writing /dev/vda from $imgzst"
         zstd -dc "$imgzst" | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
     else
         log "install: no image on CD or shared folder; waiting for one on tcp/5003, writing /dev/vda"
@@ -128,8 +128,8 @@ case " $cmd " in
         # Persist the user's files across reinstalls on Oseasy's shared folder.
         # Oseasy exports a virtiofs device (tag "shared_dir") backed by the host's
         # 文件管理器/Documents. A 再次安装 wipes /dev/vda, so keep user data off the
-        # disk: mount the share at ~/Shared and point ~/Documents at it. nofail +
-        # a short device timeout so the system still boots if the share is absent.
+        # disk: mount the share at ~/Shared and point ~/Documents at it. nofail so
+        # the system still boots if the share is absent.
         if [ -n "$u" ]; then
             uh=/mnt/home/$u
             install -d -m755 "$uh/Shared"; chroot /mnt chown "$u:$u" "/home/$u/Shared" 2>/dev/null

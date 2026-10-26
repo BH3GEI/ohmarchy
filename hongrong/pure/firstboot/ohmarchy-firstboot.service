@@ -1,0 +1,21 @@
+[Unit]
+Description=Omarchy first boot: set the password, install Omarchy
+ConditionPathExists=!/var/lib/ohmarchy/firstboot.done
+Wants=network-online.target
+After=network-online.target systemd-user-sessions.service
+Conflicts=getty@tty1.service
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/ohmarchy/ohmarchy-firstboot.sh
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -12,7 +12,19 @@
 # Runs as root in an Arch Linux ARM environment with network access (e.g. the
 # native Arch environment on the HarmonyOS host, via arch.sh run).
 # Usage: build-disk.sh WORKDIR USER PASSWORD KERNEL_PKG...
+#        BASE=1 build-disk.sh WORKDIR - - KERNEL_PKG...
 #   WORKDIR gets root/, esp.img, root.img and the result omarchy-pure.img
+# BASE=1 builds the release base image instead: Arch Linux ARM, the kernel,
+# EDID and network, no Omarchy and no user. Its first boot
+# (firstboot/ohmarchy-firstboot.sh, on tty1) asks for the password of the user
+# "omarchy" and installs Omarchy from the network; the image stays under 2 GiB
+# for a GitHub release asset. ROOT_IMG=1 also writes omarchy-root.img, the
+# same tree as a bare ext4 filesystem of minimal size without / and /boot/efi
+# in fstab, for route B (OSEasy loop-mounts it from the shared folder).
+# AI_ENV (demo machine only, never for a public image): env file for
+# guest/setup-ai.sh, copied into the base image for its first boot.
+# VMWGFX_KO: route B's patched vmwgfx.ko for this kernel (driver/
+# vmwgfx-oseasy-7.2), installed under updates/ with oseasy/vmwgfx-7.2's options.
 # Environment: DISK_GIB, ESP_MIB, CMDLINE; EDID (default hongrong/edid/
 # omarchy-120.bin, empty for none): an EDID with a 2160x1440@120 mode for the
 # virtio-gpu output, loaded with drm.edid_firmware (see hongrong/edid);
@@ -26,6 +38,7 @@
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
+base=${BASE:-0} root_img=${ROOT_IMG:-0} ai_env=${AI_ENV:-} vmwgfx_ko=${VMWGFX_KO:-}
 pkgs=("$@"); [ ${#pkgs[@]} -gt 0 ] || { echo "no kernel packages given"; exit 1; }
 here=$(cd "$(dirname "$0")/.." && pwd)        # hongrong/
 disk_gib=${DISK_GIB:-64} esp_mib=${ESP_MIB:-512}
@@ -107,10 +120,13 @@ in_root bash -c "
   ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
   sed -i 's/^#\(en_US.UTF-8\|zh_CN.UTF-8\)/\1/' /etc/locale.gen && locale-gen >/dev/null
   echo LANG=en_US.UTF-8 > /etc/locale.conf
+  systemctl enable NetworkManager sshd
+"
+# the base image gets its user (and password) at first boot
+[ "$base" = 1 ] || in_root bash -c "
   id $user >/dev/null 2>&1 || useradd -m -G wheel $user
   echo '$user:$password' | chpasswd
   echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
-  systemctl enable NetworkManager sshd
 "
 install -D -m 600 "$here/etc/lan.nmconnection" "$R/etc/NetworkManager/system-connections/lan.nmconnection"
 
@@ -119,18 +135,39 @@ install -D -m 600 "$here/etc/lan.nmconnection" "$R/etc/NetworkManager/system-con
 #    snapshots; this root is ext4 and has no such hook) and autodetect (which
 #    in a chroot picks the build host's modules). conf.d is read in order, so a
 #    later file overrides HOOKS.
-install -D -m 644 /dev/stdin "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf" <<'HOOKS'
+L=$R/usr/local/lib/ohmarchy
+mkdir -p "$L"
+install -D -m 644 /dev/stdin "$L/zz-hongrong.conf" <<'HOOKS'
 # 鸿融 VM (ohmarchy hongrong/pure/build-disk.sh): ext4 root, no btrfs-overlayfs, no LUKS;
 # no autodetect so the image does not depend on where it was generated.
 HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block filesystems fsck)
 HOOKS
-mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
-sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
-in_root bash /root/hongrong/20-install-omarchy.sh "$user"
-rm -rf "$R/root/hongrong"
-[ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
-if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
-else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
+if [ "$base" = 1 ]; then
+  # first boot does step 3 (plymouth, named in the hooks above, comes with
+  # Omarchy, so the hooks file goes in place only then)
+  cp -r "$here/20-install-omarchy.sh" "$here/etc" "$here/pure/install-vm-agent.sh" \
+    "$here/pure/guest/setup-ai.sh" "$here/pure/firstboot/ohmarchy-firstboot.sh" "$L/"
+  install -m 644 "$here/pure/firstboot/ohmarchy-firstboot.service" "$R/etc/systemd/system/"
+  in_root systemctl enable ohmarchy-firstboot.service
+  [ -z "$ai_env" ] || install -m 600 "$ai_env" "$L/ai.env"
+  # documentation is the bulk of what is not needed to boot
+  rm -rf "$R"/usr/share/{doc,man,info,gtk-doc}
+else
+  install -m 644 "$L/zz-hongrong.conf" "$R/etc/mkinitcpio.conf.d/zz-hongrong.conf"; rm -rf "$L"
+  mkdir -p "$R/root/hongrong"; cp -r "$here/20-install-omarchy.sh" "$here/etc" "$R/root/hongrong/"
+  sed -i 's/^\[options\]$/[options]\nDisableSandbox\nDisableDownloadTimeout/' "$R/root/hongrong/etc/pacman.conf" "$R/etc/pacman.conf"
+  in_root bash /root/hongrong/20-install-omarchy.sh "$user"
+  rm -rf "$R/root/hongrong"
+  [ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
+  if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
+  else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
+fi
+kver=$(ls "$R/usr/lib/modules" | grep -v '^\.' | head -1)
+if [ -n "$vmwgfx_ko" ]; then
+  install -D -m 644 "$vmwgfx_ko" "$R/usr/lib/modules/$kver/updates/vmwgfx.ko"
+  install -D -m 644 "$here/../oseasy/vmwgfx-7.2/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
+  in_root depmod "$kver"
+fi
 # virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
 if [ -n "$edid" ]; then
   install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/$(basename "$edid")"
@@ -179,6 +216,18 @@ PT
 dd if="$W/esp.img" of="$W/omarchy-pure.img" bs=1M seek=1 conv=notrunc,sparse status=none
 dd if="$W/root.img" of="$W/omarchy-pure.img" bs=1M seek=$(( 1 + esp_mib )) conv=notrunc,sparse status=none
 rm -f "$W/esp.img" "$W/root.img"
+if [ "$root_img" = 1 ]; then
+  # minimal size: the files plus a quarter for ext4 metadata and slack; route
+  # B grows the file (truncate + resize2fs) before it mounts it
+  used=$(du -sxm "$R" | cut -f1); size=$(( used * 5 / 4 + 128 ))
+  cp "$R/etc/fstab" "$W/fstab.disk"
+  printf '%s\n' "# / and /boot/efi: mounted by route B's probe (loop on the shared folder)" > "$R/etc/fstab"
+  rm -f "$W/omarchy-root.img"; truncate -s ${size}M "$W/omarchy-root.img"
+  mkfs.ext4 -q -F -m 1 -L omarchy -d "$R" "$W/omarchy-root.img"
+  cp "$W/fstab.disk" "$R/etc/fstab"; rm -f "$W/fstab.disk"
+  ls -l "$W/omarchy-root.img"
+  [ $size -lt 2048 ] || echo "WARNING: omarchy-root.img is ${size} MiB, over 2 GiB"
+fi
 sfdisk -l "$W/omarchy-pure.img"
 echo "root UUID $root_uuid, ESP $esp_uuid"
 echo BUILD_DISK_DONE

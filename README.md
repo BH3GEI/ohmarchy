@@ -78,19 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 06:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 07:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Re-installing from the fixed public ISO in OSEasy, with screenshots and timing; then the operator manual's section 3 | **Public install ISO built: 1.855 GiB**, under GitHub's 2 GiB asset limit. It carries the final image; the installer skips its own customisation when the image is already set up (52c2303). The ISO had copies of the kernel and initramfs both in the El Torito FAT image and in ISO9660; dropping the FAT copies saved ~160 MB (2563b62). **First install attempt failed**: the shrunk FAT image fell below FAT32's minimum size and the firmware stopped at the EFI shell. Being fixed with a FAT32 boot image of at least 48 MB (ISO about 1.89 GiB) |
-| C. 鸿融 / public image | Turning off 鸿融's two auto-start switches and swapping the Omarchy disk in for the demo | **Public image done**: 1,787,920,408 bytes (1.665 GiB) with `zstd --ultra -22 --long=31`, verified with `zstd -t`. No password hash, no key; first login on the desktop; exact list of 793 packages handed over for the GPL sources. For faster rebuilds: a 12 GiB image that grows to the whole disk at first boot (2b07799), not yet tried on a VM |
-| D. Native | — | **Autostart verified by a real reboot** (305f15b): the start script ran 4 s after boot, the desktop was running in the background 50 s after boot, and double-clicking "Omarchy (native)" after the normal lock-screen login showed the desktop with no command. Closing and reopening the app also brings it back. Left for the presenter: right Alt and three-finger swipes on the physical keyboard and touchpad |
-| I. Own VM | Done | — |
+| B. OSEasy | Re-installing with the EDID fix and checking the picture and the first-login password screen | **Install from the public ISO works: about 110 s** from "开始安装" to the login prompt of the installed system. Two ISO fixes (7d0105f): the boot image is now a valid FAT32 (the 21 MB one fell below FAT32's minimum and the firmware stopped at the EFI shell), and after installing, the ISO's GRUB finds a marker on the ESP and chainloads the image's own GRUB 2.16, because its older GRUB can't read an ext4 with `metadata_csum_seed` (that caused an install loop). ISO 1.881 GiB. **Then a black screen**: vmwgfx crashed at start-up because the image forced 鸿融's EDID on `Virtual-1`, which is also the name of OSEasy's output |
+| C. 鸿融 / public image | Re-packing the image with the EDID fix; then swapping the Omarchy disk into 鸿融 for the demo | EDID is now written at boot only when the GPU is virtio-gpu (鸿融), never on the kernel command line (f8cd6f4). 鸿融's two switches ("启动客户端后虚拟机自动运行", "闲置自动暂停虚拟机") are off and verified: reopening 鸿融 no longer starts its VM (0815488) |
+| D. Native | — | — |
+| I. Own VM | Removing Docker's limits: x86 images, more memory, a clear message when another VM blocks it | When 鸿融 or OSEasy holds the hypervisor, `docker` now names the app and a HarmonyOS notification says the same (4303a96) |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
-
-Release: GPL sources for the 793 packages are being fetched; the draft is built once the ISO install passes.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

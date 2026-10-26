@@ -43,7 +43,10 @@ cp -a "$M"/modules.order "$M"/modules.builtin* "$R/lib/modules/$kver/"
 (cd "$M" && cp -a --parents kernel/drivers/gpu kernel/drivers/net/virtio_net.ko* \
     kernel/drivers/net/net_failover.ko* kernel/net/core/failover.ko* kernel/drivers/virtio \
     kernel/drivers/block/virtio_blk.ko* kernel/drivers/input kernel/drivers/hid \
-    kernel/drivers/usb kernel/fs/fat kernel/fs/nls kernel/lib "$R/lib/modules/$kver/" 2>/dev/null || true)
+    kernel/drivers/usb kernel/fs/fat kernel/fs/nls kernel/lib \
+    kernel/drivers/scsi/scsi_mod.ko* kernel/drivers/scsi/sr_mod.ko* \
+    kernel/drivers/cdrom kernel/fs/isofs \
+    "$R/lib/modules/$kver/" 2>/dev/null || true)
 cp -a "$M/updates" "$R/lib/modules/$kver/"
 # only the patched vmwgfx: the kernel's own autoload would otherwise pick the in-tree one
 rm -rf "$R/lib/modules/$kver/kernel/drivers/gpu/drm/vmwgfx"
@@ -112,6 +115,12 @@ truncate -s ${mib}M "$W/efiboot.img"
 mkfs.fat -F 32 -n PROBE "$W/efiboot.img" >/dev/null 2>&1 || mkfs.fat -n PROBE "$W/efiboot.img" >/dev/null
 mcopy -s -i "$W/efiboot.img" "$W/esp/"* ::/
 mkdir -p "$W/iso"; cp "$W/efiboot.img" "$W/iso/"; cp -r "$W/esp/"* "$W/iso/"
+# PROBE_IMGZST embeds a zstd-compressed raw disk image in the ISO data area (not in
+# the El Torito ESP, which stays small). The install mode mounts this same CD and
+# writes it to /dev/vda, so installing needs no host and no network. Makes the ISO
+# roughly image-sized; check that Oseasy accepts an ISO that large.
+[ -n "${PROBE_IMGZST:-}" ] && [ -f "$PROBE_IMGZST" ] && \
+    cp "$PROBE_IMGZST" "$W/iso/omarchy-pure.img.zst"
 xorriso -as mkisofs -quiet -V OSEASY_PROBE -J -R -e efiboot.img -no-emul-boot \
     -isohybrid-gpt-basdat -o "$out/oseasy-probe.iso" "$W/iso"
 truncate -s $(( mib + 2 ))M "$out/oseasy-probe.img"
@@ -120,5 +129,6 @@ label: gpt
 start=1MiB, size=${mib}MiB, type=uefi, name=ESP
 PT
 dd if="$W/efiboot.img" of="$out/oseasy-probe.img" bs=1M seek=1 conv=notrunc status=none
-sha256sum "$out"/oseasy-probe.iso "$out"/oseasy-probe.img
+# Report sizes (not sha256: integrity on ohdev is cp rc + byte-size, per Yao).
+ls -ln "$out"/oseasy-probe.iso "$out"/oseasy-probe.img
 echo PROBE_DONE "$kver"

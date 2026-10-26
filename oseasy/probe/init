@@ -38,19 +38,39 @@ fi
 
 case " $cmd " in
 *" probe.install=1 "*)
-    # The host streams a zstd-compressed raw disk image:
-    #   toybox nc 172.16.100.2 5003 < disk.img.zst   (oseasy/push-disk.sh)
-    modprobe virtio_blk 2>/dev/null; sleep 1
-    log "install: waiting for a disk image on tcp/5003, writing /dev/vda"
-    # busybox nc -l does not exit when the sender closes (and -w also bounds the wait
-    # for the connection): a watchdog ends it once dd has seen no input for 20 s
-    ( last=-1; while sleep 10; do
-        p=$(pidof dd); [ -n "$p" ] || continue
-        n=$(awk '/^rchar/ {print $2}' /proc/$p/io 2>/dev/null)
-        [ "$n" = "$last" ] && [ "${n:-0}" -gt 0 ] && { kill $(pidof nc) 2>/dev/null; break; }
-        last=$n
-      done ) &
-    nc -l -p 5003 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    # Get a zstd-compressed raw disk image and write it to /dev/vda. Prefer one
+    # embedded in this boot ISO (no host, no network, no root): the same ISO
+    # Oseasy boots is attached as a CD, so mount it and read the image. Fall back
+    # to a host push on tcp/5003 (oseasy/push-disk.sh) when the ISO has none.
+    modprobe virtio_blk 2>/dev/null
+    for m in usb_storage uas sr_mod isofs; do modprobe "$m" 2>/dev/null; done
+    sleep 1
+    imgzst=
+    i=0; while [ $i -lt 10 ] && [ -z "$imgzst" ]; do
+        for cd in /dev/sr0 /dev/sr1 /dev/cdrom; do
+            [ -b "$cd" ] || continue
+            mkdir -p /cdrom
+            mount -t iso9660 -o ro "$cd" /cdrom 2>/dev/null || continue
+            [ -f /cdrom/omarchy-pure.img.zst ] && { imgzst=/cdrom/omarchy-pure.img.zst; break; }
+            umount /cdrom 2>/dev/null
+        done
+        [ -z "$imgzst" ] && { sleep 1; i=$((i+1)); }
+    done
+    if [ -n "$imgzst" ]; then
+        log "install: writing /dev/vda from $imgzst (embedded in the ISO)"
+        zstd -dc "$imgzst" | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    else
+        log "install: no image in the ISO; waiting for a disk image on tcp/5003, writing /dev/vda"
+        # busybox nc -l does not exit when the sender closes (and -w also bounds the wait
+        # for the connection): a watchdog ends it once dd has seen no input for 20 s
+        ( last=-1; while sleep 10; do
+            p=$(pidof dd); [ -n "$p" ] || continue
+            n=$(awk '/^rchar/ {print $2}' /proc/$p/io 2>/dev/null)
+            [ "$n" = "$last" ] && [ "${n:-0}" -gt 0 ] && { kill $(pidof nc) 2>/dev/null; break; }
+            last=$n
+          done ) &
+        nc -l -p 5003 | zstd -dc | /usr/bin/dd of=/dev/vda bs=4M iflag=fullblock conv=sparse,fsync 2> /tmp/dd.txt
+    fi
     log "install: dd: $(tail -1 /tmp/dd.txt)"
     blockdev --rereadpt /dev/vda; sleep 2
     root=$(ls /dev/vda2 2>/dev/null)
@@ -93,10 +113,29 @@ case " $cmd " in
             log "install: boot diagnostics enabled" ;;
         *) log "install: boot diagnostics installed, not enabled" ;;
         esac
+        # Persist the user's files across reinstalls on Oseasy's shared folder.
+        # Oseasy exports a virtiofs device (tag "shared_dir") backed by the host's
+        # 文件管理器/Documents. A 再次安装 wipes /dev/vda, so keep user data off the
+        # disk: mount the share at ~/Shared and point ~/Documents at it. nofail +
+        # a short device timeout so the system still boots if the share is absent.
+        if [ -n "$u" ]; then
+            uh=/mnt/home/$u
+            install -d -m755 "$uh/Shared"; chroot /mnt chown "$u:$u" "/home/$u/Shared" 2>/dev/null
+            grep -q '[[:space:]]/home/'"$u"'/Shared[[:space:]]' /mnt/etc/fstab 2>/dev/null || \
+                printf 'shared_dir\t/home/%s/Shared\tvirtiofs\tnofail\t0 0\n' "$u" >> /mnt/etc/fstab
+            if [ -d "$uh/Documents" ] && [ ! -L "$uh/Documents" ]; then
+                cp -a "$uh/Documents/." "$uh/Shared/" 2>/dev/null || true
+                rm -rf "$uh/Documents"
+            fi
+            chroot /mnt sh -c "cd /home/$u && ln -sfn Shared Documents" 2>/dev/null
+            log "install: shared folder /home/$u/Shared (virtiofs shared_dir); Documents -> Shared"
+        fi
         # Mark a fully-installed disk, on the ext4 root so GRUB's search finds it.
-        # The probe's default GRUB entry boots this disk directly next time instead
-        # of reinstalling (Oseasy reuses the VM's qcow2, so it persists across stop /
-        # 再次安装). Only on a clean mkinitcpio, so a broken install reinstalls.
+        # The default GRUB entry boots a marked disk directly instead of installing.
+        # Note: Oseasy's 再次安装 WIPES /dev/vda before this ISO boots, so the marker
+        # is gone by then and that path always reinstalls; the marker matters for the
+        # post-install auto-reboot below, which boots the just-written disk. Only on a
+        # clean mkinitcpio, so a broken install reinstalls next boot.
         if [ "$mkrc" = 0 ]; then
             printf 'ohmarchy-oseasy\ninstalled=%s\nkver=%s\n' \
                 "$(date -u +%FT%TZ)" "$kv" > /mnt/boot/ohmarchy-oseasy-installed
@@ -111,6 +150,21 @@ case " $cmd " in
     fi
     sync
     log "install: INSTALL_DONE"
+    # On a good install, reboot straight into it: this ISO boots again (Oseasy keeps
+    # it attached), the default GRUB entry finds the marker and boots /dev/vda, so a
+    # single "再次安装" tap ends at the desktop with no further interaction. A guest
+    # reboot does not wipe the disk (only Oseasy's 再次安装 does), so the fresh
+    # install survives it. probe.noreboot=1 stays at the shell for debugging.
+    if [ "${mkrc:-1}" = 0 ]; then
+        case " $cmd " in
+        *" probe.noreboot=1 "*) log "install: probe.noreboot set; staying at the shell" ;;
+        *) log "install: rebooting into the installed system"
+           sync; sleep 1
+           echo 1 > /proc/sys/kernel/sysrq 2>/dev/null
+           echo b > /proc/sysrq-trigger 2>/dev/null
+           reboot -f 2>/dev/null ;;
+        esac
+    fi
     ;;
 *" probe.vmwgfx=1 "*)
     # vmwgfx may already be loaded without options by an early autoload: reload

@@ -78,19 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 14:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 15:28 PDT)
 
 Now: **the full demo rehearsal is in part 3** (B, OSEasy). Parts 1 and 2 are done. The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out waits for an upload token.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Part 3 of the rehearsal | The machine is heavily loaded by the GPL source build, which slows remote control; the source run is paused during the rehearsal |
-| C. 鸿融 | Part 2 done | **Rehearsed**: power on goes straight to the Omarchy desktop with no password and no guest-agent prompt; fastfetch, the browser and workspaces work; the card shows 运行中 and 关机 ends the VM in 18 s. Manual fixes (185926c): 鸿融 is opened from its desktop icon (it's not on the Dock while closed), Omarchy locks after a long idle, and the address bar is reached with Ctrl+L because two notifications cover the toolbar. **Found**: in 鸿融 this disk now runs at 1920x1280, 60 Hz instead of 2160x1440 at 120 Hz, so the boot-time EDID for virtio-gpu is not taking effect; to be fixed after the rehearsal |
-| D. Native | Part 1 done; re-run after the fixes | Steps matched the manual apart from two issues, both fixed: Firefox opened on "Restore Session" because the old setting does not cover Firefox 158, so the desktop now removes the crashed session at start (08a9af9); and `docker` hung behind an unfinished idle stop (see I) |
-| I. Own VM | Installing the fix after part 3 | An idle stop can no longer hang the Docker gate (063390d) |
+| B. OSEasy | Part 3 of the rehearsal: desktop steps, then shutdown | In the rehearsal the final ISO reinstalled and the first-login screen again ended with "密码已设置 / Password set." |
+| C. 鸿融 | Part 2 done; after the rehearsal: swap the main disk back, fix the 60 Hz | — |
+| D. Native | Re-run of part 1 after the fixes | **A process spinning for 9 hours was found and stopped on the test machine**: the ssh keep-alive script (`/data/oh-ssh/boot-start.sh`, on the device only) checked every process with `tr < /proc/*/cmdline` every 30 s, and on HongMeng reading `cmdline` of a process that is exiting never returns. It now reads `comm` first and reads `cmdline` only for the two daemons it looks after, in the background with a 3 s limit, the same approach as the Docker fix. The load average of ~20 did not change after the kill and no process is stuck, so it looks like how HongMeng counts load |
+| I. Own VM | Installing the Docker fix after part 3 | GPL source collection finished: 386 packages with source, 18 missing, 2.7 GB |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
-
-Release: the source run now kills a git fetch that times out (one had spun for hours) (ddd2a66).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

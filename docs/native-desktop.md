@@ -208,6 +208,25 @@ fcitx5 as the compositor's input method (`zwp_input_method_v2`), and Ctrl+Space 
 app attaches the HarmonyOS IME, whose text the app sends to ohime over `@ohmarchy-ime`
 for the focused text-input-v3 client. Built and running; not yet verified on screen.
 
+## Keyboard shortcuts and touchpad
+
+- Super chords (Omarchy's shortcuts) reach Hyprland: Super is evdev 125, and
+  Super+Return opens a terminal (checked 2026-10-26 with injected keys). HarmonyOS
+  keeps the Super key's *release* for itself and opens its start menu then, which
+  takes the focus. No API lets an app keep that key (`inputConsumer` only lists and
+  watches system hotkeys). Without the release, Hyprland kept Super pressed and read
+  every later key as a Super chord; the app now releases every key still pressed
+  when its window loses the focus (1744727). What remains: the start menu also opens
+  after a Super shortcut; click back into the desktop (or Esc) to close it.
+- Touchpad: two-finger scrolling is smooth on both axes with a stop at the end
+  (f82c550). Three-finger left/right swipes switch workspaces: the page's
+  PanGesture(fingers 3) goes to Hyprland as swipe events (export input 7/8/9) and
+  `ohdisplay.lua` turns on Omarchy's workspace gesture (40f9b2a). Built and installed;
+  not yet tried with a real touchpad (injected input has no touchpad).
+- Every key, axis, touch and swipe event is logged to hilog (tag `ohdisp`) for the
+  first 300 events, or all while `files/inputlog` exists in the app's data directory
+  (`/data/app/el2/100/base/com.ohmarchy.display/files/inputlog`).
+
 ## The app (native/app)
 
 ArkTS page with a SURFACE XComponent and a C++ module (`ohdisp.cpp`):

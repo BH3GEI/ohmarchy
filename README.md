@@ -48,19 +48,19 @@ Headline results:
 | **L** Linux in ArkWeb | v86 (x86 → wasm JIT) with Arch Linux 32 in an ArkWeb page inside a HAP | paused by decision (2026-10-25), never run on the device | desktop Chrome: root shell in ~32 s | no | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-25 23:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 00:29 PDT)
 
-Now: preparing a demo that works like real use (no scripts) and a public release of B and C.
+Now: making every route work like real use (no scripts), fixing what Yao found when using the native desktop by hand, and preparing public releases of B and C. Repository license: MIT, GPL-2.0 for kernel-derived code (99cbf51).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. Oseasy VM | Testing the new ISO on the device; then a no-root install, a user guide and a walkthrough without root | Oseasy has no "start" button for a Linux VM (its lifecycle follows a Windows guest agent), so the ISO's default entry now boots an already installed Omarchy from the disk and only installs when there is none (eb758c7): "再次安装" becomes a ~10 s start. "Another VM is running" is the kit's 401 and only appears when a VM really runs; the one seen in the demo rehearsal was a stale dialog (8e61384). Release script for draft GitHub releases with split files, SHA256SUMS and a GPL source bundle (1575e6d) |
-| C. 鸿融 VM | Testing 鸿融's guest agent in the pure image; then a public release | 鸿融 shows a running VM as 已关机 because our images lack its guest agent; the official vm-agent (vsock) can be installed into Arch from 鸿融's own package (9f378f3, untested). Public image: StratoVirt can't read compressed qcow2, so the plan is a <2 GiB base image (estimated 1.3–1.5 GB) that installs Omarchy online at first boot |
-| D. Native | Session at its usage limit until 2026-10-26 19:00 PDT | **Starts by itself** (f39ce23): the boot hook brings up Hyprland, audio and the Docker gate in ~21 s; tapping "Omarchy (native)" shows the desktop. `docker-vm status/stop`, an Omarchy menu entry and a notification when the Docker VM starts (df0f0da). Not yet tested with a real reboot |
-| I. Own VM | Done | **Docker on demand** (caecc94): the first `docker` starts the VM (guest up in ~5 s, first run ~15–17 s), it stops after 3 min idle, and it doesn't start while 鸿融 or Oseasy runs (says so in Chinese) |
-| J. Linux in an app sandbox (no root) | Session at its usage limit until 2026-10-26 19:00 PDT | busybox runs inside D's display app; Hyprland stack rebuild for musl at stage 3 |
+| B. Oseasy VM | Next on the device: install from the shared folder, auto-reboot to the desktop, TUNA + agent tools; then a disk snapshot at every clean shutdown so "再次安装" resumes the last state | "再次安装" wipes the disk before booting (Oseasy has no start button for a Linux VM), so B can't boot an installed disk. New flow (1f78006, 1f6e1a1): the probe reads the image from Oseasy's shared folder (= HarmonyOS Documents), installs with no root, reboots straight to the desktop, and keeps ~/Documents on the shared folder. End-user guide drafted (89dc4f5). TUNA mirror and the API relay for agent tools (f31d5d1, 530c08a, ea01549) |
+| C. 鸿融 VM | Building the public <2 GiB base image that installs Omarchy online (TUNA) at first boot | **鸿融's guest agent works in our image** (e0e0b7b): installed from the tools disc 鸿融 attaches, the card shows 运行中 and the normal 关机 button shuts the VM down cleanly. Compressed qcow2 can't be read by StratoVirt and HarmonyOS's file manager can't extract split zips, so B and C will share one small base image. Shared agent-tool setup script `setup-ai.sh` (07563a4) |
+| D. Native | Keyboard shortcuts (HarmonyOS likely takes the Super key for its Start menu), testufo at 60 instead of 120 fps, desktop clean-up for the demo | From Yao's own use: touchpad scrolls smoothly (f82c550), three-finger swipes switch workspaces (40f9b2a), an app left open picks up a restarted desktop (325cb46), TUNA and mainland mirrors for rustup/Go/npm/pip — rustup installs (7b962d4, a69e347), agent tools answer through the relay (06dbd6b). Starts by itself at boot (f39ce23); real reboot test still pending |
+| I. Own VM | Done | Docker on demand; `docker-vm status/stop` and a notification (df0f0da) |
+| J. Linux in an app sandbox (no root) | Rest of stage 3: lua, libzip, scanners and protocols, then aquamarine and Hyprland 0.56.2 with D's patches | C/C++ support stack built for HarmonyOS musl: glib/gio, cairo, pango, harfbuzz, freetype, fontconfig, re2/abseil and more (306ba3b) |
 
-Docs: [README](#two-directions) has a new "Two directions" section; demo operator manual draft in [docs/demo-operator.zh-CN.md](docs/demo-operator.zh-CN.md) (5d6af69).
+The D and J sessions continue on another account after the first one hit its usage limit.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

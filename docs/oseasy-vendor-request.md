@@ -30,12 +30,34 @@ Windows guest agent 通信来判断安装完成、心跳、分辨率等。
 
 ## 3. 高刷新率
 
-现状：OSEasy 的显示设备（SVGA / vmwgfx）在客户机里只给 60Hz，而宿主本身是高刷屏。
+现状：OSEasy 的显示设备（SVGA）本身不向客户机协商高刷，stock 的 vmwgfx 只跑 60Hz。我们
+**给 vmwgfx 打了补丁**（强制 120Hz 模式），客户机实测已能跑到 **2100x1511@120**（Hyprland
+与 fastfetch 都报 120Hz）——但这是我们自己改驱动绕出来的。
 
-请求：为虚拟机显示设备提供 **120Hz（及更高）** 的模式（EDID / 模式列表 / 刷新率协商），让
-Linux 客户机也能用上高刷。
+请求：在显示设备侧**原生支持 120Hz（及更高）**（EDID / 模式列表 / 刷新率协商），让第三方
+Linux 客户机不必自己改驱动就能用上高刷。
 
-## 4. 共享文件夹对 Linux 客户机可用（当前完全读不了）
+## 4. 虚拟机窗口支持全屏 / 最大化（当前只给固定浮动窗）
+
+现状（已实测坐实）：在鸿蒙 2in1 PC 上，OSEasy 的虚拟机窗口是一个**固定尺寸的浮动窗**——
+标题栏只有"最小化 / 关闭"，**没有最大化按钮**，也**不能拖拽边框缩放**，没有任何进入全屏的
+入口。实测：
+- 窗口管理器（WindowManagerService）里，VM 窗口是 `WINDOW_MODE_FLOATING`（Mode 102），
+  而系统自身的窗口都是 `WINDOW_MODE_FULLSCREEN`（Mode 1）——**设备本身支持全屏**
+  （`const.product.devicetype = 2in1`）。
+- 分别从右边缘、右边缘外、右下角、下边缘拖拽四次，窗口尺寸纹丝不动。
+- 对应到实现：`setSupportedWindowModes` 只给了 `FLOATING`、`setWindowTitleButtonVisible`
+  藏掉了最大化键、`setResizeByDragEnabled` 关掉了拖拽缩放。
+
+后果：Linux 桌面只能挤在一个小浮动窗里，铺不满高分屏，体验受限。
+
+请求：
+- 为 Linux 虚拟机窗口**开放最大化 / 全屏**（把 `FULL_SCREEN` 加进 `setSupportedWindowModes`、
+  显示最大化按钮），并**允许拖拽缩放**；
+- 窗口尺寸变化时，把新尺寸作为分辨率偏好下发给虚拟机显示设备（SVGA pref rect），让客户机
+  按窗口大小**重新渲染**，而不是把小分辨率拉伸（避免模糊）。
+
+## 5. 共享文件夹对 Linux 客户机可用（当前完全读不了）
 
 现状（已实测坐实）：OSEasy 的 virtiofs 共享文件夹（宿主"文件管理器/Documents"）在普通
 Linux 客户机里**根本读不了**。vm_manager 启动 virtiofsd 时**没有带 `--passthrough-fs`**，

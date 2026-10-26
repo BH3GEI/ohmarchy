@@ -127,6 +127,15 @@ case " $cmd " in
     if [ -n "$root" ] && mount -t ext4 "$root" /mnt; then
         kv=$(ls /mnt/usr/lib/modules | grep -e "^$(uname -r)$" | head -1)
         [ -n "$kv" ] || kv=$(ls /mnt/usr/lib/modules | head -1)
+        if [ -f /mnt/var/lib/ohmarchy/omarchy-installed ]; then
+            # Pre-configured full image: Omarchy, the graphical first-boot flow,
+            # vmwgfx-oseasy and the EDID are already baked in (built on another line).
+            # Re-applying our bare-image customization would fight that, so skip ALL of
+            # it and only mark the disk for GRUB below, then reboot into it. mkrc=0 so
+            # the marker gets written (there is no mkinitcpio run to judge here).
+            log "install: pre-configured image (/var/lib/ohmarchy/omarchy-installed present); skipping customization"
+            mkrc=0
+        else
         install -D -m644 /oseasy/vmwgfx.ko "/mnt/usr/lib/modules/$kv/updates/vmwgfx.ko"
         install -D -m644 /oseasy/vmwgfx-oseasy.conf /mnt/etc/modprobe.d/vmwgfx-oseasy.conf
         # depmod and mkinitcpio run inside the target so its depmod.d (search
@@ -203,6 +212,8 @@ case " $cmd " in
             log "install: setup-ai.sh ($([ -n "$ef" ] && echo 'with key' || echo 'public hint')): $(tail -1 /tmp/ai.txt)"
             rm -f /mnt/tmp/ai.env /mnt/tmp/setup-ai.sh
         fi
+        umount /mnt/dev /mnt/sys /mnt/proc 2>/dev/null
+        fi
         # Mark a fully-installed disk, on the ext4 root so GRUB's search finds it.
         # The default GRUB entry boots a marked disk directly instead of installing.
         # Note: Oseasy's 再次安装 WIPES /dev/vda before this ISO boots, so the marker
@@ -216,7 +227,6 @@ case " $cmd " in
         else
             log "install: mkinitcpio failed (rc=$mkrc); not marking, will reinstall next boot"
         fi
-        umount /mnt/dev /mnt/sys /mnt/proc
         umount /mnt
     else
         log "install: could not mount the root partition"

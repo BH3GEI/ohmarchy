@@ -134,6 +134,21 @@ case " $cmd " in
             # it and only mark the disk for GRUB below, then reboot into it. mkrc=0 so
             # the marker gets written (there is no mkinitcpio run to judge here).
             log "install: pre-configured image (/var/lib/ohmarchy/omarchy-installed present); skipping customization"
+            # TEMPORARY display workaround: vmwgfx-oseasy has an init-order race -- the
+            # HVM flip watchdog's 1 ms hrtimer can fire before vmw_kms_init() sets up the
+            # CRTC list, so it walks an empty list_head and Oopses -> black screen. It is
+            # hit reliably on OSEasy because the image's initramfs loads vmwgfx very early
+            # (kms hook). Disabling the watchdog from the kernel command line sidesteps it
+            # until the hvm_kms_ready-patched module ships. The image's own GRUB reads this
+            # /boot/grub/grub.cfg, so the edit applies on the chainloaded boot. Also strip
+            # the forced EDID (harmless either way). Both are removed once the image ships
+            # the patched module.
+            if [ -f /mnt/boot/grub/grub.cfg ]; then
+                sed -i 's/[[:space:]]*drm\.edid_firmware=[^ "]*//g' /mnt/boot/grub/grub.cfg
+                grep -q 'vmwgfx.hvm_flip_watchdog_us=' /mnt/boot/grub/grub.cfg || \
+                    sed -i '/^[[:space:]]*linux/ s/$/ vmwgfx.hvm_flip_watchdog_us=0/' /mnt/boot/grub/grub.cfg
+                log "install: patched /boot/grub/grub.cfg cmdline (stripped EDID, added vmwgfx.hvm_flip_watchdog_us=0)"
+            fi
             mkrc=0
         else
         install -D -m644 /oseasy/vmwgfx.ko "/mnt/usr/lib/modules/$kv/updates/vmwgfx.ko"

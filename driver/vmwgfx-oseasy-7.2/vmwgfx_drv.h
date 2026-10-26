@@ -473,6 +473,8 @@ struct vmw_private {
 	struct hrtimer hvm_poll_timer;
 	struct work_struct hvm_poll_work;
 	bool hvm_poll_on;
+	/* mode_config (crtc_list) set up: the poll may walk the CRTCs */
+	bool hvm_kms_ready;
 	/* page-flip watchdog: a flip whose event was armed but never delivered */
 	u64 flip_watchdog_fires;
 	resource_size_t io_start;

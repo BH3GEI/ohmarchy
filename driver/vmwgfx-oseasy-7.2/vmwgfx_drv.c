@@ -1188,6 +1188,8 @@ static int vmw_driver_load(struct vmw_private *dev_priv, u32 pci_id)
 	ret = vmw_kms_init(dev_priv);
 	if (unlikely(ret != 0))
 		goto out_no_kms;
+	/* the HVM poll started above (vmw_hvm_poll_start) may walk the CRTCs from now on */
+	smp_store_release(&dev_priv->hvm_kms_ready, true);
 	vmw_overlay_init(dev_priv);
 
 	ret = vmw_request_device(dev_priv);

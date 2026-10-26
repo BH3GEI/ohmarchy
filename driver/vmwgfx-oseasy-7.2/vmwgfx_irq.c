@@ -346,6 +346,13 @@ static void vmw_hvm_flip_watchdog(struct vmw_private *dev_priv, ktime_t now)
 
 	if (limit_us <= 0 || !dev_priv->vkms_enabled)
 		return;
+	/*
+	 * The poll starts right after the fence manager, before vmw_kms_init():
+	 * until then mode_config.crtc_list is not initialized and walking it
+	 * oopses (seen when vmwgfx loads early from the initramfs).
+	 */
+	if (!smp_load_acquire(&dev_priv->hvm_kms_ready))
+		return;
 
 	drm_for_each_crtc(crtc, &dev_priv->drm) {
 		struct vmw_display_unit *du = vmw_crtc_to_du(crtc);

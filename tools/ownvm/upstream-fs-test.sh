@@ -9,7 +9,7 @@ export OVM_VIRTIOFSD=upstream
 g() { sh $V ssh "$@" < /dev/null; }
 hr() { printf '\n== %s\n' "$*"; }
 
-sha256sum /data/local/kaidashi/bin/virtiofsd-upstream
+ls -ln /data/local/kaidashi/bin/virtiofsd-upstream   # no sha256 on ohdev (Yao, 2026-10-26): size
 sh $V start < /dev/null || { echo "start failed"; tail -20 $S/virtiofsd.out; sh $V stop < /dev/null; exit 1; }
 i=0; until g true 2>/dev/null; do i=$((i+5)); [ $i -ge 150 ] && break; sleep 5; done
 echo "guest ssh after ${i}s"

@@ -70,6 +70,8 @@ std::atomic<int64_t> g_desktopLostAt{0};
 std::atomic<bool> g_foreground{true};
 std::atomic<int> g_kicks{0};
 
+bool InputLog();
+
 int64_t NowS()
 {
     timespec t{};
@@ -160,6 +162,8 @@ void SendKey(uint32_t keysym, bool down)
 // Input for the compositor's export devices: {type, a, b, c} in host byte order.
 //   1 pointer position (output pixels)  2 button (evdev BTN_*), pressed
 //   3 scroll axis (0 vertical, 1 horizontal), steps  4 key (evdev KEY_*), pressed
+//   5 smooth scroll (touchpad): axis, delta in 1/100 px, source (1 finger)
+//   6 scroll stop (touchpad fingers lifted): axis
 bool SendExportInput(int32_t type, int32_t a, int32_t b, int32_t c = 0)
 {
     int fd = g_exportSock.load();
@@ -639,6 +643,10 @@ void OnTouch(OH_NativeXComponent *c, void *window)
         src == OH_NATIVEXCOMPONENT_SOURCE_TYPE_MOUSE) {
         return;
     }
+    if (InputLog()) {  // touch screen, or touchpad gestures if HarmonyOS passes them on
+        LOGI("input touch type %{public}d source %{public}d points %{public}u", static_cast<int>(ev.type),
+             static_cast<int>(src), ev.numPoints);
+    }
     int x, y;
     ToFb(ev.x, ev.y, &x, &y);
     if (g_frameMode) {
@@ -687,17 +695,71 @@ void OnHover(OH_NativeXComponent *, bool) {}
 
 int g_lastX = 0, g_lastY = 0;
 
+// What HarmonyOS delivers (keys, scroll, gestures), to hilog tag ohdisp: the first
+// 300 events after start, all of them while the file "inputlog" exists in the
+// app's files directory.
+bool InputLog()
+{
+    static int n = 0;
+    static int64_t checked = -1;
+    static bool file = false;
+    int64_t now = NowS();
+    if (now != checked) {
+        checked = now;
+        file = access("/data/storage/el2/base/files/inputlog", F_OK) == 0;
+    }
+    return file || n++ < 300;
+}
+
+// Scroll. Touchpad (two fingers): its deltas as smooth finger scrolling, both axes,
+// and a stop when the fingers lift (clients then do kinetic scrolling). Mouse
+// wheel: notches, as before. Units: the axis values are in vp (logged with the
+// first events); OHMARCHY scroll speed is kScrollScale output pixels per unit.
+const double kScrollScale = 1.0;
 void OnAxis(OH_NativeXComponent *, ArkUI_UIInputEvent *event, ArkUI_UIInputEvent_Type)
 {
     double v = OH_ArkUI_AxisEvent_GetVerticalAxisValue(event);
+    double hz = OH_ArkUI_AxisEvent_GetHorizontalAxisValue(event);
+    int32_t act = OH_ArkUI_AxisEvent_GetAxisAction(event);
+    int32_t tool = OH_ArkUI_UIInputEvent_GetToolType(event);
+    int32_t srcType = OH_ArkUI_UIInputEvent_GetSourceType(event);
     int x, y;
     ToFb(OH_ArkUI_PointerEvent_GetX(event), OH_ArkUI_PointerEvent_GetY(event), &x, &y);
-    if (v == 0) {
+    if (InputLog()) {
+        LOGI("input axis action %{public}d tool %{public}d source %{public}d v %{public}.2f h %{public}.2f pinch %{public}.3f step %{public}d",
+             act, tool, srcType, v, hz, OH_ArkUI_AxisEvent_GetPinchAxisScaleValue(event),
+             OH_ArkUI_AxisEvent_GetScrollStep(event));
+    }
+    if (g_frameMode && tool == UI_INPUT_EVENT_TOOL_TYPE_TOUCHPAD) {
+        SendExportInput(1, x, y);
+        if (v != 0) {
+            SendExportInput(5, 0, static_cast<int32_t>(v * kScrollScale * 100), 1);
+        }
+        if (hz != 0) {
+            SendExportInput(5, 1, static_cast<int32_t>(hz * kScrollScale * 100), 1);
+        }
+        if (act == UI_AXIS_EVENT_ACTION_END || act == UI_AXIS_EVENT_ACTION_CANCEL) {
+            SendExportInput(6, 0, 0);
+            SendExportInput(6, 1, 0);
+        }
+        return;
+    }
+    if (v == 0 && hz == 0) {
         return;
     }
     if (g_frameMode) {
+        // a wheel notch is 15 units; small values still move one step
+        auto steps = [](double d) { int n = static_cast<int>(d / 15.0); return n != 0 ? n : (d < 0 ? -1 : 1); };
         SendExportInput(1, x, y);
-        SendExportInput(3, 0, v < 0 ? -1 : 1);
+        if (v != 0) {
+            SendExportInput(3, 0, steps(v));
+        }
+        if (hz != 0) {
+            SendExportInput(3, 1, steps(hz));
+        }
+        return;
+    }
+    if (v == 0) {
         return;
     }
     uint8_t wheel = v < 0 ? 8 : 16;  // buttons 4/5: scroll up/down
@@ -1019,6 +1081,10 @@ bool OnKey(OH_NativeXComponent *c, void *)
     OH_NativeXComponent_GetKeyEventAction(ev, &action);
     OH_NativeXComponent_GetKeyEventCode(ev, &code);
     const bool down = action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN;
+    if (InputLog()) {
+        LOGI("input key code %{public}d %{public}s -> evdev %{public}u", static_cast<int>(code), down ? "down" : "up",
+             EvdevKey(code));
+    }
     if (code == KEY_CTRL_LEFT || code == KEY_CTRL_RIGHT) {
         g_ctrlDown = down;
     }

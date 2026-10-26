@@ -488,7 +488,7 @@ index 179b850..46cf05e 100644
  }
  
  int Aquamarine::CHeadlessBackend::drmFD() {
-@@ -151,7 +300,59 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
+@@ -151,7 +300,73 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
  }
  
  void Aquamarine::CHeadlessBackend::onReady() {
@@ -538,6 +538,20 @@ index 179b850..46cf05e 100644
 +                                                                     .axis     = ev.a ? IPointer::AQ_POINTER_AXIS_HORIZONTAL : IPointer::AQ_POINTER_AXIS_VERTICAL,
 +                                                                     .delta    = 15.0 * ev.b,
 +                                                                     .discrete = (double)ev.b});
++                exportPointer->events.frame.emit();
++                break;
++            case 5: // smooth scroll (touchpad): axis, delta in 1/100 px, source 1 = finger
++                exportPointer->events.axis.emit(IPointer::SAxisEvent{.timeMs = t,
++                                                                     .axis   = ev.a ? IPointer::AQ_POINTER_AXIS_HORIZONTAL : IPointer::AQ_POINTER_AXIS_VERTICAL,
++                                                                     .source = ev.c == 1 ? IPointer::AQ_POINTER_AXIS_SOURCE_FINGER : IPointer::AQ_POINTER_AXIS_SOURCE_CONTINUOUS,
++                                                                     .delta  = ev.b / 100.0});
++                exportPointer->events.frame.emit();
++                break;
++            case 6: // scroll stop (fingers lifted): a finger event with delta 0 becomes wl_pointer.axis_stop
++                exportPointer->events.axis.emit(IPointer::SAxisEvent{.timeMs = t,
++                                                                     .axis   = ev.a ? IPointer::AQ_POINTER_AXIS_HORIZONTAL : IPointer::AQ_POINTER_AXIS_VERTICAL,
++                                                                     .source = IPointer::AQ_POINTER_AXIS_SOURCE_FINGER,
++                                                                     .delta  = 0});
 +                exportPointer->events.frame.emit();
 +                break;
 +            case 4: // key (evdev KEY_* code), pressed

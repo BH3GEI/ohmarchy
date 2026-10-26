@@ -92,4 +92,4 @@ else
   center "Done. Log in with this password from now on. Press Enter."
 fi
 # the sudo rule goes last: this script runs under it
-rm -f /etc/sudoers.d/ohmarchy-setpass
+rm -f /etc/sudoers.d/zz-ohmarchy-setpass

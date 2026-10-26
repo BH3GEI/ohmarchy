@@ -233,10 +233,14 @@ PROFILE
     install -d "$R/home/$user/.local/state/omarchy/indicators"
     touch "$R/home/$user/.local/state/omarchy/indicators/stay-awake"
     in_root chown -R "$user:$user" "/home/$user/.local/state/omarchy"
-    install -D -m 440 /dev/stdin "$R/etc/sudoers.d/ohmarchy-setpass" <<SUDO
+    # zz-: sudo uses the last matching rule and reads sudoers.d in name order;
+    # before "wheel" (%wheel ALL=(ALL:ALL) ALL) it was overridden and asked for
+    # the password the user does not have yet
+    rm -f "$R/etc/sudoers.d/ohmarchy-setpass"
+    install -D -m 440 /dev/stdin "$R/etc/sudoers.d/zz-ohmarchy-setpass" <<SUDO
 $user ALL=(root) NOPASSWD: /usr/local/lib/ohmarchy/ohmarchy-setpass-root.sh
 SUDO
-    in_root visudo -cf /etc/sudoers.d/ohmarchy-setpass
+    in_root visudo -cf /etc/sudoers.d/zz-ohmarchy-setpass
     u=$R/home/$user/.config/systemd/user
     install -D -m 644 "$here/pure/firstboot/ohmarchy-setpass.service" "$u/ohmarchy-setpass.service"
     mkdir -p "$u/graphical-session.target.wants"

@@ -35,13 +35,30 @@ Windows guest agent 通信来判断安装完成、心跳、分辨率等。
 请求：为虚拟机显示设备提供 **120Hz（及更高）** 的模式（EDID / 模式列表 / 刷新率协商），让
 Linux 客户机也能用上高刷。
 
-## 4. 共享文件夹保留属主与权限
+## 4. 共享文件夹对 Linux 客户机可用（当前完全读不了）
 
-现状：OSEasy 的 virtiofs 共享文件夹（宿主"文件管理器/Documents"）在客户机里**不保留文件
-属主和权限**（virtiofsd 的映射问题）。Linux 客户机如果把家目录或系统目录放上去，权限会丢，
-无法作为可靠的持久化存储（我们只能退而把一个 ext4 镜像文件放在共享文件夹里，再 loop 挂载）。
+现状（已实测坐实）：OSEasy 的 virtiofs 共享文件夹（宿主"文件管理器/Documents"）在普通
+Linux 客户机里**根本读不了**。vm_manager 启动 virtiofsd 时**没有带 `--passthrough-fs`**，
+所以它跑在 `virtual_fs`（按 share_id 映射）模式，而不是透传模式。表现：
+- 宿主 virtiofsd 日志：`init_virtual_fs: share_id: 35243` 之后 `ERROR … error: -19 (No
+  such device), opcode 27`（连根目录的 OPENDIR 都 ENODEV）；
+- 客户机：`virtiofs virtio3: discovered new tag: shared_dir`（设备和 tag 都认），但一访问
+  就 `virtio-fs: response too short (0)`，`ls` 失败，挂载点是空的。
 
-请求：让共享文件夹正确保留 uid/gid 和权限位（或提供一种保留属主的共享模式）。
+这套 `virtual_fs`/share_id 模式需要 **厂商的 guest agent 通过 cmd-socket 注册 share** 才会
+建出目录，光靠 Linux 的 `mount -t virtiofs` 绕不过去；而 virtiofsd 的启动参数由 vm_manager
+决定，第三方改不了。（同样的现象我们在自建 virtiofsd 时见过，加上 `--passthrough-fs` 即可，
+见本仓库 `docs/vm-own.md`。）
+
+后果：Linux 客户机在 OSEasy 下**没有任何可持久化的存储**——系统盘 vda 每次"再次安装"被清，
+共享文件夹又读不了。于是装好的 Linux 系统无法保存状态，每次都只能从头来。
+
+请求（择一即可）：
+- vm_manager 启动虚拟机 virtiofsd 时带上 `--passthrough-fs`（或提供一个开关），让 Linux
+  客户机也能像 Windows 那样读写共享文件夹；或
+- 公开那套 `virtual_fs` 的 share 注册协议（cmd-socket 消息格式），让 Linux guest agent 能
+  自行注册并访问 share；
+- 并请保留共享文件的 uid/gid 和权限位。
 
 ## 5. （可选）镜像相关
 

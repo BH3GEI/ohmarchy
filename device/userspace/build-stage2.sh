@@ -33,7 +33,9 @@ cd "$SP/stage1/src/wlproto-ex"; rm -rf _b
 meson setup _b --prefix="$NATIVE" --native-file "$NATIVEINI" -Dtests=false
 meson install -C _b
 
-# mesa — virgl only, no llvm, wayland platform.
+# mesa — virgl only, no llvm, wayland platform. NOTE: the vtest winsys needs
+# -DVIRGL_RENDERER_UNSTABLE_APIS (add c_args to src/gallium/winsys/virgl/vtest/meson.build)
+# to negotiate vtest protocol v3 (shm resources); a multi-client in-app vtest requires >=3.
 cd "$SP/stage1/src/mesa-ex"; rm -rf _b
 meson setup _b --cross-file "$CROSS" --native-file "$NATIVEINI" --prefix="$PREFIX" \
   -Dgallium-drivers=virgl -Dvulkan-drivers= -Dllvm=disabled -Dplatforms=wayland \

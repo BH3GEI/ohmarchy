@@ -880,4 +880,6 @@ Code derived from the Linux kernel is [GPL-2.0](LICENSES/GPL-2.0.txt): `driver/`
 file keeps its SPDX identifier; upstream vmwgfx files are "GPL-2.0 OR MIT") and every
 kernel patch here. Upstream projects that the scripts download or patch keep their own
 licenses. Released disk images contain GPL software; their sources are published with
-each release.
+each release. Written offer: for three years after a release, the complete corresponding
+source of any GPL or LGPL software in its images is available on request, at no more than
+the cost of providing it; ask through this repository's issues.

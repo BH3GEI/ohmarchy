@@ -432,4 +432,4 @@ docs/                所有文档，按路线分好的索引：docs/README.md
 
 ## 许可
 
-本仓库的脚本、工具、app 代码和文档用 [MIT](LICENSE)。从 Linux 内核衍生出来的代码用 [GPL-2.0](LICENSES/GPL-2.0.txt)：包括 `driver/`（每个文件保留自己的 SPDX 标识，上游 vmwgfx 的文件是"GPL-2.0 OR MIT"）和仓库里所有的内核补丁。脚本下载或打补丁的上游项目沿用各自的许可。发布的磁盘镜像里包含 GPL 软件，对应的源码会随每个 release 一起发布。
+本仓库的脚本、工具、app 代码和文档用 [MIT](LICENSE)。从 Linux 内核衍生出来的代码用 [GPL-2.0](LICENSES/GPL-2.0.txt)：包括 `driver/`（每个文件保留自己的 SPDX 标识，上游 vmwgfx 的文件是"GPL-2.0 OR MIT"）和仓库里所有的内核补丁。脚本下载或打补丁的上游项目沿用各自的许可。发布的磁盘镜像里包含 GPL 软件，对应的源码会随每个 release 一起发布。书面提供声明：每个 release 发布后三年内，其镜像中任何 GPL 或 LGPL 软件的完整对应源码均可应要求提供，收费不超过提供成本；请通过本仓库的 issue 提出。

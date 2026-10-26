@@ -16,9 +16,10 @@
 # NAME.part00, NAME.part01, ...; `cat NAME.part* > NAME` joins them.
 # Every uploaded file and every joined asset is in SHA256SUMS.
 # PKG_SOURCES: directory from gpl-sources.sh (the GPL/LGPL packages in the
-# image, as makepkg --allsource archives); attached as one more asset. Without
-# it, or with packages listed in its MISSING.txt, only --dry-run runs: the
-# binaries in an image must come with their source (supervisor, 2026-10-26).
+# image, as makepkg --allsource archives); attached as one more asset. A draft is
+# made even without it or with packages in its MISSING.txt: the notes then list
+# what is missing at the top, and the draft must not be published until that list
+# is empty (supervisor, 2026-10-26). LICENSES.md carries the written offer too.
 # Staging: OUT (default work/release/TAG). Needs gh logged in, with push rights.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -47,7 +48,7 @@ fi
 gate=
 [ -n "${PKG_SOURCES:-}" ] || gate="no PKG_SOURCES (gpl-sources.sh) given"
 [ -z "${PKG_SOURCES:-}" ] || [ ! -s "$PKG_SOURCES/MISSING.txt" ] || gate="$(wc -l < "$PKG_SOURCES/MISSING.txt") packages without source ($PKG_SOURCES/MISSING.txt)"
-[ -z "$gate" ] || [ "$dry" = 1 ] || { echo "release.sh: $gate; only --dry-run" >&2; exit 1; }
+[ -z "$gate" ] || echo "release.sh: $gate; the draft says so and must not be published before it is fixed" >&2
 
 echo "== assets"
 for a in "$@"; do
@@ -100,6 +101,11 @@ echo "== LICENSES.md"
     echo
     echo "Repository paths in \`$src.tar.gz\`: $(printf '`%s` ' "${GPL_PATHS[@]}")"
     [ -z "${LICENSE_NOTE:-}" ] || { echo; echo "$LICENSE_NOTE"; }
+    echo
+    echo "Written offer: for three years after this release, the complete corresponding"
+    echo "source of any GPL or LGPL software in its images is available on request, at no"
+    echo "more than the cost of providing it; ask through https://github.com/$REPO/issues."
+    echo "源码可应要求提供（三年内有效，收费不超过提供成本），请在本仓库提 issue。"
 } > "$OUT/up/LICENSES.md"
 
 echo "== SHA256SUMS"
@@ -107,7 +113,12 @@ echo "== SHA256SUMS"
 { cat "$OUT/SHA256SUMS.parts"; echo "# joined (cat NAME.part* > NAME):"; cat "$OUT/whole.sha256"; } > "$OUT/up/SHA256SUMS"
 cat "$OUT/up/SHA256SUMS"
 
-{ cat "$NOTES"; echo
+{ if [ -n "$gate" ]; then
+      echo "> **补齐后才公开 / not to be published until fixed:** $gate"
+      [ -s "${PKG_SOURCES:-/nonexistent}/MISSING.txt" ] && cut -d'|' -f1,2 "$PKG_SOURCES/MISSING.txt" | sed 's/|/ /; s/^/> - /'
+      echo
+  fi
+  cat "$NOTES"; echo
   echo "## Download and check"
   echo
   echo 'Files over 2 GiB are in parts: `cat NAME.part* > NAME`. Then `sha256sum -c SHA256SUMS --ignore-missing`.'

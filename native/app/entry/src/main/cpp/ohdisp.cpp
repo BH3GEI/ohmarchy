@@ -62,6 +62,36 @@ const char *kExportName = "ohmarchy-display";
 uint8_t g_buttons = 0;
 std::atomic<uint64_t> g_blits{0};  // frames shown by the CPU path (Blit)
 std::atomic<int64_t> g_desktopUid{-1};  // the compositor's uid (export socket peer)
+// With the GPU renderer: the export socket is there exactly while Hyprland runs.
+// Presents counted when it connected (frames of this desktop come after), when it
+// was last lost, and the desktop starts asked for while the app is in front.
+std::atomic<uint64_t> g_presentsAtConnect{0};
+std::atomic<int64_t> g_desktopLostAt{0};
+std::atomic<bool> g_foreground{true};
+std::atomic<int> g_kicks{0};
+
+int64_t NowS()
+{
+    timespec t{};
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec;
+}
+
+// No desktop for 10 s while the app is in front (a start takes 6-8 s, and the
+// broker starts one itself when the app first connects): ask it for one, at most
+// every 30 s and 3 times until a desktop connects (then GetStatus says what to do).
+void MaybeStartDesktop()
+{
+    static int64_t lastKick = 0;
+    int64_t now = NowS();
+    if (!GpuActive() || !g_foreground || g_exportSock.load() >= 0 || now - g_desktopLostAt < 10 ||
+        now - lastKick < 30 || g_kicks >= 3) {
+        return;
+    }
+    lastKick = now;
+    g_kicks++;
+    BrokerKick();
+}
 
 bool ReadAll(int fd, void *buf, size_t n)
 {
@@ -447,10 +477,13 @@ void FrameLoop()
         if (connect(fd, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + len) != 0) {
             close(fd);
             g_frameMode = false;
+            MaybeStartDesktop();
             sleep(2);
             continue;
         }
         LOGI("frame export connected");
+        g_presentsAtConnect = GpuPresents();
+        g_kicks = 0;
         {
             ucred cr{};
             socklen_t len = sizeof(cr);
@@ -540,6 +573,7 @@ void FrameLoop()
         }
         g_frameMode = false;
         g_shown = false;
+        g_desktopLostAt = NowS();
         LOGE("frame export disconnected");
         sleep(1);
     }
@@ -549,6 +583,7 @@ void StartOnce()
 {
     bool expected = false;
     if (g_started.compare_exchange_strong(expected, true)) {
+        g_desktopLostAt = NowS();
         std::thread(FrameLoop).detach();
         std::thread(RfbLoop).detach();
         AudioStart();
@@ -1024,7 +1059,16 @@ OH_NativeXComponent_MouseEvent_Callback g_mouseCb;
 napi_value GetStatus(napi_env env, napi_callback_info)
 {
     const char *msg = "";
-    if (!g_shown && GpuPresents() == 0) {
+    if (GpuActive()) {
+        // The overlay hides whatever the window last showed (an old desktop).
+        if (g_exportSock.load() < 0) {
+            msg = g_kicks >= 3 ? "The Omarchy desktop does not start. Log: /run/user/60000/ohmarchy-desktop.log;"
+                                 " in a root shell on this PC: omarchy desktop start"
+                               : "Connecting to the Omarchy desktop…";
+        } else if (GpuPresents() <= g_presentsAtConnect) {
+            msg = "Connected to Omarchy, waiting for the first frame…";
+        }
+    } else if (!g_shown && GpuPresents() == 0) {
         if (g_frameMode) {
             msg = "Connected to Omarchy, waiting for the first frame…";
         } else if (g_sock.load() >= 0) {
@@ -1038,10 +1082,29 @@ napi_value GetStatus(napi_env env, napi_callback_info)
     return v;
 }
 
+// The page in front or not (Index.ets onPageShow/onPageHide): desktop starts are
+// asked for only while the user looks at the app.
+napi_value SetForeground(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1] = {nullptr};
+    bool fg = true;
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (argc >= 1) {
+        napi_get_value_bool(env, argv[0], &fg);
+    }
+    g_foreground = fg;
+    if (fg) {
+        g_kicks = 0;  // a new look at the app: try again
+    }
+    return nullptr;
+}
+
 napi_value Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor desc[] = {
         {"getStatus", nullptr, GetStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setForeground", nullptr, SetForeground, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

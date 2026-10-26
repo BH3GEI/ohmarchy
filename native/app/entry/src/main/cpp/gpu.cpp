@@ -204,9 +204,13 @@ extern "C" bool vtest_present_hook(const char *client, uint32_t res_id, const vi
     }
     // Bind the scanout once per size: re-binding it to each of the compositor's
     // buffers would restart the library's black-screen resize debounce every frame.
-    // Presenting takes the resource to show.
+    // Presenting takes the resource to show. Also once per compositor: a restarted
+    // Hyprland (a new vtest context, so a new debug_name) at the same size would
+    // otherwise present through the old one's binding, and the window kept
+    // showing the old desktop.
     static uint32_t boundW = 0, boundH = 0;
-    if (g_scanoutRes == 0 || info.width != boundW || info.height != boundH) {
+    static const char *boundClient = nullptr;
+    if (g_scanoutRes == 0 || info.width != boundW || info.height != boundH || client != boundClient) {
         if (virgl_renderer_ohos_set_scanout(res_id, 0) != 0) {
             fprintf(stderr, "set_scanout %u failed\n", res_id);
             return false;
@@ -215,6 +219,7 @@ extern "C" bool vtest_present_hook(const char *client, uint32_t res_id, const vi
         g_scanoutRes = res_id;
         boundW = info.width;
         boundH = info.height;
+        boundClient = client;
     }
     // Present when the renderer has nothing else to do (vtest_idle_hook): a present
     // blocks this thread for about a millisecond, and clients waiting for a reply
@@ -297,6 +302,19 @@ bool BrokerPresent()
     bool ok = connect(fd, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + strlen(name)) == 0;
     close(fd);
     return ok;
+}
+
+void BrokerKick()
+{
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    sockaddr_un a{};
+    a.sun_family = AF_UNIX;
+    const char *name = kBroker + 1;
+    memcpy(a.sun_path + 1, name, strlen(name));
+    if (connect(fd, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + strlen(name)) == 0) {
+        LOGI("broker kicked: desktop (re)start");
+    }
+    close(fd);
 }
 
 bool GpuStart(OHNativeWindow *window)

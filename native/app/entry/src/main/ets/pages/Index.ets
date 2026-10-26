@@ -5,6 +5,7 @@ import { startJl } from '../jl/jl';
 
 interface OhdispModule {
   getStatus(): string;
+  setForeground(fg: boolean): void;
 }
 
 @Entry
@@ -26,6 +27,16 @@ struct Index {
 
   aboutToDisappear(): void {
     clearInterval(this.timer);
+  }
+
+  // In front again: if the desktop went away meanwhile, the native side asks for
+  // a new one (and the status overlay covers the old picture until it is there).
+  onPageShow(): void {
+    this.ohdisp?.setForeground(true);
+  }
+
+  onPageHide(): void {
+    this.ohdisp?.setForeground(false);
   }
 
   build() {

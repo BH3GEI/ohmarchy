@@ -10,3 +10,7 @@ bool GpuStart(OHNativeWindow *window);
 bool GpuActive();
 // Frames presented by the renderer so far.
 uint64_t GpuPresents();
+// Make vtest-broker run its --on-app hook (`omarchy desktop restart`) as if the
+// app had just opened: a connection of our own takes the app's place, the
+// broker drops the renderer's connection, the renderer reconnects.
+void BrokerKick();

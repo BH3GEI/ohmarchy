@@ -78,19 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 10:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 11:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Installing the image with the sudo fix: set the password, check sudo, the disk and the desktop; then the operator manual and the draft release | **The display passes**: after installing the stay-awake image the screen was still on four minutes after boot and the first-login text was easy to read. **The password step failed**: the screen said `sudo: a password is required` because Omarchy's own `%wheel ALL=(ALL:ALL) ALL` rule was read after ours (sudoers.d files are read in name order and the last match wins). The rule file is now `zz-ohmarchy-setpass` (cf91ba0). Release notes now state what is kept: data survives a reboot inside Omarchy, but after power-off OSEasy only offers "再次安装", which wipes the disk (62dfd04) |
-| C. 鸿融 / public image | Image with the sudo fix built; then swapping the Omarchy disk into 鸿融 | — |
+| B. OSEasy | Checking sudo, the disk, the desktop and whether data survives a reboot; then the final ISO | **First login works end to end**: the full-screen prompt shows a large centred "请设置密码 / Set your password" with the rules in Chinese and English; the password was typed twice and the screen showed "密码已设置 / Password set." The fix that made it work: the NOPASSWD rule for the password script is read last (cf91ba0) |
+| C. 鸿融 / public image | Swapping the Omarchy disk into 鸿融 for the demo, after B's check | Image with the sudo fix: 1,775,051,138 bytes, `zstd -t` verified |
 | D. Native | — | — |
 | I. Own VM | Waiting for the hypervisor to be free for the x86 and memory tests | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 
-Release: GPL sources for 367 package bases; 132 fetched so far. The git snapshots that failed (gcc, glibc, binutils, gstreamer, cairo and others) are being fetched again from GitHub mirrors and snapshot URLs (7cf6a86). The draft is built as soon as the ISO passes; sources still missing are listed at the top of the notes and the release is published only when the list is empty.
+Release: **a draft for B exists** (tag `b-20261027`, visible to collaborators only, not published). Attached so far: the license file with the written offer of source, this repository's source and the upstream kernel source. Of 360 GPL/LGPL packages, 168 have source and 192 are listed at the top of the notes as missing; the run continues. Large files go to GitHub straight from the HarmonyOS machine, with the token passed on stdin only, and SHA256SUMS is built from GitHub's own digests (a4c7693).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

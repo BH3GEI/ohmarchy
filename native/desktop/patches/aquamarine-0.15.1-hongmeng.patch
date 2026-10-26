@@ -349,7 +349,7 @@ index 179b850..46cf05e 100644
  Aquamarine::CHeadlessOutput::CHeadlessOutput(const std::string& name_, Hyprutils::Memory::CWeakPointer<CHeadlessBackend> backend_) : backend(backend_) {
      name = name_;
  
-@@ -27,6 +57,11 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
+@@ -27,7 +57,23 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
  bool Aquamarine::CHeadlessOutput::commit() {
      const auto snapshot = state->snapshot();
      events.commit.emit();
@@ -360,7 +360,20 @@ index 179b850..46cf05e 100644
 +    }
      state->consume(snapshot);
      needsFrame = false;
-     events.present.emit(IOutput::SPresentEvent{.presented = true});
+-    events.present.emit(IOutput::SPresentEvent{.presented = true});
++    // Hyprland passes these on as wp_presentation feedback; without the refresh
++    // interval, clients that pace on it (Chromium) assume 60 Hz on a 120 Hz output
++    int64_t refreshmHz = 60000;
++    if (state->state().mode)
++        refreshmHz = state->state().mode->refreshRate;
++    else if (state->state().customMode)
++        refreshmHz = state->state().customMode->refreshRate;
++    static unsigned int presentSeq = 0;
++    timespec            now{};
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    events.present.emit(IOutput::SPresentEvent{.presented = true, .when = &now, .seq = ++presentSeq,
++                                               .refresh = refreshmHz > 0 ? (int)(1000000000000LL / refreshmHz) : 0});
+     return true;
 @@ -123,11 +158,125 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
  }
  

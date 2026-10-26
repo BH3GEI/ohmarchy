@@ -1,0 +1,11 @@
+--- aq/src/backend/Headless.cpp	2026-10-26 00:32:40
++++ /private/tmp/claude-501/-Users-yao-Desktop-code-agent/e2ff094f-b9c5-4fab-9176-8e4be65802d4/scratchpad/stage3/src/aquamarine-ex/src/backend/Headless.cpp	2026-10-26 00:23:39
+@@ -252,7 +252,7 @@
+ 
+         iovec iov[2]        = {{&hdr, sizeof(hdr)}, {(void*)r.data(), r.size() * sizeof(int32_t)}};
+         char  cmsgbuf[CMSG_SPACE(sizeof(int))] = {};
+-        msghdr msg{.msg_iov = iov, .msg_iovlen = r.empty() ? 1u : 2u};
++        msghdr msg{.msg_iov = iov, .msg_iovlen = r.empty() ? 1 : 2};
+         if (!known) {
+             msg.msg_control    = cmsgbuf;
+             msg.msg_controllen = sizeof(cmsgbuf);

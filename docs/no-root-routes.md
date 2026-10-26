@@ -374,3 +374,44 @@ libc but some `.pc` add `-lintl` → drop an empty `libintl.a` stub.
 **Remaining before Hyprland:** lua 5.5, libzip, udis86, libdisplay-info, libseat, hwdata,
 header-only glaze/tomlplusplus, glslang, the native hyprwayland-scanner, hyprland-protocols,
 then hyprgraphics/hyprcursor/aquamarine, then Hyprland 0.56.2 + D's two patches + shims.
+
+#### Stage 3 — input/GL/hypr libraries (DONE); Hyprland pending
+
+Built the rest of the tree (offline, aarch64-ohos). Key sub-stacks and the musl-specific fixes:
+
+- **GL via glvnd.** aquamarine/Hyprland link `OpenGL::OpenGL`, which CMake's FindOpenGL only
+  defines for glvnd's `libOpenGL.so`. So mesa was rebuilt with `-Dglvnd=enabled` (installs
+  `libEGL_mesa` + vendor JSON) and **libglvnd 1.7.0** provides the front
+  `libOpenGL.so`/`libEGL.so`/`libGLESv2.so`/`libGLdispatch.so`. (`libGLESv3.so` → symlink to
+  libGLESv2.)
+- **Input stack (static where possible).** libudev-zero 1.0.3 (a tiny libudev; needed
+  `-Drindex=strrchr`, musl has no `rindex`), mtdev 1.1.7, libevdev 1.13.3, **libinput 1.26.2**
+  (its `util-strings.c` uses `rindex` → `strrchr`; its tools use glibc-only
+  `program_invocation_short_name`, so only the library target is built). D's route injects
+  input via aquamarine's export backend, but aquamarine still *links* libinput, so it's needed.
+- **proxy-libintl shim.** OHOS musl libc has **no gettext family at all**, and glib references
+  `g_libintl_*` from its bundled proxy-libintl subproject (absent in the release tarball). glib
+  is built `-Dnls=enabled` (so libintl resolves to libc as 'internal') and
+  `device/userspace/shim/proxy_libintl.c` implements the `g_libintl_*` identity (no-translation)
+  functions into `libintl.a`.
+- **libmagic** (file 5.46) built by building a native `file` first to compile `magic.mgc`.
+- **No-SVG decision (reversible).** modern **librsvg is Rust-only** (would drag in a Rust +
+  libxml2 cross-toolchain). It's required by hyprgraphics (SVG image loading) and hyprcursor
+  (SVG cursors). Patched both to make `librsvg-2.0` optional — same pattern they already use for
+  libjxl/libheif — losing only SVG icon/cursor *loading*. Patches:
+  `device/userspace/patches/hyprgraphics-0.5.1-no-svg.patch`, `hyprcursor-0.1.13-no-svg.patch`.
+  Can be revisited by cross-building librsvg later.
+- **aquamarine musl fix.** `msghdr.msg_iovlen` is `int` on musl (`size_t` on glibc) → D's
+  export-backend `1u : 2u` narrows under clang. `aquamarine-0.15.1-musl-msghdr.patch`.
+
+| lib | ver | size | lib | ver | size |
+|---|---|---|---|---|---|
+| libc++_ohm.so | 23.1.4 | 1.9M | libaquamarine.so | 0.15.1 | 2.8M |
+| libhyprutils.so | 0.14.3 | 2.6M | libhyprgraphics.so | 0.5.1 | 30M\* |
+| libhyprlang.so | 0.6.8 | 301K | libhyprcursor.so | 0.1.13 | 6.9M\* |
+| libinput.so | 1.26.2 | 1.3M | libuuid/libeis/lua/glslang | — | built |
+
+\*unstripped, static-links the font/image stack; stripped + deduped at HAP packaging.
+
+**Next: libeis, the xcursor question (another X11-only dep — likely patched out like librsvg),
+then Hyprland 0.56.2 itself with D's two patches + the HongMeng shims.**

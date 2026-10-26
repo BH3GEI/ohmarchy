@@ -1,0 +1,67 @@
+--- hg/CMakeLists.txt	2026-04-05 16:14:16
++++ /private/tmp/claude-501/-Users-yao-Desktop-code-agent/e2ff094f-b9c5-4fab-9176-8e4be65802d4/scratchpad/stage3/src/hyprgraphics-ex/CMakeLists.txt	2026-10-26 00:24:33
+@@ -63,9 +63,16 @@
+   libjpeg
+   libwebp
+   libmagic
+-  libpng
+-  librsvg-2.0)
++  libpng)
+ 
++pkg_check_modules(RSVG IMPORTED_TARGET librsvg-2.0)
++if(RSVG_FOUND)
++  add_compile_definitions(RSVG_FOUND)
++else()
++  file(GLOB_RECURSE SVGFILES CONFIGURE_DEPENDS "src/*Svg.cpp")
++  list(REMOVE_ITEM SRCFILES ${SVGFILES})
++endif()
++
+ pkg_check_modules(
+   JXL
+   IMPORTED_TARGET
+@@ -101,6 +108,9 @@
+ set_target_properties(hyprgraphics PROPERTIES VERSION ${HYPRGRAPHICS_VERSION}
+                                               SOVERSION 4)
+ target_link_libraries(hyprgraphics PkgConfig::deps)
++if(RSVG_FOUND)
++  target_link_libraries(hyprgraphics PkgConfig::RSVG)
++endif()
+ if(JXL_FOUND)
+   target_link_libraries(hyprgraphics PkgConfig::JXL)
+ endif()
+--- hg/src/image/Image.cpp	2026-04-05 16:14:16
++++ /private/tmp/claude-501/-Users-yao-Desktop-code-agent/e2ff094f-b9c5-4fab-9176-8e4be65802d4/scratchpad/stage3/src/hyprgraphics-ex/src/image/Image.cpp	2026-10-26 00:24:33
+@@ -10,7 +10,9 @@
+ #endif
+ #include "formats/Webp.hpp"
+ #include "formats/Png.hpp"
++#ifdef RSVG_FOUND
+ #include "formats/Svg.hpp"
++#endif
+ #include <magic.h>
+ #include <format>
+ 
+@@ -36,7 +38,11 @@
+ #else
+         case IMAGE_FORMAT_AVIF: lastError = "hyprgraphics compiled without HEIF support"; return;
+ #endif
++#ifdef RSVG_FOUND
+         case IMAGE_FORMAT_SVG: CAIROSURFACE = SVG::createSurfaceFromData(data, size); break;
++#else
++        case IMAGE_FORMAT_SVG: lastError = "hyprgraphics compiled without SVG support"; return;
++#endif
+         default: lastError = "Currently only PNG and AVIF images are supported for embedding"; return;
+     }
+ 
+@@ -81,7 +87,11 @@
+         case IMAGE_FORMAT_JXL: lastError = "hyprgraphics compiled without JXL support"; return;
+ #endif
+         case IMAGE_FORMAT_JPEG: CAIROSURFACE = JPEG::createSurfaceFromJPEG(path); break;
++#ifdef RSVG_FOUND
+         case IMAGE_FORMAT_SVG: CAIROSURFACE = SVG::createSurfaceFromSVG(path, size); break;
++#else
++        case IMAGE_FORMAT_SVG: lastError = "hyprgraphics compiled without SVG support"; return;
++#endif
+         case IMAGE_FORMAT_WEBP: CAIROSURFACE = WEBP::createSurfaceFromWEBP(path); break;
+         default: lastError = "internal error"; return;
+     }

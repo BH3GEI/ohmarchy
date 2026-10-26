@@ -142,6 +142,36 @@ case " $cmd " in
             chroot /mnt sh -c "cd /home/$u && ln -sfn Shared Documents" 2>/dev/null
             log "install: shared folder /home/$u/Shared (virtiofs shared_dir); Documents -> Shared"
         fi
+        # Pacman: put TUNA (Arch Linux ARM) first for fast updates in China, keeping
+        # the existing mirrors as fallback. $arch/$repo stay literal (pacman expands).
+        ml=/mnt/etc/pacman.d/mirrorlist
+        if [ -f "$ml" ] && ! grep -q 'tuna.tsinghua' "$ml"; then
+            { echo 'Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/$arch/$repo'; cat "$ml"; } > "$ml.new" \
+                && mv "$ml.new" "$ml" && log "install: pacman mirror -> TUNA (ALARM) first"
+        fi
+        # Agent-tool API relay config. /oseasy/ai.env (OHM_AI_*) is baked in only for
+        # private builds; it is EMPTY in the public image, so the key never ships. Write
+        # the user's environment.d so opencode / Claude Code / Codex pick it up.
+        if [ -n "$u" ]; then
+            OHM_AI_KEY=; OHM_AI_BASE=; OHM_AI_BASE_V1=; OHM_AI_CHAT=; OHM_AI_ANTHROPIC=
+            [ -f /oseasy/ai.env ] && . /oseasy/ai.env 2>/dev/null
+            cfgd=/mnt/home/$u/.config/environment.d
+            install -d -m700 "$cfgd"
+            if [ -n "$OHM_AI_KEY" ]; then
+                { echo "OPENAI_API_KEY=$OHM_AI_KEY"
+                  echo "OPENAI_BASE_URL=${OHM_AI_BASE_V1:-$OHM_AI_BASE}"
+                  [ -n "$OHM_AI_CHAT" ] && echo "OPENAI_MODEL=$OHM_AI_CHAT"
+                  # Anthropic vars only when the relay supports them (OHM_AI_ANTHROPIC=1)
+                  [ -n "$OHM_AI_ANTHROPIC" ] && { echo "ANTHROPIC_API_KEY=$OHM_AI_KEY"; echo "ANTHROPIC_BASE_URL=$OHM_AI_BASE"; }
+                } > "$cfgd/ai.conf"
+                log "install: wrote AI relay config to ~$u/.config/environment.d/ai.conf"
+            else
+                printf '# Add your API relay here to use agent tools (opencode/Claude Code/Codex):\n# OPENAI_API_KEY=...\n# OPENAI_BASE_URL=https://your-relay/v1\n' > "$cfgd/ai.conf"
+                log "install: no AI key baked (public image); wrote ai.conf hint"
+            fi
+            chmod 600 "$cfgd/ai.conf"
+            chroot /mnt chown -R "$u:$u" "/home/$u/.config" 2>/dev/null
+        fi
         # Mark a fully-installed disk, on the ext4 root so GRUB's search finds it.
         # The default GRUB entry boots a marked disk directly instead of installing.
         # Note: Oseasy's 再次安装 WIPES /dev/vda before this ISO boots, so the marker

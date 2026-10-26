@@ -58,6 +58,14 @@ install -D -m644 "$W/k/etc/modprobe.d/vmwgfx-oseasy.conf" "$R/oseasy/vmwgfx-osea
 install -D -m755 "$here/../../emulator/guest/desktop-autostart.sh" "$R/oseasy/desktop-autostart.sh"
 install -D -m755 "$here/../guest/boot-diag.sh" "$R/oseasy/boot-diag.sh"
 install -D -m644 "$here/../guest/ohmarchy-boot-diag.service" "$R/oseasy/ohmarchy-boot-diag.service"
+# API relay config, baked in for PRIVATE builds only: PROBE_AI_ENV points at a
+# KEY=value file of OHM_AI_* (from /data/local/secrets/ai.env). Public builds get
+# an empty file, so the key never ships in the ISO. NEVER commit a filled ai.env.
+if [ -n "${PROBE_AI_ENV:-}" ] && [ -f "$PROBE_AI_ENV" ]; then
+    install -D -m600 "$PROBE_AI_ENV" "$R/oseasy/ai.env"
+else
+    : > "$W/empty.aienv"; install -D -m600 "$W/empty.aienv" "$R/oseasy/ai.env"
+fi
 # the probe chooses the options on the kernel command line (see init); drop the package's line
 sed -i 's/^options/#options/' "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
 depmod -b "$R" "$kver"

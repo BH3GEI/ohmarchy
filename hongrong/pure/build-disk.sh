@@ -25,6 +25,10 @@
 # first-boot service only asks for one on tty1 and then lets SDDM start. With
 # the docs, man pages and pacman cache left out this is the image route B
 # ships. The user name is still the USER argument (omarchy for releases).
+# TRIM_PKGS: packages removed after the Omarchy install (pacman -Rns, leaf
+# apps only) to fit a size limit; SLIM=1 also keeps only the zh_CN and en
+# locales (with NoExtract in pacman.conf so updates do not bring the rest
+# back) and drops the user's mise caches (tools download again on first use).
 # AI_ENV (demo machine only, never for a public image): env file for
 # guest/setup-ai.sh, copied into the base image for its first boot.
 # VMWGFX_KO: route B's patched vmwgfx.ko for this kernel (driver/
@@ -42,6 +46,7 @@
 set -euo pipefail
 
 W=${1:?workdir}; user=${2:?user}; password=${3:?password}; shift 3
+trim_pkgs=${TRIM_PKGS:-} slim=${SLIM:-0}
 base=${BASE:-0} nopass=${NOPASS:-0} root_img=${ROOT_IMG:-0} ai_env=${AI_ENV:-} vmwgfx_ko=${VMWGFX_KO:-}
 pkgs=("$@"); [ ${#pkgs[@]} -gt 0 ] || { echo "no kernel packages given"; exit 1; }
 here=$(cd "$(dirname "$0")/.." && pwd)        # hongrong/
@@ -148,6 +153,7 @@ install -D -m 644 /dev/stdin "$L/zz-hongrong.conf" <<'HOOKS'
 HOOKS=(base udev plymouth keyboard microcode modconf kms keymap consolefont block filesystems fsck)
 HOOKS
 firstboot_files() {
+  mkdir -p "$L"
   cp -r "$here/20-install-omarchy.sh" "$here/etc" "$here/pure/install-vm-agent.sh" \
     "$here/pure/guest/setup-ai.sh" "$here/pure/firstboot/ohmarchy-firstboot.sh" "$L/"
   install -m 644 "$here/pure/firstboot/ohmarchy-firstboot.service" "$R/etc/systemd/system/"
@@ -167,6 +173,15 @@ else
   in_root bash /root/hongrong/20-install-omarchy.sh "$user"
   rm -rf "$R/root/hongrong"
   [ -z "$extra_pkgs" ] || in_root pacman -S --needed --noconfirm $extra_pkgs
+  for p in $trim_pkgs; do
+    in_root pacman -Q "$p" >/dev/null 2>&1 || continue
+    in_root pacman -Rns --noconfirm "$p" || echo "WARNING: could not remove $p (something depends on it)"
+  done
+  if [ "$slim" = 1 ]; then
+    find "$R/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name 'zh_CN' ! -name 'en' ! -name 'en_US' -exec rm -rf {} +
+    sed -i '/^\[options\]$/a NoExtract = usr/share/locale/* !usr/share/locale/zh_CN/* !usr/share/locale/en/* !usr/share/locale/en_US/* !usr/share/locale/locale.alias' "$R/etc/pacman.conf"
+    rm -rf "$R/home/$user/.cache/mise" "$R/home/$user/.local/share/mise"
+  fi
   if [ -n "$vm_tools" ]; then "$here/pure/install-vm-agent.sh" "$R" "$vm_tools"
   else echo "VM_TOOLS not set: no 鸿融 guest agent in the image"; fi
   if [ "$nopass" = 1 ]; then

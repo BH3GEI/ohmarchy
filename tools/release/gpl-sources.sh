@@ -52,6 +52,9 @@ chmod +x "$work/dl"
   echo "          'http::/usr/bin/curl -qgb \"\" -fLC - --retry 3 --retry-delay 3 -o %o %u' 'https::$work/dl %o %u'"
   echo "          'rsync::/usr/bin/rsync --no-motd -z %u %o' 'scp::/usr/bin/scp -C %u %o')"; } > "$work/makepkg.conf"
 export MAKEPKG_CONF=$work/makepkg.conf
+# a rerun keeps the archives already made (also a worker's, JOBS being the
+# same: same shares) and their PACKAGES.txt lines
+cp "$out/PACKAGES.txt" "$work/prev" 2>/dev/null || : > "$work/prev"
 : > "$out/MISSING.txt"; : > "$out/PACKAGES.txt"
 # ALARM's tree without file contents (a full clone takes many minutes here); the
 # directories of the packages asked for are fetched as they are needed
@@ -149,7 +152,11 @@ while IFS='|' read -r name ver base lic; do
     [ -n "${done[$base]:-}" ] && continue
     done[$base]=1
     f=$out/$base-$ver.src.tar.gz
-    if [ -s "$f" ]; then echo "$name|$ver|$lic|(kept)" >> "$out/PACKAGES.txt"; continue; fi
+    if [ -s "$f" ]; then
+        l=$(awk -F'|' -v n="$name" -v v="$ver" '$1 == n && $2 == v { print; exit }' "$work/prev")
+        echo "${l:-$name|$ver|$lic|(kept)}" >> "$out/PACKAGES.txt"
+        continue
+    fi
     d=$work/$base src=
     # ALARM's own build of this version?
     for r in core extra alarm aur; do

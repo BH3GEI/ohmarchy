@@ -78,17 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 09:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 10:29 PDT)
 
 Now: three deliverables. (1) A full demo rehearsal on the test machine: D + I, then C, then B. (2) The internal report ([docs/report/](docs/report/index.html)). (3) A public try-out of B. Everything else runs in the background.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Installing the next image, screenshots within 30–60 s of boot, then the password, sudo and disk checks; then the operator manual and the hand-off to the release | **The picture works.** With the patched `vmwgfx-oseasy` module (watchdog on) the desktop comes up. The "dark, frozen" screen in earlier checks was Omarchy's idle screensaver and display power-off (150 s), not a display fault: one key press brought back the first-login terminal. The other suspect was a crash log line that turned out to come from an earlier boot (the console log keeps every boot). The installer is back to the clean public settings (f07ab95) |
-| C. 鸿融 / public image | Packing the image with the first-login changes | First login (af58c58): the machine stays awake until the password is set, then Omarchy's defaults return (screensaver after 150 s, lock with the new password). The prompt is full screen at 22 pt with a bold centred "请设置密码 / Set your password" and the rules below it |
+| B. OSEasy | Installing the image with the sudo fix: set the password, check sudo, the disk and the desktop; then the operator manual and the draft release | **The display passes**: after installing the stay-awake image the screen was still on four minutes after boot and the first-login text was easy to read. **The password step failed**: the screen said `sudo: a password is required` because Omarchy's own `%wheel ALL=(ALL:ALL) ALL` rule was read after ours (sudoers.d files are read in name order and the last match wins). The rule file is now `zz-ohmarchy-setpass` (cf91ba0). Release notes now state what is kept: data survives a reboot inside Omarchy, but after power-off OSEasy only offers "再次安装", which wipes the disk (62dfd04) |
+| C. 鸿融 / public image | Image with the sudo fix built; then swapping the Omarchy disk into 鸿融 | — |
 | D. Native | — | — |
 | I. Own VM | Waiting for the hypervisor to be free for the x86 and memory tests | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
+
+Release: GPL sources for 367 package bases; 132 fetched so far. The git snapshots that failed (gcc, glibc, binutils, gstreamer, cairo and others) are being fetched again from GitHub mirrors and snapshot URLs (7cf6a86). The draft is built as soon as the ISO passes; sources still missing are listed at the top of the notes and the release is published only when the list is empty.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

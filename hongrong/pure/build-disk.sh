@@ -257,6 +257,8 @@ if [ -n "$vmwgfx_ko" ]; then
   install -D -m 644 "$here/../oseasy/vmwgfx-7.2/vmwgfx-oseasy.conf" "$R/etc/modprobe.d/vmwgfx-oseasy.conf"
   in_root depmod "$kver"
 fi
+# Omarchy's shell draws black on SVGA3D: software Qt Quick there only
+install -D -m 644 "$here/pure/firstboot/ohmarchy-svga.sh" "$R/etc/profile.d/ohmarchy-svga.sh"
 # virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
 if [ -n "$edid" ]; then
   install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/omarchy-120.bin"

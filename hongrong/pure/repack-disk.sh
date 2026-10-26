@@ -36,6 +36,8 @@ rm -f "$R/etc/mkinitcpio.conf.d/zz-edid.conf"
 install -D -m 644 "$here/firstboot/ohmarchy-edid.service" "$R/etc/systemd/system/ohmarchy-edid.service"
 install -D -m 755 "$here/firstboot/ohmarchy-edid.sh" "$R/usr/local/lib/ohmarchy/ohmarchy-edid.sh"
 ln -sf ../ohmarchy-edid.service "$R/etc/systemd/system/multi-user.target.wants/ohmarchy-edid.service"
+# Omarchy's shell drew black on route B's SVGA3D: software Qt Quick there only
+install -D -m 644 "$here/firstboot/ohmarchy-svga.sh" "$R/etc/profile.d/ohmarchy-svga.sh"
 for a in ${EXTRA_CMDLINE:-}; do
   grep -q " ${a%%=*}=" "$R/boot/grub/grub.cfg" || sed -i "/^ *linux /s|\$| $a|" "$R/boot/grub/grub.cfg"
 done

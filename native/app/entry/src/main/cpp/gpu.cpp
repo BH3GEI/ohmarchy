@@ -63,11 +63,8 @@ uint32_t g_scanoutRes = 0;
 uint32_t g_pendingPresent = 0;  // frame to present when the renderer is idle
 pthread_t g_vtestThread;
 const char *kBroker = "@ohmarchy-vtest";
-// Without root (route J, the desktop runs inside this app): no vtest-broker. The app
-// is its own broker then (LocalGpu): it listens on a socket in its files directory
-// for Mesa virpipe clients and passes each connection to vtest over kLocalBroker,
-// the same way vtest-broker does.
-const char *kLocalBroker = "@ohmarchy-vtest-app";
+// Without root (route J, the desktop runs inside this app): no vtest-broker; vtest
+// listens on a socket in the files directory itself (LocalGpu).
 std::atomic<const char *> g_vtestName{kBroker};
 std::atomic<bool> g_localGpu{false};
 const char *kLog = "/data/storage/el2/base/files/vtest.log";
@@ -327,91 +324,15 @@ void BrokerKick()
     close(fd);
 }
 
-int ListenUnix(const char *path, bool abstract)
-{
-    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    sockaddr_un a{};
-    a.sun_family = AF_UNIX;
-    size_t len = strlen(path);
-    socklen_t alen;
-    if (abstract) {
-        memcpy(a.sun_path + 1, path + 1, len - 1);  // "@name"
-        alen = offsetof(sockaddr_un, sun_path) + len;
-    } else {
-        unlink(path);
-        memcpy(a.sun_path, path, len);
-        alen = offsetof(sockaddr_un, sun_path) + len + 1;
-    }
-    if (fd < 0 || bind(fd, reinterpret_cast<sockaddr *>(&a), alen) != 0 || listen(fd, 16) != 0) {
-        LOGI("listen on %{public}s failed: %{public}s", path, strerror(errno));
-        close(fd);
-        return -1;
-    }
-    if (!abstract) {
-        chmod(path, 0600);
-    }
-    return fd;
-}
-
-// The app's own broker: vtest connects to kLocalBroker; clients connect to the
-// files-directory socket, and each is handed to vtest with SCM_RIGHTS (marker 'l').
-void *LocalBroker(void *arg)
-{
-    std::string path = static_cast<const char *>(arg);
-    int vl = ListenUnix(kLocalBroker, true);
-    int cl = ListenUnix(path.c_str(), false);
-    int vfd = -1;
-    while (vl >= 0 && cl >= 0) {
-        pollfd p[2] = {{vl, POLLIN, 0}, {cl, POLLIN, 0}};
-        if (poll(p, 2, -1) < 0) {
-            continue;
-        }
-        if (p[0].revents & POLLIN) {
-            int fd = accept4(vl, nullptr, nullptr, SOCK_CLOEXEC);
-            if (fd >= 0) {
-                if (vfd >= 0) {
-                    close(vfd);
-                }
-                vfd = fd;
-                LOGI("local gpu: renderer connected");
-            }
-        }
-        if (p[1].revents & POLLIN) {
-            int c = accept4(cl, nullptr, nullptr, SOCK_CLOEXEC);
-            if (c < 0) {
-                continue;
-            }
-            char byte = 'l';
-            char cbuf[CMSG_SPACE(sizeof(int))] = {};
-            iovec iov{&byte, 1};
-            msghdr msg{};
-            msg.msg_iov = &iov;
-            msg.msg_iovlen = 1;
-            msg.msg_control = cbuf;
-            msg.msg_controllen = sizeof(cbuf);
-            cmsghdr *cm = CMSG_FIRSTHDR(&msg);
-            cm->cmsg_level = SOL_SOCKET;
-            cm->cmsg_type = SCM_RIGHTS;
-            cm->cmsg_len = CMSG_LEN(sizeof(int));
-            memcpy(CMSG_DATA(cm), &c, sizeof(int));
-            if (vfd < 0 || sendmsg(vfd, &msg, MSG_NOSIGNAL) <= 0) {
-                LOGI("local gpu: no renderer for a client");
-            }
-            close(c);
-        }
-    }
-    return nullptr;
-}
-
 std::string LocalGpu()
 {
     static std::string path = "/data/storage/el2/base/files/vtest.sock";
     bool expected = false;
     if (g_localGpu.compare_exchange_strong(expected, true)) {
-        g_vtestName = kLocalBroker;
-        pthread_t t;
-        pthread_create(&t, nullptr, LocalBroker, const_cast<char *>(path.c_str()));
-        pthread_detach(t);
+        // vtest listens on the path itself (vtest-inapp.patch): handing a connection
+        // to a thread of the same process with SCM_RIGHTS lost it on HongMeng (the
+        // client's first read failed with EINVAL)
+        g_vtestName = path.c_str();
         LOGI("local gpu: clients on %{public}s", path.c_str());
     }
     return path;

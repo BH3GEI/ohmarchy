@@ -493,7 +493,7 @@ index 3173323..798b4f4 100644
  
     vtest_server_run();
  
-@@ -393,6 +395,62 @@ static void vtest_server_open_read_file(void)
+@@ -393,6 +395,82 @@ static void vtest_server_open_read_file(void)
     }
  }
  
@@ -505,6 +505,7 @@ index 3173323..798b4f4 100644
 + * server.socket_name ("@name"). */
 +/* Clients the broker bridged from TCP (marker 'r'): served with protocol version 0. */
 +static bool vtest_remote_fds[1024];
++static bool vtest_listening;
 +
 +bool vtest_server_fd_is_remote(int fd)
 +{
@@ -513,6 +514,8 @@ index 3173323..798b4f4 100644
 +
 +static int vtest_server_accept(int sock)
 +{
++   if (vtest_listening)
++      return accept4(sock, NULL, NULL, SOCK_CLOEXEC);
 +   char byte;
 +   char cbuf[CMSG_SPACE(sizeof(int))];
 +   struct iovec iov = { &byte, 1 };
@@ -540,6 +543,23 @@ index 3173323..798b4f4 100644
 +   struct sockaddr_un un;
 +   size_t len = strlen(server.socket_name + 1);
 +
++   /* A path instead of "@name": no broker (the app runs the clients itself, route J):
++    * listen on it and accept clients directly. */
++   if (server.socket_name[0] == '/') {
++      len = strlen(server.socket_name);
++      server.socket = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
++      memset(&un, 0, sizeof(un));
++      un.sun_family = AF_UNIX;
++      memcpy(un.sun_path, server.socket_name, len);
++      unlink(server.socket_name);
++      if (server.socket < 0 || bind(server.socket, (struct sockaddr *)&un, sizeof(un)) < 0 ||
++          listen(server.socket, 16) < 0) {
++         perror("Failed to listen.");
++         exit(1);
++      }
++      vtest_listening = true;
++      return;
++   }
 +   server.socket = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 +   memset(&un, 0, sizeof(un));
 +   un.sun_family = AF_UNIX;

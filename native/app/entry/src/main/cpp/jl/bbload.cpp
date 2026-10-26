@@ -51,6 +51,11 @@ static void write_egl_vendor(const char *dir){
 // (native/desktop/ohmarchy-desktop) + the J in-app GPU path (OHMARCHY_LOCAL_GPU server).
 static void launch_hyprland(const char *cfg){
     mkdir(RUNDIR, 0700);
+    // Capture Hyprland/aquamarine stdout+stderr (throwError text, backend logs) to a file —
+    // the app log doesn't carry a dlopen'd lib's stderr.
+    { char lp[512]; snprintf(lp,sizeof(lp),"%s/hyprland.stderr",RUNDIR);
+      int lf=open(lp,O_CREAT|O_TRUNC|O_WRONLY,0644);
+      if(lf>=0){ dup2(lf,1); dup2(lf,2); if(lf>2) close(lf); } }
     char vendordir[512]; snprintf(vendordir, sizeof(vendordir), "%s/egl_vendor.d", RUNDIR);
     write_egl_vendor(vendordir);
     setenv("XDG_RUNTIME_DIR", RUNDIR, 1);

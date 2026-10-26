@@ -67,7 +67,7 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **G** 铠大师 VM | Omarchy's disk in sanway's Windows VM app | concluded negative | 7.2.12 boots, but every VM is an install session that is deleted at power-off | no | no |
 | **2. Native on the HongMeng kernel** | | | | | |
 | **D** Native | Arch + Omarchy in a chroot on the HongMeng kernel; Hyprland shown by a HarmonyOS app | works | 119 fps workspaces, es2gears 117-120 fps on screen; cold start ~8 s; 74/78 apps, P95 1.13 s; 24 h soak | yes | yes, ~80 s |
-| **I** Our own VM | StratoVirt on `/dev/hmv` as root, headless; Docker back end for D, started on demand | works | guest up in 5-10 s; idle ~1.2 GiB host RSS; balloon returns 3 GiB in ~6 s; demo 91 s | yes | yes, with D |
+| **I** Our own VM | StratoVirt on `/dev/hmv` as root, headless; Docker back end for D, started on demand | works | guest up in 5-10 s; up to 12 GiB, idle ~1.2 GiB host RSS; x86-64 images via qemu-user; demo 91 s | yes | yes, with D |
 | **J** Linux in an app sandbox | Linux programs built as `.so`, signed into the HAP, run by fork + dlopen | prototype works (busybox); Hyprland 0.56.2 built for OHOS musl, not yet run on the device | busybox `sh` inside D's display app; Hyprland links against the self-built stack (845dc1b) | no | no |
 | **3. Other explorations** | | | | | |
 | **A** Linux engine apps | Omarchy's neovim setup and CLI tools in HarmonyOS's own Linux container, each in a HarmonyOS window | works with limits (terminal tools only, no Hyprland session) | | no | no |
@@ -468,9 +468,13 @@ edited offline with `debugfs` (`tools/ownvm/prep-disk.sh`).
   `tools/ownvm/ohmarchy-docker-gate.c`. That is a root daemon that `omarchy desktop start`
   runs next to the GPU broker, and it accepts only uid 60000 (SO_PEERCRED). On the first
   connection it starts the VM, then proxies each connection to the guest's
-  `docker system dial-stdio`. A VM it started is stopped after 3 idle minutes with no
-  running container. While 鸿融 or Oseasy runs a VM, it answers with a plain error instead.
-  So the desktop user needs no root shell for Docker. The start-at-boot service
+  `docker system dial-stdio`. A VM it started is stopped 30 s after the last use with no
+  running container. While 鸿融 or OSEasy runs a VM (HMV runs one VM at a time), docker's
+  error names that app and a HarmonyOS notification says the same. So the desktop user
+  needs no root shell for Docker. The VM may use up to 12 GiB (idle it still costs the host
+  ~1.2 GiB: freed pages go back through the balloon in under a minute). x86-64 images run
+  under qemu-user (`--platform linux/amd64`; pure Python ~50x slower, C code ~4x). No GPU in
+  containers yet ([docs/vm-own.md](docs/vm-own.md#docker-limits-2026-10-27)). The start-at-boot service
   (`ohmarchy-vm.cfg`) stays uninstalled, so that the hypervisor is free for 鸿融 and Oseasy.
 - **Home share.** D's `/home/builder` appears in the guest at the same path, so bind mounts
   work. The share is virtiofs with `--translate-uid` (guest root writes as 60000 on the

@@ -564,3 +564,14 @@ with the same uid 60000, no capabilities, and the same id mappings:
 
 `ohmarchy-vm` now uses upstream by default; `OVM_VIRTIOFSD=system` goes
 back to the system binary. The 0660 limitation above is fixed this way.
+
+## Docker limits (2026-10-27)
+
+What the supervisor asked to lift, in order, each measured on ohdev:
+
+| Limit | Now | Measured |
+|---|---|---|
+| arm64 images only | x86-64 images run under qemu-user: `qemu-user-static` + `qemu-user-static-binfmt` in the guest (binfmt flags `PF`, registered at every boot by systemd-binfmt). Pass `--platform linux/amd64`; an amd64-only image without it fails with "no matching manifest for linux/arm64/v8" | `docker run --rm --platform linux/amd64 hello-world` prints "(amd64)" in 6 s, 18 s from a stopped VM; `centos:6` (amd64 only) reports `CentOS release 6.10`, `x86_64`. Same container, `python:3.13-slim`: a pure Python loop 0.46 s arm64 vs 24.24 s amd64 (~53x), sha256 of 64 MiB (C) 0.25 s vs 1.03 s (~4x) |
+| 8 GiB in the VM | 12 GiB (`OVM_MEM` default 12288, `tools/ownvm/ohmarchy-vm`) | host: 32 GiB, 20 GiB available with no VM running. StratoVirt RSS idle 1214 MiB (8 GiB: ~1.17 GiB); a container writing 10 GiB: peak 11360 MiB, host still 10.9 GiB available; after it exits 8653 / 6465 / 3565 / 1216 MiB at +5 / 10 / 20 / 40 s (free page reporting) |
+| one VM at a time | HMV's own limit (401 "Not support vm multi-instance"), not ours to lift. The gate now names the app whose VM runs (鸿融 `com.huawei.medivh`, OSEasy `com.oseasy1.ohvm`, from that StratoVirt's command line), in docker's error and `docker-vm status`, and `--on-refuse` posts a HarmonyOS notification through the display app (`omarchy docker-refused APP` → `aa start --ps notify`, at most every 20 s) | with OSEasy's VM running: "后台 Docker 虚拟机启动不了：OSEasy 的虚拟机正在运行（同一时间只能开一台虚拟机），请先关掉它"; the notification (after the one-time "允许发送通知" prompt) lands in HarmonyOS's notification centre, no banner while the app is in front |
+| no GPU in containers | not done. Assessment: OpenGL is possible with `OVM_GPU=1` (virgl, on the Maleoon through zink: the first run above), the container getting `--device /dev/dri` and an image whose Mesa has the virgl driver. Not tested: running beside D's own renderer, and the memory of vhost-device-gpu. CUDA/ROCm: impossible; Vulkan (venus) and OpenCL: not available | — |

@@ -78,17 +78,16 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 05:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 06:33 PDT)
 
-Now: all three deliverables are ready; B's draft release has all its files (not published). The kernel fix for older HarmonyOS VM engines is built. The second test machine is stuck in recovery after a VM brought it down; the first machine is testing USB boot for route E.
+Now: the second test machine is repaired and boots normally again, with `/data` untouched. B's new ISO with kernel 7.2.12-1.2 is built and passed a boot check on the first machine. All device work is paused at the owner's request while he uses the first machine.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | New image with kernel 7.2.12-1.2 being compressed (in resumable chunks); then the ISO, a regression check on the newer system, and later a careful check on the older one | **Kernel 7.2.12-1.2** (139aa77): virtio-pci uses only feature selects 0 and 1 unless `virtio_pci_modern_dev.extended_features=1`, so older StratoVirt no longer faults at boot |
-| Second machine | In recovery; data on `/data` intact and partly backed up over USB | **What took it down**: after the first OSEasy VM faulted at boot (the bug above) its StratoVirt process was killed; OSEasy re-created the VM by itself, the new one faulted thousands of times a second ("Unexpected VCPU state") and the machine reset. Since then normal boot can't find the `userdata` link and falls back to recovery. New rule (e4a8929): stop a VM through its app, or force-stop the app, before ever killing StratoVirt, and check nothing respawns. No VMs on that machine until it is fixed |
-| E. Bare metal | Testing whether the firmware boots from USB (F12 did not open a boot menu; trying Fn+F12, F2, Esc) | **All-in-RAM USB stick** (efb270e): standalone arm64 GRUB as `\EFI\BOOT\BOOTAA64.EFI`, generic 7.3 kernel, the whole Omarchy root (2 GB compressed) as the initrd, and a large-font probe report before it starts Hyprland on the UEFI framebuffer. **Driver reuse is not viable** (93f6784): HongMeng runs Linux 6.6.127 drivers as user-space services through its own microkernel interfaces, so the binaries can't load into Linux, and no GPL source for this SoC has been found. The firmware hands over a device tree whose devices are all HiSilicon-private, so only the framebuffer is expected to work |
-| C. 鸿融 | Works on the first machine only (the second machine's system refuses it) | — |
-| D. Native | On the second machine: next try bundles the first machine's `libvirglrenderer` (the second machine's older build crashed in present) | — |
+| B. OSEasy | Regression install of the new ISO in OSEasy on the first machine: past the old crash point, writing the disk; paused | **New ISO: 2,032,457,728 bytes**, under the 2 GiB asset limit; installer kernel 7.2.12-1.2. **New kernel checked in 鸿融 on the first machine**: desktop in 40 s, `extended_features=N`, all devices on virtio-pci, 2160x1440 at 120 Hz, guest service installed, clean shutdown. Not yet checked: sudo and unlocking (someone else set the first-boot password). Root cause written up (176b99b, 7b6eb92): on HarmonyOS 7.0.0.32 the guest's access to feature select 2 at offset 0xC hangs the VM; kernel 1.2 avoids it. **Disk persistence**: OSEasy's guest-agent protocol mapped (1b616c1): virtio-serial plus protobuf RPC with a handshake and keepalive; next is a minimal Linux agent so OSEasy treats the VM as installed |
+| Second machine | Boots normally; our leftovers removed | **Real cause found and fixed**: at 19:38 CST a read-only check sent over ssh lost its quotes in the remote shell, so `->` became a redirect and overwrote the dynamic loader `/system/lib/ld-musl-aarch64.so.1` (through the `libc.so` symlink) with 10 bytes. On the next boot every program failed to start (`E_HM_NOEXEC`), including ueventd, so `/data` was never found. The VM incident at 19:48 only triggered that reboot. Fix: the bad file lived only in the `/system` overlay's upper layer (an ext4 at the end of the system partition), so it was deleted there and the original underneath shows through; 6 blocks of 4 KB written, checked before and after, the whole layer backed up first. Also removed our two init configs. Rule: send remote commands as a script (`sh -s`), never as a quoted one-liner |
+| E. Bare metal | Waiting for the owner to try boot keys with the USB stick | Unchanged |
+| D. Native | Paused | — |
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

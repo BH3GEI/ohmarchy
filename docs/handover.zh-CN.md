@@ -231,6 +231,7 @@
    - 退路：内核补丁 0003（139aa77），默认只用 64 位特征。
 3. **GIC ITS 报告 32 位事件号。**
    - 为什么：Linux 修复 5a9d62555e71 之前的内核，所有 MSI 中断申请都失败，vsock 不通，增强服务连不上。鸿融认证的 UOS、麒麟内核也受影响（docs/internal/hongrong-team-brief.md 2.1）。
+   - 复现：装 5a9d62555e71 之前的内核，所有 MSI 中断申请失败、vsock 不通、增强服务连不上（详见 hongrong-team-brief.md 2.1）。
    - 影响：C，以及用户自带的内核。
    - 退路：内核补丁 0001。
 4. **HongMeng 内核的兼容性问题**（复现见 docs/native-chroot.md 的 quirks 表）。
@@ -250,6 +251,7 @@
    - 影响：D 和原生沙箱。
 5. **vm_manager 启动 virtiofsd 时带 `--passthrough-fs`，或公开 share 注册协议。**
    - 为什么：OSEasy 的共享文件夹在 Linux 客户机里读不了（客户机报 `virtio-fs: response too short (0)`，宿主报 ENODEV）。
+   - 复现：在 OSEasy 的 Linux 客户机里挂载共享盘，客户机 dmesg 报 `virtio-fs: response too short (0)`，宿主 virtiofsd 报 ENODEV。
    - 影响：B。
    - 退路：没有可持久化的存储，只能靠虚拟机内重启保留数据。
 6. **系统自带的 virtiofsd 1.13.0 权限问题。**
@@ -258,6 +260,8 @@
    - 影响：I（以及鸿融的共享文件夹）。
    - 退路：用上游 virtiofsd 1.14.0。
 7. **SDK 头文件冲突。** OHOS 的 `linux/socket.h` 无条件定义 `sockaddr_storage`，和 musl 冲突；`dma-buf.h` 缺 sync-file ioctl。
+   - 为什么：按 OHOS musl 交叉编译 J 的 Hyprland 全家时，uapi 的 `linux/socket.h` 与 musl 的 `sys/socket.h` 重定义 `sockaddr_storage`，且 `dma-buf.h` 缺 `DMA_BUF_IOCTL_SYNC`，编译失败。
+   - 复现：用 OHOS NDK sysroot 编 glib/aquamarine，报 `sockaddr_storage` 重定义、`DMA_BUF_IOCTL_SYNC` 未定义。
    - 影响：J。
    - 退路：device/userspace/uapi-fix 和 shim/。
 8. **`uname` 的 release 字段改报 Linux 格式的版本号**，例如 `6.6.0-hongmeng`（sysname 仍可报 HarmonyOS）。
@@ -298,8 +302,8 @@
    - 为什么：HongMeng 上抽象名字全局共享。沙箱有了自己的 net namespace 之后，TCP/UDP 已经碰不到主机的 127.0.0.1，可主机上所有在监听的抽象 socket 仍然连得上，其中有鸿蒙自己的服务：wpa_supplicant 的控制接口（`@/data/service/el1/public/wifi/sockets/wpa/wlan0`，wpa_host）、TEE 客户端守护进程（`@tc_ns_socket`，teecd）、hiview（`@DUBAI_BUFFERED_LOG`）、hdcd（`@ohjpid-control`）。清单、属主和风险评估见 native/sandbox/abstract-sockets-ohdev.md（2026-10-28 ohdev）。
    - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
    - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
-   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）；沙箱自己的 MAC 域（3(b) 第 1 条）里禁止对沙箱以外的 unix socket 做 connectto/sendto，可以挡住大部分——但该域需运行时加载，而运行时加载已于 2026-10-27 证伪，故此域只有在鸿蒙把它签进系统策略后才成立。
-   - 缓解（2026-10-28）：我们已经在沙箱这一侧做了出站过滤。现在是 libc 层的垫片（ohm-abstract-fence），沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，只防误连。由于运行时加载策略已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），沙箱侧的内核级 egress 兜底（D 的 C 方案：现为 libc 垫片，后续 seccomp + supervisor）就是当前实际防线；MAC 域只有等鸿蒙把它签进系统策略后才能作为正式边界。根治仍需内核按 netns 隔离抽象 socket。
+   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）。
+   - 缓解（2026-10-28）：当前实际缓解是 D 的 **B 方案——libc 层出站过滤**（ohm-abstract-fence）：沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，**只防误连、不是安全边界**。原计划的两条内核级边界都不成立：(1) 我们自己的 SELinux MAC 域——运行时加载已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），只有鸿蒙把它签进系统策略才成立；(2) **C 方案（seccomp + ptrace supervisor 的内核级自主出站拦截）——评估后暂不实现**（会明显拖累桌面性能，且目前的 residual 并非已证实的漏洞），仅作文档记录的可选加固、设计从略、未实现。根治仍需鸿蒙按 netns 隔离抽象 socket，或把我们的策略模块签进系统。
 
 Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 

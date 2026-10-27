@@ -78,17 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 11:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 12:29 PDT)
 
-Now: the **new native design** passed its first version on screen. "Omarchy (sandbox)", a second HarmonyOS app beside the demo's "Omarchy (native)", runs Omarchy on the HarmonyOS kernel, locked into its own directory; keyboard, mouse, terminal and `pacman` work, and host paths are not visible. The demo was checked before and after every step and never changed. Next: start and stop from the app itself, a one-step installer, and the sandbox's own network. Handover for tomorrow's review: [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
+Now: the **new native design** works like an app: double-click "Omarchy (sandbox)" and Linux starts, full screen, in its own directory on the HarmonyOS kernel; close it and Linux stops; reset is one menu item. Its installer is doing its one write to `/system`. B's release is about to go public with complete GPL sources. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
 
 | Route | Now | Latest |
 |---|---|---|
-| D. Native (new design) | The app starts, stops and resets the sandbox itself (only those four commands, only from this app); then a one-step install and uninstall; then the sandbox's own network namespace | **Terminal works on screen** (b46599f): Alt+Shift+Return opens foot in the sandbox window; `tty` prints `/dev/pts/0`, `/storage` does not exist, `/data` is the image's own directory, `cowsay` runs. HarmonyOS has no devpts, so a preload shim inside the sandbox hands out the terminal's other end through TIOCGPTPEER, also when foot closes the master before opening the slave by path (9e6f56a); the host's `/dev/pts` is not bound in. **Leak found and closed** (5429e2e): processes inside held an inherited handle on the host's `/dev/kmsg`; everything above stdio is now closed before entering, and the desktop's stdio is the sandbox's own `/dev/null` |
-| D. Native: Docker | Waiting for HarmonyOS kernel fixes | Unchanged; the first container's init exits; kernel issues listed in the handover, section 3(a) |
-| B. OSEasy | Disk persistence, on the Mac | **Frame header worked out** from the Windows guest agent: 7 bytes, the last two a 16-bit sum of the first five bytes (a plain checksum, no key); splitting the first five into type and length is next |
-| Release | Waiting for an upload token | GPL sources complete (360 packages); the draft gets the new source archive and the new ISO once a token is available |
-| E. Bare metal | Waiting for the owner to try boot keys | Unchanged |
+| D. Native (new design) | Installer run with its single `/system` write (one new boot file, checked absent before and compared after); then the sandbox's own network | **Open, close and reset from the app, on screen** (430da14, a8387a6, 9e679f0): opening the app asks the root helper to start Linux (about 16 s) and the desktop appears full screen; closing the window stops it (about 10 s); "Reset Linux" in the icon's menu asks first, then restores the clean snapshot (about 33 s; a package installed earlier was gone). The helper `ohm-sandboxd` answers only this app's uid and only `start`, `stop`, `reset` and `status`; nothing from the client reaches a command line. Leaving full screen: Alt+Tab, or Ctrl+Alt+Escape to minimize. **Installer and uninstaller** (f98765a): the app, the helper and the image under `/data/local/ohm-sandbox`, plus one boot file `/system/etc/init/ohm-sandboxd.cfg` that only starts the helper; the dry run passed with the demo and system files unchanged before and after |
+| B. OSEasy: persistence | On-device bring-up after tomorrow's rehearsal | **Protocol worked out** (37673ee, 38021e2): frames are a 7-byte header (32-bit big-endian length, 8-bit type, 16-bit sum of the first five bytes; no key) plus a protobuf body; the channel is the virtio-serial port itself (the named pipes are the Windows agent's internal IPC). **Minimal Linux agent** (3c433a6): frame and protobuf codecs with 13 passing tests; it introduces itself as `ohmarchy-linux-agent` and leaves out the optional `authString`; if OSEasy requires it, we stop and ask the vendor. A one-pass bring-up runbook and a single-file bundle (30719d5) read the remaining unknowns (which port, the connection mode, method ids) in one session |
+| Release | Upload, then publish | New ISO (kernel 1.2) and the complete GPL sources go in; the old ISO is removed once the new one is verified; then the release goes public |
+| C. 鸿融 demo disk | Find or reset the first-boot password, then test sudo and unlocking | — |
+| E. Bare metal | Waiting for someone to try boot keys | Unchanged |
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

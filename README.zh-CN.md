@@ -2,6 +2,34 @@
 
 [English](README.md) | 中文
 
+## 文档导航（汇报时从这里找）
+
+**先看这三个**
+- [交接文档](docs/handover.zh-CN.md)：现状、我们还要做什么、需要鸿蒙做什么（合入、放开、提供）、以后要维护的地方、事故和规矩
+- [现场操作手册](docs/demo-operator.zh-CN.md)：演示每一步怎么点、出了问题怎么办（第 4 段是新原生沙箱）
+- [公开发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)：OSEasy 安装盘和全部 GPL 源码
+
+**各路线**
+
+| 路线 | 文档 |
+|---|---|
+| B OSEasy | [安装说明](docs/oseasy-install.md) · [技术记录](docs/oseasy-whole-os.md) · [早期记录](docs/vm-oseasy.md) · [小助手协议](docs/oseasy-agent-protocol.md) · [Linux 小助手](oseasy/linux-agent/README.md) · [上机步骤](oseasy/linux-agent/bringup.md) |
+| C 鸿融 | [技术记录](docs/hongrong-whole-os.md) |
+| D 原生（演示版） | [怎么装](docs/native-chroot.md) · [桌面](docs/native-desktop.md) · [兼容性](docs/native-compat.md) · [验收](docs/acceptance.md) |
+| D 原生沙箱（新方案） | [说明和已知缺口](native/sandbox/README.md) · [共享抽象 socket 清单](native/sandbox/abstract-sockets-ohdev.md) · [Docker 测试补丁](native/sandbox/docker-test/README.md) |
+| I 自建虚拟机 | [技术记录](docs/vm-own.md) |
+| J app 沙箱里的 Linux | [技术记录](docs/no-root-routes.md) |
+| E 裸机 / U 盘 | [技术记录](docs/route-e.md) |
+| 其它（A、F、G、H、L） | [A](docs/linux-engine-apps.md) · [F](docs/emulator-aetherium.md) · [G](docs/vm-kaidashi.md) · [H](docs/device-aetherium.md) · [L](docs/route-l-arkweb.md) |
+
+**给鸿蒙和厂商的材料**
+- [HMV 问题报告（ID 寄存器）](docs/hmv-idreg-report.md)
+- [给 OSEasy 的需求清单](docs/oseasy-vendor-request.md)
+- [给鸿融团队的说明](docs/internal/hongrong-team-brief.md)
+- [第三方 app 能不能建虚拟机（虚拟化接口和白名单）](docs/vm-api.md)
+
+**其它**：[共性发现](docs/findings.md) · [演示脚本](docs/demo.md) · [对内汇报页](docs/report/index.html) · [全部文档索引](docs/README.md)
+
 目标：让 [Omarchy](https://omarchy.org)（DHH 做的 Arch Linux + Hyprland 桌面）在鸿蒙（HarmonyOS）电脑上跑起来。测试机 `ohdev` 是一台 HUAWEI MateBook 14 HM740：麒麟 X90（20 线程、32 GB 内存）、马良 916 GPU、2880x1920 屏幕（最高 120Hz），系统 HarmonyOS 7.0.0.115，内核是鸿蒙自己的 HongMeng 内核 1.11.13.0。最早在 MateBook Fold（HarmonyOS 7.0）上开始，用的是 [riverscn/omarchy-aarch64-image](https://github.com/riverscn/omarchy-aarch64-image) 的 AArch64 版 Omarchy。
 
 一句话总结现在的结果：

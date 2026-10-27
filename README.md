@@ -2,6 +2,34 @@
 
 English | [中文](README.zh-CN.md)
 
+## Where to find things (for the review)
+
+**Start here**
+- [Handover (Chinese)](docs/handover.zh-CN.md): status, what we still do, what HarmonyOS needs to merge, allow or provide, what must be maintained, incidents and rules
+- [Demo operator manual](docs/demo-operator.md) ([中文](docs/demo-operator.zh-CN.md), whose part 4 covers the new native sandbox)
+- [Public release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027): the OSEasy install ISO and all GPL sources
+
+**Routes**
+
+| Route | Documents |
+|---|---|
+| B OSEasy | [Install guide](docs/oseasy-install.md) · [Technical record](docs/oseasy-whole-os.md) · [Early notes](docs/vm-oseasy.md) · [Guest-agent protocol](docs/oseasy-agent-protocol.md) · [Linux agent](oseasy/linux-agent/README.md) · [Bring-up runbook](oseasy/linux-agent/bringup.md) |
+| C 鸿融 | [Technical record](docs/hongrong-whole-os.md) |
+| D Native (demo) | [Install](docs/native-chroot.md) · [Desktop](docs/native-desktop.md) · [Compatibility](docs/native-compat.md) · [Acceptance](docs/acceptance.md) |
+| D Native sandbox (new design) | [README and known boundaries](native/sandbox/README.md) · [Shared abstract sockets](native/sandbox/abstract-sockets-ohdev.md) · [Docker test patches](native/sandbox/docker-test/README.md) |
+| I Own VM | [Technical record](docs/vm-own.md) |
+| J Linux in an app sandbox | [Technical record](docs/no-root-routes.md) |
+| E Bare metal / USB | [Technical record](docs/route-e.md) |
+| Others (A, F, G, H, L) | [A](docs/linux-engine-apps.md) · [F](docs/emulator-aetherium.md) · [G](docs/vm-kaidashi.md) · [H](docs/device-aetherium.md) · [L](docs/route-l-arkweb.md) |
+
+**For HarmonyOS and vendors**
+- [HMV issue report (ID registers, Chinese)](docs/hmv-idreg-report.md)
+- [Requests to OSEasy (Chinese)](docs/oseasy-vendor-request.md)
+- [Brief for the 鸿融 team (Chinese)](docs/internal/hongrong-team-brief.md)
+- [Can a third-party app create VMs (virtualization API and whitelist)](docs/vm-api.md)
+
+**Other**: [Findings](docs/findings.md) · [Demo scripts](docs/demo.md) · [Internal report page](docs/report/index.html) · [Full document index](docs/README.md)
+
 The goal is to run [Omarchy](https://omarchy.org), DHH's Arch Linux + Hyprland desktop, on a
 HarmonyOS PC. The test machine `ohdev` is a HUAWEI MateBook 14 HM740: Kirin X90 (20
 threads, 32 GB), Maleoon 916 GPU, a 2880x1920 panel that runs at up to 120 Hz, HarmonyOS

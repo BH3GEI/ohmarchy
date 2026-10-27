@@ -10,6 +10,9 @@
 #   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop and the pty
 #                               shim (desktop/hongmeng-ptypeer.c) inside
 #                               from $S/src (they carry the sandbox's socket names)
+#   ohm-sandbox serve | unserve
+#                           the helper the app talks to (ohm-sandboxd: only the app's
+#                           uid, only start, stop, reset, status)
 #   ohm-sandbox desktop start|stop|restart|status
 #                           Hyprland inside for the app com.ohmarchy.sandbox: sockets
 #                           @ohmsbx-display, -vtest, -audio, -ime (the demo's are ohmarchy-*)
@@ -183,13 +186,13 @@ desktop)
     if [ "$c" = start ]; then
         sh "$0" run /opt/ohmarchy/bin/ohmarchy-sysbus start > /dev/null 2>&1
         # The GPU broker belongs to the helper: it runs on the host, binds the desktop's
-        # vtest socket into the sandbox through /proc/<init>/root, hands the desktop's
-        # GPU connections to the app (only $APP's uid), and restarts the desktop when
-        # the app connects. Its pid is ours to stop.
+        # vtest socket into the sandbox through /proc/<init>/root and hands the
+        # desktop's GPU connections to the app (only $APP's uid). The app starts and
+        # stops the desktop through ohm-sandboxd, so no restart hook here.
         sock=/proc/$P/root/tmp/.virgl_test
         if ! { [ -f "$S/broker.pid" ] && kill -0 "$(cat "$S/broker.pid")" 2>/dev/null; }; then
             rm -f "$sock"
-            setsid "$S/bin/vtest-broker" --on-app "sh $0 desktop restart" ${app_uid:+--app-uid "$app_uid"} \
+            setsid "$S/bin/vtest-broker" ${app_uid:+--app-uid "$app_uid"} \
                 --user "$uid:$gid" "$sock" "$PREFIX-vtest" < /dev/null > "$S/broker.log" 2>&1 &
             echo $! > "$S/broker.pid"
             i=0; while [ $i -lt 30 ] && [ ! -S "$sock" ]; do sleep 0.1; i=$((i+1)); done
@@ -228,6 +231,23 @@ stop)
     done
     rm -f "$S/sandbox.loop"
     echo stopped
+    ;;
+serve)
+    for d in /proc/[0-9]*; do
+        [ "$(readlink "$d/exe" 2>/dev/null)" = "$S/bin/ohm-sandboxd" ] && { echo "serving: ${d#/proc/}"; exit 0; }
+    done
+    app_uid=$(bm dump -n "$APP" 2>/dev/null | grep -m1 '"uid"' | tr -dc 0-9)
+    [ -n "$app_uid" ] || { echo "$APP is not installed"; exit 1; }
+    cd /
+    setsid "$S/bin/ohm-sandboxd" --app-uid "$app_uid" --launcher "$S/bin/ohm-sandbox" --name "$PREFIX-ctl" \
+        < /dev/null >> "$S/sandboxd.log" 2>&1 &
+    echo "serving for $APP (uid $app_uid): @$PREFIX-ctl"
+    ;;
+unserve)
+    for d in /proc/[0-9]*; do
+        [ "$(readlink "$d/exe" 2>/dev/null)" = "$S/bin/ohm-sandboxd" ] && kill "${d#/proc/}"
+    done
+    echo "not serving"
     ;;
 reset)
     alive && { echo "running: stop it first"; exit 1; }

@@ -1,7 +1,7 @@
 // The Linux desktop fills the window: libohdisp.so draws it into the XComponent and
 // handles input. Until the first frame arrives, a status line says what is going on.
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { window } from '@kit.ArkUI';
+import { promptAction, window } from '@kit.ArkUI';
 import { startJl } from '../jl/jl';
 
 interface OhdispModule {
@@ -9,12 +9,21 @@ interface OhdispModule {
   setForeground(fg: boolean): void;
   swipe(phase: number, dx: number, dy: number, fingers: number): void;
   releaseKeys(): void;
+  sandboxCtl(cmd: string): Promise<string>;
 }
+
+// The sandbox build (native/sandbox/build-app.sh) runs Linux through the helper
+// ohm-sandboxd: start when the app opens, stop when it closes, reset on request.
+const SANDBOX_BUNDLE = 'com.ohmarchy.sandbox';
 
 @Entry
 @Component
 struct Index {
   @State status: string = 'Connecting to Omarchy…';
+  // the sandbox helper's word while Linux starts or resets; shown over the status
+  @State note: string = '';
+  @StorageLink('resetRequested') @Watch('onResetRequested') resetRequested: number = 0;
+  private sandbox: boolean = false;
   private ohdisp?: OhdispModule;
   private xc: XComponentController = new XComponentController();
   private timer: number = -1;
@@ -39,7 +48,39 @@ struct Index {
     this.ohdisp?.swipe(phase, dx, dy, 3);
   }
 
+  private sandboxCtl(cmd: string, busy: string): Promise<boolean> {
+    if (!this.ohdisp) {
+      return Promise.resolve(false);
+    }
+    this.note = busy;
+    return this.ohdisp.sandboxCtl(cmd).then((reply: string) => {
+      const ok = reply.startsWith('ok');
+      hilog.info(0x0D0D, 'ohdisp', 'sandbox %{public}s: %{public}s', cmd, ok ? 'ok' : reply);
+      // on failure the helper's last output says why
+      this.note = ok ? '' : 'Linux did not ' + cmd + ':\n' + reply.substring(reply.indexOf('\n') + 1).slice(-400);
+      return ok;
+    });
+  }
+
+  // from the icon's "Reset Linux" shortcut (EntryAbility): confirm, reset, start again
+  onResetRequested(): void {
+    if (!this.sandbox || this.resetRequested === 0) {
+      return;
+    }
+    promptAction.showDialog({
+      title: 'Reset Linux?',
+      message: 'Everything installed or changed inside Linux is lost; it goes back to how it was installed.',
+      buttons: [{ text: 'Cancel', color: '#c0caf5' }, { text: 'Reset', color: '#f7768e' }]
+    }).then((r: promptAction.ShowDialogSuccessResponse) => {
+      if (r.index === 1) {
+        this.sandboxCtl('reset', 'Resetting Linux…')
+          .then((ok: boolean) => ok ? this.sandboxCtl('start', 'Starting Linux…') : false);
+      }
+    }).catch(() => {});
+  }
+
   aboutToAppear(): void {
+    this.sandbox = getContext(this).applicationInfo.name === SANDBOX_BUNDLE;
     if (AppStorage.get<boolean>('jl') === true) { startJl(); }
     // Losing the focus releases the keys still pressed in the desktop: HarmonyOS
     // keeps the Super key's release (its start menu opens then and takes the focus).
@@ -59,6 +100,9 @@ struct Index {
 
   aboutToDisappear(): void {
     clearInterval(this.timer);
+    if (this.sandbox) {
+      this.ohdisp?.sandboxCtl('stop');  // the app closes: Linux stops with it
+    }
   }
 
   // In front again: if the desktop went away meanwhile, the native side asks for
@@ -77,6 +121,9 @@ struct Index {
       XComponent({ id: 'ohdisp', type: XComponentType.SURFACE, libraryname: 'ohdisp', controller: this.xc })
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
+          if (this.sandbox) {
+            this.sandboxCtl('start', 'Starting Linux…').then(() => this.onResetRequested());
+          }
           // For experiments with presenting into this window from another process
           // (route I, docs/vm-own.md): its surface id.
           hilog.info(0x0D0D, 'ohdisp', 'xcomponent surface id %{public}s', this.xc.getXComponentSurfaceId());
@@ -91,9 +138,9 @@ struct Index {
           .onActionUpdate((ev: GestureEvent) => this.swipe(1, ev))
           .onActionEnd((ev: GestureEvent) => this.swipe(2, ev))
           .onActionCancel(() => this.swipe(3)))
-      if (this.status.length > 0) {
+      if (this.status.length > 0 || this.note.length > 0) {
         Column() {
-          Text(this.status)
+          Text(this.note.length > 0 ? this.note : this.status)
             .fontColor('#c0caf5')
             .fontSize(16)
             .textAlign(TextAlign.Center)

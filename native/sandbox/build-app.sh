@@ -1,7 +1,8 @@
 #!/bin/bash
 # Build the sandbox's display app from native/app, next to the demo's and never over it:
-# bundle com.ohmarchy.sandbox, "Omarchy (sandbox)", a recoloured icon, and its own
-# abstract socket names (prefix ohmsbx: @ohmsbx-display, -vtest, -audio, -ime).
+# bundle com.ohmarchy.sandbox, "Omarchy (sandbox)", a recoloured icon, a "Reset Linux"
+# shortcut, and its own abstract socket names (prefix ohmsbx: @ohmsbx-display, -vtest,
+# -audio, -ime, and -ctl for the helper ohm-sandboxd).
 #   UDID=<bm get --udid> native/sandbox/build-app.sh   ->  native/sandbox/ohm-sandbox.hap
 # Needs DevEco Studio's command-line tools (as native/app/build.sh) and Python's Pillow.
 set -e
@@ -27,6 +28,40 @@ for p in sys.argv[1:]:  # rotate the hue a third of the way round: same icon, ot
     out.putalpha(im.getchannel("A"))
     out.save(p)
 P
+# "Reset Linux" in the icon's menu: a shortcut whose want carries action=reset
+cat > entry/src/main/resources/base/profile/shortcuts_config.json <<'J'
+{
+  "shortcuts": [
+    {
+      "shortcutId": "reset",
+      "label": "$string:reset_label",
+      "icon": "$media:startIcon",
+      "wants": [
+        {
+          "bundleName": "com.ohmarchy.sandbox",
+          "moduleName": "entry",
+          "abilityName": "EntryAbility",
+          "parameters": { "action": "reset" }
+        }
+      ]
+    }
+  ]
+}
+J
+python3 - entry/src/main/module.json5 entry/src/main/resources/base/element/string.json <<'P2'
+import sys
+m, st = sys.argv[1], sys.argv[2]
+s = open(m).read()
+o = '"startWindowBackground": "$color:start_window_background",'
+assert s.count(o) == 1
+s = s.replace(o, o + '\n        "metadata": [{ "name": "ohos.ability.shortcuts", "resource": "$profile:shortcuts_config" }],')
+open(m, 'w').write(s)
+s = open(st).read()
+o = '"string": ['
+assert s.count(o) == 1
+s = s.replace(o, o + '\n    { "name": "reset_label", "value": "Reset Linux" },')
+open(st, 'w').write(s)
+P2
 grep -q com.ohmarchy.sandbox AppScope/app.json5 && grep -q 'Omarchy (sandbox)' entry/src/main/resources/base/element/string.json
 BUNDLE=com.ohmarchy.sandbox UDID=$UDID ./build.sh --no-install
 cp ohdisp.hap "$here/ohm-sandbox.hap"

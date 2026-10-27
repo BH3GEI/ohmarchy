@@ -1371,6 +1371,86 @@ napi_value LocalGpuNapi(napi_env env, napi_callback_info)
     return v;
 }
 
+// The sandbox's helper (native/sandbox/ohm-sandboxd.c) on @<prefix>-ctl: one of start,
+// stop, reset, status; its reply ("ok"/"failed", then output). Only the sandbox build
+// has one; the helper serves only this app's uid.
+std::string SandboxCtl(const std::string &cmd, bool wait)
+{
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd < 0) {
+        return "failed\nno socket";
+    }
+    sockaddr_un a{};
+    a.sun_family = AF_UNIX;
+    const char *name = OHM_NAME_PREFIX "-ctl";
+    size_t len = strlen(name);
+    memcpy(a.sun_path + 1, name, len);
+    if (connect(fd, reinterpret_cast<sockaddr *>(&a), offsetof(sockaddr_un, sun_path) + 1 + len) != 0) {
+        close(fd);
+        return "failed\nthe sandbox helper is not running";
+    }
+    std::string line = cmd + "\n";
+    WriteAll(fd, line.data(), line.size());
+    std::string reply;
+    char buf[512];
+    ssize_t r;
+    while (wait && (r = recv(fd, buf, sizeof buf, 0)) > 0) {
+        reply.append(buf, static_cast<size_t>(r));
+    }
+    close(fd);
+    LOGI("sandbox %{public}s: %{public}s", cmd.c_str(), wait ? reply.substr(0, reply.find('\n')).c_str() : "sent");
+    return wait ? reply : "ok\nsent";
+}
+
+struct SandboxWork {
+    std::string cmd, reply;
+    napi_deferred deferred = nullptr;
+    napi_async_work work = nullptr;
+};
+
+// sandboxCtl(cmd): a Promise of the helper's reply; "stop" only sends (the app may be
+// closing, and the helper finishes it anyway)
+napi_value SandboxCtlNapi(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    char cmd[16] = {0};
+    size_t n = 0;
+    napi_value promise = nullptr;
+    if (napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr) != napi_ok || argc < 1 ||
+        napi_get_value_string_utf8(env, argv[0], cmd, sizeof(cmd), &n) != napi_ok) {
+        return nullptr;
+    }
+    auto *w = new SandboxWork{cmd};
+    napi_create_promise(env, &w->deferred, &promise);
+    if (w->cmd == "stop") {
+        w->reply = SandboxCtl(w->cmd, false);
+        napi_value v;
+        napi_create_string_utf8(env, w->reply.c_str(), w->reply.size(), &v);
+        napi_resolve_deferred(env, w->deferred, v);
+        delete w;
+        return promise;
+    }
+    napi_value res;
+    napi_create_string_utf8(env, "sandboxCtl", NAPI_AUTO_LENGTH, &res);
+    napi_create_async_work(
+        env, nullptr, res, [](napi_env, void *d) {
+            auto *w = static_cast<SandboxWork *>(d);
+            w->reply = SandboxCtl(w->cmd, true);
+        },
+        [](napi_env env, napi_status, void *d) {
+            auto *w = static_cast<SandboxWork *>(d);
+            napi_value v;
+            napi_create_string_utf8(env, w->reply.c_str(), w->reply.size(), &v);
+            napi_resolve_deferred(env, w->deferred, v);
+            napi_delete_async_work(env, w->work);
+            delete w;
+        },
+        w, &w->work);
+    napi_queue_async_work(env, w->work);
+    return promise;
+}
+
 napi_value ReleaseKeys(napi_env, napi_callback_info)
 {
     ReleaseHeldKeys();
@@ -1401,6 +1481,7 @@ napi_value Init(napi_env env, napi_value exports)
         {"swipe", nullptr, Swipe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"releaseKeys", nullptr, ReleaseKeys, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"localGpu", nullptr, LocalGpuNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sandboxCtl", nullptr, SandboxCtlNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

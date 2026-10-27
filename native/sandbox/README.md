@@ -112,6 +112,22 @@ On screen again (2026-10-28 02:10): Alt+Shift+Return opened foot in the sandbox'
 window; in it `tty` printed /dev/pts/0, `ls /storage` said No such file or
 directory, `/data` showed only the image's `local`, `cowsay sandbox` drew its cow.
 
-To do: Docker (a4), a network namespace of its own, the app side (start, stop and
-reset from the app) (`com.ohmarchy.sandbox`, its own socket names), Docker's
+## As an app (2026-10-28)
+
+The app starts and stops Linux itself through the helper `ohm-sandboxd`
+(`ohm-sandboxd.c`, started by `ohm-sandbox serve`): it listens on @ohmsbx-ctl, takes
+connections only from `com.ohmarchy.sandbox`'s uid (SO_PEERCRED) and one line each,
+only `start`, `stop`, `reset` or `status`, mapped to fixed launcher calls (nothing
+the client sends reaches a command line), one request at a time. Opening the app
+sends `start` (the overlay says "Starting Linux…"), closing it sends `stop`; the
+icon's menu has "Reset Linux" (a shortcut; the app asks before it resets). The
+sandbox build opens maximized. The GPU broker no longer restarts the desktop when
+the app connects: the helper owns that.
+
+Checked from the command line on ohdev: a test instance answered status, start (17
+s), status (running), stop, and refused an unknown line; the real one refused a root
+client. Not yet tried from the app on screen.
+
+To do: the app on screen (open, close, reset), an installer and an uninstaller, a
+network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

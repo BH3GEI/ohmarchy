@@ -1,0 +1,144 @@
+#!/system/bin/sh
+# ohm-sandbox: Omarchy's Arch Linux locked in its own directory (native route, v1).
+# Separate from the demo session (native/arch.sh, /data/local/archtest): its own
+# image, mount point, loop device and pid file; the two never run at once.
+#   ohm-sandbox create      new image, filled from the demo session's root (read only)
+#   ohm-sandbox start       mount the image in private mount/pid/ipc/uts namespaces
+#   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
+#   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
+#   ohm-sandbox shell
+# Inside, the image is the whole filesystem (pivot_root; the host's is detached),
+# /dev holds only a few nodes, and every process runs with a bounding set that has
+# no mknod, mount (sys_admin), module, raw I/O or MAC capability, so root inside
+# cannot bring host devices or filesystems back in.
+S=${OHM_SANDBOX:-/data/local/ohm-sandbox}
+IMG=$S/root.img
+CLEAN=$S/clean.img
+R=$S/root
+PIDF=$S/sandbox.pid
+SIZE=64G
+DEMO=/data/local/archtest
+# capabilities nothing inside may have (setpriv names)
+DROP=-mknod,-sys_admin,-sys_module,-sys_rawio,-sys_boot,-sys_time,-sys_pacct,-sys_tty_config,-mac_admin,-mac_override,-syslog,-net_admin,-audit_control,-audit_read,-wake_alarm,-block_suspend,-linux_immutable,-bpf,-perfmon,-checkpoint_restore,-setpcap
+
+alive() {
+    [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ "$({ cat "/proc/$P/comm"; } 2>/dev/null)" = catatonit ]
+}
+
+# GNU tar/cp from the demo root, run on the host (toybox has no sparse cp, and its tar
+# maps owners through the host's passwd)
+gnu() {
+    D=$(cat "$DEMO/session.pid" 2>/dev/null); L=/proc/$D/root/usr/lib
+    [ -x "$L/ld-linux-aarch64.so.1" ] || { echo "the demo session is not running (needed for $1)" >&2; return 1; }
+    t=$1; shift
+    "$L/ld-linux-aarch64.so.1" --library-path "$L" "/proc/$D/root/usr/bin/$t" "$@"
+}
+
+case "$1" in
+create)
+    [ -e "$IMG" ] && { echo "refusing: $IMG exists"; exit 1; }
+    D=$(cat "$DEMO/session.pid" 2>/dev/null)
+    [ -d "/proc/$D/root/usr" ] || { echo "the demo session is not running"; exit 1; }
+    mkdir -p "$R"
+    truncate -s "$SIZE" "$IMG" && mke2fs -t ext4 -q -F "$IMG" || exit 1
+    # copy in a private mount namespace; build trees and caches stay out
+    unshare -m sh -c '
+        n=0; until losetup /dev/block/loop$n "$1" 2>/dev/null; do n=$((n+1)); [ -b /dev/block/loop$n ] || exit 1; done
+        mount -t ext4 /dev/block/loop$n "$2" || exit 1
+        L=/proc/$3/root/usr/lib; T="$L/ld-linux-aarch64.so.1 --library-path $L /proc/$3/root/usr/bin/tar"
+        $T -C /proc/$3/root --one-file-system --numeric-owner --xattrs --acls -cpf - \
+            --exclude=./home/builder/hmvk --exclude=./home/builder/pkg --exclude=./home/hmvbuild \
+            --exclude=./home/builder/.cache --exclude="./var/cache/pacman/pkg/*" --exclude="./var/tmp/*" \
+            --exclude="./tmp/*" --exclude="./run/*" . |
+            $T -C "$2" --numeric-owner --xattrs --acls -xpf -
+        echo "copy exit $?"; df -h "$2" | tail -1
+        umount "$2"; losetup -d /dev/block/loop$n
+    ' sh "$IMG" "$R" "$D"
+    gnu cp --sparse=always "$IMG" "$CLEAN" && echo "snapshot: $CLEAN"
+    ;;
+start)
+    if alive; then echo "already running: $P"; exit 0; fi
+    [ -f "$IMG" ] || { echo "no image: ohm-sandbox create"; exit 1; }
+    D=$(cat "$DEMO/session.pid" 2>/dev/null)
+    [ -n "$D" ] && [ -d "/proc/$D" ] && { echo "refusing: the demo session is running (pid $D); stop it first"; exit 1; }
+    rm -f "$PIDF"
+    nohup unshare -m -p -i -u -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
+    i=0; while [ $i -lt 30 ] && ! alive; do sleep 1; i=$((i+1)); done
+    alive && echo "started: $P" || { echo "failed to start"; cat "$S/sandbox.log"; exit 1; }
+    ;;
+_session)
+    set -e
+    mount --make-rprivate / 2>/dev/null || true
+    n=0
+    until losetup "/dev/block/loop$n" "$IMG" 2>/dev/null; do
+        n=$((n+1)); [ -b "/dev/block/loop$n" ] || { echo "no free loop device"; exit 1; }
+    done
+    echo "/dev/block/loop$n" > "$S/sandbox.loop"
+    mount -t ext4 -o nodev "/dev/block/loop$n" "$R"
+    mount -t proc -o nosuid,nodev,noexec proc "$R/proc"
+    # the kernel's knobs stay read-only (no sys_admin inside to remount them)
+    mount -o bind "$R/proc/sys" "$R/proc/sys"; mount -o remount,bind,ro "$R/proc/sys"
+    mount -o bind /dev/null "$R/proc/sysrq-trigger" 2>/dev/null || true
+    mount -o bind,ro /sys "$R/sys"
+    mount -t tmpfs -o mode=755,nosuid tmpfs "$R/dev"
+    for d in "null 1 3" "zero 1 5" "full 1 7" "random 1 8" "urandom 1 9" "tty 5 0" "ptmx 5 2"; do
+        set -- $d; mknod "$R/dev/$1" c "$2" "$3"; chmod 666 "$R/dev/$1"
+    done
+    mkdir -p "$R/dev/pts" "$R/dev/shm"
+    mount -t devpts -o newinstance,ptmxmode=0666 devpts "$R/dev/pts" 2>/dev/null || true
+    mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/dev/shm"
+    if [ -c /dev/system_heap2 ]; then  # the desktop's buffers; numbers differ per machine
+        mkdir -p "$R/dev/dma_heap"
+        set -- $(stat -c '%t %T' /dev/system_heap2)
+        mknod "$R/dev/dma_heap/system" c $((0x$1)) $((0x$2)); chmod 666 "$R/dev/dma_heap/system"
+    fi
+    ln -sf /proc/self/fd "$R/dev/fd"
+    ln -sf /proc/self/fd/0 "$R/dev/stdin"; ln -sf /proc/self/fd/1 "$R/dev/stdout"; ln -sf /proc/self/fd/2 "$R/dev/stderr"
+    mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/tmp"
+    mount -t tmpfs -o mode=755,nosuid,nodev tmpfs "$R/run"
+    cut -d' ' -f4 /proc/self/stat > "$PIDF"   # host pid of this shell (host procfs still)
+    # the image becomes /; the host's filesystem is detached from this namespace
+    mkdir -p "$R/.oldroot"
+    cd "$R"
+    pivot_root . .oldroot
+    cd /
+    /usr/bin/umount -l /.oldroot
+    /usr/bin/rmdir /.oldroot
+    set +e
+    echo "sandbox up on /dev/block/loop$n"
+    exec /usr/bin/env -i /usr/bin/setpriv --bounding-set "$DROP" -- /usr/bin/catatonit -P
+    ;;
+run|shell)
+    alive || { echo "not running"; exit 1; }
+    c=$1; shift
+    [ "$c" = shell ] && set -- /usr/bin/bash -l
+    # setns into the mount namespace moves the process to its root (the image)
+    exec nsenter -t "$P" -m -p -i -u -- /usr/bin/env -i HOME=/root TERM=xterm-256color LANG=C.UTF-8 \
+        PATH=/usr/local/sbin:/usr/local/bin:/usr/bin /usr/bin/setpriv --bounding-set "$DROP" -- "$@"
+    ;;
+status)
+    alive && echo "running: $P ($(cat "$S/sandbox.loop" 2>/dev/null))" || echo "stopped"
+    ;;
+stop)
+    alive || { echo "not running"; exit 0; }
+    nsenter -t "$P" -m sync
+    kill -9 "$P"   # pid-namespace init: SIGKILL tears the namespace down
+    i=0; while [ $i -lt 20 ] && [ -d "/proc/$P" ]; do sleep 1; i=$((i+1)); done
+    rm -f "$PIDF"
+    L=$(cat "$S/sandbox.loop" 2>/dev/null)
+    i=0
+    while [ -n "$L" ] && [ $i -lt 20 ] && losetup "$L" 2>/dev/null | grep -qF "($IMG)"; do
+        losetup -d "$L" 2>/dev/null || sleep 0.5
+        i=$((i+1))
+    done
+    rm -f "$S/sandbox.loop"
+    echo stopped
+    ;;
+reset)
+    alive && { echo "running: stop it first"; exit 1; }
+    [ -f "$CLEAN" ] || { echo "no snapshot $CLEAN"; exit 1; }
+    gnu cp --sparse=always "$CLEAN" "$IMG.new" && mv "$IMG.new" "$IMG" && echo "reset to the snapshot"
+    ;;
+*)
+    echo "usage: ohm-sandbox create|start|stop|status|reset|run CMD..|shell" >&2; exit 2 ;;
+esac

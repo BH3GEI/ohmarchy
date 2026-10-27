@@ -186,7 +186,7 @@
 | 4b | 沙箱是停着的，演示用的包没装 | `ssh ohdev sh /data/local/ohm-sandbox/bin/ohm-sandbox status` 显示 stopped。上次演示装过包就先重置一次（`... ohm-sandbox reset`，约 35 秒） |
 | 4c | 空间够重置 | `ssh ohdev df -h /data`：可用要 50 GB 以上（2026-10-28 是 101 GB），不够重置会拒绝 |
 | 4d | 网络通 | ohdev 连着 Wi-Fi。沙箱开机时会抄一份当时的默认路由；中途换了网络，【后台】`... ohm-sandbox net` |
-| 4e | sudo 密码 | 终端里的用户是 builder，`sudo pacman` 要 builder 的密码（**待定**：要么演示者事先知道这个密码，要么改成沙箱里 pacman 免密码，等决定） |
+| 4e | sudo 密码 | 终端里的用户是 builder，`sudo` 要密码：测试密码与鸿融演示盘相同，口头告知，不写进任何文件。重置快照里就是这个密码（2026-10-28 改好，sudo pacman 装包、重置后再 sudo 都验过） |
 
 ### 演示步骤
 
@@ -195,7 +195,7 @@
 | 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy (sandbox)"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 约 20 秒（2026-10-28 实测 16–19 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
 | 4.2 | 不用操作 | 全屏桌面 | | "它一打开就是全屏。要回鸿蒙：Alt+Tab 切走，Ctrl+Alt+Esc 最小化。" |
 | 4.3 | **Alt+Shift+Return** 开终端 | 一个终端 | 3 秒 | |
-| 4.4 | 输入 `sudo pacman -S --noconfirm cowsay` 回车（要密码就输入，见 4e），装完输入 `cowsay hello` 回车 | 下载、安装，然后一头牛说 hello | 约 15 秒（待彩排确认） | "Arch 官方仓库，pacman 照常能用，里面是 root。" |
+| 4.4 | 输入 `sudo pacman -S --noconfirm cowsay` 回车，输入测试密码（见 4e），装完输入 `cowsay hello` 回车 | 下载、安装，然后一头牛说 hello | 约 15 秒（待彩排确认） | "Arch 官方仓库，pacman 照常能用，里面是 root。" |
 | 4.5 | 输入 `ls /storage /system` 回车 | 两行 `No such file or directory` | 2 秒 | "鸿蒙的照片、文件、系统目录，在它里面根本不存在。它只看得见自己的目录。" |
 | 4.6 | 输入 `curl -m 3 http://127.0.0.1:22` 回车 | `Failed to connect …`（curl 退出码 7） | 3 秒 | "它有自己的网络，能上网（刚才 pacman 就是），但碰不到鸿蒙本机上的服务。" |
 | 4.7 | **Ctrl+Alt+Esc** 最小化，在程序坞上**右键**粉色图标 → **"Reset Linux"** | 弹出确认框 "Reset Linux?"（Cancel / Reset）。Linux 在你点之前不会动 | 3 秒 | "装坏了也不怕：一键恢复到刚安装时的样子。先问一下，不会误点。" |
@@ -211,7 +211,7 @@
 |---|---|
 | 双击后一直黑屏、没桌面 | 小助手没在跑（多半是机器重启过，见 4a）。关掉 app，【后台】`ohm-sandbox serve`，再双击。还不行就跳过第 4 段 |
 | pacman 下载不动 | 网络问题。【后台】`ohm-sandbox net` 重连；不行就跳过 4.4，直接讲 4.5、4.6 |
-| `sudo` 要密码，不知道 | 跳过 4.4 和 4.9，只讲 4.5–4.8 |
+| `sudo` 密码不对 | 密码和鸿融演示盘相同（4e）。还不对就跳过 4.4 和 4.9，只讲 4.5–4.8 |
 | 重置超过 2 分钟桌面还没回来 | 关掉 app，【后台】`ohm-sandbox status` 看一下；跳过，收尾 |
 | 第 1 段的 "Omarchy (native)" 受影响了吗 | 不会：两个完全分开，可以同时开（10-28 全程核对过 native 的会话和进程没变） |
 

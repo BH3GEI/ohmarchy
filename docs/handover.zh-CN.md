@@ -130,7 +130,7 @@
   - Docker 还没接进沙箱（I 线在做；HongMeng 缺的东西见第 3(a) 节第 8–14 条）。
   - 开机自起小助手：cfg 已写入，但 init 只在开机时读，要等下次真重启才能验证；在那之前机器重启后要手动 `ohm-sandbox serve`。
   - 换网络后要 `ohm-sandbox net` 重连；只有 IPv4。
-- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**；但 EINVAL 只说明导出格式不能直接回灌，**运行时重载是否可行仍待测**：下一步用机上 secilc 把现有 CIL 编成正确的 load 格式再试（step-2）。注意恢复路径也要同步修正——policy.orig 回灌同样会 EINVAL，死人开关和撤销都必须写回开机实际加载的磁盘文件（疑为 /vendor/etc/selinux/prebuild_sepolicy/policy.31，待确认），最终退路是重启。后续结论（10-28）：ohdev 的内核不接受运行时加载策略，v1 改用命名空间、pivot_root 和去能力，小助手留在 `su` 域（见上面"已知缺口"）。
+- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**。随后的 step-2 实测（2026-10-27）已定论：开机实际加载的是 /vendor/etc/selinux/prebuild_sepolicy/developer_policy（3299594 字节，与 live 一致；policy.31 是 3269901 字节的非 developer 版，用它会丢 developer 规则，不用）。把**这份开机原版**原样写回 /sys/fs/selinux/load 仍是 EINVAL、0 字节——连内核开机时自己接受的同一份二进制都回灌不了，排除了格式问题，**证明鸿蒙内核在开机后硬禁止再加载任何策略**。因此运行时加载我们自己的 SELinux 域在本机不可行（step-2b 不做），且运行时没有任何回灌恢复、只能重启（两次 step-2 测试均零改动、系统无损、无需恢复）。后续结论（10-28）：ohdev 的内核不接受运行时加载策略，v1 改用命名空间、pivot_root 和去能力，小助手留在 `su` 域（见上面"已知缺口"）。
 - **Docker（10-27，I 线）。**此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（10-27 时沙箱能连宿主 127.0.0.1；10-28 沙箱有了自己的 net namespace，这个口子已补上，Docker 接入时网络要重新设计）。
 - 本文第 3(b) 节里与小助手、MAC 规则、允许清单相关的请求，以该文档定稿为准。
 
@@ -298,8 +298,8 @@
    - 为什么：HongMeng 上抽象名字全局共享。沙箱有了自己的 net namespace 之后，TCP/UDP 已经碰不到主机的 127.0.0.1，可主机上所有在监听的抽象 socket 仍然连得上，其中有鸿蒙自己的服务：wpa_supplicant 的控制接口（`@/data/service/el1/public/wifi/sockets/wpa/wlan0`，wpa_host）、TEE 客户端守护进程（`@tc_ns_socket`，teecd）、hiview（`@DUBAI_BUFFERED_LOG`）、hdcd（`@ohjpid-control`）。清单、属主和风险评估见 native/sandbox/abstract-sockets-ohdev.md（2026-10-28 ohdev）。
    - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
    - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
-   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）；沙箱自己的 MAC 域（3(b) 第 1 条）里禁止对沙箱以外的 unix socket 做 connectto/sendto，可以挡住大部分。
-   - 缓解（2026-10-28）：我们已经在沙箱这一侧做了出站过滤。现在是 libc 层的垫片（ohm-abstract-fence），沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，只防误连。正式边界是上面的 MAC 域；如果内核加载不了策略，就用 seccomp 加 supervisor 兜底（设计评审中）。根治仍需内核按 netns 隔离抽象 socket。
+   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）；沙箱自己的 MAC 域（3(b) 第 1 条）里禁止对沙箱以外的 unix socket 做 connectto/sendto，可以挡住大部分——但该域需运行时加载，而运行时加载已于 2026-10-27 证伪，故此域只有在鸿蒙把它签进系统策略后才成立。
+   - 缓解（2026-10-28）：我们已经在沙箱这一侧做了出站过滤。现在是 libc 层的垫片（ohm-abstract-fence），沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，只防误连。由于运行时加载策略已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），沙箱侧的内核级 egress 兜底（D 的 C 方案：现为 libc 垫片，后续 seccomp + supervisor）就是当前实际防线；MAC 域只有等鸿蒙把它签进系统策略后才能作为正式边界。根治仍需内核按 netns 隔离抽象 socket。
 
 Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 
@@ -308,7 +308,7 @@ Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用�
 1. **原生沙箱的小助手作为系统服务，并配专用 MAC（SELinux）规则。**
    - 为什么：现在 root 的 broker 和会话初始化只能留在宽松的 `su` 域，也切不到更窄的域。新方案需要一个受控、可审计的 root 小助手。
    - 影响：D、原生沙箱。
-   - 现状：developer 版上可以运行时加载我们自己的 SELinux 模块（见 1.5 节，待实测）。正式版需要鸿蒙把这个模块收进系统策略，并把小助手作为系统服务预置或签名。
+   - 现状：**运行时加载已被证伪**（2026-10-27 实测，见 1.5 节）——连开机加载的原版 developer_policy（3299594 字节）原样回灌都返回 EINVAL（step-1 rc=1、step-2a EINVAL，均 0 字节、系统无损），鸿蒙内核在开机后硬禁止再加载任何策略，我们无法自行装入新域，运行时也没有任何回灌恢复、只能重启。因此唯一出路是**请鸿蒙把我们的策略模块签进系统策略/OTA**，并把小助手作为签名的系统服务预置。模块设计已拟（新域只读写自己的目录 + Docker 放行清单 + 禁止对沙箱外 connectto/sendto），可随诉求交付。
    - 退路：继续以 root 运行，实际工作降到 uid 60000，socket 用 SO_PEERCRED 只认显示 app。
    - 具体形式以 docs/native-sandbox.md 为准。
 2. **应用白名单与签名。**

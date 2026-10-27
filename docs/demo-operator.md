@@ -32,6 +32,11 @@ Super+Return is Alt+Shift+Return. When the shortcut has Shift in it as well,
 hold **both** Shift keys: Super+Shift+B is Alt+left Shift+right Shift+B. Right Alt
 is a plain Alt again. In the VMs (parts 2 and 3) Super is the Windows key as usual.
 
+The sandboxed version, "Omarchy (sandbox)" (pink icon; not part of this demo),
+opens full screen: Alt+Tab switches away, Ctrl+Alt+Escape minimizes it, and
+"关闭窗口" in its dock icon's menu closes it (Linux stops with it). "Reset Linux"
+in the same menu puts Linux back as installed, after asking.
+
 ## Order (about 10 min)
 
 | # | Part | Time (rehearsed) | Must be true at the end |

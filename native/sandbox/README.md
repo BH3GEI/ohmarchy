@@ -126,8 +126,26 @@ the app connects: the helper owns that.
 
 Checked from the command line on ohdev: a test instance answered status, start (17
 s), status (running), stop, and refused an unknown line; the real one refused a root
-client. Not yet tried from the app on screen.
+client.
 
-To do: the app on screen (open, close, reset), an installer and an uninstaller, a
-network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
+On screen (2026-10-28 02:49-03:01): a double-click on "Omarchy (sandbox)" started
+Linux (16 s) and the desktop filled the screen; the app found the GPU broker right
+after the start (it looks again for 30 s, since the broker comes up with Linux).
+"关闭窗口" in the dock icon's menu closed the app and Linux stopped (10 s). "Reset
+Linux" from the desktop icon's menu opened the app, which asked, reset (33 s) and
+started again; cowsay, installed after the snapshot, was gone. A failing step no
+longer stops the helper's sequence (desktop stop fails when nothing is left).
+
+Using it (full screen, no title bar):
+
+- Alt+Tab switches to other windows (HarmonyOS's switcher) and back.
+- Ctrl+Alt+Escape minimizes the app (Omarchy binds nothing there; Alt+Shift+Escape
+  would be Super+Escape, its system menu).
+- Close: "关闭窗口" in the dock icon's menu (right-click or long-press); Linux stops
+  with the app.
+- Reset: "Reset Linux" in the same menu, or the desktop icon's; it asks first.
+- Not tried: the mouse at the top edge, three-finger swipes (no injected touchpad).
+
+To do: an installer and an uninstaller, a network namespace of its own, the helper
+started at boot (now `ohm-sandbox serve` by hand) (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

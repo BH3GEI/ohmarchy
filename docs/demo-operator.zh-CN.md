@@ -15,6 +15,8 @@
 
 "Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用 Alt+Shift 一起按来代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用；app 会把同时按住的 Alt+Shift 当成 Super 发给 Omarchy。所以 Super+Return 就是 Alt+Shift+Return。快捷键里本来还带 Shift 的，**两个 Shift 都按住**：Super+Shift+B 就是 Alt+左 Shift+右 Shift+B。右 Alt 恢复成普通 Alt。虚拟机里（第 2、3 部分）照常用 Windows 键。
 
+沙箱版 "Omarchy (sandbox)"（粉色图标，不在本次演示里）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
+
 ## 演示顺序（约 10 分钟）
 
 | # | 内容 | 时间（彩排实测） | 结束时必须做到 |

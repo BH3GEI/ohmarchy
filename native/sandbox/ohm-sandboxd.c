@@ -50,6 +50,9 @@ static int run(char **const *steps, char *out, size_t outlen)
         dup2(p[1], 2);
         int null = open("/dev/null", O_RDONLY);
         dup2(null, 0);
+        // every step runs (desktop stop fails when there is nothing left to stop);
+        // the last one's status counts, and reset refuses by itself if stop did not
+        int rc = 0;
         for (int i = 0; steps[i] != NULL; i++) {
             pid_t s = fork();
             if (s == 0) {
@@ -58,10 +61,9 @@ static int run(char **const *steps, char *out, size_t outlen)
             }
             int st = 0;
             waitpid(s, &st, 0);
-            if (!WIFEXITED(st) || WEXITSTATUS(st) != 0)
-                _exit(1);
+            rc = WIFEXITED(st) ? WEXITSTATUS(st) : 1;
         }
-        _exit(0);
+        _exit(rc);
     }
     close(p[1]);
     size_t n = 0;

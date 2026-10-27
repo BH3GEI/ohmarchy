@@ -165,7 +165,7 @@ S=/data/local/ohm-sandbox; O="sh $S/bin/ohm-sandbox"
 $O desktop start > /dev/null 2>&1
 $O status; $O desktop status
 sh $S/bin/config-check.sh > $S/evidence/config-check-install.txt 2>&1
-grep -E '^(mnt|pid|ipc|uts) |CapBnd|NoNewPrivs' $S/evidence/config-check-install.txt
+grep -E '^(mnt|pid|ipc|uts|net) |CapBnd|NoNewPrivs' $S/evidence/config-check-install.txt
 $O desktop stop > /dev/null 2>&1; $O stop
 EOF
 health > "$tmp/after"

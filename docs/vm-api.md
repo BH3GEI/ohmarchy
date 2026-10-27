@@ -198,7 +198,9 @@ On 7.0.0.32 the VM service authorizes callers only by its built-in
 appIdentifier list. The list holds OSEasy (`5765880207855186917`) and 铠大师,
 but not 鸿融, so the app is refused whichever version is installed (1.3.1.80
 and 1.1.1.103 share the appIdentifier; a downgrade does not help). 7.0.0.115
-adds `MANAGE_VM` and accepts 鸿融. Route C therefore needs a system at
+adds `MANAGE_VM` and accepts 鸿融. On the same ohdev2, OSEasy's createVm
+succeeded at 19:14 (stratovirt with `accel=hmv` started), so the VM service
+and HMV themselves work there; only the caller check refuses 鸿融. Route C therefore needs a system at
 7.0.0.115 or similar; on older systems use route B (OSEasy). **Open item for
 Huawei:** 鸿融 is shipped to systems whose VM service refuses it.
 

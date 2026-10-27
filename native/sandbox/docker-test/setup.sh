@@ -21,7 +21,7 @@ done
   ln -sf usr/bin $R/bin; ln -sf bash $R/usr/bin/sh; ln -sf usr/lib $R/lib; ln -sf usr/lib $R/lib64; chmod 1777 $R/tmp
   echo 'root:x:0:0:root:/root:/bin/sh' > $R/etc/passwd; echo 'root:x:0:' > $R/etc/group
   grep -q '^nameserver' $A/etc/resolv.conf 2>/dev/null && cp -L $A/etc/resolv.conf $R/etc/resolv.conf || echo 'nameserver 223.5.5.5' > $R/etc/resolv.conf
-  echo '{"registry-mirrors":["https://docker.m.daocloud.io","https://docker.1ms.run"],"iptables":false,"ip6tables":false,"bridge":"none","data-root":"/var/lib/docker","exec-root":"/run/docker","storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"10m"}}' > $R/etc/docker/daemon.json
+  echo '{"registry-mirrors":["https://docker.m.daocloud.io","https://docker.1ms.run"],"iptables":false,"ip6tables":false,"bridge":"none","data-root":"/var/lib/docker","exec-root":"/run/docker","storage-driver":"vfs","seccomp-profile":"unconfined","log-driver":"json-file","log-opts":{"max-size":"10m"}}' > $R/etc/docker/daemon.json
 }
 echo "resolv: $(grep -c nameserver $A/etc/resolv.conf 2>/dev/null)"; du -sh $S 2>/dev/null
 echo __END__

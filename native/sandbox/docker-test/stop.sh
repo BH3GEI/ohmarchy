@@ -5,6 +5,9 @@ if [ -n "$p" ] && kill -0 $p 2>/dev/null && grep -q dockerd /proc/$p/cmdline; th
   kill -TERM $p; i=0; while kill -0 $p 2>/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
   kill -0 $p 2>/dev/null && echo "still running after 30 s: $p" || echo "stopped $p"
 else echo "not running"; fi
-ps -A -o pid,args | grep -E 'ohm-sandbox|containerd-shim|/usr/bin/containerd' | grep -v grep
-echo "host mounts mentioning sandbox: $(grep -c ohm-sandbox /proc/self/mountinfo)"
+q=$(cat $S/pasta.pid 2>/dev/null)
+if [ -n "$q" ] && case "$(readlink /proc/$q/exe 2>/dev/null)" in $S/tools/pasta|$S/tools/passt) true;; *) false;; esac; then kill $q && echo "stopped pasta $q"; sleep 1; fi
+rm -f $S/pasta.pid
+ps -A -o pid,args | grep -E 'ohm-docker-test|containerd-shim|/usr/bin/containerd' | grep -v grep
+echo "host mounts mentioning sandbox: $(grep -c ohm-docker-test /proc/self/mountinfo)"
 echo __END__

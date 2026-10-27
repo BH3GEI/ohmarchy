@@ -127,7 +127,7 @@
 - **已知缺口（在这些解决之前，只算测试机级别的隔离，不能当作对外的安全承诺）。**
   - 抽象 Unix socket 与主机共享：HongMeng 不按 net namespace 隔离抽象名字，沙箱仍能连到主机上所有在监听的抽象 socket，其中有 wpa_supplicant 的控制接口和 TEE 守护进程 teecd（清单见 abstract-sockets-ohdev.md，未做任何实测）。诉求见第 3(a) 节第 15 条。
   - SELinux 域还是宽松的 `su`：ohdev 不接受运行时加载策略，自己的域要靠鸿蒙（第 3(b) 节第 1 条）。
-  - Docker 还没接进沙箱（I 线在做；HongMeng 缺的东西见第 3(a) 节第 8–14 条）。
+  - Docker 测试版已能在自己的目录里跑容器（10-28：hello-world、alpine sh、nginx，native/sandbox/docker-test），还没并进 app 的沙箱；HongMeng 缺的东西见第 3(a) 节第 8–14、16–23 条。
   - 开机自起小助手：cfg 已写入，但 init 只在开机时读，要等下次真重启才能验证；在那之前机器重启后要手动 `ohm-sandbox serve`。
   - 换网络后要 `ohm-sandbox net` 重连；只有 IPv4。
 - 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**。随后的 step-2 实测（2026-10-27）已定论：开机实际加载的是 /vendor/etc/selinux/prebuild_sepolicy/developer_policy（3299594 字节，与 live 一致；policy.31 是 3269901 字节的非 developer 版，用它会丢 developer 规则，不用）。把**这份开机原版**原样写回 /sys/fs/selinux/load 仍是 EINVAL、0 字节——连内核开机时自己接受的同一份二进制都回灌不了，排除了格式问题，**证明鸿蒙内核在开机后硬禁止再加载任何策略**。因此运行时加载我们自己的 SELinux 域在本机不可行（step-2b 不做），且运行时没有任何回灌恢复、只能重启（两次 step-2 测试均零改动、系统无损、无需恢复）。后续结论（10-28）：ohdev 的内核不接受运行时加载策略，v1 改用命名空间、pivot_root 和去能力，小助手留在 `su` 域（见上面"已知缺口"）。
@@ -283,7 +283,7 @@
    - 为什么：HongMeng 上它们指向绝对路径（`/proc/53802`）。runc 用 openat2(RESOLVE_BENEATH|RESOLVE_NO_XDEV) 安全地打开 /proc 下的文件，遇到绝对链接会被判成越界，返回 EXDEV（`unsafe procfs detected: openat2 /proc/thread-self/fd/: invalid cross-device link`）；换成不用 openat2 的退路，又报 `possible breakout detected: cannot jump to / in procfs resolver`。
    - 复现：`readlink /proc/self`、`readlink /proc/thread-self`。
    - 影响：原生沙箱（Docker），以及所有用 filepath-securejoin/pathrs-lite 的程序（runc、containerd 等）。
-   - 退路：测试版 runc 检测到绝对链接时，直接用具体的 pid/tid 路径（vendored pathrs-lite 的补丁）。
+   - 退路：测试版 runc 检测到绝对链接时，读出链接指向的 pid/tid 路径直接用（vendored pathrs-lite 的补丁）。不能用 getpid()：runc init 在新的 pid namespace 里 getpid() 是 1，而这时它看的还是外层的 /proc，`/proc/1` 是另一个进程（10-27 的第一版补丁就错在这里，10-28 已改）。
 12. **memfd 的 `F_GET_SEALS` 和新的挂载 API `fsopen("overlay")`。**
    - 为什么：runc 为了防 CVE-2019-5736（容器改写宿主上的 runc），要么用 memfd 加 seal 封住自身，要么用 overlay 封住；这两样在 HongMeng 上分别返回 EINVAL 和 ENOSYS。runc 最后退到"复制一份临时文件"，还能用；crun 没有这个退路，直接报 `Failed to re-execute libcrun via memory file descriptor`。
    - 复现：`runc --debug run` 的日志（`F_GET_SEALS on /proc/self/exe failed: invalid argument`、`fsopen overlay: function not implemented`）。
@@ -304,8 +304,41 @@
    - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
    - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）。
    - 缓解（2026-10-28）：当前实际缓解是 D 的 **B 方案——libc 层出站过滤**（ohm-abstract-fence）：沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，沙箱里的 root 也能把它摘掉，**只防误连、不是安全边界**。2026-10-28 带 app 上屏验证：桌面、终端、拼音输入、声音、上网都照常，沙箱里的 `ohm-fence-demo` 连主机的 Wi-Fi 控制名得到 EACCES。原计划的两条内核级边界都不成立：(1) 我们自己的 SELinux MAC 域——运行时加载已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），只有鸿蒙把它签进系统策略才成立；(2) **C 方案（seccomp + ptrace supervisor 的内核级自主出站拦截）——评估后暂不实现**（会明显拖累桌面性能，且目前的 residual 并非已证实的漏洞），仅作文档记录的可选加固、设计从略、未实现。根治仍需鸿蒙按 netns 隔离抽象 socket，或把我们的策略模块签进系统。
+16. **SOCK_SEQPACKET 上 `recvfrom(MSG_PEEK|MSG_TRUNC)` 按 Linux 的方式返回整包长度。**
+   - 为什么：Linux 上带 MSG_TRUNC 时返回值是整个包的长度，缓冲区为空也一样；HongMeng 只返回实际拷贝的字节数，空缓冲区时返回 0 或 EFAULT。runc 父子进程的同步 socket 就靠这个先探包长，结果把第一个包当成"对端已关闭"：init 发回来的任何报错都被吞掉，只剩 `procReady not received`。
+   - 复现：socketpair(AF_UNIX, SOCK_SEQPACKET) 写 26 字节，`recvfrom(fd, NULL, 0, MSG_PEEK|MSG_TRUNC)` 得 EFAULT，1 字节缓冲区得 1（10-28 ohdev，tools/seqprobe）。
+   - 影响：原生沙箱（Docker），以及其他用这种方式探包长的程序。
+   - 退路：测试版 runc 改用真缓冲区 peek，装满就翻倍再试（Linux 上结果相同，不削弱）。
+17. **线程级 `setns(CLONE_NEWNS)` 只作用于调用的线程**（和上表线程级 CLONE_FS 那一行同根）。
+   - 为什么：runc 父进程起一个线程 `unshare(CLONE_FS)` 后 setns 进容器的 mount ns，给 idmapped 挂载取源。HongMeng 上这一下把整个 runc 进程都带进了容器的 mount ns，runc 随后写自己的状态文件失败（`unable to store init state: open /run/runc/<id>/state-…: no such file or directory`）。
+   - 影响：原生沙箱（Docker）。
+   - 退路：测试版 runc 加开关 `OHM_NO_MOUNT_SOURCE_THREAD=1`（默认关闭），不起这个线程。没有 user namespace，本来也用不上 idmapped 挂载；普通 bind 挂载不受影响。
+18. **`prctl(PR_SET_KEEPCAPS)` 可用。**
+   - 为什么：HongMeng 上设 1、设 0 都返回 EPERM，和 bounding 集无关（10-28 tools/kcprobe）。runc 在切换用户前要先设它，失败就不起容器；setpriv 也因此不能用（D 的沙箱改用自己的 ohm-capdrop）。
+   - 影响：原生沙箱（Docker）、原生沙箱本身。
+   - 退路：测试版 runc 加开关 `OHM_KEEPCAPS_BEST_EFFORT=1`（默认关闭）：EPERM 时跳过。root 容器的 caps 本来就不变；指定了非 root 用户的容器会比要求的少一些 caps（更紧，不是更松）。
+19. **每个 mount namespace 可以挂新的 devpts（newinstance）和 mqueue。**
+   - 为什么：两者都返回 ENODEV。Docker 默认给每个容器挂 /dev/pts 和 /dev/mqueue。
+   - 影响：原生沙箱（Docker）。容器里没有 tty（`docker run -t` 不可用）、没有 POSIX 消息队列。
+   - 退路：测试版 runc 加开关 `OHM_SKIP_FS=devpts,mqueue`（默认关闭）：这两个挂载点留空目录。不能把宿主的 /dev/pts bind 进来（会跨出沙箱边界），所以只能不给。
+20. **提供 `/proc/sys/kernel/cap_last_cap`。**
+   - 为什么：没有这个文件，runc 和 Docker 用的 capability 库算不出最大的 cap 号，容器 init 直接失败。
+   - 影响：原生沙箱（Docker），以及 libcap 之外按这个文件取上限的程序。
+   - 退路：测试版 runc 改为用 `PR_CAPBSET_READ` 逐个探测（libcap 的做法，不削弱）。
+21. **tmpfs 接受 `nr_blocks`、`nr_inodes` 参数。**
+   - 为什么：runc 用 `nr_blocks=1,nr_inodes=2` 的只读 tmpfs 盖住 /proc/asound、/proc/keys 等目录，HongMeng 返回 EINVAL。
+   - 影响：原生沙箱（Docker）。
+   - 退路：测试版 runc 遇 EINVAL 时去掉这两个参数重挂，仍是只读 tmpfs，目录照样被盖住（不削弱）。
+22. **seccomp。**
+   - 为什么：HongMeng 没有 seccomp，Docker 默认给每个容器加的系统调用过滤（挡住 keyctl、bpf、mount 等危险调用）无法生效。
+   - 影响：原生沙箱（Docker）。容器里的 root 能直接调用所有系统调用，只受 caps 和沙箱外层的约束；这削弱的是容器对内核的防护。
+   - 退路：测试版 daemon.json 设 `"seccomp-profile": "unconfined"`，runc 不带 seccomp 编译。
+23. **socketpair 上的 `ioctl(FIOASYNC)`。**
+   - 为什么：返回 ENOTTY。nginx 的 master 进程靠它和 worker 通信，worker 一个都起不来（`ioctl(FIOASYNC) failed while spawning "worker process" (25: Not a tty)`）。
+   - 影响：原生沙箱里跑的 nginx，以及其他用 SIGIO 的程序。
+   - 退路：nginx 用 `master_process off` 单进程运行。
 
-Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
+Docker 测试版（10-28 ohdev：hello-world、alpine sh、沙箱自己 netns 里的 nginx 都已跑通，见 native/sandbox/docker-test/README.md）的绕过开关都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`、`OHM_CHROOT_REEXEC`（dockerd）；`OHM_NO_CGROUPS`、`OHM_KEYRING_BEST_EFFORT`、`OHM_SKIP_FS`、`OHM_NO_MOUNT_SOURCE_THREAD`、`OHM_KEEPCAPS_BEST_EFFORT`（runc）；daemon.json 的 `seccomp-profile: unconfined`。另有几处只修差异、不削弱的补丁：uname、/proc 链接、SEQPACKET 探包长、cap_last_cap、tmpfs 参数。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev，NET=pasta 时还有独立的 net ns）一处都没放松。削弱的是容器这一层：cgroup、keyring 只影响容器之间的隔离；devices cgroup 和 seccomp 原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device`/宿主路径的 `-v`，再加沙箱外层兜底。所以这个测试版只证明功能可行，不能当安全方案。
 
 ### 3(b) 希望允许或放开的
 

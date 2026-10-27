@@ -1,5 +1,158 @@
+diff --git a/libcontainer/container_linux.go b/libcontainer/container_linux.go
+index b436854..6f5d6d0 100644
+--- a/libcontainer/container_linux.go
++++ b/libcontainer/container_linux.go
+@@ -543,6 +543,13 @@ func (c *Container) newParentProcess(p *Process) (parentProcess, error) {
+ 		cmd.SysProcAttr = &unix.SysProcAttr{}
+ 	}
+ 	cmd.Env = append(cmd.Env, "GOMAXPROCS="+os.Getenv("GOMAXPROCS"))
++	// runc init starts with an empty environment; pass the OHM_* test
++	// switches on (ohmarchy native sandbox, test builds only)
++	for _, kv := range os.Environ() {
++		if strings.HasPrefix(kv, "OHM_") {
++			cmd.Env = append(cmd.Env, kv)
++		}
++	}
+ 	cmd.ExtraFiles = append(cmd.ExtraFiles, p.ExtraFiles...)
+ 	if p.ConsoleSocket != nil {
+ 		cmd.ExtraFiles = append(cmd.ExtraFiles, p.ConsoleSocket)
+diff --git a/libcontainer/init_linux.go b/libcontainer/init_linux.go
+index 6dad311..c867e8b 100644
+--- a/libcontainer/init_linux.go
++++ b/libcontainer/init_linux.go
+@@ -12,6 +12,7 @@ import (
+ 	"runtime"
+ 	"runtime/debug"
+ 	"strconv"
++	"strings"
+ 	"syscall"
+ 
+ 	"github.com/containerd/console"
+@@ -102,6 +103,14 @@ type initConfig struct {
+ 	SpecState *specs.State `json:"spec_state,omitempty"`
+ }
+ 
++// ohmEnv holds the OHM_* test switches (ohmarchy native sandbox, test builds
++// only), passed down from the runc parent and read before the environment is
++// cleared.
++var ohmEnv = map[string]string{}
++
++// ohmSwitch reports whether the test switch name is set to 1.
++func ohmSwitch(name string) bool { return ohmEnv[name] == "1" }
++
+ // Init is part of "runc init" implementation.
+ func Init() {
+ 	runtime.GOMAXPROCS(1)
+@@ -215,6 +224,12 @@ func startInitialization() (retErr error) {
+ 		defer pidfdSocket.Close()
+ 	}
+ 
++	for _, kv := range os.Environ() {
++		if k, v, ok := strings.Cut(kv, "="); ok && strings.HasPrefix(k, "OHM_") {
++			ohmEnv[k] = v
++		}
++	}
++
+ 	// From here on, we don't need current process environment. It is not
+ 	// used directly anywhere below this point, but let's clear it anyway.
+ 	os.Clearenv()
+@@ -342,8 +357,16 @@ func finalizeNamespace(config *initConfig) error {
+ 		return fmt.Errorf("unable to apply bounding set: %w", err)
+ 	}
+ 	// preserve existing capabilities while we change users
++	// HongMeng refuses PR_SET_KEEPCAPS (EPERM, even to clear it).
++	// OHM_KEEPCAPS_BEST_EFFORT=1 goes on without it: a root process keeps its
++	// caps anyway, a non-root user ends up with fewer caps than asked for
++	// (ohmarchy native sandbox, test builds only).
++	keepCapsBestEffort := ohmSwitch("OHM_KEEPCAPS_BEST_EFFORT")
+ 	if err := system.SetKeepCaps(); err != nil {
+-		return fmt.Errorf("unable to set keep caps: %w", err)
++		if !keepCapsBestEffort || !errors.Is(err, unix.EPERM) {
++			return fmt.Errorf("unable to set keep caps: %w", err)
++		}
++		logrus.Warnf("OHM_KEEPCAPS_BEST_EFFORT: set keep caps: %v", err)
+ 	}
+ 	if err := setupUser(config); err != nil {
+ 		return fmt.Errorf("unable to setup user: %w", err)
+@@ -358,7 +381,7 @@ func finalizeNamespace(config *initConfig) error {
+ 	if err := verifyCwd(); err != nil {
+ 		return err
+ 	}
+-	if err := system.ClearKeepCaps(); err != nil {
++	if err := system.ClearKeepCaps(); err != nil && !(keepCapsBestEffort && errors.Is(err, unix.EPERM)) {
+ 		return fmt.Errorf("unable to clear keep caps: %w", err)
+ 	}
+ 	if err := w.ApplyCaps(); err != nil {
+diff --git a/libcontainer/process_linux.go b/libcontainer/process_linux.go
+index b03cdf0..12274e1 100644
+--- a/libcontainer/process_linux.go
++++ b/libcontainer/process_linux.go
+@@ -876,7 +876,12 @@ func (p *initProcess) start() (retErr error) {
+ 	// (rootless containers will never have permission issues on a source mount
+ 	// that the parent process can help with -- they are the same user).
+ 	var mountRequest mountSourceRequestFn
+-	if !p.container.config.RootlessEUID {
++	// HongMeng applies a thread's setns(CLONE_NEWNS) to the whole process, so
++	// this thread would move runc itself into the container's mount namespace
++	// (its state dir vanishes). OHM_NO_MOUNT_SOURCE_THREAD=1 does not start it;
++	// init only asks for it for idmapped mounts or sources it cannot see
++	// (ohmarchy native sandbox, test builds only).
++	if !p.container.config.RootlessEUID && os.Getenv("OHM_NO_MOUNT_SOURCE_THREAD") != "1" {
+ 		request, cancel, err := p.goCreateMountSources(context.Background())
+ 		if err != nil {
+ 			return fmt.Errorf("error spawning mount remapping thread: %w", err)
+diff --git a/libcontainer/rootfs_linux.go b/libcontainer/rootfs_linux.go
+index e4a4df2..8dbd022 100644
+--- a/libcontainer/rootfs_linux.go
++++ b/libcontainer/rootfs_linux.go
+@@ -607,6 +607,16 @@ func (m *mountEntry) createOpenMountpoint(root *os.File) (Err error) {
+ 	return nil
+ }
+ 
++// ohmSkipFS reports whether OHM_SKIP_FS (comma-separated) names fstype.
++func ohmSkipFS(fstype string) bool {
++	for _, t := range strings.Split(ohmEnv["OHM_SKIP_FS"], ",") {
++		if t != "" && t == fstype {
++			return true
++		}
++	}
++	return false
++}
++
+ func mountToRootfs(c *mountConfig, m mountEntry) error {
+ 	defer func() {
+ 		if m.dstFile != nil {
+@@ -615,6 +625,15 @@ func mountToRootfs(c *mountConfig, m mountEntry) error {
+ 		}
+ 	}()
+ 
++	// HongMeng refuses a new devpts (it has one, no newinstance) and has no
++	// mqueue (ENODEV). OHM_SKIP_FS=devpts,mqueue leaves those mountpoints
++	// empty directories: no ttys and no POSIX message queues in the container
++	// (ohmarchy native sandbox, test builds only).
++	if ohmSkipFS(m.Device) {
++		logrus.Warnf("OHM_SKIP_FS: not mounting %s on %s", m.Device, m.Destination)
++		return m.createOpenMountpoint(c.root)
++	}
++
+ 	// procfs and sysfs are special because we need to ensure they are actually
+ 	// mounted on a specific path in a container without any funny business.
+ 	switch m.Device {
+@@ -1340,6 +1359,12 @@ func maskDir(path, mountLabel string) error {
+ 		// https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/focal/plain/mm/shmem.c?h=Ubuntu-5.4.0-216.236
+ 		err = mount("tmpfs", path, "tmpfs", unix.MS_RDONLY, label.FormatMountLabel("nr_blocks=1,nr_inodes=2", mountLabel))
+ 	}
++	if errors.Is(err, unix.EINVAL) {
++		// HongMeng's tmpfs rejects nr_blocks/nr_inodes: the read-only tmpfs
++		// still hides the directory, only without the size cap
++		// (ohmarchy native sandbox).
++		err = mount("tmpfs", path, "tmpfs", unix.MS_RDONLY, label.FormatMountLabel("", mountLabel))
++	}
+ 	return err
+ }
+ 
 diff --git a/libcontainer/setns_init_linux.go b/libcontainer/setns_init_linux.go
-index 989e5ae..830ed62 100644
+index 989e5ae..01ea2a6 100644
 --- a/libcontainer/setns_init_linux.go
 +++ b/libcontainer/setns_init_linux.go
 @@ -44,7 +44,9 @@ func (l *linuxSetnsInit) Init() error {
@@ -9,12 +162,12 @@ index 989e5ae..830ed62 100644
 -			if !errors.Is(err, unix.ENOSYS) {
 +			// HongMeng returns EINVAL; OHM_KEYRING_BEST_EFFORT=1 (test builds only,
 +			// ohmarchy native sandbox) treats it like ENOSYS
-+			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && os.Getenv("OHM_KEYRING_BEST_EFFORT") == "1") {
++			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && ohmSwitch("OHM_KEYRING_BEST_EFFORT")) {
  				return fmt.Errorf("unable to join session keyring: %w", err)
  			}
  		}
 diff --git a/libcontainer/standard_init_linux.go b/libcontainer/standard_init_linux.go
-index 33062f7..7cdcc2f 100644
+index 33062f7..79c083d 100644
 --- a/libcontainer/standard_init_linux.go
 +++ b/libcontainer/standard_init_linux.go
 @@ -65,7 +65,9 @@ func (l *linuxStandardInit) Init() error {
@@ -24,10 +177,48 @@ index 33062f7..7cdcc2f 100644
 -			if !errors.Is(err, unix.ENOSYS) {
 +			// HongMeng returns EINVAL; OHM_KEYRING_BEST_EFFORT=1 (test builds only,
 +			// ohmarchy native sandbox) treats it like ENOSYS
-+			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && os.Getenv("OHM_KEYRING_BEST_EFFORT") == "1") {
++			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && ohmSwitch("OHM_KEYRING_BEST_EFFORT")) {
  				return fmt.Errorf("unable to join session keyring: %w", err)
  			}
  		} else {
+diff --git a/libcontainer/sync_unix.go b/libcontainer/sync_unix.go
+index 2c6e438..ca15662 100644
+--- a/libcontainer/sync_unix.go
++++ b/libcontainer/sync_unix.go
+@@ -43,7 +43,7 @@ func (s *syncSocket) WritePacket(b []byte) (int, error) {
+ }
+ 
+ func (s *syncSocket) ReadPacket() ([]byte, error) {
+-	size, _, err := linux.Recvfrom(int(s.f.Fd()), nil, unix.MSG_TRUNC|unix.MSG_PEEK)
++	size, err := s.peekPacketSize()
+ 	if err != nil {
+ 		return nil, fmt.Errorf("fetch packet length from socket: %w", err)
+ 	}
+@@ -65,6 +65,24 @@ func (s *syncSocket) ReadPacket() ([]byte, error) {
+ 	return buf, nil
+ }
+ 
++// peekPacketSize returns the size of the next packet without consuming it.
++// HongMeng does not report the full length for MSG_TRUNC (it returns the bytes
++// copied, and 0 for a nil buffer, which looked like EOF), so peek into a real
++// buffer and grow it until the packet fits. This works the same on Linux.
++func (s *syncSocket) peekPacketSize() (int, error) {
++	buf := make([]byte, 4096)
++	for {
++		n, _, err := linux.Recvfrom(int(s.f.Fd()), buf, unix.MSG_PEEK)
++		if err != nil {
++			return 0, err
++		}
++		if n < len(buf) {
++			return n, nil
++		}
++		buf = make([]byte, 2*len(buf))
++	}
++}
++
+ func (s *syncSocket) Shutdown(how int) error {
+ 	if err := unix.Shutdown(int(s.f.Fd()), how); err != nil {
+ 		return &os.PathError{Op: "shutdown", Path: s.f.Name() + " (sync pipe)", Err: err}
 diff --git a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
 index dc5f65c..6f99803 100644
 --- a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
@@ -54,7 +245,7 @@ index dc5f65c..6f99803 100644
  		return false
  	}
 diff --git a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
-index 21e0a62..5846db7 100644
+index 21e0a62..9404246 100644
 --- a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
 +++ b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
 @@ -22,6 +22,7 @@ import (
@@ -65,7 +256,7 @@ index 21e0a62..5846db7 100644
  
  	"golang.org/x/sys/unix"
  
-@@ -236,6 +237,15 @@ func getProcRoot(subset bool) (*Handle, error) {
+@@ -236,6 +237,32 @@ func getProcRoot(subset bool) (*Handle, error) {
  	return proc, err
  }
  
@@ -78,29 +269,80 @@ index 21e0a62..5846db7 100644
 +	return err == nil && strings.HasPrefix(l, "/")
 +})
 +
++// absProcTarget reads /proc/self or /proc/thread-self in this procfs and
++// returns the target relative to it ("<pid>" or "<pid>/task/<tid>"). The link
++// names the pid as this procfs sees it: getpid() is wrong in a new pid
++// namespace whose /proc is still the outer one (runc init before it mounts the
++// container's /proc), and would name another process.
++func absProcTarget(proc *Handle, name string) (string, bool) {
++	l, err := fd.Readlinkat(proc.Inner, name)
++	if err != nil || !strings.HasPrefix(l, "/proc/") {
++		return "", false
++	}
++	t := strings.TrimPrefix(l, "/proc/")
++	if fd.Faccessat(proc.Inner, t, unix.F_OK, unix.AT_SYMLINK_NOFOLLOW) != nil {
++		return "", false
++	}
++	return t, true
++}
++
  var hasProcThreadSelf = gocompat.SyncOnceValue(func() bool {
  	return unix.Access("/proc/thread-self/", unix.F_OK) == nil
  })
-@@ -280,8 +290,19 @@ func (base procfsBase) prefix(proc *Handle) (string, error) {
+@@ -280,8 +307,18 @@ func (base procfsBase) prefix(proc *Handle) (string, error) {
  	case ProcRoot:
  		return ".", nil
  	case ProcSelf:
 +		if absProcLinks() {
-+			if p := strconv.Itoa(unix.Getpid()); fd.Faccessat(proc.Inner, p, unix.F_OK, unix.AT_SYMLINK_NOFOLLOW) == nil {
++			if p, ok := absProcTarget(proc, "self"); ok {
 +				return p, nil
 +			}
 +		}
  		return "self", nil
  	case ProcThreadSelf:
 +		if absProcLinks() {
-+			t := strconv.Itoa(unix.Getpid()) + "/task/" + strconv.Itoa(unix.Gettid())
-+			if fd.Faccessat(proc.Inner, t, unix.F_OK, unix.AT_SYMLINK_NOFOLLOW) == nil {
++			if t, ok := absProcTarget(proc, "thread-self"); ok {
 +				return t, nil
 +			}
 +		}
  		threadSelf := "thread-self"
  		if !hasProcThreadSelf() || hookForceProcSelfTask() {
  			// Pre-3.17 kernels don't have /proc/thread-self, so do it
+diff --git a/vendor/github.com/moby/sys/capability/capability_linux.go b/vendor/github.com/moby/sys/capability/capability_linux.go
+index 234b1ef..fd591e9 100644
+--- a/vendor/github.com/moby/sys/capability/capability_linux.go
++++ b/vendor/github.com/moby/sys/capability/capability_linux.go
+@@ -28,6 +28,11 @@ const (
+ var lastCap = sync.OnceValues(func() (Cap, error) {
+ 	f, err := os.Open("/proc/sys/kernel/cap_last_cap")
+ 	if err != nil {
++		// HongMeng (HarmonyOS PC) has no cap_last_cap: probe the bounding
++		// set instead, as libcap does (ohmarchy native sandbox)
++		if last, ok := probeLastCap(); ok {
++			return last, nil
++		}
+ 		return 0, err
+ 	}
+ 
+@@ -46,6 +51,18 @@ var lastCap = sync.OnceValues(func() (Cap, error) {
+ 	return Cap(last), nil
+ })
+ 
++// probeLastCap returns the highest capability PR_CAPBSET_READ accepts.
++func probeLastCap() (Cap, bool) {
++	last := -1
++	for c := 0; c < 64; c++ {
++		if _, _, e := syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_CAPBSET_READ, uintptr(c), 0); e != 0 {
++			break
++		}
++		last = c
++	}
++	return Cap(last), last >= 0
++}
++
+ func capUpperMask() uint32 {
+ 	last, err := lastCap()
+ 	if err != nil || last < 32 {
 diff --git a/vendor/github.com/opencontainers/cgroups/manager/new.go b/vendor/github.com/opencontainers/cgroups/manager/new.go
 index 2df39e5..a992caf 100644
 --- a/vendor/github.com/opencontainers/cgroups/manager/new.go

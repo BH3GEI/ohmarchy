@@ -35,7 +35,7 @@
 | B OSEasy | 整个 Omarchy 系统跑在 OSEasy 虚拟机 app（com.oseasy1.ohvm 3.1.1.7）里，内核 7.2.12 加打补丁的 vmwgfx，用安装 ISO 写盘 | 能用。公开版是 GitHub release 草稿（未公开）；内核 1.2 的新 ISO 正在回归 | 不要 | 能 |
 | C 鸿融 | 整个 Omarchy 系统作为华为鸿融（com.huawei.medivh 1.1.1.103）的虚拟机运行，virgl GPU | 能用。内核 1.2 的盘 10-27 在 ohdev 上验证通过 | 导入不要；换盘要 | 能 |
 | D 原生 | Arch 加 Omarchy 直接跑在 HongMeng 内核上，桌面显示在鸿蒙 app 里，120 Hz，马良 GPU | 能用，已验收 | 要 | 能 |
-| 原生沙箱（新方案） | 原生内核；锁在自己的目录里；默认全禁的允许清单；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | 10-27 刚开始，设计文档 docs/native-sandbox.md 正在写 | 小助手要 root | 不能 |
+| 原生沙箱（新方案） | 原生内核；Linux 锁在自己的目录和网络里，像 app 一样开、关、重置；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | v1 能用（10-28 ohdev）：app "Omarchy (sandbox)"、独立 mount/pid/ipc/uts/net 命名空间、一键安装和卸载。只算测试机级别的隔离：抽象 socket 与主机共享、SELinux 域还是 `su`、Docker 未接入 | 小助手要 root | 能（可选第 4 段，未完整彩排） |
 | I 自建后台虚拟机 | root 直接在 /dev/hmv 上起 StratoVirt，无界面，给 D 提供 Docker | 能用 | 要 | 能，与 D 一起 |
 | J app 沙箱内原生 | Linux 程序编成 .so 签进 HAP，fork 加 dlopen 运行 | busybox 已在真机跑通；Hyprland 已编好，真机试了 4 轮，尚未出第一帧 | 不要 | 不能 |
 | E 裸机／U 盘 | 不要鸿蒙，Linux 直接在硬件上启动 | 全内存 U 盘已做好，尚未在机器上启动成功 | — | 不能 |
@@ -114,18 +114,24 @@
   - 松开 Windows 键会弹出鸿蒙开始菜单。
 - **系统库依赖。** app 打包时从设备上拷贝系统的 libvirglrenderer。ohdev2（麒麟 9020，7.0.0.32）上那份库版本不同，上屏时崩溃；对应的修改未提交。
 
-**原生沙箱（新方案）**
+**原生沙箱（新方案）**（native/sandbox/README.md、native/sandbox/abstract-sockets-ohdev.md）
 
-- 方向（已定）：
-  - 原生内核；
-  - Linux 锁在 app 自己的目录里；
-  - 默认全禁，只放行允许清单；
-  - 一个调用有数、受控的 root 小助手；
-  - Docker 在里面跑；
-  - 访问隐私数据要通过 app 申请。
-- 设计文档 docs/native-sandbox.md 由 D 线编写，尚未提交。演示用的 D 版保持不动，新方案另用 app 名、目录和小助手，不设开机自启。
-- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**；但 EINVAL 只说明导出格式不能直接回灌，**运行时重载是否可行仍待测**：下一步用机上 secilc 把现有 CIL 编成正确的 load 格式再试（step-2）。注意恢复路径也要同步修正——policy.orig 回灌同样会 EINVAL，死人开关和撤销都必须写回开机实际加载的磁盘文件（疑为 /vendor/etc/selinux/prebuild_sepolicy/policy.31，待确认），最终退路是重启。
-- Docker（10-27，I 线）：此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（沙箱能连到宿主 127.0.0.1，已记为待补的边界缺口）。
+- **方向（已定）。** 原生内核；Linux 锁在自己的目录里；默认全禁，只放行允许清单；一个调用有数、受控的 root 小助手；Docker 在里面跑；访问隐私数据要通过 app 申请。设计文档 docs/native-sandbox.md 尚未提交。
+- **v1 已做到（2026-10-28，ohdev，和 D 的演示版并排跑，D 全程未受影响）。**
+  - 和 D 完全分开：app com.ohmarchy.sandbox（"Omarchy (sandbox)"，粉色图标）、目录 /data/local/ohm-sandbox、自己的 64 GB 镜像和 loop 设备、socket 前缀 `ohmsbx`。
+  - 关进去的方式：`unshare -m -p -i -u -n` 加 pivot_root，镜像就是整个文件系统，主机的 /storage、/system 在里面不存在；/dev 是只放几个节点的 tmpfs；/proc/sys、/sys 只读；能力边界集去掉 mknod、sys_admin、模块、raw I/O、MAC、net_admin 等（CapBnd b18cecff；HongMeng 拒绝 PR_SET_KEEPCAPS，用自写的 ohm-capdrop）。
+  - 网络：独立 net namespace，主机上的 pasta（passt.top，打了 HongMeng 补丁）把沙箱的 TCP/UDP/ICMP 经主机 socket 发出去。不往里转发端口，不动主机的路由和防火墙。主机的 127.0.0.1 已经连不上（10-28 上屏实测）；pacman、https 正常。
+  - 像 app 一样：双击启动 Linux 和桌面（约 16–19 秒），关掉 app 就停；"Reset Linux"（图标菜单）先确认，再恢复到安装时的快照（约 33 秒）；全屏，Ctrl+Alt+Esc 最小化。键盘、鼠标、声音、马良 GPU 跟 D 一样；终端靠 pty 垫片（HongMeng 没有 devpts）。
+  - root 小助手 ohm-sandboxd：只接受这个 app 的 uid（SO_PEERCRED），只认 start、stop、reset、status 四个固定命令，客户端发来的任何内容都进不了命令行。
+  - 安装和卸载：native/sandbox/install.sh、uninstall.sh，从电脑上一条命令完成，前后核对 D 和系统没变。/data 以外只写一个文件 /system/etc/init/ohm-sandboxd.cfg（开机起小助手），10-28 经批准写入并回读一致。
+- **已知缺口（在这些解决之前，只算测试机级别的隔离，不能当作对外的安全承诺）。**
+  - 抽象 Unix socket 与主机共享：HongMeng 不按 net namespace 隔离抽象名字，沙箱仍能连到主机上所有在监听的抽象 socket，其中有 wpa_supplicant 的控制接口和 TEE 守护进程 teecd（清单见 abstract-sockets-ohdev.md，未做任何实测）。诉求见第 3(a) 节第 15 条。
+  - SELinux 域还是宽松的 `su`：ohdev 不接受运行时加载策略，自己的域要靠鸿蒙（第 3(b) 节第 1 条）。
+  - Docker 还没接进沙箱（I 线在做；HongMeng 缺的东西见第 3(a) 节第 8–14 条）。
+  - 开机自起小助手：cfg 已写入，但 init 只在开机时读，要等下次真重启才能验证；在那之前机器重启后要手动 `ohm-sandbox serve`。
+  - 换网络后要 `ohm-sandbox net` 重连；只有 IPv4。
+- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**；但 EINVAL 只说明导出格式不能直接回灌，**运行时重载是否可行仍待测**：下一步用机上 secilc 把现有 CIL 编成正确的 load 格式再试（step-2）。注意恢复路径也要同步修正——policy.orig 回灌同样会 EINVAL，死人开关和撤销都必须写回开机实际加载的磁盘文件（疑为 /vendor/etc/selinux/prebuild_sepolicy/policy.31，待确认），最终退路是重启。后续结论（10-28）：ohdev 的内核不接受运行时加载策略，v1 改用命名空间、pivot_root 和去能力，小助手留在 `su` 域（见上面"已知缺口"）。
+- **Docker（10-27，I 线）。**此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（10-27 时沙箱能连宿主 127.0.0.1；10-28 沙箱有了自己的 net namespace，这个口子已补上，Docker 接入时网络要重新设计）。
 - 本文第 3(b) 节里与小助手、MAC 规则、允许清单相关的请求，以该文档定稿为准。
 
 **I 自建后台虚拟机**（docs/vm-own.md）

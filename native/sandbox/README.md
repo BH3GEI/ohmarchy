@@ -84,6 +84,11 @@ sandbox's own `/dev/null`; afterwards no process inside held a host file except 
 
 ## Known boundaries (v1)
 
+Until abstract Unix sockets are kept per network namespace (docs/handover.zh-CN.md
+3(a) 15), this is test-machine isolation, not a security promise to anyone outside:
+the HarmonyOS services listed in `abstract-sockets-ohdev.md` are treated as open to
+the sandbox (nothing was sent to them to find out).
+
 - Abstract Unix sockets are shared with the host. HongMeng does not keep abstract
   names per network namespace (checked 2026-10-28: a host process connected to a
   name bound inside the sandbox's own network namespace), so the sandbox can still

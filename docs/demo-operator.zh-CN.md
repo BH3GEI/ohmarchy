@@ -15,7 +15,7 @@
 
 "Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用 Alt+Shift 一起按来代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用；app 会把同时按住的 Alt+Shift 当成 Super 发给 Omarchy。所以 Super+Return 就是 Alt+Shift+Return。快捷键里本来还带 Shift 的，**两个 Shift 都按住**：Super+Shift+B 就是 Alt+左 Shift+右 Shift+B。右 Alt 恢复成普通 Alt。虚拟机里（第 2、3 部分）照常用 Windows 键。
 
-沙箱版 "Omarchy (sandbox)"（粉色图标，不在本次演示里）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
+沙箱版 "Omarchy (sandbox)"（粉色图标，可选的第 4 段）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
 
 ## 演示顺序（约 10 分钟）
 
@@ -172,6 +172,51 @@
 
 ---
 
+## 第 4 段（可选）：原生沙箱（约 3 分钟）
+
+"Omarchy (sandbox)"（粉色图标）是原生路线的新方案：同样是 Arch 直接跑在鸿蒙内核上，不是虚拟机，但 Linux 被关在自己的目录和网络里，像一个普通 app 一样打开、关闭、重置。它和第 1 段的 "Omarchy (native)" 完全分开：各自的目录、镜像和 socket，两个可以同时开着。
+
+**口径：** 这是测试机级别的隔离，不能当作对外的安全承诺。原因有三：抽象 Unix socket 仍然和主机共享（handover 3(a) 第 15 条），SELinux 域还是宽松的 `su`，Docker 也还没有接进来。台上不要说"安全""隔离得很彻底"，说"关在自己的目录和网络里"。
+
+### 演示前检查（【后台】，前一天或开场前 5 分钟）
+
+| # | 检查项 | 怎么确认 |
+|---|---|---|
+| 4a | 小助手在跑 | `ssh ohdev sh /data/local/ohm-sandbox/bin/ohm-sandbox serve`：输出 "serving …" 就是在跑，没在跑会自己起来。**开机自启还没在真重启后验证过**：机器重启过就一定要先跑这一条 |
+| 4b | 沙箱是停着的，演示用的包没装 | `ssh ohdev sh /data/local/ohm-sandbox/bin/ohm-sandbox status` 显示 stopped。上次演示装过包就先重置一次（`... ohm-sandbox reset`，约 35 秒） |
+| 4c | 空间够重置 | `ssh ohdev df -h /data`：可用要 50 GB 以上（2026-10-28 是 101 GB），不够重置会拒绝 |
+| 4d | 网络通 | ohdev 连着 Wi-Fi。沙箱开机时会抄一份当时的默认路由；中途换了网络，【后台】`... ohm-sandbox net` |
+| 4e | sudo 密码 | 终端里的用户是 builder，`sudo pacman` 要 builder 的密码（**待定**：要么演示者事先知道这个密码，要么改成沙箱里 pacman 免密码，等决定） |
+
+### 演示步骤
+
+| # | 手上做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
+|---|---|---|---|---|
+| 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy (sandbox)"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 约 20 秒（2026-10-28 实测 16–19 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
+| 4.2 | 不用操作 | 全屏桌面 | | "它一打开就是全屏。要回鸿蒙：Alt+Tab 切走，Ctrl+Alt+Esc 最小化。" |
+| 4.3 | **Alt+Shift+Return** 开终端 | 一个终端 | 3 秒 | |
+| 4.4 | 输入 `sudo pacman -S --noconfirm cowsay` 回车（要密码就输入，见 4e），装完输入 `cowsay hello` 回车 | 下载、安装，然后一头牛说 hello | 约 15 秒（待彩排确认） | "Arch 官方仓库，pacman 照常能用，里面是 root。" |
+| 4.5 | 输入 `ls /storage /system` 回车 | 两行 `No such file or directory` | 2 秒 | "鸿蒙的照片、文件、系统目录，在它里面根本不存在。它只看得见自己的目录。" |
+| 4.6 | 输入 `curl -m 3 http://127.0.0.1:22` 回车 | `Failed to connect …`（curl 退出码 7） | 3 秒 | "它有自己的网络，能上网（刚才 pacman 就是），但碰不到鸿蒙本机上的服务。" |
+| 4.7 | **Ctrl+Alt+Esc** 最小化，在程序坞上**右键**粉色图标 → **"Reset Linux"** | 弹出确认框 "Reset Linux?"（Cancel / Reset）。Linux 在你点之前不会动 | 3 秒 | "装坏了也不怕：一键恢复到刚安装时的样子。先问一下，不会误点。" |
+| 4.8 | 点 **Reset** | 黑屏一会儿，桌面重新出来 | 约 40 秒（重置约 33 秒 + 启动约 6 秒，2026-10-27 实测；彩排时再确认屏幕上的样子） | 边等边说："刚才装的东西全部清掉了。" |
+| 4.9 | **Alt+Shift+Return**，输入 `cowsay hi` 回车 | `command not found` | 5 秒 | "回到原样了。" |
+| 4.10 | 关掉 app（程序坞图标菜单 → **关闭窗口**） | 回到鸿蒙桌面 | 2 秒 | "关掉 app，Linux 就停了，不在后台占资源。" |
+
+说明：2026-10-28 在 ohdev 上逐项验过（4.1、4.3、4.5、4.6、4.7 的确认框和 Cancel 在屏幕上验过；4.8 的重置 10-27 在屏幕上验过，cowsay 确实没了；4.4 的 pacman 联网在网络改造后从后台验过），**还没有按这张表完整彩排**。4.7 的右键菜单入口、4.8 黑屏的样子以要彩排时为准。
+
+### 第 4 段：出了状况怎么办
+
+| 现象 | 怎么办 |
+|---|---|
+| 双击后一直黑屏、没桌面 | 小助手没在跑（多半是机器重启过，见 4a）。关掉 app，【后台】`ohm-sandbox serve`，再双击。还不行就跳过第 4 段 |
+| pacman 下载不动 | 网络问题。【后台】`ohm-sandbox net` 重连；不行就跳过 4.4，直接讲 4.5、4.6 |
+| `sudo` 要密码，不知道 | 跳过 4.4 和 4.9，只讲 4.5–4.8 |
+| 重置超过 2 分钟桌面还没回来 | 关掉 app，【后台】`ohm-sandbox status` 看一下；跳过，收尾 |
+| 第 1 段的 "Omarchy (native)" 受影响了吗 | 不会：两个完全分开，可以同时开（10-28 全程核对过 native 的会话和进程没变） |
+
+---
+
 ## 备用方案
 
 原则：**任何一段卡住超过 30 秒（Docker 1 分钟、鸿融开机 3 分钟），就放弃这一段**，说一句"这里我们放一段录好的"，放备用视频，然后进下一段。下一段开始前依然要确认没有虚拟机在跑。
@@ -196,6 +241,7 @@
 | 有没有虚拟机在跑（空 = 没有） | `ssh ohdev pidof stratovirt` |
 | 关掉 Docker 后台虚拟机 | `ssh ohdev sh /data/local/kaidashi/bin/ohmarchy-vm stop` |
 | 原生桌面状态 / 启动 / 重启 | `ssh ohdev sh /data/local/archtest/bin/omarchy desktop status`（`start`、`stop`） |
+| 沙箱：小助手 / 状态 / 重置 / 重连网络 | `ssh ohdev sh /data/local/ohm-sandbox/bin/ohm-sandbox serve`（`status`、`reset`、`net`） |
 | 打开原生桌面 app | `ssh ohdev aa start -a EntryAbility -b com.ohmarchy.display` |
 | 把鸿融拉到前面（退出全屏用） | `ssh ohdev aa start -b com.huawei.medivh -a EntryAbility` |
 | Docker 网关日志 | `ssh ohdev tail /data/local/kaidashi/ownvm/svc/gate.log` |

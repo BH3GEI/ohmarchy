@@ -232,6 +232,7 @@
    | 问题 | 现象 | 退路 |
    |---|---|---|
    | `clone(CLONE_FS)` 不共享根目录和当前目录 | Chromium 的沙箱关不住自己 | 默认浏览器改为 Firefox |
+   | `unshare(CLONE_FS\|CLONE_NEWNS)` 后 chroot，同一进程所有线程的根目录都跟着变（单个线程本应各自独立） | dockerd 解压镜像层时整个进程被关进层目录，层注册失败，DNS 退回 `[::1]:53`；复现：tools/docker-sandbox/chrootprobe | 测试版 dockerd 用 `OHM_CHROOT_REEXEC=1`，在子进程里 chroot |
    | `splice` | 从已读空的管道读，返回 EPIPE 而不是 0 | preload 垫片 |
    | `statx(fd, "", AT_EMPTY_PATH)` | 返回 EFAULT | preload 垫片 |
    | `msgrcv` | 阻塞后不被 `msgsnd` 唤醒，fakeroot 卡住 | preload 垫片，改为轮询 |
@@ -261,6 +262,32 @@
    - 复现：在 ohdev 上 `cat /proc/self/cgroup`（freezer、pids、cpuset、memory、cpu、load、iolimit、workingset、dummy，没有 devices），以及 `grep cgroup /proc/self/mountinfo`。
    - 影响：原生沙箱（Docker）。
    - 退路：测试版 dockerd 里加一个默认关闭的开关 `OHM_NO_DEVICES_CGROUP=1` 跳过检查，同时所有容器都 `--cap-drop MKNOD`，禁止 `--privileged` 和 `--device`，沙箱的 /dev 用独立 tmpfs。这些只够做功能测试，不能当正式方案。正式方案在等鸿蒙提供 devices cgroup，或者由 MAC 禁止容器域打开块设备和字符设备（并入新域设计）。
+10. **cgroup 层级按 Linux 的方式暴露出来。**
+   - 为什么：runc 在 mountinfo 里找不到 cgroup 挂载，就拒绝创建容器（`no cgroup mount found in mountinfo`）。即使找到了，HongMeng 的单一层级里也没有 devices，memory、cpu 的文件名又是 v2 风格，所以容器既限不了资源，也拦不住设备访问。
+   - 复现：同第 9 条（`/proc/self/cgroup`、`grep cgroup /proc/self/mountinfo`）。
+   - 影响：原生沙箱（Docker）。没有这个，容器就没有内存、CPU、pids 限制，`docker pause` 和 `docker stats` 也都用不了。
+   - 退路：测试版 runc 加开关 `OHM_NO_CGROUPS=1`（默认关闭，测试用），让容器完全不进 cgroup。资源只能靠沙箱外层整体限制。
+11. **`/proc/self` 和 `/proc/thread-self` 改成相对链接**（Linux 上是 `<pid>`、`<pid>/task/<tid>`）。
+   - 为什么：HongMeng 上它们指向绝对路径（`/proc/53802`）。runc 用 openat2(RESOLVE_BENEATH|RESOLVE_NO_XDEV) 安全地打开 /proc 下的文件，遇到绝对链接会被判成越界，返回 EXDEV（`unsafe procfs detected: openat2 /proc/thread-self/fd/: invalid cross-device link`）；换成不用 openat2 的退路，又报 `possible breakout detected: cannot jump to / in procfs resolver`。
+   - 复现：`readlink /proc/self`、`readlink /proc/thread-self`。
+   - 影响：原生沙箱（Docker），以及所有用 filepath-securejoin/pathrs-lite 的程序（runc、containerd 等）。
+   - 退路：测试版 runc 检测到绝对链接时，直接用具体的 pid/tid 路径（vendored pathrs-lite 的补丁）。
+12. **memfd 的 `F_GET_SEALS` 和新的挂载 API `fsopen("overlay")`。**
+   - 为什么：runc 为了防 CVE-2019-5736（容器改写宿主上的 runc），要么用 memfd 加 seal 封住自身，要么用 overlay 封住；这两样在 HongMeng 上分别返回 EINVAL 和 ENOSYS。runc 最后退到"复制一份临时文件"，还能用；crun 没有这个退路，直接报 `Failed to re-execute libcrun via memory file descriptor`。
+   - 复现：`runc --debug run` 的日志（`F_GET_SEALS on /proc/self/exe failed: invalid argument`、`fsopen overlay: function not implemented`）。
+   - 影响：原生沙箱（Docker 的运行时只能用 runc，用不了 crun）。
+   - 退路：用 runc。
+13. **overlayfs 能叠在 hmfs 上。**
+   - 为什么：Docker 的 overlay2 驱动在 /data（hmfs）上挂 overlay，返回 EINVAL。
+   - 复现：dockerd 日志 `failed to mount overlay: invalid argument`。
+   - 影响：只能用 vfs 驱动，每一层都是整份拷贝，镜像占盘大、拉取慢。
+   - 退路：vfs 驱动。
+14. **`keyctl(KEYCTL_JOIN_SESSION_KEYRING)` 返回 EINVAL。**
+   - 为什么：runc 给每个容器建一个独立的 session keyring，HongMeng 上这一步失败（runc 只把 ENOSYS 当"不支持"放过去，EINVAL 不放过）。
+   - 影响：原生沙箱。容器之间 keyring 不隔离（只影响容器与容器之间，不影响沙箱外层边界）。
+   - 退路：测试版 runc 把 EINVAL 和 ENOSYS 一样对待（测试用）。
+
+Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 
 ### 3(b) 希望允许或放开的
 

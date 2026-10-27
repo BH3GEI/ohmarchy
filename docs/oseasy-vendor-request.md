@@ -18,15 +18,26 @@ agent 的"安装完成"信号判断状态；Linux 不发这个信号。虚拟机
 
 ## 2. Linux 版 guest agent，或公开的协议
 
-OSEasy 通过一条通道（约 `tcp://172.16.100.2`，`install_complete`、`heartbeat` 等）和
-Windows guest agent 通信来判断安装完成、心跳、分辨率等。
+OSEasy 通过 **virtio-serial 通道**上的 **protobuf RPC** 和 Windows guest agent
+（`agent_service.exe`，源码树 `vmagentservice`）通信，判断安装完成、心跳、分辨率、网络与
+文件共享等。消息分两个 proto 包：`Guest.protobuf.link`（传输/握手：`Handshake{connectionMode,
+clientName, authString}`、`Call{callID, methodID, parameters, async}` 这个 RPC 封装、
+`CapInfo`/`CapSet` 能力协商）和 `Guest.protobuf.GuestAgent`（`NetInfo`/`NicInfo`/`DNSInfo` 网络
+共享、`UserProfileInfo` 文件共享、`ResolutionInfo`、`TimeInfo`、`UpdateInfo` 等）。Windows 侧
+把串口端口暴露为命名管道 `\\.\PIPE\VM_SYSTEM_SERVICE_COMMU`（命令）与 `\\.\PIPE\WIN_EVENT`
+（事件）；Linux 侧对应 `/dev/vportNpX`。我们已把这套协议逆向出来并记录在本仓库
+`docs/oseasy-agent-protocol.md`（早先文档里"tcp://172.16.100.2"的说法不准确：实际主通道是
+virtio-serial，172.16.100.x 只是 tap 网里 guest 的地址）。
 
 请求（二选一即可）：
 - 提供 **Linux 版 guest agent**；或
 - **公开这条协议**（消息格式、端口、握手），让第三方 Linux 镜像能自己上报"安装完成"和心跳，
   从而被 OSEasy 当作正常虚拟机管理。
 
-我们不希望靠冒充厂商服务来绕过它——公开协议或官方 agent 是正途。
+我们已自行把协议逆向出来（见 `docs/oseasy-agent-protocol.md`），正在据此做一个最小的、
+兼容的 Linux agent（只发握手 + install_complete + 心跳，让 OSEasy 把虚拟机当作"已安装、可开机"
+来管理）。但这依赖逆向结果，OSEasy 升级协议就可能坏掉；我们不希望靠冒充厂商服务来绕过它——
+**官方公开协议或提供 Linux agent 才是正途**。
 
 ## 3. 高刷新率
 
@@ -87,6 +98,40 @@ Linux 客户机里**根本读不了**。vm_manager 启动 virtiofsd 时**没有�
 - 支持**更大的安装 ISO**（我们需要把系统镜像打进 ISO 时会超过常见限制）。
 - 提供**"导入已有磁盘镜像"**的入口（直接把一个 qcow2 / raw 作为虚拟机磁盘启动），便于分发
   预装好的 Linux 系统，而不必走安装流程。
+
+## 6. 虚拟化引擎在旧系统版本上的兼容性问题
+
+以下两条在较旧的鸿蒙 PC 系统（实测 **7.0.0.32**）上复现；较新的版本（实测 7.0.0.115）没有。
+公开发行的镜像会落到各种系统版本上，所以这两条对第三方 Linux 镜像能否"开箱即用"很关键。
+
+### 6.1 旧版 stratovirt 的 virtio-pci feature select 崩溃
+
+现象：在 7.0.0.32 上，用较新的 Linux 内核（7.2.12）启动虚拟机，内核在 virtio-pci 初始化时
+（约开机 0.76 秒）崩溃，整个 vcpu 挂死：
+```
+virtio-pci 0000:00:05.0: enabling device
+ERROR virtio_pci.rs: Failed to write common config ... Invalid features select 0x2
+ERROR machine/lib.rs: Failed to mmio write addr 80020c00c ...
+ERROR hm_cpu.rs: VCPUHmv emulate error
+```
+原因：新内核的 virtio-pci modern 驱动会写 device_feature_select=2（协商 64–95 位扩展特征），
+而这版 stratovirt 只支持 select 0/1，对 select 2 返回错误，HMV 把这个失败的 MMIO 写升级成了
+**致命的 vcpu fault**。同一份 ISO 在 7.0.0.115 上能正常装到桌面。
+
+我们的退路（已做）：给内核打补丁，让 virtio-pci modern 默认只用 feature select 0/1（见本仓库
+内核补丁 0003 / commit `139aa77`）。但更稳妥的是**引擎侧对 select 2/3 容错**（忽略或正确处理，
+不要升级成致命 fault），这样任何较新的 Linux 内核都能起。
+
+### 6.2 vm_manager 用 appIdentifier 白名单而非 MANAGE_VM 鉴权
+
+现象：在 7.0.0.32 上，`libvm_manager.z.so` 不检查 `MANAGE_VM` 权限，而是用库里**硬编码的
+一份 appIdentifier 白名单**（约 14 个）来决定谁能建虚拟机。结果 OSEasy 在名单里能用，其它
+应用（例如另一个虚拟机应用）不在名单里，每次 createVm 都被判 `TokenID invalid / permission
+denied`。7.0.0.115 则按 `MANAGE_VM` 鉴权，不在名单里的应用也能用。（详见本仓库
+`docs/vm-api.md`。）
+
+请求：统一改成**按 `MANAGE_VM` 权限鉴权**（而不是硬编码 appIdentifier 白名单），或提供把
+第三方应用加入名单的途径。否则第三方虚拟化/镜像应用在旧版系统上完全用不了。
 
 ---
 

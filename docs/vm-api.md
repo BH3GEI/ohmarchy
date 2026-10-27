@@ -169,6 +169,39 @@ themselves) all rely on an app whose appIdentifier is on Huawei's VM-partner all
 `/system/lib64/libvm_manager.z.so` `.rodata`; the permission in
 `/system/etc/access_token/permission_definitions.json`.
 
+## 鸿融 is refused on an older system (ohdev2, 2026-10-27)
+
+Reproducing route C on a second machine (ohdev2: MOR-W52, HarmonyOS
+7.0.0.32, OpenHarmony-7.0.0.32) failed at the VM service, not at the image.
+鸿融 1.3.1.80's 本地文件 import of the qcow2 passed its own checks
+(`qcow2 validation passed`, SHA-256 done) and then sat at 0% without calling
+`ImportVmDiskImage`; no disk appeared under `virt_service`. vm_manager logged
+for every call from 鸿融, also after restarting the app:
+
+```
+E C05A01/vm_manager/ATM: [GetNativeTokenInfo]TokenID =537190807 is invalid
+E C05931/vm_manager/[OHSW].[VmManager]: [nodict][(GetVmStatus:588)]getvmstatus failed, permission denied
+```
+
+The difference to ohdev (MNT-W72C 7.0.0.115, OpenHarmony-7.0.0.120), where
+鸿融 1.1.1.103 imports and runs VMs:
+
+| | ohdev 7.0.0.115 | ohdev2 7.0.0.32 |
+|---|---|---|
+| `libvm_manager.z.so` | 3774984 bytes | 3475544 bytes |
+| `ohos.permission.MANAGE_VM` in the library's strings | yes | no |
+| `MANAGE_VM` in `permission_definitions.json` | yes | no |
+| 19-digit appIdentifiers in the library's strings | 15 | 14 |
+| 鸿融's appIdentifier `6917612137513552427` (same on both) | accepted | not in the list |
+
+On 7.0.0.32 the VM service authorizes callers only by its built-in
+appIdentifier list. The list holds OSEasy (`5765880207855186917`) and 铠大师,
+but not 鸿融, so the app is refused whichever version is installed (1.3.1.80
+and 1.1.1.103 share the appIdentifier; a downgrade does not help). 7.0.0.115
+adds `MANAGE_VM` and accepts 鸿融. Route C therefore needs a system at
+7.0.0.115 or similar; on older systems use route B (OSEasy). **Open item for
+Huawei:** 鸿融 is shipped to systems whose VM service refuses it.
+
 ## "检测到有其它虚拟机正在运行" / 401 `Not support vm multi-instance` (2026-10-26)
 
 Why OSEasy refused to start during the B demo preparation although no

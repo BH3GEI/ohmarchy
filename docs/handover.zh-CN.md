@@ -124,7 +124,7 @@
   - Docker 在里面跑；
   - 访问隐私数据要通过 app 申请。
 - 设计文档 docs/native-sandbox.md 由 D 线编写，尚未提交。演示用的 D 版保持不动，新方案另用 app 名、目录和小助手，不设开机自启。
-- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受尚未实测；测试先原样重载现有策略，并设定时自动恢复。
+- 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**；但 EINVAL 只说明导出格式不能直接回灌，**运行时重载是否可行仍待测**：下一步用机上 secilc 把现有 CIL 编成正确的 load 格式再试（step-2）。注意恢复路径也要同步修正——policy.orig 回灌同样会 EINVAL，死人开关和撤销都必须写回开机实际加载的磁盘文件（疑为 /vendor/etc/selinux/prebuild_sepolicy/policy.31，待确认），最终退路是重启。
 - Docker（10-27，I 线）：此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（沙箱能连到宿主 127.0.0.1，已记为待补的边界缺口）。
 - 本文第 3(b) 节里与小助手、MAC 规则、允许清单相关的请求，以该文档定稿为准。
 

@@ -54,11 +54,12 @@ HongMeng differences met on the way:
   that pid does not exist; `ohm-capdrop --enter` opens them all first;
 - a read-only remount of a sysfs bind is refused (ENOTSUP); a fresh sysfs mounted
   read-only works;
-- there is no devpts filesystem (mount: No such device; the host's `/dev/pts` is
-  empty). ptys still work through `/dev/ptmx`: glibc's `openpty()` gets the other
-  end with TIOCGPTPEER, but no `/dev/pts/N` node ever appears, so `ttyname()` fails
-  (checked in the demo session, 2026-10-28). The sandbox has `/dev/ptmx` like the
-  demo, so the same should hold inside; not yet checked there.
+- there is no devpts filesystem (mount: No such device). Opening `/dev/ptmx` makes
+  the slave appear as a node in the host's `/dev/pts`, which the demo binds in.
+  The sandbox does not (it would show every host pty, root shells included), so
+  terminals that open the slave by path fail inside: foot, Omarchy's terminal,
+  says "failed to open pseudo terminal slave device: No such file or directory"
+  (2026-10-28). Open: how to give the sandbox its own slave nodes.
 
 ## Known boundaries (v1)
 
@@ -80,5 +81,12 @@ host waiting for the app (`@ohmsbx-vtest`), next to the demo's `@ohmarchy-*`
 sockets; `desktop stop` and `stop` left nothing behind. The demo's health check
 was identical before and after.
 
-To do: open the app on screen, a pty check inside the sandbox, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+On screen (2026-10-28): the app shows the sandbox's desktop in its own window
+beside the demo's; mouse clicks and keys reach it (Alt+Shift+2 switched to
+workspace 2); `cowsay` installed with pacman as root through `ohm-sandbox run`
+(builder's sudo asks for a password, as on any Arch); inside, `/storage`,
+`/sdcard`, `/system` and `/vendor` do not exist and `/data` holds only the
+image's own `local` directory (evidence: `ls-host-paths-20261028.txt`).
+
+To do: ptys (above), so a terminal opens; the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

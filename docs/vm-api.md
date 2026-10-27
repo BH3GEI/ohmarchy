@@ -204,6 +204,31 @@ and HMV themselves work there; only the caller check refuses 鸿融. Route C the
 7.0.0.115 or similar; on older systems use route B (OSEasy). **Open item for
 Huawei:** 鸿融 is shipped to systems whose VM service refuses it.
 
+### The guest hangs on feature select 2 (OSEasy on ohdev2, fixed in the guest kernel)
+
+OSEasy's VM on ohdev2 started but the Omarchy installer (kernel 7.2.12-1.1)
+hung 0.76 s into boot, at the first virtio-pci device. From
+`/data/log/hwf_service/vmlog`:
+
+```
+[virtio/src/transport/virtio_pci.rs:838]:ERROR: Failed to write common config of virtio-pci device, error is Invalid features select 0x2
+[machine/src/lib.rs:408]:ERROR: Failed to mmio write addr 80020c00c, error: Failed to access IO-type region, region base 0x80020C000, offset 0xC, size 0x4
+[cpu/src/lib.rs:404]:ERROR: Some error occurred in cpu2 thread: VCPUHmv 3 emulate error!
+```
+
+Since the 128-bit feature support, Linux writes `device_feature_select` and
+`guest_feature_select` (offset 0x0 and 0x8 of the common config) with 0 to 3.
+StratoVirt in 7.0.0.32 accepts only 0 and 1, and HMV turns the failed MMIO
+write into a fatal fault of the vCPU instead of ignoring it. 7.0.0.115 accepts
+the selects. Fixed in the guest:
+[hongrong/kernel/patches/0003](../hongrong/kernel/patches/0003-virtio_pci-modern-use-only-the-first-64-feature-bits-by-default.patch),
+kernel 7.2.12-1.2, uses select 0 and 1 unless
+`virtio_pci_modern_dev.extended_features=1` is given. Verified 2026-10-27 in
+鸿融 on ohdev (7.0.0.115): desktop, `extended_features` N, all virtio devices
+bound, 120 Hz, guest agent, 关机. **Open item for Huawei:** the old StratoVirt
+should ignore an unknown feature select (the spec allows reading 0 there), and
+HMV should not kill the vCPU over a failed device write.
+
 ## "检测到有其它虚拟机正在运行" / 401 `Not support vm multi-instance` (2026-10-26)
 
 Why OSEasy refused to start during the B demo preparation although no

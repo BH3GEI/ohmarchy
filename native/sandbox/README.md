@@ -108,5 +108,10 @@ workspace 2); `cowsay` installed with pacman as root through `ohm-sandbox run`
 `/sdcard`, `/system` and `/vendor` do not exist and `/data` holds only the
 image's own `local` directory (evidence: `ls-host-paths-20261028.txt`).
 
-To do: foot on screen with the pty shim; the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+On screen again (2026-10-28 02:10): Alt+Shift+Return opened foot in the sandbox's
+window; in it `tty` printed /dev/pts/0, `ls /storage` said No such file or
+directory, `/data` showed only the image's `local`, `cowsay sandbox` drew its cow.
+
+To do: Docker (a4), a network namespace of its own, the app side (start, stop and
+reset from the app) (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

@@ -56,16 +56,16 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-26 16:29 PDT）
+## 进展（每小时更新；最近一次：2026-10-26 17:28 PDT）
 
-现在：演示三段都彩排过了；B 的公开安装盘因为一个显示问题先压着没发。对内汇报已经写好（[docs/report/](docs/report/index.html)）。
+现在：演示三段都彩排过了。带两个显示修复的新镜像正在打包；B 的公开安装盘要用它重做以后再上传。对内汇报已经写好（[docs/report/](docs/report/index.html)）。
 
 | 路线 | 正在做 | 最新结果 |
 |---|---|---|
-| B. OSEasy | 在新装的系统上试"桌面是空的"这个问题的修法 | **彩排第 3 段**：从点"再次安装"到出设密码界面约 1.5 分钟（比手册写的快）；设密码、sudo、磁盘扩到 252 GB、Hyprland 120Hz、终端都正常。**发现**：登录后没有壁纸，也没有顶栏。主题是设好的（Tokyo Night，在 `~/.local/state/omarchy/current`，这是 Omarchy 4 放主题的地方），同一块盘在鸿融里两样都有，所以只有 OSEasy 有这个问题：画壁纸和顶栏的 quickshell 把图层建好了，但在 SVGA3D 驱动上画出来是黑的。正在试的修法：只在 vmwgfx 上让 quickshell 用 Qt Quick 的软件渲染（`QT_QUICK_BACKEND=software`）。之前做好的安装盘没有上传 |
-| C. 鸿融 | B 修好以后：查这块盘为什么是 60Hz 不是 120Hz | 彩排第 2 段时有壁纸和顶栏 |
-| D. 原生 | 修好后把第 1 段再走一遍 | — |
-| I. 自建虚拟机 | 虚拟化层空出来就装 Docker 的修复 | — |
+| B. OSEasy | 用新镜像重做安装盘，看桌面上有没有壁纸和顶栏 | **桌面是空的这个问题修好了**（b129b02）：画壁纸和顶栏的 quickshell 在 OSEasy 的 SVGA3D 驱动上画出来是黑的。现在只在 vmwgfx 上由 `/etc/profile.d/ohmarchy-svga.sh` 设 `QT_QUICK_BACKEND=software`；在 OSEasy 里重启后，壁纸、顶栏（工作区 1–5、时钟）和通知都出来了。鸿融仍用 GPU 画。第 3 段的时间已写进手册：从点"再次安装"到出设密码界面约 1.5 分钟，es2gears 112–120 帧，Chromium 第一次打开约 10 秒（ddeb6d0） |
+| C. 鸿融 | 在鸿融里检查新镜像，然后换回主盘 | **120Hz 回来了**（0368f84）：实测 2160x1440、119.98Hz。virtio-gpu 只在驱动从 initramfs 加载的那一刻读一次 EDID，原来的开机服务是事后才写，太晚了（它写的 `trigger_hotplug` 在这版内核里也不存在）。现在用 modprobe 的 `install` 钩子在 `virtio_gpu` 加载前设好 `drm.edid_firmware`，钩子和 EDID 都放进 initramfs。OSEasy 不会加载 `virtio_gpu`，不受影响 |
+| D. 原生 | 把第 1 段再走一遍 | — |
+| I. 自建虚拟机 | 完成 | **Docker 关机卡住的修复已装上并测过**（063390d、2d68b77）：在虚拟机正自己关机时连着敲了 4 次 `docker run`，每次都先排队，关机一结束虚拟机就重新开，20–21 秒输出 Hello。还修了第二个 bug：频繁调用 `docker-vm status` 时，空闲检查一直轮不到，虚拟机就不关 |
 | J. 在 app 沙箱里跑 Linux（不用 root） | 后台研究 | 没有变化 |
 <!-- progress:end -->
 

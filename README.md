@@ -78,16 +78,16 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 16:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 17:28 PDT)
 
-Now: all three parts of the demo were rehearsed; B's public ISO is held back for one display fix. The internal report is done ([docs/report/](docs/report/index.html)).
+Now: all three parts of the demo were rehearsed. A new image with two display fixes is being packed; B's public ISO is rebuilt from it before upload. The internal report is done ([docs/report/](docs/report/index.html)).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Testing the fix for the empty desktop on a fresh install | **Rehearsal part 3**: from "再次安装" to the password screen in about 1.5 min (faster than the manual said); password, sudo, disk growth to 252 GB, Hyprland at 120 Hz and the terminal all fine. **Found**: after login the wallpaper and the top bar are missing. The theme is set (Tokyo Night in `~/.local/state/omarchy/current`, Omarchy 4's place for it), and the same disk in 鸿融 shows both, so it is OSEasy-only: quickshell, which draws the wallpaper and bar, creates its layers but they come out black on the SVGA3D driver. Fix being tested: Qt Quick's software renderer for quickshell on vmwgfx only (`QT_QUICK_BACKEND=software`). The ISO built so far is not uploaded |
-| C. 鸿融 | After B's fix: find why the disk runs at 60 Hz instead of 120 Hz | Rehearsal part 2 had wallpaper and top bar |
-| D. Native | Re-run of part 1 after the fixes | — |
-| I. Own VM | Installing the Docker fix when the hypervisor is free | — |
+| B. OSEasy | Rebuilding the ISO from the new image and checking that the desktop shows wallpaper and the top bar | **Empty desktop fixed** (b129b02): quickshell, which draws the wallpaper and the top bar, came out black on OSEasy's SVGA3D driver. On vmwgfx only, `/etc/profile.d/ohmarchy-svga.sh` now sets `QT_QUICK_BACKEND=software`; after a reboot in OSEasy the wallpaper, the bar (workspaces 1–5, clock) and notifications all show. 鸿融 keeps GPU rendering. Part 3 timings are in the manual: about 1.5 min from "再次安装" to the password screen, es2gears 112–120 fps, Chromium cold start ~10 s (ddeb6d0) |
+| C. 鸿融 | Checking the new image in 鸿融, then putting the main disk back | **120 Hz back** (0368f84): measured 2160x1440 at 119.98 Hz. virtio-gpu reads the EDID only once, when the driver loads from the initramfs, so the boot service that wrote it afterwards was too late (and the `trigger_hotplug` it wrote to doesn't exist in this kernel). A modprobe `install` hook now sets `drm.edid_firmware` before `virtio_gpu` loads, and the hook and EDID go into the initramfs. OSEasy never loads `virtio_gpu`, so it is not affected |
+| D. Native | Re-run of part 1 | — |
+| I. Own VM | Done | **Docker stop fix installed and tested** (063390d, 2d68b77): four `docker run`s right as the VM was shutting itself down each waited, the VM came back as the stop finished and each printed Hello in 20–21 s. A second bug fixed: frequent `docker-vm status` calls kept the idle check from ever running |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

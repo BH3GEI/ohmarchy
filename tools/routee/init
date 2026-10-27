@@ -1,0 +1,99 @@
+#!/usr/bin/bash
+# /init of the all-in-RAM Omarchy (route E): the whole root is this initramfs,
+# read into memory by GRUB before ExitBootServices; nothing here touches storage
+# except writing the report to Omarchy-arm64/logs/ if such a partition shows up.
+# 1. load every driver that might match the machine, 2. print in large type on
+# the EFI framebuffer what probed and the kernel's complaints (for a photo),
+# 3. hand the framebuffer from efifb to efidrm (a DRM device for Hyprland),
+# 4. exec systemd, which autologins into Hyprland (software rendering).
+export PATH=/usr/bin:/usr/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /run /dev/pts && mount -t tmpfs -o mode=755 tmpfs /run
+debug=0; grep -qw ohm.debug /proc/cmdline && debug=1
+R=/run/ohm-probe.txt
+font() { setfont -C /dev/tty1 /usr/share/kbd/consolefonts/latarcyrheb-sun32.psfu.gz 2>/dev/null; }
+font
+exec > /dev/tty1 2>&1
+
+mods="drm_sysfb_helper simpledrm phy-hi3660-usb3 phy-hi3670-usb3 phy-hi3670-pcie phy-hi6220-usb
+  phy-hisi-inno-usb2 phy-histb-combphy pcie-kirin i2c-hid-of hid-multitouch exfat vfat"
+declare -A st
+for m in $mods; do
+    if out=$(modprobe $m 2>&1); then st[$m]=loaded; else st[$m]="FAILED ${out##*: }"; fi
+done
+sleep 4   # deferred probes
+
+bound() {  # DRIVER: devices bound to it on any bus
+    local d n out=
+    for d in /sys/bus/*/drivers/$1; do
+        [ -d "$d" ] || continue
+        for n in "$d"/*; do
+            [ -L "$n" ] || continue
+            case ${n##*/} in module) continue ;; esac
+            out+="${n##*/} "
+        done
+    done
+    echo "${out:--}"
+}
+{
+    echo "== Omarchy RAM boot $(uname -r)  $(date '+%F %T')"
+    echo "cmdline: $(cat /proc/cmdline)"
+    echo "memory: $(awk '/MemTotal/{printf "%d MiB", $2/1024}' /proc/meminfo)  firmware: $([ -d /sys/firmware/devicetree/base ] && echo DT) $([ -d /sys/firmware/acpi/tables ] && echo ACPI)"
+    echo "model: $(tr -d '\0' < /sys/firmware/devicetree/base/model 2>/dev/null)"
+    echo "fb0: $(cat /sys/class/graphics/fb0/name 2>/dev/null) $(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null)"
+    echo "-- drivers (bound devices)"
+    for d in efi-framebuffer simple-framebuffer simpledrm dwc3 dwc3-of-simple xhci-hcd usb-storage uas usbhid \
+             i2c_hid_of hid-multitouch kirin-pcie dw-pcie dw-plat-pcie pci-host-generic nvme \
+             hi3660-usb-phy hi3670-usb-phy hi3670_pcie_phy hi6220-usb-phy hisi-inno-phy combphy hix5hd2-sata-phy; do
+        printf '  %-20s %s\n' $d "$(bound $d)"
+    done
+    echo "-- vendor DT nodes (no mainline driver; docs/route-e.md)"
+    for c in hi_pcie hisilicon,hiusbc hisilicon,hiusb huawei,huawei_usb hisilicon,dpufb hisilicon,hisi-i2c-master hisilicon,uart; do
+        n=$(find /sys/firmware/devicetree/base -name compatible -exec grep -l -a -- "$c" {} + 2>/dev/null | wc -l)
+        printf '  %-26s %s nodes\n' "$c" "$n"
+    done
+    echo "-- modules"
+    for m in $mods; do printf '  %-20s %s\n' $m "${st[$m]}"; done
+    echo "-- block: $(ls /sys/block | tr '\n' ' ')"
+    echo "-- input: $(sed -n 's/^N: Name=//p' /proc/bus/input/devices | tr '\n' ' ')"
+    echo "-- usb: $(ls /sys/bus/usb/devices 2>/dev/null | tr '\n' ' ')"
+    echo "-- pci: $(ls /sys/bus/pci/devices 2>/dev/null | tr '\n' ' ')"
+    echo "-- kernel errors/warnings (last 15)"
+    dmesg -l err,warn | tail -15
+} > $R 2>&1
+clear; cat $R
+
+# a partition with our directory (USB or NVMe that came up): keep the logs there
+mkdir -p /run/ohm-usb
+for b in /sys/class/block/*; do
+    dev=/dev/${b##*/}
+    mount -o rw "$dev" /run/ohm-usb 2>/dev/null || continue
+    if [ -d /run/ohm-usb/Omarchy-arm64 ]; then
+        mkdir -p /run/ohm-usb/Omarchy-arm64/logs
+        t=$(date +%Y%m%d-%H%M%S)
+        cp $R /run/ohm-usb/Omarchy-arm64/logs/probe-$t.txt
+        dmesg > /run/ohm-usb/Omarchy-arm64/logs/dmesg-$t.txt
+        echo ">> logs written to $dev Omarchy-arm64/logs/*-$t.txt"
+    fi
+    umount /run/ohm-usb
+done
+
+if [ $debug = 1 ]; then
+    echo; echo ">> debug: full dmesg follows, 20 lines every 6 s"
+    dmesg | while mapfile -t -n 20 page && [ ${#page[@]} -gt 0 ]; do printf '%s\n' "${page[@]}"; sleep 6; done
+    sleep 30
+else
+    echo; echo ">> starting Hyprland in 25 s"; sleep 25
+fi
+
+# efifb -> efidrm, so that Hyprland gets /dev/dri/card0
+for d in /sys/bus/platform/drivers/efi-framebuffer/efi-framebuffer.*; do
+    [ -L "$d" ] && echo "${d##*/}" > /sys/bus/platform/drivers/efi-framebuffer/unbind
+done
+modprobe efidrm 2>&1
+sleep 2; font
+echo ">> DRM: $(ls /dev/dri 2>/dev/null | tr '\n' ' ')  (efidrm bound to: $(bound efidrm))" | tee -a $R
+[ -e /dev/dri/card0 ] || { echo ">> no DRM device: Hyprland cannot start; staying on the console"; sleep 5; }
+exec /usr/lib/systemd/systemd

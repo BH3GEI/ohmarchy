@@ -154,3 +154,51 @@ portal. Refs: HarmonyOS is a microkernel with few public kernel details
 ([CNX](https://www.cnx-software.com/2025/05/20/huawei-matebook-pro-first-harmonyos-laptop/),
 [Wikipedia: HarmonyOS](https://en.wikipedia.org/wiki/HarmonyOS)); HM740 uses Kirin X90
 ([Huawei Central](https://www.huaweicentral.com/huawei-hm740-harmonyos-pc-equips-kirin-x90-chip-confirmed/)).
+
+## All-in-RAM USB stick (2026-10-27)
+
+Built by `tools/routee/build-ram-usb.sh` in route D's Arch container on ohdev, written to
+Yao's second stick (FAT32, label Y233, `/mnt/data/external/6019-BC8F`; the Ventoy stick is no
+longer used). It is an ordinary removable ESP, so the firmware starts it without any boot manager:
+
+| File | Size | What |
+|---|---|---|
+| `/EFI/BOOT/BOOTAA64.EFI` | 4 956 160 | standalone GRUB 2.16 arm64-efi; finds `/Omarchy-arm64/omarchy-ram.id`, reads `grub.cfg` there |
+| `/Omarchy-arm64/grub.cfg` | 1 316 | Omarchy in RAM / debug (earlycon, loglevel=7, full dmesg) / debug + `efi=noruntime` / hello test / `fwsetup` / reboot / exit |
+| `/Omarchy-arm64/Image` | 51 489 280 | Arch Linux ARM's generic `linux-aarch64` 7.3-1 (TUNA) |
+| `/Omarchy-arm64/dev.cpio` | 488 | `/dev/console` and `/dev/null`, the first initrd |
+| `/Omarchy-arm64/omarchy-root.cpio.zst` | 2 050 738 109 | route B's whole root (`omarchy-small.img`, 5.8 GB unpacked) as the second initrd |
+
+GRUB reads both initrds into memory before ExitBootServices. The kernel unpacks the root into
+its tmpfs rootfs, so nothing is read from storage after that. The stick needs about 8 GB of RAM:
+the 2 GB initrd plus the 5.8 GB it unpacks to, until the initrd is freed.
+
+**Kernel and drivers.** The generic kernel already has dwc3, xhci-plat, usb-storage, uas, usbhid,
+nvme, DesignWare and ECAM PCIe, and efifb built in, and i2c-hid-of, hid-multitouch, exfat and vfat
+as modules. The drivers it lacks are built from linux-7.3 against its headers (`extra/ohm/`):
+efidrm, simpledrm (and `drm_sysfb_helper`), pcie-kirin, and the HiSilicon PHYs (hi3660-usb3,
+hi3670-usb3/pcie, hi6220-usb, inno-usb2, histb-combphy, hix5hd2-sata). By the DTB analysis
+above, none of these is expected to bind on the Kirin X90. They are loaded so that the report
+shows it.
+
+**`/init`** (`tools/routee/init`, bash from the Omarchy root itself) does these steps in order:
+1. Loads those modules.
+2. Prints a report on the EFI framebuffer in 32-point type (`latarcyrheb-sun32`), for a photo. It lists:
+   - the devices bound to each driver, and the vendor DT nodes (`hi_pcie`, `hiusbc`, `dpufb`, …) with their counts;
+   - block devices, input devices, USB and PCI devices;
+   - the last kernel errors and warnings.
+3. Writes the report and dmesg to `Omarchy-arm64/logs/` if a partition with that directory shows up.
+4. Hands the framebuffer from efifb to efidrm: unbinds `efi-framebuffer.0` from efifb, then loads
+   efidrm, which binds it under its own driver name. This gives Hyprland `/dev/dri/card0`.
+5. Execs systemd. The existing tty1 autologin then starts Hyprland with software rendering
+   (`/etc/profile.d/ohmarchy-ram.sh`: `QT_QUICK_BACKEND=software`, `LIBGL_ALWAYS_SOFTWARE=1`
+   on efidrm/simpledrm).
+
+`/etc/fstab`'s disk entries are commented out, and route B's VM kernel (7.2.12) is removed from
+the root. File capabilities are not kept by `debugfs rdump`, which only matters for a few setcap
+binaries.
+
+Not yet booted on the machine. Untested points:
+- GRUB reading a 2 GB initrd from a USB stick;
+- the firmware accepting an unsigned GRUB from removable media (Secure Boot must be off);
+- the efifb → efidrm hand-over on this GOP.

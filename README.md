@@ -106,19 +106,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 14:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 15:29 PDT)
 
-Now: closing the new native design's three gaps ourselves, so there is a working demo behind every request to HarmonyOS. The app itself (open, full screen, terminal, install software, host paths not visible, reset) already works on screen; the demo is untouched. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
+Now: the new native design's three gaps are each addressed on our side — a working mitigation or a container that runs, each backed by a demo, with the kernel-level root fixes filed as evidence-backed requests to HarmonyOS. The native sandbox v1 is feature-complete on screen, the demo was never touched. Everything is staged for a rehearsal recording of the four demos; the OSEasy live segment is deferred to the next reboot (see below). Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
 
-| Gap / task | Now | Latest |
-|---|---|---|
-| 1. Abstract sockets shared with host | A libc-level fence in, kernel-level fence being designed | The sandbox can reach the host's abstract sockets (wpa_supplicant, TEE). HongMeng has no Landlock and no seccomp user-notify, so: **(B)** a libc preload fence restricting the sandbox's own outbound AF_UNIX connects is committed (dc1626f) — stops ordinary programs, not static ones or the sandbox root, written up as such; **(A)** a MAC-domain deny is the real boundary, pending H's policy test; **(C)** a seccomp+ptrace supervisor is being designed as the self-sufficient fallback if A is blocked |
-| 2. Docker can't start a container | Patching runc/containerd our way to get a container up | dockerd runs confined and pulls images; the first container's init exits. a4 is now patching the runtime for HongMeng's differences (thread `CLONE_FS`, `/proc/self`, keyring), keeping the outer boundary (own mount ns, dropped caps, no host devices or paths) |
-| 3. Custom confinement domain won't load | step-2a staged on the device | Re-injecting the exported policy fails with EINVAL (re-serialized, not loadable as is). The on-disk boot policy is `developer_policy` (3299594 bytes); step-2a loads that unchanged to see whether runtime reload works at all and to establish a restore path, then step-2b would add our domain. Strict safety: dead-man restore, health checks, no reboot |
-| B. OSEasy persistence | Bring-up paused | The minimal Linux agent and a one-pass runbook are ready; the on-device install hit an ISO-selection snag under load (0ab725a), paused so H can use the device |
-| Autostart, boot-serve | Verified except the reboot step | The one `/system` boot file matches a working cfg field-for-field; boot-serve now retries for the app's uid (9bd2f06); init parsing it at boot can only be seen at the next reboot |
+| Gap / task | Result |
+|---|---|
+| 1. Abstract sockets shared with host | **Fenced + demoable.** A libc egress fence (dc1626f, 661c51f) stops ordinary programs connecting to the host's abstract sockets; on screen `ohm-fence-demo` shows the host Wi-Fi control name returning EACCES and a sandbox-internal name connecting. Honest limits documented (static programs and the sandbox root bypass it; not a security boundary). Root fix is a HarmonyOS ask: namespace abstract sockets, or sign our policy in |
+| 2. Docker can't start a container | **Containers run** (a8d79da): hello-world, `alpine sh`, and nginx reached from another container, all confined to `/data/local/ohm-docker-test` with 0 host mounts after. The container network goes out through pasta but cannot reach the host's 127.0.0.1. runc patched only for HongMeng differences; the switches that genuinely weaken isolation (no devices cgroup, no cgroup limits, no seccomp, no container-to-container keyring split) are listed and labelled test-build. An optional on-screen Docker segment is in the operator manual (50fbde1, 7ffad38), clearly not yet wired into the sandbox app |
+| 3. Custom confinement domain won't load | **Confirmed impossible at runtime**, so it is a HarmonyOS ask with hard evidence: even re-loading the exact boot policy returns EINVAL; only a signed-in policy works |
+| B. OSEasy persistence | Protocol, minimal Linux agent (13 tests) and runbook ready; the on-device run is **blocked** (83ee983) because OSEasy can't read the ISO — the media filesystem forces 640/owner and the picker's file-access grant degraded after today's reboots/unlocks; a reboot resets it, so this is deferred to the next natural reboot |
+| Rehearsal | Plan ready; waiting to record the native, native-sandbox and 鸿融 demos; OSEasy shown from this morning's regression screenshots until the live segment can run |
 
-Other: C 鸿融 demo-disk password and sudo/unlock verified; E waiting for boot-key tries.
+Also: C 鸿融 demo-disk password and sudo/unlock verified; E waiting for boot-key tries; autostart verified except the reboot step.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

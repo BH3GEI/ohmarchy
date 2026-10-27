@@ -216,10 +216,11 @@ hung 0.76 s into boot, at the first virtio-pci device. From
 [cpu/src/lib.rs:404]:ERROR: Some error occurred in cpu2 thread: VCPUHmv 3 emulate error!
 ```
 
-Since the 128-bit feature support, Linux writes `device_feature_select` and
-`guest_feature_select` (offset 0x0 and 0x8 of the common config) with 0 to 3.
-StratoVirt in 7.0.0.32 accepts only 0 and 1, and HMV turns the failed MMIO
-write into a fatal fault of the vCPU instead of ignoring it. 7.0.0.115 accepts
+Since the 128-bit feature support, Linux sets `device_feature_select` and
+`guest_feature_select` to 0 to 3 and reads or writes the feature word behind
+each. StratoVirt in 7.0.0.32 handles only selects 0 and 1: the access at
+offset 0xC (`guest_feature`) with select 2 fails, and HMV turns the failed
+MMIO write into a fatal fault of the vCPU instead of ignoring it. 7.0.0.115 accepts
 the selects. Fixed in the guest:
 [hongrong/kernel/patches/0003](../hongrong/kernel/patches/0003-virtio_pci-modern-use-only-the-first-64-feature-bits-by-default.patch),
 kernel 7.2.12-1.2, uses select 0 and 1 unless

@@ -120,3 +120,37 @@ the **all-RAM** design mandatory (kernel + an initramfs holding the whole Omarch
 GRUB before ExitBootServices — nothing is read from storage after boot) and sets v1's success
 bar at "boots to a framebuffer picture", with an on-screen dmesg/probe log (large font) for Yao
 to photograph. The exported DTB is kept at `scratchpad/routee/dtb/kirinx90.dtb` for offline study.
+
+## Can we reuse HongMeng's Linux drivers? (investigation, 2026-10-27)
+
+HongMeng reuses Linux drivers via a userspace driver container (HDF `devhost`) + a Linux-compat
+shim, per the OSDI'24 HongMeng paper. On ohdev:
+
+- The driver host runs `/bin/devhost.elf` against **`/lib/libdh-linux.so.6.6.127-oh`** → the
+  Linux-compat base is **Linux 6.6.127**. One `devhost` instance (name=`common`) hosts the Linux
+  drivers; it links `libdh-linux`, `libdh-lnxbase`, and HongMeng microkernel service libs
+  (`libhmsrv_fs/io/net/sec/kernfs`, `libhmulibs`). The Kirin X90 drivers appear to be built into
+  `libdh-linux.so.6.6.127-oh` (loaded as an anon mapping; not separate `.ko`s, and there is no
+  `/lib/modules`).
+- **Execution model:** these are *userspace* drivers for the HongMeng microkernel — they call the
+  microkernel via `libhmsrv_*`, not the Linux kernel. They are **not** loadable kernel modules.
+
+**Feasibility:**
+- (a) *Load the binaries on a native Linux kernel* — **not viable.** They are userspace
+  microkernel drivers bound to `libdh-linux` + `libhmsrv_*` + the HongMeng IPC model, not Linux
+  `.ko`s; there is no Linux kernel ABI to load them into.
+- (b) *Rebuild from GPL source on our kernel* — **blocked by source availability.** No public
+  Huawei GPL tarball for MNT-W72 / HM740 / Kirin X90 was found; HarmonyOS PC is a closed
+  microkernel product (OpenHarmony on Gitee is the OS framework, not the Kirin X90 SoC Linux
+  drivers). The GPL-covered Linux code lives inside `libdh-linux`, but the adapted Kirin X90
+  driver source (`hi_pcie`, `hiusbc`, `dpufb`, …) is not published. Target kernel version if it
+  ever appears: **6.6.127**.
+
+**Conclusion:** driver reuse does not give native Linux working hardware on the Kirin X90 today
+(neither binary nor source). Route E's realistic ceiling stays the **efifb picture** (all-RAM, no
+input/IO). Follow-ups worth a look but unlikely to carry HM740's SoC drivers: OpenHarmony Gitee
+`kernel_linux_6.6` and the HDF/`liblinux` repos; and a formal GPL-source request to Huawei's FLOSS
+portal. Refs: HarmonyOS is a microkernel with few public kernel details
+([CNX](https://www.cnx-software.com/2025/05/20/huawei-matebook-pro-first-harmonyos-laptop/),
+[Wikipedia: HarmonyOS](https://en.wikipedia.org/wiki/HarmonyOS)); HM740 uses Kirin X90
+([Huawei Central](https://www.huaweicentral.com/huawei-hm740-harmonyos-pc-equips-kirin-x90-chip-confirmed/)).

@@ -78,17 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 01:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 02:28 PDT)
 
-Now: all three deliverables are ready, and **B's draft release has all its files** (not published). Next: reproduce everything on a second HarmonyOS PC.
+Now: all three deliverables are ready; B's draft release has all its files (not published). **Reproducing everything on a second HarmonyOS PC has started.**
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Draft complete; 14 packages still need source before it can be published | Draft attachments: the ISO (2,006,917,120 bytes), the package sources (two parts joined with `cat`, 2.77 GB), this repository's source, the upstream kernel source, LICENSES.md and SHA256SUMS built from GitHub's digests. 346 of 360 GPL/LGPL packages have source; the 14 missing are listed at the top of the notes |
-| Second machine | Setting up remote access; it dropped off USB and waits to be reconnected | A second HarmonyOS 2-in-1 for reproducing all routes (it is not flashed): Kirin 9020, 16 GB, HongMeng 1.12.0, an R&D build with a root `hdc` shell. `/dev/hmv`, the system `libvirglrenderer`, 鸿融 and OSEasy are all present. The ssh daemon and tunnel binaries are staged on the USB host |
-| C. 鸿融 | Ready on the first machine; next on the second | — |
-| D. Native | Ready on the first machine; next on the second (different SoC and GPU, may need changes) | — |
-| I. Own VM | Ready on the first machine; next on the second | — |
+| Second machine | Each route is being set up on it, one VM at a time: 鸿融 first, then OSEasy, then the Docker VM; the native desktop in parallel | **Remote access works and survives a reboot**: ssh is up 28 s after power-on, through the same kind of tunnel as the first machine. The second machine can pull straight from the first at about 4.5 MB/s, so large images don't go through the Mac. Its own `scp` crashes on receive (`umask` with musl), so copies go through `ssh … cat` or tar pipes |
+| B. OSEasy | Next on the second machine: install from the public ISO as an ordinary user would | Draft release complete; 14 packages still need source before publishing |
+| C. 鸿融 | First on the second machine: copy the verified disk (6.2 GB) and import it with 鸿融's "本地文件" | The second machine's 鸿融 has no VM yet, so this is the same path a new user takes |
+| D. Native | On the second machine: moving the Arch root file system over and adapting to a different SoC and GPU (Kirin 9020, `higpu.v350`) | The root image holds 42 GB of blocks; checking what is actually used before copying |
+| I. Own VM | After the native desktop and OSEasy on the second machine | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

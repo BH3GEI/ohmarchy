@@ -136,7 +136,8 @@ _session)
     /usr/bin/rmdir /.oldroot
     set +e
     echo "sandbox up on /dev/block/loop$n"
-    exec "$CAPDROP" "$DROP" -- /usr/bin/env -i /usr/bin/catatonit -P
+    # no host file stays open in here: init's stdio goes to the sandbox's own /dev/null
+    exec "$CAPDROP" "$DROP" -- /usr/bin/env -i /usr/bin/catatonit -P < /dev/null > /dev/null 2>&1
     ;;
 run|shell)
     alive || { echo "not running"; exit 1; }
@@ -204,7 +205,8 @@ desktop)
 install -d -m 700 -o "$1" -g "$2" "$XDG_RUNTIME_DIR"
 cd "$HOME" 2>/dev/null || cd /
 exec /usr/bin/chroot --skip-chdir --userspec="$1:$2" --groups="$(id -G "$3" | tr " " ,)" / \
-    /usr/bin/bash -lc "/opt/ohmarchy/bin/ohmarchy-desktop $4"' ohm "$uid" "$gid" "$USER_" "$c"
+    /usr/bin/bash -lc "/opt/ohmarchy/bin/ohmarchy-desktop $4" < /dev/null > /dev/null 2>&1' \
+        ohm "$uid" "$gid" "$USER_" "$c"
     ;;
 stop)
     alive || { echo "not running"; exit 0; }

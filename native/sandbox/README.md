@@ -66,7 +66,17 @@ HongMeng differences met on the way:
   or, for the standard fds, from OHMARCHY_TTY; it wraps openpty and forkpty for
   the programs that use those. Checked inside: a slave opened by name works and
   is named (it fails without the shim), `script -c tty` prints /dev/pts/0, a tmux
-  pane gets /dev/pts/0. foot on screen still to check.
+  pane gets /dev/pts/0, and the same as builder. foot on screen still fails
+  (2026-10-28 01:30) though python doing foot's exact sequence (setsid, open
+  without O_NOCTTY) works; HongMeng refuses TIOCGPTPEER without O_NOCTTY, so the
+  shim asks with it and sets the controlling tty with TIOCSCTTY.
+  OHMARCHY_PTY_DEBUG=1 (stderr) or =/path traces what the shim does.
+
+Inherited files: processes inside held fd 13, the host's `/dev/kmsg`, inherited
+from the shell that started the launcher. `ohm-capdrop` now closes every fd above 2
+before anything runs inside, and init's and the desktop's stdio go to the
+sandbox's own `/dev/null`; afterwards no process inside held a host file except a
+`run` command's own stdio (its output to the caller), 2026-10-28.
 
 ## Known boundaries (v1)
 

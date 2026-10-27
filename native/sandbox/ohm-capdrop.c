@@ -2,10 +2,13 @@
 // Drop capabilities from the bounding set (by number), then exec CMD. With --enter,
 // first join PID's ipc, uts, pid and mount namespaces (CMD runs in a child, as the
 // pid namespace applies to children only).
+// Every fd above 2 is closed first: whatever the caller held (a host shell's
+// /dev/kmsg, say) must not cross into the sandbox.
 // util-linux setpriv cannot be used: it first asks for PR_SET_KEEPCAPS, which HongMeng
 // refuses (EPERM). toybox nsenter cannot either: it opens /proc/PID/ns/* one by one,
 // after the mount namespace has already switched /proc to the sandbox's.
 #define _GNU_SOURCE
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
@@ -15,6 +18,20 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+static void close_inherited(void)
+{
+    DIR *d = opendir("/proc/self/fd");
+    if (d == NULL)
+        return;
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        int fd = atoi(e->d_name);
+        if (e->d_name[0] >= '0' && e->d_name[0] <= '9' && fd > 2 && fd != dirfd(d))
+            close(fd);
+    }
+    closedir(d);
+}
 
 static int enter(const char *pid)
 {
@@ -50,6 +67,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: ohm-capdrop [--enter PID] CAP[,CAP..] -- CMD [ARG..]\n");
         return 2;
     }
+    close_inherited();
     if (pid != NULL && enter(pid) != 0) {
         return 1;
     }

@@ -28,6 +28,25 @@
 #define TIOCGPTPEER _IO('T', 0x41)
 #endif
 
+// OHMARCHY_PTY_DEBUG=1 (stderr) or =/path (appended): say what is done here
+static void debug(const char *fmt, ...)
+{
+	const char *d = getenv("OHMARCHY_PTY_DEBUG");
+	if (d == NULL || *d == '\0')
+		return;
+	FILE *f = d[0] == '/' ? fopen(d, "a") : stderr;
+	if (f == NULL)
+		return;
+	va_list a;
+	va_start(a, fmt);
+	fprintf(f, "ptypeer[%d]: ", (int)getpid());
+	vfprintf(f, fmt, a);
+	va_end(a);
+	if (f != stderr)
+		fclose(f);
+}
+#define DEBUG(...) debug(__VA_ARGS__)
+
 // pty number of "/dev/pts/N", or -1
 static int pts_number(const char *path)
 {
@@ -59,8 +78,16 @@ static int peer_of(int n, int flags)
 		if (strcmp(target + len - 4, "ptmx") != 0)
 			continue;
 		unsigned m;
-		if (ioctl(fd, TIOCGPTN, &m) == 0 && (int)m == n)
-			r = ioctl(fd, TIOCGPTPEER, flags & (O_ACCMODE | O_NOCTTY | O_CLOEXEC | O_NONBLOCK));
+		if (ioctl(fd, TIOCGPTN, &m) != 0 || (int)m != n) {
+			DEBUG("fd %d (%s) is pty %d, not %d\n", fd, target, (int)m, n);
+			continue;
+		}
+		// HongMeng refuses the peer unless O_NOCTTY; a plain open of the slave by a
+		// session leader would make it the controlling tty, so do that afterwards
+		r = ioctl(fd, TIOCGPTPEER, (flags & (O_ACCMODE | O_CLOEXEC | O_NONBLOCK)) | O_NOCTTY);
+		if (r >= 0 && !(flags & O_NOCTTY) && getsid(0) == getpid())
+			ioctl(r, TIOCSCTTY, 0);
+		DEBUG("peer of fd %d (pty %d): %d (errno %d)\n", fd, n, r, r < 0 ? errno : 0);
 	}
 	closedir(d);
 	return r;
@@ -82,6 +109,7 @@ static int fallback(const char *path, int flags, int r)
 	int n;
 	if (r >= 0 || errno != ENOENT || (n = pts_number(path)) < 0)
 		return r;
+	DEBUG("%s: ENOENT, looking for its master (flags %#x)\n", path, flags);
 	int s = peer_of(n, flags);
 	if (s < 0) {
 		errno = ENOENT;

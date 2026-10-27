@@ -126,14 +126,25 @@ Ship it as a systemd service baked into the image.
   - `host2guest.proto` (`Guest.protobuf.GuestAgent`): `Bool/Bytes/Integer/String`,
     `UpdateInfo`, `NicIpAddrInfo`, `NicInfo`, `NetInfo`, `DtMessage`, `TimeInfo`.
 
-- **B — partial.** The link layer is `COMMON::MsgSock` (`Create`, `Recv`, `Send`,
-  `ReadTimed`, `DropLeftData`, `GetPortFromDevicePath`, `WindowsSerialInit`) with
-  `COMMON::LinkBase::SerializeAndResponse`. A frame is a header (`_packetSize` +
-  `_msgType`, "parse header: size=") + a protobuf body (a `link.Call`/`Result`) +
-  a checksum ("receive data error: checksum mismatch"). The exact header byte
-  layout and the checksum algorithm still need disassembly of `MsgSock::Recv`/
-  `Send` (the "bad magic number" strings are allocator debug noise, not a frame
-  magic).
+- **B — DONE.** Link layer `COMMON::LinkBase::ReceiveMessage` (link_base.cpp) over
+  `COMMON::MsgSock` (guest_socket.cpp). Each message is a **7-byte header** followed
+  by a protobuf body (disassembled from `agent_service.exe`, fcn @ `0x140099e68` /
+  head reader `0x14009a328`):
+
+  | offset | size | field | encoding |
+  |---|---|---|---|
+  | 0 | 4 | `payloadSize` | uint32 **big-endian** (sanity: `size-1 ≤ 0x0FFFFFFF`) |
+  | 4 | 1 | `msgType` | uint8, clamped to `0..3` |
+  | 5 | 2 | `checksum` | uint16 **big-endian** |
+
+  The checksum is a plain additive sum of the five header bytes before it:
+  `checksum = (h[0]+h[1]+h[2]+h[3]+h[4]) & 0xFFFF` — **no key, no crypto** (verified
+  at `0x140099fb0`: each byte `uxtb`-summed, compared `uxth` against `h[5]<<8 | h[6]`;
+  a mismatch logs "receive data error: checksum mismatch"). The body is
+  `payloadSize` bytes, the serialized `link.Call`/`Result`. Bytes are pulled through
+  `MsgSock::Recv` into a 1 KiB buffer, retried up to 60 times ("read 0 bytes because
+  no resource, retry after 1s"). So an interop sender is:
+  `hdr = be32(len(body)) + byte(type) + be16(sum(hdr[0:5]) & 0xFFFF); frame = hdr + body`.
 
 - **C — partial.** The host channel is the vioserial device, opened via
   `MsgSock::GetPortFromDevicePath` / `Service::HandleConnectSerial`. Windows names

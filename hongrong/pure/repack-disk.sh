@@ -7,7 +7,7 @@
 # hour on the zeros at its end; a disk sized to the data avoids that.
 # Runs where build-disk.sh ran.
 # Usage: repack-disk.sh WORKDIR [DISK_GIB, default 12]
-# Environment: EXTRA_CMDLINE, appended to the kernel command line in
+# Environment: ZSTD_THREADS (default 2); EXTRA_CMDLINE, appended to the kernel command line in
 # boot/grub/grub.cfg (once), e.g. vmwgfx.hvm_flip_watchdog_us=0 until
 # vmwgfx-oseasy stops walking the CRTCs before vmw_kms_init().
 #   WORKDIR as given to build-disk.sh (has root/ and esp/); writes
@@ -73,6 +73,8 @@ dd if="$W/esp-small.img" of="$W/omarchy-small.img" bs=1M seek=1 conv=notrunc,spa
 dd if="$W/root-small.img" of="$W/omarchy-small.img" bs=1M seek=$(( 1 + esp_mib )) conv=notrunc,sparse status=none
 rm -f "$W/esp-small.img" "$W/root-small.img"
 sfdisk -l "$W/omarchy-small.img"
-zstd -q -T0 --ultra -22 --long=31 -f "$W/omarchy-small.img" -o "$W/omarchy-small.img.zst"
+# few threads: each -22 --long=31 worker holds gigabytes; -T0 on ohdev's 20
+# cores ran the 32 GB host out of memory (HM_PANIC_OOM, reboot, 2026-10-27)
+zstd -q -T"${ZSTD_THREADS:-2}" --ultra -22 --long=31 -f "$W/omarchy-small.img" -o "$W/omarchy-small.img.zst"
 ls -l "$W/omarchy-small.img.zst"
 echo REPACK_DONE

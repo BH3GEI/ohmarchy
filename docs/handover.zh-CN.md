@@ -299,6 +299,7 @@
    - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
    - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
    - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）；沙箱自己的 MAC 域（3(b) 第 1 条）里禁止对沙箱以外的 unix socket 做 connectto/sendto，可以挡住大部分。
+   - 缓解（2026-10-28）：我们已经在沙箱这一侧做了出站过滤。现在是 libc 层的垫片（ohm-abstract-fence），沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，只防误连。正式边界是上面的 MAC 域；如果内核加载不了策略，就用 seccomp 加 supervisor 兜底（设计评审中）。根治仍需内核按 netns 隔离抽象 socket。
 
 Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 

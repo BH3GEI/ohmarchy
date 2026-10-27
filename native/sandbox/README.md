@@ -181,6 +181,38 @@ until then it runs from `ohm-sandbox serve`.
 To do: check the helper at the next reboot; Docker's start with its own capability
 set (a4).
 
+## Abstract sockets: the fence (2026-10-28)
+
+Three layers for the same aim, the sandbox's own processes not connecting to the
+host's abstract Unix sockets (the other direction, the app connecting to the
+desktop's `@ohmsbx-*`, and the sandbox reaching the GPU broker through the path
+socket `/tmp/.virgl_test`, stay open):
+
+- **Now, a transition: `ohm-abstract-fence.c`**, preloaded for every process in the
+  sandbox (`/etc/ld.so.preload`, built by `build-helpers`). `connect`, `sendto` and
+  `sendmsg` to an abstract name return EACCES unless the name starts with `ohmsbx-` or
+  was bound inside the sandbox (its `bind` records each abstract name it binds,
+  autobound ones too, in `/run/ohm-abstract`, mode 1733 on the sandbox's own /run).
+  File-path and network sockets are not touched. **Its limits: it sees only calls
+  made through libc's symbols, so statically linked programs and direct system calls
+  (Go, for one) pass, and root inside can remove it. It keeps ordinary programs off
+  the host's abstract sockets; it is not a boundary.** `sendmmsg` is not covered.
+- **The boundary: a MAC domain** for the sandbox that is denied `connectto`/`sendto`
+  on Unix sockets outside it (H line's CIL domain, waiting on loading policy at run
+  time on ohdev).
+- **If the kernel will not load policy: a seccomp filter that hands only connect,
+  sendto and sendmsg to a supervisor**, which reads the address and decides; the
+  design is under review. (HongMeng has neither Landlock nor seccomp user
+  notification, checked 2026-10-28, so no kernel facility filters by address
+  directly.)
+
+Checked on ohdev from the command line, as the sandbox's user, with nothing sent to
+any host service: a connect to the host's wpa_supplicant name (a stream socket to a
+datagram name, which the kernel would refuse anyway) and to a test listener on the
+host (our own helper under a test name): EACCES; a name bound inside the sandbox,
+`@ohmsbx-display`, the session bus (a path) and https: connected; a static program's
+connect to the test listener: connected (the limit above).
+
 ## Network (2026-10-28)
 
 The sandbox has a network namespace of its own (`start`: `unshare -n`). pasta

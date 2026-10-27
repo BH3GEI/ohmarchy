@@ -9,9 +9,9 @@
 #   ohm-sandbox snapshot    take the reset snapshot again (stopped)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
-#   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop and the pty
-#                               shim (desktop/hongmeng-ptypeer.c) inside
-#                               from $S/src (they carry the sandbox's socket names)
+#   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop, the pty
+#                               shim (desktop/hongmeng-ptypeer.c) and the abstract socket
+#                               fence (ohm-abstract-fence.c) inside from $S/src
 #   ohm-sandbox build-pasta     build pasta inside from its source on stdin (a tar)
 #   ohm-sandbox serve | unserve
 #                           the helper the app talks to (ohm-sandboxd: only the app's
@@ -29,6 +29,8 @@
 # 127.0.0.1 is not reachable. Abstract Unix socket names are not per network namespace
 # on HongMeng (checked: a host process connects to a name bound in here), so the app
 # still reaches the desktop's sockets; that namespace stays shared with the host.
+# ohm-abstract-fence (preloaded) refuses connects to abstract names the sandbox did
+# not bind; it covers calls through libc only (README: Abstract sockets).
 S=${OHM_SANDBOX:-/data/local/ohm-sandbox}
 IMG=$S/root.img
 CLEAN=$S/clean.img
@@ -164,6 +166,8 @@ _session)
     ln -sf /proc/self/fd/0 "$R/dev/stdin"; ln -sf /proc/self/fd/1 "$R/dev/stdout"; ln -sf /proc/self/fd/2 "$R/dev/stderr"
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/tmp"
     mount -t tmpfs -o mode=755,nosuid,nodev tmpfs "$R/run"
+    # abstract names bound inside, for ohm-abstract-fence: anyone may add, none list
+    mkdir -m 1733 "$R/run/ohm-abstract"
     mkdir -p "$R/usr/local/sbin" && cp "$S/bin/ohm-capdrop" "$R$CAPDROP" && chmod 755 "$R$CAPDROP"
     trap - EXIT
     cut -d' ' -f4 /proc/self/stat > "$PIDF"   # host pid of this shell (host procfs still)
@@ -195,7 +199,7 @@ build-helpers)
     alive || { echo "not running"; exit 1; }
     # sources go in on stdin; nothing of the host is mounted inside
     tar -C "$S/src" -cf - ohime.c ohmarchy-audio-relay.c ohmarchy-desktop input-method-unstable-v2.xml \
-        hongmeng-ptypeer.c |
+        hongmeng-ptypeer.c ohm-abstract-fence.c |
         sh "$0" run /usr/bin/bash -c '
 set -e; d=/root/ohm-src; rm -rf $d; mkdir -p $d; tar -C $d -xf -; cd $d
 wayland-scanner client-header input-method-unstable-v2.xml input-method-unstable-v2-client-protocol.h
@@ -206,6 +210,9 @@ install -m 755 ohmarchy-desktop /opt/ohmarchy/bin/ohmarchy-desktop
 # ptys: no slave nodes in here (the host keeps them); open the slave through the master
 gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-ptypeer.so hongmeng-ptypeer.c -ldl
 grep -q libhongmeng-ptypeer /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-ptypeer.so >> /etc/ld.so.preload
+# abstract socket names of the host stay out of reach of programs going through libc
+gcc -O2 -shared -fPIC -o /usr/local/lib/libohm-abstract-fence.so ohm-abstract-fence.c -ldl
+grep -q libohm-abstract-fence /etc/ld.so.preload || echo /usr/local/lib/libohm-abstract-fence.so >> /etc/ld.so.preload
 echo "helpers built"'
     ;;
 build-pasta)

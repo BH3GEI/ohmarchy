@@ -67,7 +67,7 @@ done
 UDID=$UDID "$here/build-app.sh" > "$tmp/build.log" 2>&1 || { tail -20 "$tmp/build.log"; exit 1; }
 
 step "copy to $HOST"
-tar -cf "$tmp/files.tar" -C "$here" ohm-sandbox config-check.sh boot-serve.sh ohm-sandboxd.cfg \
+tar -cf "$tmp/files.tar" -C "$here" ohm-sandbox config-check.sh boot-serve.sh ohm-sandboxd.cfg ohm-abstract-fence.c \
     -C "$here/../desktop" ohime.c ohmarchy-audio-relay.c ohmarchy-desktop hongmeng-ptypeer.c \
     -C "$here/../desktop/src/Hyprland/protocols" input-method-unstable-v2.xml \
     -C "$tmp" ohm-capdrop ohm-sandboxd
@@ -102,7 +102,7 @@ sh -n $T/ohm-sandbox
 for f in ohm-sandbox config-check.sh boot-serve.sh ohm-capdrop ohm-sandboxd; do
     cp $T/$f $S/bin/$f.new && mv $S/bin/$f.new $S/bin/$f
 done
-cp $T/ohime.c $T/ohmarchy-audio-relay.c $T/ohmarchy-desktop $T/hongmeng-ptypeer.c $T/input-method-unstable-v2.xml $S/src/
+cp $T/ohm-abstract-fence.c $T/ohime.c $T/ohmarchy-audio-relay.c $T/ohmarchy-desktop $T/hongmeng-ptypeer.c $T/input-method-unstable-v2.xml $S/src/
 cp $T/ohm-sandboxd.cfg $S/ohm-sandboxd.cfg
 [ -x $S/bin/vtest-broker ] || cp /data/local/archtest/bin/vtest-broker $S/bin/vtest-broker
 chmod 755 $S/bin/*

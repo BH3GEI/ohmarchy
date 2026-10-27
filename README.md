@@ -78,17 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 00:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 01:28 PDT)
 
-Now: all three deliverables are ready. **B's ISO and GPL source bundle are being uploaded to the draft release** (not published). A second HarmonyOS device is being examined for route E (bare metal).
+Now: all three deliverables are ready, and **B's draft release has all its files** (not published). Next: reproduce everything on a second HarmonyOS PC.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Uploading the final ISO (2,006,917,120 bytes) and the GPL source bundle to the draft, straight from the HarmonyOS machine | Draft notes updated; the source bundle is rebuilt from the final run (386 packages with source, 18 missing, listed at the top of the notes) |
-| C. 鸿融 | Ready | — |
-| D. Native | Ready | — |
-| E. Bare metal | Read-only look at a second HarmonyOS device over USB | It enumerates as Huawei "HDC Device" (`12d1:5000`), i.e. booted normally with debugging on, not in a bootloader mode. Next: read its model and bootloader lock state with `hdc` before deciding anything; nothing is written to the device |
-| I. Own VM | Done | — |
+| B. OSEasy | Draft complete; 14 packages still need source before it can be published | Draft attachments: the ISO (2,006,917,120 bytes), the package sources (two parts joined with `cat`, 2.77 GB), this repository's source, the upstream kernel source, LICENSES.md and SHA256SUMS built from GitHub's digests. 346 of 360 GPL/LGPL packages have source; the 14 missing are listed at the top of the notes |
+| Second machine | Setting up remote access; it dropped off USB and waits to be reconnected | A second HarmonyOS 2-in-1 for reproducing all routes (it is not flashed): Kirin 9020, 16 GB, HongMeng 1.12.0, an R&D build with a root `hdc` shell. `/dev/hmv`, the system `libvirglrenderer`, 鸿融 and OSEasy are all present. The ssh daemon and tunnel binaries are staged on the USB host |
+| C. 鸿融 | Ready on the first machine; next on the second | — |
+| D. Native | Ready on the first machine; next on the second (different SoC and GPU, may need changes) | — |
+| I. Own VM | Ready on the first machine; next on the second | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

@@ -20,10 +20,12 @@ start)
     # has run, count it as done so its notifications are not repeated.
     [ -s ~/.local/state/omarchy/first-run.log ] && omarchy-done mark first-run-user > /dev/null 2>&1
     # A desktop stop kills Firefox, whose session then counts as crashed: Firefox 158
-    # shows its "Restore Session" page even with resume_from_crash off. Drop the
-    # crashed session so the next window opens fresh.
-    pgrep -u "$(id -u)" -x firefox > /dev/null ||
-        rm -f ~/.config/mozilla/firefox/*/sessionstore-backups/recovery.*lz4
+    # shows its "Restore Session" page even with resume_from_crash off, from any
+    # saved session (previous.jsonlz4 too) while sessionCheckpoints.json says the
+    # last run did not end cleanly. Drop the saved sessions so it opens fresh.
+    pgrep -u "$(id -u)" -x firefox > /dev/null || rm -rf \
+        ~/.config/mozilla/firefox/*/sessionstore-backups ~/.config/mozilla/firefox/*/sessionstore.jsonlz4 \
+        ~/.config/mozilla/firefox/*/sessionCheckpoints.json
     [ -S "$R/bus" ] || dbus-daemon --session --fork --address="$DBUS_SESSION_BUS_ADDRESS" > /dev/null
     # Sound: PipeWire with its Pulse server, out to the display app (ohmarchy-audio.conf)
     for d in pipewire wireplumber pipewire-pulse; do

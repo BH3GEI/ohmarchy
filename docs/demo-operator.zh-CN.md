@@ -217,6 +217,8 @@
 
 ### （可选·展示）沙箱里的 Docker（约 1 分钟，不进主流程）
 
+> **此 Docker 演示在 ohdev 的沙箱目录里直接运行，尚未接进粉色的 Omarchy (sandbox) 应用；不要讲成应用自带 Docker。**
+
 Docker 测试版直接跑在鸿蒙内核上，不是虚拟机：dockerd 被关在自己的目录 `/data/local/ohm-docker-test` 和自己的网络里（细节见 native/sandbox/docker-test/README.md）。**它还没有接进粉色的沙箱 app**，所以不在沙箱终端里敲，而是由【后台】在助手电脑上运行一个脚本，把助手的终端投到屏幕上。时间不够就跳过，不影响别的段。
 
 **口径：** "这是测试版，不是正式隔离。" 鸿蒙内核缺 devices cgroup、cgroup 资源限制和 seccomp，容器和容器之间、容器和内核之间的隔离都比 Linux 上的 Docker 弱（README 里每个开关都写了削弱了什么）。台上可以说"能跑容器、关在自己的目录和网络里"，**不要说**"安全""和 Linux 一样的隔离"。
@@ -230,7 +232,7 @@ Docker 测试版直接跑在鸿蒙内核上，不是虚拟机：dockerd 被关�
 | D.3 | 不用操作 | 第 3 步：宿主上 `host-secret`；容器里 `can't connect (nc exit 1)` | 约 10 秒 | "鸿蒙本机上一个只对本机开放的服务，本机能连上，容器连不上。" |
 | D.4 | 不用操作 | 最后三行：`stopped …`、`stopped pasta …`、`host mounts mentioning sandbox: 0` | 约 5 秒 | "用完就停，主机上不留挂载。还是那句：这是测试版。" |
 
-脚本一次跑完约 1 分钟（10-28 在 ohdev 上连跑两遍，输出如下图，是真实输出渲染成的图，不是屏幕截图）：
+脚本一次跑完约 1 分钟（10-28 在 ohdev 上连跑两遍，输出如下图，是真实输出渲染成的图，不是屏幕截图，只作手册参考；彩排要录进录屏时，现场投屏跑 demo.sh，用逐秒截图抓真实终端）：
 
 ![第 1 步 hello-world](img/docker-test/docker-test-1.png)
 ![第 2 步 nginx](img/docker-test/docker-test-2.png)

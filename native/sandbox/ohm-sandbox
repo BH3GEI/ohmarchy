@@ -7,7 +7,8 @@
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
-#   ohm-sandbox build-helpers   rebuild ohime, the sound relay and ohmarchy-desktop inside
+#   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop and the pty
+#                               shim (desktop/hongmeng-ptypeer.c) inside
 #                               from $S/src (they carry the sandbox's socket names)
 #   ohm-sandbox desktop start|stop|restart|status
 #                           Hyprland inside for the app com.ohmarchy.sandbox: sockets
@@ -152,7 +153,8 @@ status)
 build-helpers)
     alive || { echo "not running"; exit 1; }
     # sources go in on stdin; nothing of the host is mounted inside
-    tar -C "$S/src" -cf - ohime.c ohmarchy-audio-relay.c ohmarchy-desktop input-method-unstable-v2.xml |
+    tar -C "$S/src" -cf - ohime.c ohmarchy-audio-relay.c ohmarchy-desktop input-method-unstable-v2.xml \
+        hongmeng-ptypeer.c |
         sh "$0" run /usr/bin/bash -c '
 set -e; d=/root/ohm-src; rm -rf $d; mkdir -p $d; tar -C $d -xf -; cd $d
 wayland-scanner client-header input-method-unstable-v2.xml input-method-unstable-v2-client-protocol.h
@@ -160,6 +162,9 @@ wayland-scanner private-code input-method-unstable-v2.xml input-method-unstable-
 gcc -O2 -o /opt/ohmarchy/bin/ohime ohime.c input-method-unstable-v2-protocol.c -I. -lwayland-client
 cc -O2 -o /opt/ohmarchy/bin/ohmarchy-audio-relay ohmarchy-audio-relay.c
 install -m 755 ohmarchy-desktop /opt/ohmarchy/bin/ohmarchy-desktop
+# ptys: no slave nodes in here (the host keeps them); open the slave through the master
+gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-ptypeer.so hongmeng-ptypeer.c -ldl
+grep -q libhongmeng-ptypeer /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-ptypeer.so >> /etc/ld.so.preload
 echo "helpers built"'
     ;;
 desktop)

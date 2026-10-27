@@ -59,7 +59,14 @@ HongMeng differences met on the way:
   The sandbox does not (it would show every host pty, root shells included), so
   terminals that open the slave by path fail inside: foot, Omarchy's terminal,
   says "failed to open pseudo terminal slave device: No such file or directory"
-  (2026-10-28). Open: how to give the sandbox its own slave nodes.
+  (2026-10-28). Fixed without binding anything in: `desktop/hongmeng-ptypeer.c`,
+  preloaded inside, opens "/dev/pts/N" through this process's own master
+  (TIOCGPTPEER) when the node is missing, and names the slave for `ttyname`
+  (HongMeng gives it no name: an anonymous inode, device 0:0) from what it opened
+  or, for the standard fds, from OHMARCHY_TTY; it wraps openpty and forkpty for
+  the programs that use those. Checked inside: a slave opened by name works and
+  is named (it fails without the shim), `script -c tty` prints /dev/pts/0, a tmux
+  pane gets /dev/pts/0. foot on screen still to check.
 
 ## Known boundaries (v1)
 
@@ -88,5 +95,5 @@ workspace 2); `cowsay` installed with pacman as root through `ohm-sandbox run`
 `/sdcard`, `/system` and `/vendor` do not exist and `/data` holds only the
 image's own `local` directory (evidence: `ls-host-paths-20261028.txt`).
 
-To do: ptys (above), so a terminal opens; the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+To do: foot on screen with the pty shim; the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

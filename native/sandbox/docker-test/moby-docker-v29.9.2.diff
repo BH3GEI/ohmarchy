@@ -1,0 +1,231 @@
+diff --git a/daemon/daemon.go b/daemon/daemon.go
+index a62c5ac..e0810a1 100644
+--- a/daemon/daemon.go
++++ b/daemon/daemon.go
+@@ -1127,7 +1127,7 @@ func NewDaemon(ctx context.Context, config *config.Config, pluginStore *plugin.S
+ 	// at this point.
+ 	//
+ 	// TODO(thaJeztah) add a utility to only collect the CgroupDevicesEnabled information
+-	if runtime.GOOS == "linux" && !userns.RunningInUserNS() && !getSysInfo(&cfgStore.Config).CgroupDevicesEnabled {
++	if runtime.GOOS == "linux" && !userns.RunningInUserNS() && !getSysInfo(&cfgStore.Config).CgroupDevicesEnabled && os.Getenv("OHM_NO_DEVICES_CGROUP") != "1" {
+ 		return nil, errors.New("Devices cgroup isn't mounted")
+ 	}
+ 
+diff --git a/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go b/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go
+index de7b16a..69ea478 100644
+--- a/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go
++++ b/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go
+@@ -10,6 +10,10 @@
+ )
+ 
+ func doUnpack(decompressedArchive io.Reader, relDest, root string, opts *archive.TarOptions) error {
++	if reexecMode {
++		_, err := runChild("unpack", root, relDest, opts, decompressedArchive)
++		return err
++	}
+ 	options, closeOptions, err := archive.WithProcSelfFD(opts)
+ 	if err != nil {
+ 		return err
+@@ -25,6 +29,9 @@ func doUnpack(decompressedArchive io.Reader, relDest, root string, opts *archive
+ }
+ 
+ func doPack(relSrc, root string, options *archive.TarOptions) (io.ReadCloser, error) {
++	if reexecMode {
++		return packChild(root, relSrc, options)
++	}
+ 	tb, err := archive.NewTarballer(relSrc, options)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("error processing tar file: %w", err)
+@@ -37,6 +44,9 @@ func doPack(relSrc, root string, options *archive.TarOptions) (io.ReadCloser, er
+ }
+ 
+ func doUnpackLayer(root string, layer io.Reader, opts *archive.TarOptions) (int64, error) {
++	if reexecMode {
++		return runChild("unpacklayer", root, "", opts, layer)
++	}
+ 	options, closeOptions, err := archive.WithProcSelfFD(opts)
+ 	if err != nil {
+ 		return 0, err
+diff --git a/vendor/github.com/moby/go-archive/chrootarchive/hongmeng_reexec_linux.go b/vendor/github.com/moby/go-archive/chrootarchive/hongmeng_reexec_linux.go
+new file mode 100644
+index 0000000..817ceb4
+--- /dev/null
++++ b/vendor/github.com/moby/go-archive/chrootarchive/hongmeng_reexec_linux.go
+@@ -0,0 +1,139 @@
++//go:build linux
++
++package chrootarchive
++
++// HongMeng (HarmonyOS PC): unshare(CLONE_FS) does not give the calling thread a
++// root of its own, so goInChroot's chroot moves every thread of the process
++// (all of dockerd) into the layer directory. With OHM_CHROOT_REEXEC=1 unpack,
++// pack and apply-layer run in a child process instead (dockerd re-executed),
++// which may chroot as a whole. Test builds only (ohmarchy native sandbox).
++
++import (
++	"bytes"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"io"
++	"os"
++
++	"github.com/moby/sys/mount"
++	"github.com/moby/sys/reexec"
++	"golang.org/x/sys/unix"
++
++	"github.com/moby/go-archive"
++	"github.com/moby/go-archive/internal/mounttree"
++)
++
++var reexecMode = os.Getenv("OHM_CHROOT_REEXEC") == "1"
++
++const childName = "ohm-chrootarchive"
++
++type childReq struct {
++	Op, Root, Rel string
++	Opts          *archive.TarOptions
++}
++
++type childResp struct {
++	Size int64
++	Err  string
++}
++
++func init() {
++	reexec.Register(childName, childMain)
++}
++
++func childMain() {
++	fail := func(err error) {
++		fmt.Fprintln(os.Stderr, err)
++		os.Exit(1)
++	}
++	var q childReq
++	if err := json.Unmarshal([]byte(os.Getenv("OHM_CA_REQ")), &q); err != nil {
++		fail(err)
++	}
++	if err := unix.Unshare(unix.CLONE_FS | unix.CLONE_NEWNS); err != nil {
++		fail(err)
++	}
++	if err := mount.MakeRSlave("/"); err != nil {
++		fail(err)
++	}
++	opts, closeOpts, err := archive.WithProcSelfFD(q.Opts)
++	if err != nil {
++		fail(err)
++	}
++	defer closeOpts()
++	if err := mounttree.SwitchRoot(q.Root); err != nil {
++		fail(err)
++	}
++	var r childResp
++	switch q.Op {
++	case "unpack":
++		err = archive.Unpack(os.Stdin, q.Rel, opts)
++	case "unpacklayer":
++		_ = unix.Umask(0)
++		r.Size, err = archive.UnpackLayer("/", os.Stdin, opts)
++	case "pack":
++		tb, err := archive.NewTarballer(q.Rel, opts)
++		if err != nil {
++			fail(err)
++		}
++		go tb.Do()
++		if _, err := io.Copy(os.Stdout, tb.Reader()); err != nil {
++			fail(err)
++		}
++		return
++	default:
++		fail(fmt.Errorf("unknown op %q", q.Op))
++	}
++	// the writer on the other end must not block on what is left
++	_, _ = io.Copy(io.Discard, os.Stdin)
++	if err != nil {
++		r.Err = err.Error()
++	}
++	_ = json.NewEncoder(os.Stdout).Encode(r)
++}
++
++func runChild(op, root, rel string, opts *archive.TarOptions, in io.Reader) (int64, error) {
++	req, err := json.Marshal(childReq{Op: op, Root: root, Rel: rel, Opts: opts})
++	if err != nil {
++		return 0, err
++	}
++	cmd := reexec.Command(childName)
++	cmd.Env = append(os.Environ(), "OHM_CA_REQ="+string(req))
++	var stdout, stderr bytes.Buffer
++	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, &stdout, &stderr
++	if err := cmd.Run(); err != nil {
++		return 0, fmt.Errorf("%s in %s: %w: %s", op, root, err, bytes.TrimSpace(stderr.Bytes()))
++	}
++	var r childResp
++	if err := json.Unmarshal(stdout.Bytes(), &r); err != nil {
++		return 0, fmt.Errorf("%s in %s: bad reply %q: %w", op, root, stdout.String(), err)
++	}
++	if r.Err != "" {
++		return r.Size, errors.New(r.Err)
++	}
++	return r.Size, nil
++}
++
++func packChild(root, rel string, opts *archive.TarOptions) (io.ReadCloser, error) {
++	req, err := json.Marshal(childReq{Op: "pack", Root: root, Rel: rel, Opts: opts})
++	if err != nil {
++		return nil, err
++	}
++	cmd := reexec.Command(childName)
++	cmd.Env = append(os.Environ(), "OHM_CA_REQ="+string(req))
++	pr, pw := io.Pipe()
++	var stderr bytes.Buffer
++	cmd.Stdout, cmd.Stderr = pw, &stderr
++	if err := cmd.Start(); err != nil {
++		return nil, err
++	}
++	go func() {
++		if err := cmd.Wait(); err != nil {
++			pw.CloseWithError(fmt.Errorf("pack in %s: %w: %s", root, err, bytes.TrimSpace(stderr.Bytes())))
++			return
++		}
++		pw.Close()
++	}()
++	return pr, nil
++}
+diff --git a/vendor/golang.org/x/sys/unix/uname_hongmeng.go b/vendor/golang.org/x/sys/unix/uname_hongmeng.go
+new file mode 100644
+index 0000000..f6a7edd
+--- /dev/null
++++ b/vendor/golang.org/x/sys/unix/uname_hongmeng.go
+@@ -0,0 +1,19 @@
++//go:build linux
++
++package unix
++
++import "bytes"
++
++// Uname as the system call, except that HongMeng's release is reported as the
++// Linux version whose ABI it implements (hongmeng-uname.sh)
++func Uname(buf *Utsname) error {
++	if err := uname(buf); err != nil {
++		return err
++	}
++	if bytes.HasPrefix(buf.Release[:], []byte("HongMeng")) {
++		var r [len(buf.Release)]byte
++		copy(r[:], "6.6.0-hongmeng")
++		buf.Release = r
++	}
++	return nil
++}
+diff --git a/vendor/golang.org/x/sys/unix/zsyscall_linux.go b/vendor/golang.org/x/sys/unix/zsyscall_linux.go
+index 4c63b97..c533b34 100644
+--- a/vendor/golang.org/x/sys/unix/zsyscall_linux.go
++++ b/vendor/golang.org/x/sys/unix/zsyscall_linux.go
+@@ -1733,7 +1733,7 @@ func Umask(mask int) (oldmask int) {
+ 
+ // THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
+ 
+-func Uname(buf *Utsname) (err error) {
++func uname(buf *Utsname) (err error) {
+ 	_, _, e1 := RawSyscall(SYS_UNAME, uintptr(unsafe.Pointer(buf)), 0, 0)
+ 	if e1 != 0 {
+ 		err = errnoErr(e1)

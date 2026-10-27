@@ -1,0 +1,201 @@
+diff --git a/libcontainer/setns_init_linux.go b/libcontainer/setns_init_linux.go
+index 989e5ae..830ed62 100644
+--- a/libcontainer/setns_init_linux.go
++++ b/libcontainer/setns_init_linux.go
+@@ -44,7 +44,9 @@ func (l *linuxSetnsInit) Init() error {
+ 			logrus.Warnf("KeyctlJoinSessionKeyring: %v", err)
+ 			// Same justification as in standard_init_linux.go as to why we
+ 			// don't bail on ENOSYS.
+-			if !errors.Is(err, unix.ENOSYS) {
++			// HongMeng returns EINVAL; OHM_KEYRING_BEST_EFFORT=1 (test builds only,
++			// ohmarchy native sandbox) treats it like ENOSYS
++			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && os.Getenv("OHM_KEYRING_BEST_EFFORT") == "1") {
+ 				return fmt.Errorf("unable to join session keyring: %w", err)
+ 			}
+ 		}
+diff --git a/libcontainer/standard_init_linux.go b/libcontainer/standard_init_linux.go
+index 33062f7..7cdcc2f 100644
+--- a/libcontainer/standard_init_linux.go
++++ b/libcontainer/standard_init_linux.go
+@@ -65,7 +65,9 @@ func (l *linuxStandardInit) Init() error {
+ 			// the security feature we are using here is best-effort (it only
+ 			// really provides marginal protection since VFS credentials are
+ 			// the only significant protection of keyrings).
+-			if !errors.Is(err, unix.ENOSYS) {
++			// HongMeng returns EINVAL; OHM_KEYRING_BEST_EFFORT=1 (test builds only,
++			// ohmarchy native sandbox) treats it like ENOSYS
++			if !errors.Is(err, unix.ENOSYS) && !(errors.Is(err, unix.EINVAL) && os.Getenv("OHM_KEYRING_BEST_EFFORT") == "1") {
+ 				return fmt.Errorf("unable to join session keyring: %w", err)
+ 			}
+ 		} else {
+diff --git a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
+index dc5f65c..6f99803 100644
+--- a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
++++ b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
+@@ -13,6 +13,7 @@ package linux
+ 
+ import (
+ 	"golang.org/x/sys/unix"
++	"os"
+ 
+ 	"github.com/cyphar/filepath-securejoin/pathrs-lite/internal/gocompat"
+ )
+@@ -26,6 +27,12 @@ var sawOpenat2Error gocompat.Bool
+ 
+ // HasOpenat2 returns whether openat2(2) is supported on the running kernel.
+ var HasOpenat2 = func() bool {
++	// HongMeng (HarmonyOS PC): openat2(RESOLVE_NO_XDEV) under /proc fails with
++	// EXDEV where Linux succeeds; OHM_NO_OPENAT2=1 takes the O_PATH resolver
++	// (ohmarchy native sandbox, test builds only)
++	if os.Getenv("OHM_NO_OPENAT2") == "1" {
++		return false
++	}
+ 	if sawOpenat2Error.Load() {
+ 		return false
+ 	}
+diff --git a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
+index 21e0a62..5846db7 100644
+--- a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
++++ b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/procfs/procfs_linux.go
+@@ -22,6 +22,7 @@ import (
+ 	"os"
+ 	"runtime"
+ 	"strconv"
++	"strings"
+ 
+ 	"golang.org/x/sys/unix"
+ 
+@@ -236,6 +237,15 @@ func getProcRoot(subset bool) (*Handle, error) {
+ 	return proc, err
+ }
+ 
++// absProcLinks: HongMeng (HarmonyOS PC) makes /proc/self and /proc/thread-self
++// absolute symlinks ("/proc/<pid>"), which every safe resolver here must refuse
++// (openat2 RESOLVE_BENEATH gives EXDEV); then name the pid and tid directly
++// (ohmarchy native sandbox).
++var absProcLinks = gocompat.SyncOnceValue(func() bool {
++	l, err := os.Readlink("/proc/self")
++	return err == nil && strings.HasPrefix(l, "/")
++})
++
+ var hasProcThreadSelf = gocompat.SyncOnceValue(func() bool {
+ 	return unix.Access("/proc/thread-self/", unix.F_OK) == nil
+ })
+@@ -280,8 +290,19 @@ func (base procfsBase) prefix(proc *Handle) (string, error) {
+ 	case ProcRoot:
+ 		return ".", nil
+ 	case ProcSelf:
++		if absProcLinks() {
++			if p := strconv.Itoa(unix.Getpid()); fd.Faccessat(proc.Inner, p, unix.F_OK, unix.AT_SYMLINK_NOFOLLOW) == nil {
++				return p, nil
++			}
++		}
+ 		return "self", nil
+ 	case ProcThreadSelf:
++		if absProcLinks() {
++			t := strconv.Itoa(unix.Getpid()) + "/task/" + strconv.Itoa(unix.Gettid())
++			if fd.Faccessat(proc.Inner, t, unix.F_OK, unix.AT_SYMLINK_NOFOLLOW) == nil {
++				return t, nil
++			}
++		}
+ 		threadSelf := "thread-self"
+ 		if !hasProcThreadSelf() || hookForceProcSelfTask() {
+ 			// Pre-3.17 kernels don't have /proc/thread-self, so do it
+diff --git a/vendor/github.com/opencontainers/cgroups/manager/new.go b/vendor/github.com/opencontainers/cgroups/manager/new.go
+index 2df39e5..a992caf 100644
+--- a/vendor/github.com/opencontainers/cgroups/manager/new.go
++++ b/vendor/github.com/opencontainers/cgroups/manager/new.go
+@@ -30,6 +30,9 @@ func NewWithPaths(config *cgroups.Cgroup, paths map[string]string) (cgroups.Mana
+ 	if config == nil {
+ 		return nil, errors.New("cgroups/manager.New: config must not be nil")
+ 	}
++	if noCgroups {
++		return &nopManager{config: config}, nil
++	}
+ 	if config.Systemd && !systemd.IsRunningSystemd() {
+ 		return nil, errors.New("systemd not running on this host, cannot use systemd cgroups manager")
+ 	}
+diff --git a/vendor/github.com/opencontainers/cgroups/manager/nop_hongmeng.go b/vendor/github.com/opencontainers/cgroups/manager/nop_hongmeng.go
+new file mode 100644
+index 0000000..02031f6
+--- /dev/null
++++ b/vendor/github.com/opencontainers/cgroups/manager/nop_hongmeng.go
+@@ -0,0 +1,40 @@
++package manager
++
++// HongMeng (HarmonyOS PC) has no cgroup hierarchy runc can use: one shared
++// hierarchy, v2-style file names, no subsystem names in mountinfo, no devices
++// controller. With OHM_NO_CGROUPS=1 containers get no cgroup at all: no
++// resource limits, no freezer (docker pause), no stats. Test builds only
++// (ohmarchy native sandbox).
++
++import (
++	"errors"
++	"os"
++
++	"github.com/opencontainers/cgroups"
++)
++
++var noCgroups = os.Getenv("OHM_NO_CGROUPS") == "1"
++
++type nopManager struct{ config *cgroups.Cgroup }
++
++var errNoCgroups = errors.New("no cgroups on this system (OHM_NO_CGROUPS=1)")
++
++func (m *nopManager) Apply(int) error                   { return nil }
++func (m *nopManager) AddPid(string, int) error          { return nil }
++func (m *nopManager) GetPids() ([]int, error)           { return nil, nil }
++func (m *nopManager) GetAllPids() ([]int, error)        { return nil, nil }
++func (m *nopManager) GetStats() (*cgroups.Stats, error) { return cgroups.NewStats(), nil }
++func (m *nopManager) Stats(*cgroups.StatsOptions) (*cgroups.Stats, error) {
++	return cgroups.NewStats(), nil
++}
++func (m *nopManager) Freeze(cgroups.FreezerState) error    { return errNoCgroups }
++func (m *nopManager) Destroy() error                       { return nil }
++func (m *nopManager) Path(string) string                   { return "" }
++func (m *nopManager) Set(*cgroups.Resources) error         { return nil }
++func (m *nopManager) GetPaths() map[string]string          { return map[string]string{} }
++func (m *nopManager) GetCgroups() (*cgroups.Cgroup, error) { return m.config, nil }
++func (m *nopManager) GetFreezerState() (cgroups.FreezerState, error) {
++	return cgroups.Undefined, nil
++}
++func (m *nopManager) Exists() bool                  { return true }
++func (m *nopManager) OOMKillCount() (uint64, error) { return 0, nil }
+diff --git a/vendor/golang.org/x/sys/unix/uname_hongmeng.go b/vendor/golang.org/x/sys/unix/uname_hongmeng.go
+new file mode 100644
+index 0000000..f6a7edd
+--- /dev/null
++++ b/vendor/golang.org/x/sys/unix/uname_hongmeng.go
+@@ -0,0 +1,19 @@
++//go:build linux
++
++package unix
++
++import "bytes"
++
++// Uname as the system call, except that HongMeng's release is reported as the
++// Linux version whose ABI it implements (hongmeng-uname.sh)
++func Uname(buf *Utsname) error {
++	if err := uname(buf); err != nil {
++		return err
++	}
++	if bytes.HasPrefix(buf.Release[:], []byte("HongMeng")) {
++		var r [len(buf.Release)]byte
++		copy(r[:], "6.6.0-hongmeng")
++		buf.Release = r
++	}
++	return nil
++}
+diff --git a/vendor/golang.org/x/sys/unix/zsyscall_linux.go b/vendor/golang.org/x/sys/unix/zsyscall_linux.go
+index 80f40e4..771c4aa 100644
+--- a/vendor/golang.org/x/sys/unix/zsyscall_linux.go
++++ b/vendor/golang.org/x/sys/unix/zsyscall_linux.go
+@@ -1689,7 +1689,7 @@ func Umask(mask int) (oldmask int) {
+ 
+ // THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
+ 
+-func Uname(buf *Utsname) (err error) {
++func uname(buf *Utsname) (err error) {
+ 	_, _, e1 := RawSyscall(SYS_UNAME, uintptr(unsafe.Pointer(buf)), 0, 0)
+ 	if e1 != 0 {
+ 		err = errnoErr(e1)

@@ -49,6 +49,38 @@ Resolvable only on-device (marked `TODO(on-device)` in `agent.py`):
 On-device testing is scheduled through the supervisor (one VM per host; the box
 is shared).
 
+What static analysis settled vs. what the bring-up run must read off:
+- `msgType` is the 1-byte frame type = the `type` argument to `LinkBase::SendMessageA`;
+  the **event-channel** handshake passes `3`. There is also a command channel. So
+  `OSEASY_HS_MSGTYPE` defaults are a starting guess, confirmed on-device.
+- `connectionMode` is a **runtime** `std::string` (the static image holds an empty
+  SSO string), so its value cannot be read statically — the bring-up run observes
+  what OSEasy accepts.
+- The **method-id registry** is a numeric dispatch with no descriptive strings, so
+  it is not enumerable statically. `agent.py` logs every inbound `Call` (its
+  `methodID`, `parameters`) precisely so one bring-up session reads the ids off.
+
+## Getting the agent into the guest
+
+The guest cannot read OSEasy's shared folder (virtiofs `share_id` mode, see the
+vendor-request doc), so delivery is one of:
+
+1. **Bring-up (zero change to the demo image) — recommended.** In the guest's
+   Omarchy terminal, fetch the three files and run them transiently:
+   - if the guest has outbound network, `curl` them from this repo's raw URLs
+     (`oseasy/linux-agent/{frame,pb,agent}.py`); otherwise
+   - serve them from a tiny HTTP server on the host's tap address and `curl` from
+     the guest, or
+   - paste them in (they are small).
+   Then `python3 agent.py` and watch its log. Nothing is installed — the demo
+   image is untouched, so this is the smallest-footprint option for iterating.
+2. **Production (after the protocol is confirmed).** Bake `frame.py`, `pb.py`,
+   `agent.py` into the image under `/usr/lib/ohmarchy/oseasy-agent/` and enable
+   `ohmarchy-oseasy-agent.service` in the ISO build (`oseasy/probe/build.sh`).
+
+Use (1) for every bring-up run; only move to (2) once the handshake + method ids
+are confirmed, to keep the published demo ISO stable.
+
 ## Test
 
 ```sh

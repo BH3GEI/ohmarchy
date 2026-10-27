@@ -25,6 +25,37 @@ The demo (`native/arch.sh`, `/data/local/archtest`, the boot service) is not tou
   from the demo's root (read only), and `reset` copies 14 GB, a few minutes of disk load;
 - `create` only reads the demo's root (build trees and caches are left out).
 
-Status 2026-10-27: image created on ohdev (14 GB used); start, stop and reset not yet
-run. The app side (`com.ohmarchy.sandbox`,
-its own socket names) is still to do.
+`ohm-capdrop` (from `ohm-capdrop.c`) drops the capabilities and joins the namespaces
+for `run`; build it static and put it in the sandbox's `bin/`:
+
+```
+SDK=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native
+$SDK/llvm/bin/clang --target=aarch64-linux-ohos --sysroot=$SDK/sysroot -static -O2 -o ohm-capdrop ohm-capdrop.c
+```
+
+## Tested on ohdev, 2026-10-28, beside the running demo
+
+start, status, `config-check.sh`, stop, reset (about a minute, nice 19), all with the
+demo desktop running; its health check before and after was identical (same
+processes and pids, same md5 of its scripts and boot configs). What the check
+printed (`/data/local/ohm-sandbox/evidence/config-check-20261028.txt`):
+
+- namespaces: mount, pid, ipc, uts its own; net and time shared with the host;
+- capability bounding set `b18cecff` (the list in `ohm-sandbox` dropped);
+- `/` the image (nodev), `/proc` its own, `/proc/sys` and `/sys` read-only, `/dev` a
+  tmpfs with null, zero, full, random, urandom, tty, ptmx and the dma-heap node;
+- processes inside: catatonit (pid 1) and the command run.
+
+HongMeng differences met on the way:
+
+- util-linux `setpriv` fails ("keep process capabilities failed": PR_SET_KEEPCAPS is
+  refused), hence `ohm-capdrop`; PR_CAPBSET_DROP itself works;
+- toybox `nsenter` opens `/proc/PID/ns/*` after entering the mount namespace, where
+  that pid does not exist; `ohm-capdrop --enter` opens them all first;
+- a read-only remount of a sysfs bind is refused (ENOTSUP); a fresh sysfs mounted
+  read-only works;
+- devpts with `newinstance` does not mount, so there are no ptys inside yet (the
+  demo binds the host's `/dev/pts`, which the sandbox does not do).
+
+To do: ptys, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+start with its own capability set (a4).

@@ -18,8 +18,14 @@ R=$S/root
 PIDF=$S/sandbox.pid
 SIZE=64G
 DEMO=/data/local/archtest
-# capabilities nothing inside may have (setpriv names)
-DROP=-mknod,-sys_admin,-sys_module,-sys_rawio,-sys_boot,-sys_time,-sys_pacct,-sys_tty_config,-mac_admin,-mac_override,-syslog,-net_admin,-audit_control,-audit_read,-wake_alarm,-block_suspend,-linux_immutable,-bpf,-perfmon,-checkpoint_restore,-setpcap
+# capabilities nothing inside may have, by number (ohm-capdrop.c: setpriv cannot be used,
+# HongMeng refuses its PR_SET_KEEPCAPS): mknod 27, sys_admin 21, sys_module 16,
+# sys_rawio 17, sys_boot 22, sys_time 25, sys_pacct 20, sys_tty_config 26,
+# mac_override 32, mac_admin 33, syslog 34, net_admin 12, audit_control 30,
+# audit_read 37, wake_alarm 35, block_suspend 36, linux_immutable 9, bpf 39,
+# perfmon 38, checkpoint_restore 40, setpcap 8
+DROP=27,21,16,17,22,25,20,26,32,33,34,12,30,37,35,36,9,39,38,40,8
+CAPDROP=/usr/local/sbin/ohm-capdrop  # copied into the image at start
 
 alive() {
     [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ "$({ cat "/proc/$P/comm"; } 2>/dev/null)" = catatonit ]
@@ -83,12 +89,16 @@ _session)
         n=$((n+1)); [ -b "/dev/block/loop$n" ] || { echo "no free loop device"; exit 1; }
     done
     echo "/dev/block/loop$n" > "$S/sandbox.loop"
+    # a failure before pivot_root: unmount and free the loop, so start can be retried
+    trap 'cd /; umount -l "$R" 2>/dev/null; losetup -d "/dev/block/loop$n" 2>/dev/null; rm -f "$S/sandbox.loop"' EXIT
     mount -t ext4 -o nodev "/dev/block/loop$n" "$R"
     mount -t proc -o nosuid,nodev,noexec proc "$R/proc"
     # the kernel's knobs stay read-only (no sys_admin inside to remount them)
     mount -o bind "$R/proc/sys" "$R/proc/sys"; mount -o remount,bind,ro "$R/proc/sys"
     mount -o bind /dev/null "$R/proc/sysrq-trigger" 2>/dev/null || true
-    mount -o bind,ro /sys "$R/sys"
+    # sysfs read-only: HongMeng refuses a read-only remount of a bind (ENOTSUP), so a
+    # fresh read-only sysfs; without one, /sys stays empty rather than writable
+    mount -t sysfs -o ro,nosuid,nodev,noexec sysfs "$R/sys" || echo "no read-only sysfs: /sys left empty"
     mount -t tmpfs -o mode=755,nosuid tmpfs "$R/dev"
     for d in "null 1 3" "zero 1 5" "full 1 7" "random 1 8" "urandom 1 9" "tty 5 0" "ptmx 5 2"; do
         set -- $d; mknod "$R/dev/$1" c "$2" "$3"; chmod 666 "$R/dev/$1"
@@ -105,6 +115,8 @@ _session)
     ln -sf /proc/self/fd/0 "$R/dev/stdin"; ln -sf /proc/self/fd/1 "$R/dev/stdout"; ln -sf /proc/self/fd/2 "$R/dev/stderr"
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/tmp"
     mount -t tmpfs -o mode=755,nosuid,nodev tmpfs "$R/run"
+    mkdir -p "$R/usr/local/sbin" && cp "$S/bin/ohm-capdrop" "$R$CAPDROP" && chmod 755 "$R$CAPDROP"
+    trap - EXIT
     cut -d' ' -f4 /proc/self/stat > "$PIDF"   # host pid of this shell (host procfs still)
     # the image becomes /; the host's filesystem is detached from this namespace
     mkdir -p "$R/.oldroot"
@@ -115,15 +127,16 @@ _session)
     /usr/bin/rmdir /.oldroot
     set +e
     echo "sandbox up on /dev/block/loop$n"
-    exec /usr/bin/env -i /usr/bin/setpriv --bounding-set "$DROP" -- /usr/bin/catatonit -P
+    exec "$CAPDROP" "$DROP" -- /usr/bin/env -i /usr/bin/catatonit -P
     ;;
 run|shell)
     alive || { echo "not running"; exit 1; }
     c=$1; shift
     [ "$c" = shell ] && set -- /usr/bin/bash -l
-    # setns into the mount namespace moves the process to its root (the image)
-    exec nsenter -t "$P" -m -p -i -u -- /usr/bin/env -i HOME=/root TERM=xterm-256color LANG=C.UTF-8 \
-        PATH=/usr/local/sbin:/usr/local/bin:/usr/bin /usr/bin/setpriv --bounding-set "$DROP" -- "$@"
+    # ohm-capdrop joins the namespaces (the mount one last: it moves the process to the
+    # image's root), drops the capabilities and runs the command in a child
+    exec "$S/bin/ohm-capdrop" --enter "$P" "$DROP" -- /usr/bin/env -i HOME=/root TERM=xterm-256color \
+        LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin "$@"
     ;;
 status)
     alive && echo "running: $P ($(cat "$S/sandbox.loop" 2>/dev/null))" || echo "stopped"

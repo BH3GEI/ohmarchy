@@ -1,0 +1,23 @@
+#!/usr/bin/python3
+# ohm-fence-demo: inside the sandbox, show that the host's abstract socket names are
+# out of reach (ohm-abstract-fence). It only asks to connect, with a stream socket to
+# wpa_supplicant's datagram name, so even without the fence nothing could be sent;
+# then a name bound in here, which connects.
+import errno, socket
+
+def attempt(label, name):
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        s.connect(name)
+        print(f"{label}: connected")
+    except OSError as e:
+        print(f"{label}: {errno.errorcode.get(e.errno, e.errno)} ({e.strerror})")
+    finally:
+        s.close()
+
+attempt("host's Wi-Fi control socket @/data/service/el1/public/wifi/sockets/wpa/wlan0",
+        "\0/data/service/el1/public/wifi/sockets/wpa/wlan0")
+inside = socket.socket(socket.AF_UNIX)
+inside.bind("\0ohm-fence-demo-inside")
+inside.listen(1)
+attempt("a name bound inside the sandbox @ohm-fence-demo-inside", "\0ohm-fence-demo-inside")

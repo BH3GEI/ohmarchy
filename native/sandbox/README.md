@@ -183,35 +183,44 @@ set (a4).
 
 ## Abstract sockets: the fence (2026-10-28)
 
-Three layers for the same aim, the sandbox's own processes not connecting to the
-host's abstract Unix sockets (the other direction, the app connecting to the
-desktop's `@ohmsbx-*`, and the sandbox reaching the GPU broker through the path
-socket `/tmp/.virgl_test`, stay open):
+The aim: the sandbox's own processes do not connect to the host's abstract Unix
+sockets (abstract-sockets-ohdev.md). The other direction stays open: the app connects
+to the desktop's `@ohmsbx-*`, and the sandbox reaches the GPU broker through the
+path socket `/tmp/.virgl_test`.
 
-- **Now, a transition: `ohm-abstract-fence.c`**, preloaded for every process in the
-  sandbox (`/etc/ld.so.preload`, built by `build-helpers`). `connect`, `sendto` and
-  `sendmsg` to an abstract name return EACCES unless the name starts with `ohmsbx-` or
-  was bound inside the sandbox (its `bind` records each abstract name it binds,
-  autobound ones too, in `/run/ohm-abstract`, mode 1733 on the sandbox's own /run).
-  File-path and network sockets are not touched. **Its limits: it sees only calls
-  made through libc's symbols, so statically linked programs and direct system calls
-  (Go, for one) pass, and root inside can remove it. It keeps ordinary programs off
-  the host's abstract sockets; it is not a boundary.** `sendmmsg` is not covered.
-- **The boundary: a MAC domain** for the sandbox that is denied `connectto`/`sendto`
-  on Unix sockets outside it (H line's CIL domain, waiting on loading policy at run
-  time on ohdev).
-- **If the kernel will not load policy: a seccomp filter that hands only connect,
-  sendto and sendmsg to a supervisor**, which reads the address and decides; the
-  design is under review. (HongMeng has neither Landlock nor seccomp user
-  notification, checked 2026-10-28, so no kernel facility filters by address
-  directly.)
+**What is in place: `ohm-abstract-fence.c`**, preloaded for every process in the
+sandbox (`/etc/ld.so.preload`, built by `build-helpers`, in the reset snapshot).
+`connect`, `sendto` and `sendmsg` to an abstract name return EACCES unless the name
+starts with `ohmsbx-` or was bound inside the sandbox (its `bind` records each
+abstract name it binds, autobound ones too, in `/run/ohm-abstract`, mode 1733 on the
+sandbox's own /run). File-path and network sockets are not touched.
 
-Checked on ohdev from the command line, as the sandbox's user, with nothing sent to
-any host service: a connect to the host's wpa_supplicant name (a stream socket to a
-datagram name, which the kernel would refuse anyway) and to a test listener on the
-host (our own helper under a test name): EACCES; a name bound inside the sandbox,
-`@ohmsbx-display`, the session bus (a path) and https: connected; a static program's
-connect to the test listener: connected (the limit above).
+What it stops: ordinary programs (anything going through libc: shells, Python,
+desktop programs) reaching the host's abstract sockets, by mistake or by default.
+`ohm-fence-demo` inside shows it: the host's Wi-Fi control socket name gets EACCES,
+a name bound inside connects (it only asks to connect, with a stream socket to a
+datagram name, so nothing could be sent either way).
+
+**What remains (the residual):** it sees only calls made through libc's symbols.
+Statically linked programs and direct system calls (Go programs, for one) pass, and
+root inside can remove it; `sendmmsg` is not covered. It keeps programs from
+connecting by mistake; it is not a boundary, and the sandbox is test-machine
+isolation until the cure below.
+
+**The cure is HarmonyOS's:** abstract names kept per network namespace, as Linux
+keeps them, or a MAC domain for the sandbox, denied `connectto`/`sendto` on Unix
+sockets outside it, signed into the system (ohdev's kernel refuses loading policy at
+run time, H line, 2026-10-28). Both are requests in docs/handover.zh-CN.md 3(a) 15.
+HongMeng has neither Landlock nor seccomp user notification (checked 2026-10-28), so
+the kernel offers nothing that filters by address from our side; a supervisor
+through seccomp and ptrace is noted as optional hardening, not built.
+
+Checked on ohdev, 2026-10-28: from the command line as the sandbox's user, a host
+name and a test listener of ours on the host: EACCES; a name bound inside,
+`@ohmsbx-display`, the session bus (a path) and https: connected; a static program:
+connected (the residual). On screen with the app: display, terminal, fcitx5 pinyin
+(你好), sound (the sink running with the app connected to `@ohmsbx-audio`) and
+`ohm-fence-demo` as above.
 
 ## Network (2026-10-28)
 

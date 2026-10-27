@@ -199,7 +199,7 @@ build-helpers)
     alive || { echo "not running"; exit 1; }
     # sources go in on stdin; nothing of the host is mounted inside
     tar -C "$S/src" -cf - ohime.c ohmarchy-audio-relay.c ohmarchy-desktop input-method-unstable-v2.xml \
-        hongmeng-ptypeer.c ohm-abstract-fence.c |
+        hongmeng-ptypeer.c ohm-abstract-fence.c ohm-fence-demo |
         sh "$0" run /usr/bin/bash -c '
 set -e; d=/root/ohm-src; rm -rf $d; mkdir -p $d; tar -C $d -xf -; cd $d
 wayland-scanner client-header input-method-unstable-v2.xml input-method-unstable-v2-client-protocol.h
@@ -213,6 +213,7 @@ grep -q libhongmeng-ptypeer /etc/ld.so.preload || echo /usr/local/lib/libhongmen
 # abstract socket names of the host stay out of reach of programs going through libc
 gcc -O2 -shared -fPIC -o /usr/local/lib/libohm-abstract-fence.so ohm-abstract-fence.c -ldl
 grep -q libohm-abstract-fence /etc/ld.so.preload || echo /usr/local/lib/libohm-abstract-fence.so >> /etc/ld.so.preload
+install -m 755 ohm-fence-demo /usr/local/bin/ohm-fence-demo
 echo "helpers built"'
     ;;
 build-pasta)

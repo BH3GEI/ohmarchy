@@ -303,7 +303,7 @@
    - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
    - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
    - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）。
-   - 缓解（2026-10-28）：当前实际缓解是 D 的 **B 方案——libc 层出站过滤**（ohm-abstract-fence）：沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，**只防误连、不是安全边界**。原计划的两条内核级边界都不成立：(1) 我们自己的 SELinux MAC 域——运行时加载已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），只有鸿蒙把它签进系统策略才成立；(2) **C 方案（seccomp + ptrace supervisor 的内核级自主出站拦截）——评估后暂不实现**（会明显拖累桌面性能，且目前的 residual 并非已证实的漏洞），仅作文档记录的可选加固、设计从略、未实现。根治仍需鸿蒙按 netns 隔离抽象 socket，或把我们的策略模块签进系统。
+   - 缓解（2026-10-28）：当前实际缓解是 D 的 **B 方案——libc 层出站过滤**（ohm-abstract-fence）：沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，沙箱里的 root 也能把它摘掉，**只防误连、不是安全边界**。2026-10-28 带 app 上屏验证：桌面、终端、拼音输入、声音、上网都照常，沙箱里的 `ohm-fence-demo` 连主机的 Wi-Fi 控制名得到 EACCES。原计划的两条内核级边界都不成立：(1) 我们自己的 SELinux MAC 域——运行时加载已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），只有鸿蒙把它签进系统策略才成立；(2) **C 方案（seccomp + ptrace supervisor 的内核级自主出站拦截）——评估后暂不实现**（会明显拖累桌面性能，且目前的 residual 并非已证实的漏洞），仅作文档记录的可选加固、设计从略、未实现。根治仍需鸿蒙按 netns 隔离抽象 socket，或把我们的策略模块签进系统。
 
 Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 

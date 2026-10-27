@@ -78,20 +78,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 07:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 08:29 PDT)
 
-Now: top priority is the **new native design**: Omarchy installed and started like a HarmonyOS app, running on the HarmonyOS kernel (no VM), locked into its own directory, with Docker inside. The working native demo is not touched; the new one is built separately. The second test machine is repaired, unplugged and no longer used.
+Now: top priority is the **new native design** (Omarchy installed like a HarmonyOS app, on the HarmonyOS kernel, locked into its own directory, Docker inside). The working native demo is not touched. B's new ISO passed its regression. A handover document for tomorrow's review is in [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
 
 | Route | Now | Latest |
 |---|---|---|
-| D. Native (new design) | Three checks in parallel on the first machine, shell only: can we add our own allow-list rule (H); does Docker run locked into one directory (a4); does root inside stay inside (D, after H). D writes the design and the helper ↔ app interface | **Design agreed**: one small root helper with a fixed job (start Linux in its directory, give Docker its containers); the app does icon, full screen, picture, keyboard and mouse; inside, full Arch with `pacman` and root; two locks: Linux sees only its directory, and a default-deny allow-list lets it touch nothing else; photos, clipboard and other private data stay outside and go through the app with HarmonyOS's prompts. Kept apart from the demo: new app name, new directory, no autostart |
-| D. Native (demo) | Unchanged; Alt+Shift waits for screen time | **Alt+Shift stands in for Super** (ad71991): Super+X is Alt+Shift+X, add the other Shift or Alt for Super+Shift or Super+Alt; right Alt is a normal Alt again; Alt+Shift+Tab still switches windows. Not yet tried on the real keyboard |
-| B. OSEasy | Regression install of the new ISO on the first machine; shut down after the check to free the VM slot | New ISO 2,032,457,728 bytes with kernel 7.2.12-1.2. **Disk persistence**: message definitions extracted from OSEasy's Windows guest agent (handshake and RPC envelope), enough for a minimal Linux agent |
-| Release | GPL sources | 10 of the 14 missing packages fetched; 5 upstream sources still being looked for. The new ISO goes into the draft after the regression, the old one stays until then |
+| D. Native (new design) | Start/stop/reset tests wait until the demo app is not in front; the policy-reload test waits for the VM slot | **Launcher committed** (a0eb308): `native/sandbox/ohm-sandbox` with create/start/stop/status/reset, its own image and clean snapshot, own mount/pid/ipc/uts namespaces with `pivot_root`, a minimal `/dev`, read-only `/proc/sys`, reduced capabilities; refuses to start while the demo session runs. **Allow-list**: the first machine is a developer build with SELinux enforcing, CIL sources and tools on the device; a module that only adds a new domain can be loaded at run time without touching `/system` (gone after a reboot). Loading is not yet tested; the first test reloads the existing policy unchanged, with an automatic restore after 5 minutes. **Docker on the HarmonyOS kernel** (a first; route I's Docker ran in a VM): dockerd starts confined to the sandbox directory; containerd crashed on HongMeng's `uname` string and runs with a patched `Uname`; HongMeng has no devices cgroup, so for functional tests only the check is skipped and every container drops `MKNOD` with no host devices or paths |
+| B. OSEasy | Shutting the test VM down to free the VM slot | **New ISO passed on the first machine**: full Omarchy desktop (wallpaper, top bar, welcome card), no boot faults in the VM log with kernel 7.2.12-1.2. It goes into the draft release next to the old one |
+| D. Native (demo) | Unchanged | Alt+Shift as Super (ad71991) not yet tried on the real keyboard |
+| Release | GPL sources | 5 upstream sources still missing |
 | E. Bare metal | Waiting for the owner to try boot keys | Unchanged |
-| Second machine | Repaired, unplugged, not used any more | Boots normally; `/data` untouched; our ssh server and startup configs removed |
 
-Handover: a document for tomorrow's discussion is being drafted (what we still do, what HarmonyOS needs to merge or allow, what must be maintained).
+Asks for HarmonyOS found today (in the handover, section 3): report `uname` release in Linux form; a devices cgroup or BPF device filter for containers; ship our SELinux module and helper for the native design.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

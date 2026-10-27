@@ -80,7 +80,7 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 <!-- progress:start -->
 ## Progress (updated hourly; last: 2026-10-27 06:33 PDT)
 
-Now: the second test machine is repaired and boots normally again, with `/data` untouched. B's new ISO with kernel 7.2.12-1.2 is built and passed a boot check on the first machine. All device work is paused at the owner's request while he uses the first machine.
+Now: the second test machine is repaired and boots normally again, with `/data` untouched. B's new ISO with kernel 7.2.12-1.2 is built and passed a boot check on the first machine. All device work is paused at the owner's request while the owner uses the first machine.
 
 | Route | Now | Latest |
 |---|---|---|

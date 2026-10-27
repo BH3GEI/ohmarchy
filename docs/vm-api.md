@@ -312,3 +312,16 @@ retry — see the 03:25 / 13:47 rows above). Instead, in order:
   stratovirt and dragged the whole machine down **~19:40 → 19:48:15**,
   contributing to the failed OTA / eRecovery state. Not a deliberate second VM —
   the `kill` triggered the app's auto-respawn, a linkage not previously documented.
+- **Correction (found 2026-10-27 21:30 CST): the VM was not why ohdev2 stopped
+  booting.** At 19:38:29 CST a read-only check sent as an ssh one-liner lost its
+  quotes in the remote shell; `echo "$l -> $f"` became `echo "libc.so -" > $f`
+  with `$f=/system/lib64/libc.so`, a symlink to the dynamic loader, so
+  `/system/lib/ld-musl-aarch64.so.1` became 10 bytes. On the next boot every
+  exec failed (`process map interp failed, err=E_HM_NOEXEC`), ueventd never ran,
+  `/dev/block/by-name/userdata` was never created, and BFM sent the machine to
+  eRecovery. The respawning VM only caused that reboot. Fix: the file lived only
+  in the `/system` overlay's upper ext4 (end of the `system` partition, mounted
+  via dm as `_usr_ext4`); it was removed there with debugfs on a copy, and the 6
+  changed 4 KiB blocks were written back after checking the on-disk blocks
+  matched the copy. The erofs original shows through again; `/data` untouched.
+  Rule: send remote commands as a script over `sh -s`, never as a quoted one-liner.

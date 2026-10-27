@@ -164,7 +164,7 @@ VM had no agent: the card stayed 已关机 and 关机 was greyed out.)
 |---|---|---|---|
 | 1 | Double-click 鸿融 on the desktop (top left; while closed it is not in the dock). | VM page: Linux, 当前状态 已关机, 已使用 6 GB. The window's position varies between openings; take the button coordinates from a fresh screenshot. | 5 s |
 | 2 | 开机 (870, 427 in a 1440-wide screenshot). Take a screenshot and check 鸿融's fullscreen VM window is in front before typing. | Omarchy desktop, no login screen, no 增强服务 toast. Go on right away: after 300 s idle Omarchy locks and turns the display off (rehearsal 2026-10-27: a key, then the password, brought it back). | about 1 min |
-| 3 | Terminal: Super+Return (`keyEvent 2076 2054`), then `ohui type "fastfetch"` + newline. | foot terminal (first line: the AI agent setup hint); fastfetch: KVM Virtual Machine (StratoVirt), Virtio GPU, 1920x1280 60 Hz, Omarchy 4.0.6, Linux 7.2.12-1.1-aarch64-ARCH, Hyprland 0.56.2, 793 packages. | 20 s |
+| 3 | Terminal: Super+Return (`keyEvent 2076 2054`), then `ohui type "fastfetch"` + newline. | foot terminal (first line: the AI agent setup hint); fastfetch: KVM Virtual Machine (StratoVirt), Virtio GPU, 2160x1440 120 Hz (EDID fix of 2026-10-27), Omarchy 4.0.6, Linux 7.2.12-1.1-aarch64-ARCH, Hyprland 0.56.2, 793 packages. | 20 s |
 | 4 | Browser: Super+Shift+B (`keyEvent 2076 2047 2018`), then Ctrl+L (`keyEvent 2072 2028`), type `omarchy.org` + newline. | omarchy.org loads over 鸿融's network; no "Restore pages?". | 30 s |
 | 5 | Workspaces: Super+2 (`keyEvent 2076 2002`), then Super+1 (`keyEvent 2076 2001`). | Empty workspace 2, then back. | 10 s |
 | 6 | Bring 鸿融's main window forward (`aa start -b com.huawei.medivh -a EntryAbility`). | The card says 运行中 (green), 关机 and 暂停 are active. | 5 s |

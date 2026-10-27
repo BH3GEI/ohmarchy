@@ -146,13 +146,34 @@ Ship it as a systemd service baked into the image.
   no resource, retry after 1s"). So an interop sender is:
   `hdr = be32(len(body)) + byte(type) + be16(sum(hdr[0:5]) & 0xFFFF); frame = hdr + body`.
 
-- **C — partial.** The host channel is the vioserial device, opened via
-  `MsgSock::GetPortFromDevicePath` / `Service::HandleConnectSerial`. Windows names
-  the pipes `\\.\PIPE\VM_SYSTEM_SERVICE_COMMU` (command) and `\\.\PIPE\WIN_EVENT`
-  (event). On the host the virtserialports are named (StratoVirt cmdline)
-  `winbox_serial0/1`, `clipboard_vioser0`, `gfscl`, `additions_vioser0/1`; the
-  exact pipe-name ↔ port-name mapping needs disassembly of
-  `GetPortFromDevicePath`. Linux side: match by `/sys/class/virtio-ports/*/name`.
+- **C — mostly done (correction).** The host↔guest channel is the **vioserial
+  device itself**, not a named pipe. `MsgSock::WindowsSerialInit` (fcn `0x14008e658`)
+  enumerates the vioserial device and opens it with `CreateFileA`
+  ("open serial port {} success" / "Cannot find vioserial device"), and
+  `MsgSock::GetPortFromDevicePath` (fcn `0x14008e260`) extracts the **port number**
+  from the Windows device-instance path with the regex `&\d+#` + `stoi`. The Windows
+  driver is `vioser.sys` (`driver1\vioserial\vioser.inf`).
+  - **Correction to earlier note:** `\\.\PIPE\VM_SYSTEM_SERVICE_COMMU`,
+    `\\.\PIPE\WIN_EVENT`, `\\.\PIPE\PERF_COMM` are **Windows-internal named pipes**
+    for IPC between the agent's own components (e.g. `UserProfileManager`
+    `SendPipeMessage`, `win_evt_monitor`), *not* the host link.
+  - Linux side: the agent opens one of `/dev/vportNpX`. The host-side port names
+    (StratoVirt cmdline) are `winbox_serial0/1`, `clipboard_vioser0`, `gfscl`,
+    `additions_vioser0/1`; which one carries the main `link` service still needs
+    on-device confirmation (watch which `/sys/class/virtio-ports/*/name` the host
+    actually drives) — the Windows side selects by port *number*, not by name.
 
-B and C need a PE disassembler (string analysis is exhausted). Deferred while the
-native-desktop route is the top priority.
+- **authString — stopped at the guardrail.** The `link.Handshake` has an optional
+  `authString` (field 3). There is a secondary "authstring handshake" step
+  (`IService::EstablishEventChannel` → `LinkBase::SendMessageA`; error
+  "iservice send authstring handshake failed!"), and the send path touches the
+  Windows registry (`RegCreateKeyExW`), so `authString` may be a stored token. No
+  crypto primitives (HMAC/SHA) are tied to it, and the normal handshake carries only
+  `connectionMode` + `clientName`. Per the task's rule, interop analysis **stops
+  here** rather than determining/reconstructing any `authString` secret — pending a
+  decision on whether the minimal agent should attempt the handshake without it
+  (authString is an optional field).
+
+The frame (B) and the schema (A) are enough to prototype the agent and test the
+non-auth handshake by replay; the exact `link` port index and the authString
+question are the two remaining unknowns.

@@ -251,6 +251,16 @@
 7. **SDK 头文件冲突。** OHOS 的 `linux/socket.h` 无条件定义 `sockaddr_storage`，和 musl 冲突；`dma-buf.h` 缺 sync-file ioctl。
    - 影响：J。
    - 退路：device/userspace/uapi-fix 和 shim/。
+8. **`uname` 的 release 字段改报 Linux 格式的版本号**，例如 `6.6.0-hongmeng`（sysname 仍可报 HarmonyOS）。
+   - 为什么：HongMeng 报的是 `HongMeng Kernel 1.11.13.0`，Linux 程序普遍按 `主版本.次版本` 解析，解析不了就出错。C 程序可以靠路线 D 预加载的 libhongmeng-uname.so 改写，Go 程序却自己发系统调用，预加载对它们无效；personality(UNAME26) 在 HongMeng 上也不生效。containerd 2.4.2 一启动就 panic（`failed to check kernel version: failed to parse kernel version "HongMeng Kernel 1.11.13.0": expected integer`），dockerd 也报 fsverity 检查失败。
+   - 复现：在 ohdev 的 root shell 里运行任意 Go 程序调用 `syscall.Uname`，看 Release 字段；或者在路线 D 的会话里直接运行 `/usr/bin/containerd`。
+   - 影响：原生沙箱（Docker），以及所有用 Go 写、检查内核版本的工具。
+   - 退路：给 vendored 的 `golang.org/x/sys/unix.Uname` 打补丁（把 release 改成 6.6.0-hongmeng），然后重新编译 containerd 和 dockerd。每次 Docker 升级都要重做。
+9. **提供 devices cgroup，或者 cgroup2 加 BPF 设备过滤。**
+   - 为什么：Docker 靠 devices cgroup 限制 root 容器能打开哪些设备，没有它，容器里可以 mknod 出宿主的块设备，进而直接读写整块磁盘。HongMeng 只有一套 cgroup 层级（同一个设备号 0:10，挂在 /dev/memcg、/dev/pids、/dev/cpuset 等处），文件名是 v2 风格，mountinfo 里也没有写子系统名，而且没有 devices 子系统。dockerd 因此拒绝启动，报 `Devices cgroup isn't mounted`。
+   - 复现：在 ohdev 上 `cat /proc/self/cgroup`（freezer、pids、cpuset、memory、cpu、load、iolimit、workingset、dummy，没有 devices），以及 `grep cgroup /proc/self/mountinfo`。
+   - 影响：原生沙箱（Docker）。
+   - 退路：测试版 dockerd 里加一个默认关闭的开关 `OHM_NO_DEVICES_CGROUP=1` 跳过检查，同时所有容器都 `--cap-drop MKNOD`，禁止 `--privileged` 和 `--device`，沙箱的 /dev 用独立 tmpfs。这些只够做功能测试，不能当正式方案。正式方案在等鸿蒙提供 devices cgroup，或者由 MAC 禁止容器域打开块设备和字符设备（并入新域设计）。
 
 ### 3(b) 希望允许或放开的
 

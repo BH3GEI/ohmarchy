@@ -251,3 +251,38 @@ dialog), so that needs a full 开始安装 with route I up.
 - If OSEasy shows the dialog: it may be old. Close it and press 安装 / 开机
   again once nothing runs; OSEasy destroys its stale VM object and retries by
   itself.
+
+## Stopping an OSEasy / 鸿融 VM safely — and the 2026-10-27 ohdev2 auto-respawn incident
+
+**Rule (adopted 2026-10-27).** To stop a VM that OSEasy (`com.oseasy1.ohvm`) or
+鸿融 (`com.huawei.medivh`) owns, never just `kill` the `stratovirt` process: the
+owning app watches for its VM disappearing and re-creates it (`destroyVm` +
+retry — see the 03:25 / 13:47 rows above). Instead, in order:
+1. Shut down / stop the VM from the app's own UI (guest poweroff, or its stop button).
+2. If that is impossible (guest hung), `aa force-stop` the owning app
+   (`aa force-stop -b com.oseasy1.ohvm` / `-b com.huawei.medivh`) so it stops
+   watching and will not re-pull.
+3. Only then `kill <exact-pid>` the `stratovirt` — never by name, other sessions
+   may run their own.
+4. After killing, confirm no new `stratovirt` appeared (`pidof stratovirt`
+   empty). If one did, the app re-pulled it — go back to step 2.
+
+**The incident (2026-10-27, ohdev2, HarmonyOS 7.0.0.32).** agent-84 ran OSEasy
+开始安装 on the finalized B ISO:
+- `stratovirt` pid **31012** started **19:14:06 CST** (createVm success,
+  vm_manager id `68eaa5b5`, vm.qcow2).
+- **19:14:24 CST** the guest kernel crashed during virtio-pci init:
+  `virtio-pci 0000:00:05.0 ... Invalid features select 0x2` → `Failed to mmio
+  write 80020c00c` → `VCPUHmv 3 emulate error`; guest hung at [0.76]s boot.
+  (Root cause: 7.0.0.32's stratovirt supports only virtio feature select 0/1,
+  the 7.2.12 kernel probes select 2. Fixed in kernel 7.2.12-1.2, commit 139aa77.)
+- agent-84 then `kill 31012` (exact PID). ps before: `31012 stratovirt`,
+  `31105 virtiofsd`; ps after: 31012 gone, no stratovirt. **agent-84 did not
+  wall-clock-timestamp the kill** — it was after the ~19:19 blocker report and
+  before switching to file-only static analysis; D can pin the exact death of
+  31012 from ohdev2's process / vmlog records.
+- Consequence (D's finding): OSEasy saw the VM gone, `destroyVm` + retried, and
+  spawned a new VM **pid 54451 (vm=32768)**, which kept vcpu-faulting on the old
+  stratovirt and dragged the whole machine down **~19:40 → 19:48:15**,
+  contributing to the failed OTA / eRecovery state. Not a deliberate second VM —
+  the `kill` triggered the app's auto-respawn, a linkage not previously documented.

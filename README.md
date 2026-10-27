@@ -78,15 +78,15 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 19:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 20:28 PDT)
 
-Now: all three parts of the demo are rehearsed. B's public ISO is being rebuilt from the new image (both display fixes) and checked once more before upload. The internal report is done ([docs/report/](docs/report/index.html)).
+Now: **all three deliverables are ready.** The demo is rehearsed in all three parts (part 1 re-run after its fixes, parts 2 and 3 re-checked with the final image). The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out is final and waits only for an upload token for the draft release.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Building the ISO from the new image; then an install to check the wallpaper and top bar | — |
-| C. 鸿融 / public image | Done for this round | **New image compressed**: 1,775,029,638 bytes (1.65 GiB, under GitHub's 2 GiB limit; above the 1.6 GB target, which is not a hard limit), `zstd -t` passed. With 2 threads it took 34 min and memory stayed steady |
-| D. Native | — | — |
+| B. OSEasy | Waiting for the upload | **Final ISO: 2,006,917,120 bytes** (under GitHub's 2 GiB limit). Installed from OSEasy's "立即创建" path: about 1.5 min to the password screen, then a desktop with wallpaper, top bar and the Omarchy welcome panel at 120 Hz; password, sudo and the removal of the temporary rule all checked. The earlier ISO with the empty desktop is withdrawn. Manual part 3 covers both opening states ("再次安装" and "立即创建") (bff38a1) |
+| C. 鸿融 | Ready; the Omarchy disk is swapped in the day before the demo | The main VM's disk is in place; the test copy used for diagnosis is deleted |
+| D. Native | Ready | — |
 | I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->

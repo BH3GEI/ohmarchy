@@ -85,3 +85,38 @@ Phase 2 (after ohdev is free again — it is first needed for a B-release regres
 3. Confirm the eRecovery key combo (brick backstop) before any reboot.
 4. Then, with approval and step-by-step reporting: format the ESP, reboot into UEFI/fastboot,
    try to boot. Only the ESP is written first; `boot` is left intact.
+
+## USB-boot via Ventoy + vendor DTB driver analysis (2026-10-27)
+
+Yao's USB stick is a **Ventoy** drive (don't wipe): sda1 exFAT (label Ventoy, auto-mounted by
+HongMeng at `/mnt/data/external/4E21-0000`, ~29 GB free, holds ArchLinux/Debian/Omarchy(x86
+omarchy-4.0.6.iso)/Ubuntu/Win11/Win7/driver + virtio-win), sda2 `VTOYEFI` with `grub/arm64-efi`
+(Ventoy has ARM64 UEFI). Plan: **add** an arm64 artifact under `Omarchy-arm64/` alongside the
+existing files — never touch the internal disk, never touch existing USB files. exFAT is writable
+(~593 MB/s). This is zero-risk: the internal NVMe is not touched at all.
+
+**Firmware passes a Device Tree, not ACPI** (`/sys/firmware/devicetree` + `/sys/firmware/fdt`
+present; no `/sys/firmware/acpi`). The vendor DTB was exported from `/sys/firmware/fdt` (724 KB,
+30531 dts lines) and its `compatible` list analyzed to predict which mainline drivers can bind:
+
+| subsystem | DTB compatible | mainline driver? |
+|---|---|---|
+| CPU arch timer | `arm,armv8-timer` | ✅ built-in |
+| legacy timer | `arm,sp804` (primecell) | ✅ |
+| framebuffer (via UEFI GOP) | — (not DT; GOP) | ✅ efifb/simpledrm |
+| display controller | `hisilicon,dpufb`, `dkmd,dpu_device` | ❌ vendor DPU (GOP only) |
+| USB | `hisilicon,hiusb`, `hisilicon,hiusbc`, `huawei,huawei_usb` | ❌ no dwc3/xhci match |
+| serial console | `hisilicon,uart` | ❌ (not pl011/dw-apb; efifb console only) |
+| I2C | `hisilicon,hisi-i2c-master` | ❌ → `hid-over-i2c` input can't attach |
+| PCIe | `hi_pcie`, `hi_pcie,portNN` | ❌ no `pcie-kirin` match |
+| NVMe | (behind `hi_pcie`) | ❌ unreachable without PCIe |
+| storage | `hisilicon,antlia-sdhci`, `hisilicon,bootdevice` | ❌ custom |
+
+**Verdict:** on this Kirin X90 a generic/mainline arm64 Linux will bind essentially nothing but
+the arch timer and the UEFI-GOP framebuffer. Expect an **efifb picture with no input, no USB, no
+storage, no serial, no acceleration.** There is no public Kirin X90 Linux BSP (HongMeng is not
+Linux), so an interactive native desktop is not reachable with mainline drivers today. This makes
+the **all-RAM** design mandatory (kernel + an initramfs holding the whole Omarchy root, loaded by
+GRUB before ExitBootServices — nothing is read from storage after boot) and sets v1's success
+bar at "boots to a framebuffer picture", with an on-screen dmesg/probe log (large font) for Yao
+to photograph. The exported DTB is kept at `scratchpad/routee/dtb/kirinx90.dtb` for offline study.

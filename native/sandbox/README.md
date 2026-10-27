@@ -163,7 +163,10 @@ outside /data is `/system/etc/init/ohm-sandboxd.cfg` (the helper at boot, throug
 if absent, and compared after writing. `uninstall.sh` removes the helper, the app,
 `/data/local/ohm-sandbox`, and that cfg only if it is the installer's, byte for byte.
 
-Dry run on ohdev (2026-10-28): passed; the cfg is not written yet.
+On ohdev (2026-10-28): installed with `--write-system`; the cfg written and read back
+the same. Init reads cfgs only at boot (`begetctl start_service ohm-sandboxd` before a
+reboot: "Cannot find service"), so the helper at boot is checked at the next reboot;
+until then it runs from `ohm-sandbox serve`.
 
-To do: the boot cfg on ohdev (approval), a network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
+To do: check the helper at the next reboot, a network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

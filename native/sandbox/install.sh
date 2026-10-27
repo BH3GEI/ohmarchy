@@ -33,7 +33,8 @@ for c in Hyprland vtest-broker; do
 done
 md5sum /system/etc/init/ohmarchy-desktop.cfg /system/etc/init/ohssh.cfg 2>&1
 echo "ld-musl $(wc -c < /system/lib/ld-musl-aarch64.so.1) libc.so $(wc -c < /system/lib64/libc.so)"
-echo "init cfgs: $(ls /system/etc/init | wc -l)"
+# ours may be added by this install; every other cfg counts
+echo "init cfgs (besides ohm-sandboxd.cfg): $(ls /system/etc/init | grep -cvx ohm-sandboxd.cfg)"
 EOF
 }
 

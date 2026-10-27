@@ -59,7 +59,7 @@
 | 1.5 | **Super+Shift+B** | Firefox 在终端旁边打开（新窗口，不会再出"恢复会话"页）。可以打开 omarchy.org。第一次可能弹一个小提示，点 "Okay, Got It" | 15 秒 | "浏览器是 Firefox，带沙箱。" |
 | 1.6 | **Super+Space** 弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
 | 1.7 | **Super+Shift+F** | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
-| 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 15–20 秒**，别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，用完半分钟自己关。我没敲任何 root 命令。" |
+| 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 20–30 秒**（2026-10-27 实测 21、27 秒），别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，用完半分钟自己关。我没敲任何 root 命令。" |
 | 1.9 | **不用管**，Docker 虚拟机会自己关 | 没有可见变化 | 约 30 秒，讲 1.8 的说辞时就过去了 | "用完它自己就关了，下一段的虚拟机马上能开。" |
 | 1.10 | 把"Omarchy (native)" **最小化**（不要关） | 回到鸿蒙桌面 | 2 秒 | |
 
@@ -76,7 +76,7 @@
 | 按 Super+Return 等快捷键没反应，或者弹出鸿蒙开始菜单 | 用**右 Alt** 代替 Windows 键。先用鼠标点一下 Omarchy 窗口里面，让它拿到焦点再按。还不行：跳过快捷键，只展示已经打开的东西 |
 | Firefox 打开的是 "Sorry. We're having trouble getting your pages back."（恢复会话页） | 点 **Start New Session**，再打开 omarchy.org。（桌面重启时 Firefox 被杀会导致这一页；2026-10-27 已修，重开 app 后打开的是新标签页，正常不会再出现） |
 | 某个窗口卡住不动 | 用 **Super+W** 关掉这个窗口，继续下一步 |
-| `docker` 停了 15–20 秒没输出 | 正常，第一次要开后台虚拟机。边等边讲 |
+| `docker` 停了 20–30 秒没输出 | 正常，第一次要开后台虚拟机。边等边讲 |
 | `docker` 报：`后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | 有别的虚拟机在跑（违反了检查项 5）。同时鸿蒙通知中心会收到一条 Omarchy (native) 的通知（app 在前台时没有横幅，只有铃铛红点；检查项 7 清通知时一并清掉）。台上：说"这正是一次只能跑一台虚拟机的限制"，跳过 Docker。【后台】看是哪台；进下一段鸿融前要先关掉它 |
 | `docker` 超过 1 分钟还没输出 | 按 Ctrl+C，跳过 Docker，放备用截图（`docs/img/autostart/03-docker-cold.jpeg`）。【后台】`ohmarchy-vm stop`，确认 `pidof stratovirt` 为空再进第 2 段 |
 | hello-world 之后过了 1 分钟，鸿融开机提示有别的虚拟机在跑 | Docker 虚拟机还没关（比如中间又敲过 `docker`）。在终端敲 `docker-vm stop`（约 6 秒，提示"Docker 虚拟机已关闭"）；如果它说还有容器在跑，先 `docker ps`、`docker stop <名字>`。或者【后台】`ohmarchy-vm stop` |

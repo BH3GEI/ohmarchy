@@ -1,0 +1,19 @@
+[Unit]
+Description=ohmarchy OSEasy guest agent (interop, prototype)
+# Only meaningful inside an OSEasy VM, where a virtio-serial port is present.
+ConditionPathExistsGlob=/sys/class/virtio-ports/*/name
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/lib/ohmarchy/oseasy-agent/agent.py
+Restart=on-failure
+RestartSec=3
+# Hardening: it only needs the virtio-serial char device + read of /sys.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

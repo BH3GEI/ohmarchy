@@ -79,7 +79,7 @@
   - 开机 40 秒进桌面；
   - `extended_features`=N，所有 virtio 设备由 virtio-pci 接管；
   - 119.98 Hz；增强服务"运行中"；"关机"约 20 秒完成。
-  - 未验证 sudo 和锁屏解锁，因为首次开机的密码不是测试方输入的。
+  - sudo 和锁屏解锁：2026-10-28 已验证，测试方知道密码。
 - **已知问题。**
   - 全屏呈现：2026-10-25 测得鸿融全屏是 60 帧/秒，新镜像未复测。
   - GPU：只有 OpenGL，没有 Vulkan，没有 resource_blob。
@@ -88,7 +88,7 @@
   - 应用市场会自动更新鸿融，需关闭自动更新。
   - **HarmonyOS 7.0.0.32 上鸿融不能用**（第 3(b) 节）。
 - **ohdev 上的现状。**
-  - 鸿融里是 v3 演示盘，已关机，密码是首次开机时由他人输入的。
+  - 鸿融里是 v3 演示盘，已关机；密码 2026-10-28 已验证，测试方知道密码。
   - Yao 的主盘保留为同目录下的 vm.qcow2.imported（36412063744 字节），未改动。
   - 另备一张未开过机的 v3b 盘：/data/local/vmtest/omarchy-b-v3b-os1.qcow2。
 
@@ -194,8 +194,8 @@
 |---|---|---|---|---|
 | 1 | B：内核 1.2 新 ISO 在 ohdev 上回归 | 进桌面，壁纸、顶栏、120 Hz 正常，`extended_features`=N，有截图；随后加入 release 草稿，旧 ISO 保留 | 0.5 小时 | B |
 | 2 | 原生沙箱设计文档 docs/native-sandbox.md | 边界清单逐条写明判定依据和测试位置；附给华为的一页说明和小助手接口；已提交 | — | D |
-| 3 | 演示准备 | 按 docs/demo-operator.zh-CN.md "准备"一节逐项打勾，包括：鸿融里换一张密码已知的盘（或确认 v3 盘的密码），Alt+Shift 代替 Super 用实体键盘走一遍 | 1–2 小时 | C、D |
-| 4 | C：补测 sudo 和锁屏解锁 | 用 v3b 盘走一遍首次设密码，sudo 和锁屏解锁都通过，有截图 | 0.5 小时 | C |
+| 3 | 演示准备 | 按 docs/demo-operator.zh-CN.md "准备"一节逐项打勾，包括：v3 盘的密码 2026-10-28 已验证，测试方知道密码；Alt+Shift 代替 Super 用实体键盘走一遍 | 1–2 小时 | C、D |
+| 4 | C：补测 sudo 和锁屏解锁 | 2026-10-28 已验证（v3 盘，测试方知道密码），sudo 和锁屏解锁都通过，有截图 | 已完成 | C |
 | 5 | B 公开发布 | 补齐还缺的 14 个 GPL/LGPL 包的源码，重新生成 package-sources，替换草稿的附件和说明（说明里写着"补齐后才公开"）；Yao 本人检查后公开 | 2 小时（不含决策） | I（release）、B |
 | 6 | 文档对齐 | 更新过时内容：docs/oseasy-whole-os.md 里"不做 guest agent"的旧方针、README 里的 ISO 大小和刷新率说法、hongrong-whole-os.md 的 Known limits（增强服务、内核 1.2）、README 的 J 行；修正 oseasy-vendor-request.md 的通道描述（virtio-serial 加 protobuf）和重复的节号 | 2–3 小时 | B、C、J |
 | 7 | 遗留脚本进仓库 | hrswap.sh、按块并行压缩的 zchunks.sh、ohdev 上的运行脚本纳入仓库 | 1 小时 | C |

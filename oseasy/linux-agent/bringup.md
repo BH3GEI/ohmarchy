@@ -10,6 +10,29 @@ Secrets never go in this file or any commit/log: the VM login password and the
 device lock password are entered only via `uitest`/command line, from the
 supervisor, at run time.
 
+## Status — field-test deferred (2026-10-28)
+
+The first field-test attempt is **blocked at the ISO-selection step** and deferred
+to the next time ohdev reboots on its own (ohdev is not rebooted on demand, and we
+do not restart system services on a live machine).
+
+- **Symptom:** OSEasy never receives the chosen ISO — the picker shows `已选 (1/1)`
+  and closes, but OSEasy's page stays empty (`点击选择 ISO`, 下一步 greyed). `自动搜索`
+  reports "未找到可用的ISO文件" (it lists Windows ISOs only, so it is not a path for our
+  image either).
+- **Root cause:** Download is on hmdfs/media, which **forces every file to owner
+  `20001006:1006`, mode `640`, and ignores both `chmod` and `chown`** (both return
+  rc=0 but change nothing). OSEasy's uid (`20020042`) is "other" and cannot read a
+  `640` file directly, so it depends entirely on the picker's "安全访问文件" access
+  grant. That grant worked in the earlier regression runs the same day but now fails
+  — it degraded after ohdev's repeated reboots / re-unlocks.
+- **Remedies tried, all ineffective:** restart OSEasy, fresh re-copy of the ISO,
+  slow select + 10 s wait, `自动搜索`, `chmod`/`chown` (blocked by the media FS).
+- **Fix:** a system reboot resets the access-grant service; the shell cannot change
+  it. Resume after the next natural reboot.
+- Everything else for persistence is ready (agent + this runbook + the bundle); once
+  OSEasy can read the ISO again, the remaining steps run in one pass.
+
 ## Success vs. stop criteria
 
 - **Success:** OSEasy accepts the plain handshake and starts treating the VM as a

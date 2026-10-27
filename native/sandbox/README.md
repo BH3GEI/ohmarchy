@@ -66,10 +66,13 @@ HongMeng differences met on the way:
   or, for the standard fds, from OHMARCHY_TTY; it wraps openpty and forkpty for
   the programs that use those. Checked inside: a slave opened by name works and
   is named (it fails without the shim), `script -c tty` prints /dev/pts/0, a tmux
-  pane gets /dev/pts/0, and the same as builder. foot on screen still fails
-  (2026-10-28 01:30) though python doing foot's exact sequence (setsid, open
-  without O_NOCTTY) works; HongMeng refuses TIOCGPTPEER without O_NOCTTY, so the
-  shim asks with it and sets the controlling tty with TIOCSCTTY.
+  pane gets /dev/pts/0, and the same as builder. foot on screen failed at first:
+  strace showed its child unlocks the master, closes it, and only then opens the
+  slave by name, when there is no master left to ask. The shim now records
+  masters from posix_openpt and, when a forked child closes one, keeps its slave
+  for that open. HongMeng refuses TIOCGPTPEER without O_NOCTTY, so the shim asks
+  with it and gives a session leader its controlling tty with TIOCSCTTY. foot's
+  exact sequence in python then works as builder (named, controlling tty).
   OHMARCHY_PTY_DEBUG=1 (stderr) or =/path traces what the shim does.
 
 Inherited files: processes inside held fd 13, the host's `/dev/kmsg`, inherited

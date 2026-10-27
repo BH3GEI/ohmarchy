@@ -46,6 +46,7 @@ static void debug(const char *fmt, ...)
 		fclose(f);
 }
 #define DEBUG(...) debug(__VA_ARGS__)
+#define REAL(name) static __typeof__(name) *real; if (!real) real = dlsym(RTLD_NEXT, #name)
 
 // pty number of "/dev/pts/N", or -1
 static int pts_number(const char *path)
@@ -57,9 +58,87 @@ static int pts_number(const char *path)
 	return (int)n;
 }
 
+// masters from posix_openpt here, with the pid that opened them (forks inherit the
+// table); /proc/self/fd is the fallback for masters opened otherwise
+static struct { int fd, pid; } masters[16];  // fd + 1
+// foot's child unlocks the master, closes it, then opens the slave by name: by then
+// there is no master to ask. So a forked child closing a master keeps its slave
+// first, until the open asks for it (by pty number)
+static struct { int n, fd; } kept[4];  // fd + 1
+
+int posix_openpt(int flags)
+{
+	REAL(posix_openpt);
+	int m = real(flags);
+	for (int i = 0; m >= 0 && i < 16; i++)
+		if (masters[i].fd == 0 || masters[i].fd == m + 1) {
+			masters[i].fd = m + 1;
+			masters[i].pid = getpid();
+			break;
+		}
+	return m;
+}
+
+int close(int fd)
+{
+	REAL(close);
+	for (int i = 0; fd >= 0 && i < 16; i++) {
+		if (masters[i].fd != fd + 1)
+			continue;
+		masters[i].fd = 0;
+		unsigned n;
+		if (masters[i].pid != getpid() && ioctl(fd, TIOCGPTN, &n) == 0)
+			for (int k = 0; k < 4; k++)
+				if (kept[k].fd == 0) {
+					int s = ioctl(fd, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
+					if (s >= 0) {
+						kept[k].n = (int)n;
+						kept[k].fd = s + 1;
+					}
+					DEBUG("master fd %d (pty %u) closed in a child: kept slave %d\n", fd, n, s);
+					break;
+				}
+		break;
+	}
+	return real(fd);
+}
+
+// a slave fd as a plain open of its name with flags would have left it
+static int as_opened(int s, int flags)
+{
+	fcntl(s, F_SETFD, (flags & O_CLOEXEC) ? FD_CLOEXEC : 0);
+	// a session leader opening a tty without O_NOCTTY gets it as controlling tty
+	if (!(flags & O_NOCTTY) && getsid(0) == getpid())
+		ioctl(s, TIOCSCTTY, 0);
+	return s;
+}
+
+static int peer_from(int fd, int n, int flags)
+{
+	unsigned m;
+	if (ioctl(fd, TIOCGPTN, &m) != 0 || (int)m != n)
+		return -1;
+	// HongMeng refuses the peer unless O_NOCTTY
+	int r = ioctl(fd, TIOCGPTPEER, (flags & (O_ACCMODE | O_CLOEXEC | O_NONBLOCK)) | O_NOCTTY);
+	DEBUG("peer of fd %d (pty %d): %d (errno %d)\n", fd, n, r, r < 0 ? errno : 0);
+	return r < 0 ? r : as_opened(r, flags);
+}
+
 // the slave of this process's master with pty number n, opened with flags; -1 if none
 static int peer_of(int n, int flags)
 {
+	for (int k = 0; k < 4; k++)
+		if (kept[k].fd > 0 && kept[k].n == n) {
+			int s = kept[k].fd - 1;
+			kept[k].fd = 0;
+			DEBUG("pty %d: the kept slave %d\n", n, s);
+			return as_opened(s, flags);
+		}
+	for (int i = 0; i < 16; i++) {
+		int r;
+		if (masters[i].fd > 0 && (r = peer_from(masters[i].fd - 1, n, flags)) >= 0)
+			return r;
+	}
 	DIR *d = opendir("/proc/self/fd");
 	if (d == NULL)
 		return -1;
@@ -77,17 +156,7 @@ static int peer_of(int n, int flags)
 		target[len] = '\0';
 		if (strcmp(target + len - 4, "ptmx") != 0)
 			continue;
-		unsigned m;
-		if (ioctl(fd, TIOCGPTN, &m) != 0 || (int)m != n) {
-			DEBUG("fd %d (%s) is pty %d, not %d\n", fd, target, (int)m, n);
-			continue;
-		}
-		// HongMeng refuses the peer unless O_NOCTTY; a plain open of the slave by a
-		// session leader would make it the controlling tty, so do that afterwards
-		r = ioctl(fd, TIOCGPTPEER, (flags & (O_ACCMODE | O_CLOEXEC | O_NONBLOCK)) | O_NOCTTY);
-		if (r >= 0 && !(flags & O_NOCTTY) && getsid(0) == getpid())
-			ioctl(r, TIOCSCTTY, 0);
-		DEBUG("peer of fd %d (pty %d): %d (errno %d)\n", fd, n, r, r < 0 ? errno : 0);
+		r = peer_from(fd, n, flags);
 	}
 	closedir(d);
 	return r;
@@ -119,7 +188,6 @@ static int fallback(const char *path, int flags, int r)
 	return s;
 }
 
-#define REAL(name) static __typeof__(name) *real; if (!real) real = dlsym(RTLD_NEXT, #name)
 
 int open(const char *path, int flags, ...)
 {

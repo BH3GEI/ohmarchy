@@ -69,5 +69,16 @@ HongMeng differences met on the way:
 - The SELinux domain is still `su` (HarmonyOS's policy cannot be extended at run
   time on ohdev, 2026-10-28); a domain of its own is a request to HarmonyOS.
 
-To do: a pty check inside the sandbox, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+## Desktop (2026-10-28, ohdev, no screen yet)
+
+`ohm-sandbox build-helpers` rebuilt ohime, the sound relay and ohmarchy-desktop
+inside (sources from `src/`, fed in on stdin) so they use the sandbox's names;
+`native/sandbox/build-app.sh` built `com.ohmarchy.sandbox`, installed beside the
+demo's app (uids 20020168 and 20020165). `ohm-sandbox desktop start` brought up
+Hyprland, PipeWire, the relay and D-Bus inside as `builder`, the GPU broker on the
+host waiting for the app (`@ohmsbx-vtest`), next to the demo's `@ohmarchy-*`
+sockets; `desktop stop` and `stop` left nothing behind. The demo's health check
+was identical before and after.
+
+To do: open the app on screen, a pty check inside the sandbox, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

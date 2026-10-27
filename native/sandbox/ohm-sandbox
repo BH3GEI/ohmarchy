@@ -7,6 +7,11 @@
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
+#   ohm-sandbox build-helpers   rebuild ohime, the sound relay and ohmarchy-desktop inside
+#                               from $S/src (they carry the sandbox's socket names)
+#   ohm-sandbox desktop start|stop|restart|status
+#                           Hyprland inside for the app com.ohmarchy.sandbox: sockets
+#                           @ohmsbx-display, -vtest, -audio, -ime (the demo's are ohmarchy-*)
 # Inside, the image is the whole filesystem (pivot_root; the host's is detached),
 # /dev holds only a few nodes, and every process runs with a bounding set that has
 # no mknod, mount (sys_admin), module, raw I/O or MAC capability, so root inside
@@ -18,6 +23,9 @@ R=$S/root
 PIDF=$S/sandbox.pid
 SIZE=64G
 DEMO=/data/local/archtest
+APP=com.ohmarchy.sandbox
+PREFIX=ohmsbx
+USER_=builder
 # capabilities nothing inside may have, by number (ohm-capdrop.c: setpriv cannot be used,
 # HongMeng refuses its PR_SET_KEEPCAPS): mknod 27, sys_admin 21, sys_module 16,
 # sys_rawio 17, sys_boot 22, sys_time 25, sys_pacct 20, sys_tty_config 26,
@@ -141,8 +149,66 @@ run|shell)
 status)
     alive && echo "running: $P ($(cat "$S/sandbox.loop" 2>/dev/null))" || echo "stopped"
     ;;
+build-helpers)
+    alive || { echo "not running"; exit 1; }
+    # sources go in on stdin; nothing of the host is mounted inside
+    tar -C "$S/src" -cf - ohime.c ohmarchy-audio-relay.c ohmarchy-desktop input-method-unstable-v2.xml |
+        sh "$0" run /usr/bin/bash -c '
+set -e; d=/root/ohm-src; rm -rf $d; mkdir -p $d; tar -C $d -xf -; cd $d
+wayland-scanner client-header input-method-unstable-v2.xml input-method-unstable-v2-client-protocol.h
+wayland-scanner private-code input-method-unstable-v2.xml input-method-unstable-v2-protocol.c
+gcc -O2 -o /opt/ohmarchy/bin/ohime ohime.c input-method-unstable-v2-protocol.c -I. -lwayland-client
+cc -O2 -o /opt/ohmarchy/bin/ohmarchy-audio-relay ohmarchy-audio-relay.c
+install -m 755 ohmarchy-desktop /opt/ohmarchy/bin/ohmarchy-desktop
+echo "helpers built"'
+    ;;
+desktop)
+    c=${2:-start}
+    if [ "$c" = restart ]; then sh "$0" desktop stop > /dev/null 2>&1; exec sh "$0" desktop start; fi
+    if [ "$c" = status ]; then
+        alive && sh "$0" run /usr/bin/pgrep -x Hyprland > /dev/null && echo running || echo stopped
+        exit 0
+    fi
+    if [ "$c" = start ]; then sh "$0" start > /dev/null || exit 1; fi
+    alive || { echo "not running"; exit 1; }
+    pw=$(grep "^$USER_:" "/proc/$P/root/etc/passwd") || { echo "no user $USER_"; exit 1; }
+    uid=$(echo "$pw" | cut -d: -f3); gid=$(echo "$pw" | cut -d: -f4); home=$(echo "$pw" | cut -d: -f6)
+    app_uid=$(bm dump -n "$APP" 2>/dev/null | grep -m1 '"uid"' | tr -dc 0-9)
+    if [ "$c" = start ]; then
+        sh "$0" run /opt/ohmarchy/bin/ohmarchy-sysbus start > /dev/null 2>&1
+        # The GPU broker belongs to the helper: it runs on the host, binds the desktop's
+        # vtest socket into the sandbox through /proc/<init>/root, hands the desktop's
+        # GPU connections to the app (only $APP's uid), and restarts the desktop when
+        # the app connects. Its pid is ours to stop.
+        sock=/proc/$P/root/tmp/.virgl_test
+        if ! { [ -f "$S/broker.pid" ] && kill -0 "$(cat "$S/broker.pid")" 2>/dev/null; }; then
+            rm -f "$sock"
+            setsid "$S/bin/vtest-broker" --on-app "sh $0 desktop restart" ${app_uid:+--app-uid "$app_uid"} \
+                --user "$uid:$gid" "$sock" "$PREFIX-vtest" < /dev/null > "$S/broker.log" 2>&1 &
+            echo $! > "$S/broker.pid"
+            i=0; while [ $i -lt 30 ] && [ ! -S "$sock" ]; do sleep 0.1; i=$((i+1)); done
+            chmod 666 "$sock"
+        fi
+    fi
+    # the desktop runs as the user, with the sandbox's socket names
+    exec "$S/bin/ohm-capdrop" --enter "$P" "$DROP" -- /usr/bin/env -i HOME="$home" USER="$USER_" \
+        LOGNAME="$USER_" SHELL=/bin/bash LANG=en_US.UTF-8 XDG_RUNTIME_DIR="/run/user/$uid" \
+        PATH=/usr/local/sbin:/usr/local/bin:/usr/bin OHMARCHY_SOCKET_PREFIX="$PREFIX" \
+        ${app_uid:+OHMARCHY_APP_UID="$app_uid"} HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe \
+        HYPRLAND_READBACK_PRESENT=1 /usr/bin/bash -c '
+install -d -m 700 -o "$1" -g "$2" "$XDG_RUNTIME_DIR"
+cd "$HOME" 2>/dev/null || cd /
+exec /usr/bin/chroot --skip-chdir --userspec="$1:$2" --groups="$(id -G "$3" | tr " " ,)" / \
+    /usr/bin/bash -lc "/opt/ohmarchy/bin/ohmarchy-desktop $4"' ohm "$uid" "$gid" "$USER_" "$c"
+    ;;
 stop)
     alive || { echo "not running"; exit 0; }
+    # the broker forks a child per role: end every process running our broker binary
+    # (the demo's runs from its own directory, so it is never matched)
+    for d in /proc/[0-9]*; do
+        [ "$(readlink "$d/exe" 2>/dev/null)" = "$S/bin/vtest-broker" ] && kill "${d#/proc/}" 2>/dev/null
+    done
+    rm -f "$S/broker.pid"
     nsenter -t "$P" -m sync
     kill -9 "$P"   # pid-namespace init: SIGKILL tears the namespace down
     i=0; while [ $i -lt 20 ] && [ -d "/proc/$P" ]; do sleep 1; i=$((i+1)); done

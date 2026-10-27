@@ -78,16 +78,20 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 06:33 PDT)
+## Progress (updated hourly; last: 2026-10-27 07:29 PDT)
 
-Now: the second test machine is repaired and boots normally again, with `/data` untouched. B's new ISO with kernel 7.2.12-1.2 is built and passed a boot check on the first machine. All device work is paused at the owner's request while the owner uses the first machine.
+Now: top priority is the **new native design**: Omarchy installed and started like a HarmonyOS app, running on the HarmonyOS kernel (no VM), locked into its own directory, with Docker inside. The working native demo is not touched; the new one is built separately. The second test machine is repaired, unplugged and no longer used.
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Regression install of the new ISO in OSEasy on the first machine: past the old crash point, writing the disk; paused | **New ISO: 2,032,457,728 bytes**, under the 2 GiB asset limit; installer kernel 7.2.12-1.2. **New kernel checked in 鸿融 on the first machine**: desktop in 40 s, `extended_features=N`, all devices on virtio-pci, 2160x1440 at 120 Hz, guest service installed, clean shutdown. Not yet checked: sudo and unlocking (someone else set the first-boot password). Root cause written up (176b99b, 7b6eb92): on HarmonyOS 7.0.0.32 the guest's access to feature select 2 at offset 0xC hangs the VM; kernel 1.2 avoids it. **Disk persistence**: OSEasy's guest-agent protocol mapped (1b616c1): virtio-serial plus protobuf RPC with a handshake and keepalive; next is a minimal Linux agent so OSEasy treats the VM as installed |
-| Second machine | Boots normally; our leftovers removed | **Real cause found and fixed**: at 19:38 CST a read-only check sent over ssh lost its quotes in the remote shell, so `->` became a redirect and overwrote the dynamic loader `/system/lib/ld-musl-aarch64.so.1` (through the `libc.so` symlink) with 10 bytes. On the next boot every program failed to start (`E_HM_NOEXEC`), including ueventd, so `/data` was never found. The VM incident at 19:48 only triggered that reboot. Fix: the bad file lived only in the `/system` overlay's upper layer (an ext4 at the end of the system partition), so it was deleted there and the original underneath shows through; 6 blocks of 4 KB written, checked before and after, the whole layer backed up first. Also removed our two init configs. Rule: send remote commands as a script (`sh -s`), never as a quoted one-liner |
-| E. Bare metal | Waiting for the owner to try boot keys with the USB stick | Unchanged |
-| D. Native | Paused | — |
+| D. Native (new design) | Three checks in parallel on the first machine, shell only: can we add our own allow-list rule (H); does Docker run locked into one directory (a4); does root inside stay inside (D, after H). D writes the design and the helper ↔ app interface | **Design agreed**: one small root helper with a fixed job (start Linux in its directory, give Docker its containers); the app does icon, full screen, picture, keyboard and mouse; inside, full Arch with `pacman` and root; two locks: Linux sees only its directory, and a default-deny allow-list lets it touch nothing else; photos, clipboard and other private data stay outside and go through the app with HarmonyOS's prompts. Kept apart from the demo: new app name, new directory, no autostart |
+| D. Native (demo) | Unchanged; Alt+Shift waits for screen time | **Alt+Shift stands in for Super** (ad71991): Super+X is Alt+Shift+X, add the other Shift or Alt for Super+Shift or Super+Alt; right Alt is a normal Alt again; Alt+Shift+Tab still switches windows. Not yet tried on the real keyboard |
+| B. OSEasy | Regression install of the new ISO on the first machine; shut down after the check to free the VM slot | New ISO 2,032,457,728 bytes with kernel 7.2.12-1.2. **Disk persistence**: message definitions extracted from OSEasy's Windows guest agent (handshake and RPC envelope), enough for a minimal Linux agent |
+| Release | GPL sources | 10 of the 14 missing packages fetched; 5 upstream sources still being looked for. The new ISO goes into the draft after the regression, the old one stays until then |
+| E. Bare metal | Waiting for the owner to try boot keys | Unchanged |
+| Second machine | Repaired, unplugged, not used any more | Boots normally; `/data` untouched; our ssh server and startup configs removed |
+
+Handover: a document for tomorrow's discussion is being drafted (what we still do, what HarmonyOS needs to merge or allow, what must be maintained).
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

@@ -8,6 +8,8 @@
 # The one file outside /data is /system/etc/init/ohm-sandboxd.cfg (the helper at
 # boot). Without --write-system it is only checked and shown (dry run). With it, it
 # is written only if absent, and read back.
+# The sandbox's network goes through pasta (passt.top, PASST_COMMIT below), patched
+# with passt-hongmeng.patch and built inside the sandbox; rebuilt when either changes.
 # Needs DevEco Studio (app build, static clang) and Pillow (build-app.sh).
 set -e
 HOST=${1:?usage: install.sh HOST [--write-system]}
@@ -16,6 +18,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 SDK=${DEVECO_HOME:-/Applications/DevEco-Studio.app/Contents}/sdk/default/openharmony/native
 CFG=/system/etc/init/ohm-sandboxd.cfg
+PASST_COMMIT=6aa4f88bd9846411edff3ed70460475b538addca
 R() { ssh -o ConnectTimeout=60 -o ServerAliveInterval=10 -o ServerAliveCountMax=6 "$HOST" "$@"; }
 step() { echo "== $*"; }
 
@@ -39,8 +42,8 @@ EOF
 }
 
 step "device"
-R id | grep -q 'uid=0' || { echo "need a root shell on $HOST"; exit 1; }
-UDID=$(R bm get --udid | tr -d '\r' | grep -E '^[0-9A-F]{64}$')
+R id < /dev/null | grep -q 'uid=0' || { echo "need a root shell on $HOST"; exit 1; }
+UDID=$(R bm get --udid < /dev/null | tr -d '\r' | grep -E '^[0-9A-F]{64}$')
 [ -n "$UDID" ] || { echo "no UDID from $HOST"; exit 1; }
 health > "$tmp/before"; cat "$tmp/before"
 grep -q '^demo session: [0-9]' "$tmp/before" || [ "$(R sh -s <<'EOF'
@@ -48,7 +51,16 @@ grep -q '^demo session: [0-9]' "$tmp/before" || [ "$(R sh -s <<'EOF'
 EOF
 )" = have ] || { echo "no Linux image yet and no demo session to make one from"; exit 1; }
 
-step "build (helper binaries, app)"
+step "build (helper binaries, app; pasta source)"
+for t in 1 2 3; do
+    curl -sfL -m 120 -o "$tmp/passt.tar.gz" "https://passt.top/passt/snapshot/passt-$PASST_COMMIT.tar.gz" && break
+    [ $t = 3 ] && { echo "could not download pasta's source"; exit 1; }
+    sleep 5
+done
+mkdir "$tmp/passt" && tar -xzf "$tmp/passt.tar.gz" -C "$tmp/passt" --strip-components 1
+patch -s -d "$tmp/passt" -p1 < "$here/passt-hongmeng.patch"
+COPYFILE_DISABLE=1 tar -cf "$tmp/passt.tar" -C "$tmp/passt" .
+pasta_stamp="$PASST_COMMIT $(md5 -q "$here/passt-hongmeng.patch")"
 for p in ohm-capdrop ohm-sandboxd; do
     "$SDK/llvm/bin/clang" --target=aarch64-linux-ohos --sysroot="$SDK/sysroot" -static -O2 -o "$tmp/$p" "$here/$p.c"
 done
@@ -115,6 +127,19 @@ else
 fi
 EOF
 
+step "pasta (the sandbox's network)"
+if [ "$(R cat /data/local/ohm-sandbox/bin/pasta.stamp 2>/dev/null < /dev/null)" = "$pasta_stamp" ]; then
+    echo "built already ($pasta_stamp)"
+else
+    R sh -s <<'EOF'
+S=/data/local/ohm-sandbox; O="sh $S/bin/ohm-sandbox"
+$O unserve > /dev/null; $O stop > /dev/null 2>&1; $O start > /dev/null || exit 1
+EOF
+    R sh /data/local/ohm-sandbox/bin/ohm-sandbox build-pasta < "$tmp/passt.tar"
+    R sh /data/local/ohm-sandbox/bin/ohm-sandbox stop < /dev/null
+    echo "$pasta_stamp" | R 'cat > /data/local/ohm-sandbox/bin/pasta.stamp'
+fi
+
 step "boot: $CFG"
 R "WRITE=$WRITE_SYSTEM sh -s" <<'EOF'
 S=/data/local/ohm-sandbox; CFG=/system/etc/init/ohm-sandboxd.cfg
@@ -132,7 +157,7 @@ fi
 EOF
 
 step "helper"
-R sh /data/local/ohm-sandbox/bin/ohm-sandbox serve
+R sh /data/local/ohm-sandbox/bin/ohm-sandbox serve < /dev/null
 
 step "self-check"
 R sh -s <<'EOF'

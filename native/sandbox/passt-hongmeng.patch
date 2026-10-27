@@ -1,0 +1,130 @@
+passt (https://passt.top/passt) for HongMeng, applied by native/sandbox/install.sh to
+commit 6aa4f88 and built inside the sandbox (ohm-sandbox build-pasta). The kernel has
+no user namespaces (no /proc/self/uid_map), does not honour CLONE_FILES (a socket a
+clone()d child opens never reaches the parent: the namespace calls run in a thread,
+which shares the file table and whose setns() moves only itself), refuses
+CLOSE_RANGE_UNSHARE (EOPNOTSUPP), and its tmpfs takes no size options.
+
+diff --git a/isolation.c b/isolation.c
+index a00475f..7576424 100644
+--- a/isolation.c
++++ b/isolation.c
+@@ -276,6 +276,12 @@ int isolate_fds(int argc, char **argv)
+ 	}
+ 
+ 	if (close_range(close_from, ~0U, CLOSE_RANGE_UNSHARE)) {
++		/* HongMeng: EOPNOTSUPP for CLOSE_RANGE_UNSHARE, and the
++		 * file table is not shared here anyway: close them in place
++		 */
++		if (errno == EOPNOTSUPP &&
++		    close_range(close_from, ~0U, 0) == 0)
++			return fd;
+ 		if (errno == ENOSYS || errno == EINVAL) {
+ 			/* This probably means close_range() or the
+ 			 * CLOSE_RANGE_UNSHARE flag is not supported by the
+@@ -496,9 +502,15 @@ int isolate_prefork(const struct ctx *c)
+ 		return -errno;
+ 	}
+ 
++	/* HongMeng's tmpfs takes no size options: then an empty read-only
++	 * one without them
++	 */
+ 	if (mount("", TMPDIR, "tmpfs",
+ 		  MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY,
+-		  "nr_inodes=2,nr_blocks=0")) {
++		  "nr_inodes=2,nr_blocks=0") &&
++	    (errno != EINVAL ||
++	     mount("", TMPDIR, "tmpfs",
++		   MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY, NULL))) {
+ 		err_perror("Failed to mount empty tmpfs for sandboxing");
+ 		return -errno;
+ 	}
+diff --git a/util.c b/util.c
+index ff1f19f..8700b26 100644
+--- a/util.c
++++ b/util.c
+@@ -12,6 +12,7 @@
+  * Author: Stefano Brivio <sbrivio@redhat.com>
+  */
+ 
++#include <pthread.h>
+ #include <sched.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -389,8 +390,12 @@ bool ns_is_init(void)
+ 	bool ret = true;
+ 	int fd;
+ 
+-	if ((fd = open("/proc/self/uid_map", O_RDONLY | O_CLOEXEC)) < 0)
++	if ((fd = open("/proc/self/uid_map", O_RDONLY | O_CLOEXEC)) < 0) {
++		/* no user namespaces in this kernel (HongMeng): the init one */
++		if (errno == ENOENT)
++			return true;
+ 		die_perror("Can't determine if we're in init namespace");
++	}
+ 
+ 	if (read(fd, buf, sizeof(root_uid_map)) != sizeof(root_uid_map) - 1 ||
+ 	    strncmp(buf, root_uid_map, sizeof(root_uid_map)))
+@@ -713,6 +718,37 @@ int do_clone(int (*fn)(void *),
+ #endif
+ }
+ 
++struct ns_call_args {
++	int (*fn)(void *);
++	void *arg;
++};
++
++static void *ns_call_thread(void *p)
++{
++	struct ns_call_args *a = p;
++
++	a->fn(a->arg);
++	return NULL;
++}
++
++/**
++ * ns_call() - Run @fn in a thread of its own, wait for it
++ * @fn:		Function, may setns() (affects only that thread)
++ * @arg:	Argument to @fn
++ *
++ * #syscalls clone clone3 futex mmap mprotect munmap madvise set_robust_list
++ * #syscalls rseq rt_sigprocmask exit
++ */
++void ns_call(int (*fn)(void *), void *arg)
++{
++	struct ns_call_args a = { fn, arg };
++	pthread_t t;
++
++	if (pthread_create(&t, NULL, ns_call_thread, &a))
++		die("Couldn't start a thread to enter the namespace");
++	pthread_join(t, NULL);
++}
++
+ /**
+  * write_remainder() - write the tail of an IO vector to an fd
+  * @fd:		File descriptor
+diff --git a/util.h b/util.h
+index ec2d9ac..e0b43eb 100644
+--- a/util.h
++++ b/util.h
+@@ -119,15 +119,11 @@ static inline void barrier(void) { __asm__ __volatile__("" ::: "memory"); }
+ 
+ int do_clone(int (*fn)(void *), char *stack_area, size_t stack_size, int flags,
+ 	     void *arg);
+-#define NS_CALL(fn, arg)						\
+-	do {								\
+-		char ns_fn_stack[NS_FN_STACK_SIZE]			\
+-		__attribute__ ((aligned(__alignof__(max_align_t))));	\
+-									\
+-		do_clone((fn), ns_fn_stack, sizeof(ns_fn_stack),	\
+-			 CLONE_VM | CLONE_VFORK | CLONE_FILES | SIGCHLD,\
+-			 (void *)(arg));				\
+-	} while (0)
++/* HongMeng ignores CLONE_FILES: what a clone()d child opens never reaches
++ * us. A thread shares the file table, and setns() moves only that thread.
++ */
++#define NS_CALL(fn, arg)	ns_call((fn), (void *)(arg))
++void ns_call(int (*fn)(void *), void *arg);
+ 
+ #define RCVBUF_BIG		(2ULL * 1024 * 1024)
+ #define SNDBUF_BIG		(4ULL * 1024 * 1024)

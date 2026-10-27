@@ -3,14 +3,16 @@
 # Separate from the demo session (native/arch.sh, /data/local/archtest): its own
 # image, mount point, loop device and pid file, so both can run at once.
 #   ohm-sandbox create      new image, filled from the demo session's root (read only)
-#   ohm-sandbox start       mount the image in private mount/pid/ipc/uts namespaces
+#   ohm-sandbox start       mount the image in private mount/pid/ipc/uts/net namespaces
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
+#   ohm-sandbox net         connect the network again (after the PC changed networks)
 #   ohm-sandbox snapshot    take the reset snapshot again (stopped)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
 #   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop and the pty
 #                               shim (desktop/hongmeng-ptypeer.c) inside
 #                               from $S/src (they carry the sandbox's socket names)
+#   ohm-sandbox build-pasta     build pasta inside from its source on stdin (a tar)
 #   ohm-sandbox serve | unserve
 #                           the helper the app talks to (ohm-sandboxd: only the app's
 #                           uid, only start, stop, reset, status)
@@ -21,6 +23,12 @@
 # /dev holds only a few nodes, and every process runs with a bounding set that has
 # no mknod, mount (sys_admin), module, raw I/O or MAC capability, so root inside
 # cannot bring host devices or filesystems back in.
+# The network is a namespace of its own, connected by pasta (bin/pasta, passt.top, with
+# passt-hongmeng.patch) on the host: the sandbox's TCP, UDP and ICMP leave through host
+# sockets like any app's connections; nothing is forwarded inward, and the host's
+# 127.0.0.1 is not reachable. Abstract Unix socket names are not per network namespace
+# on HongMeng (checked: a host process connects to a name bound in here), so the app
+# still reaches the desktop's sockets; that namespace stays shared with the host.
 S=${OHM_SANDBOX:-/data/local/ohm-sandbox}
 IMG=$S/root.img
 CLEAN=$S/clean.img
@@ -42,6 +50,27 @@ CAPDROP=/usr/local/sbin/ohm-capdrop  # copied into the image at start
 
 alive() {
     [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ "$({ cat "/proc/$P/comm"; } 2>/dev/null)" = catatonit ]
+}
+
+# end the process in pid file $1 if it still runs binary $2
+stop_pidf() {
+    p=$(cat "$1" 2>/dev/null) && [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$2" ] && kill "$p"
+    rm -f "$1"
+}
+
+net_up() {
+    # HarmonyOS keeps the default route in a table of its own (policy routing)
+    set -- $(ip route show table all 2>/dev/null | grep -m1 '^default via ')
+    [ "$1" = default ] && [ "$4" = dev ] || { echo "network: no default route; offline"; return 0; }
+    # pasta drops capabilities before it opens the namespace, and /proc/<pid>/ns/net is
+    # then out of its reach: a bind mount of it, until pasta holds it open
+    F=$S/run/netns; mkdir -p "$S/run"; : > "$F"
+    mount --bind "/proc/$P/ns/net" "$F" || return 1
+    "$S/bin/pasta" --runas 0 --netns "$F" --netns-only --config-net -4 -i "$5" -g "$3" \
+        -t none -u none -T none -U none --no-map-gw -q -P "$S/pasta.pid" -l "$S/pasta.log" > /dev/null 2>&1
+    rc=$?
+    umount -l "$F"; rm -f "$F"
+    [ $rc = 0 ] && echo "network: through $5 ($3)" || echo "network: pasta failed ($S/pasta.log)"
 }
 
 # our image on a loop device already (losetup -a lists only /dev/loopN; ask each)
@@ -90,9 +119,15 @@ start)
     # and without the app nothing in here listens on a socket.
     attached && { echo "refusing: $IMG is attached to a loop already"; exit 1; }
     rm -f "$PIDF"
-    nohup unshare -m -p -i -u -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
+    nohup unshare -m -p -i -u -n -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
     i=0; while [ $i -lt 30 ] && ! alive; do sleep 1; i=$((i+1)); done
     alive && echo "started: $P" || { echo "failed to start"; cat "$S/sandbox.log"; exit 1; }
+    net_up
+    ;;
+net)
+    alive || { echo "not running"; exit 1; }
+    stop_pidf "$S/pasta.pid" "$S/bin/passt"
+    net_up
     ;;
 _session)
     set -e
@@ -105,6 +140,7 @@ _session)
     # a failure before pivot_root: unmount and free the loop, so start can be retried
     trap 'cd /; umount -l "$R" 2>/dev/null; losetup -d "/dev/block/loop$n" 2>/dev/null; rm -f "$S/sandbox.loop"' EXIT
     mount -t ext4 -o nodev "/dev/block/loop$n" "$R"
+    ip link set lo up || echo "loopback not up"
     mount -t proc -o nosuid,nodev,noexec proc "$R/proc"
     # the kernel's knobs stay read-only (no sys_admin inside to remount them)
     mount -o bind "$R/proc/sys" "$R/proc/sys"; mount -o remount,bind,ro "$R/proc/sys"
@@ -172,6 +208,13 @@ gcc -O2 -shared -fPIC -o /usr/local/lib/libhongmeng-ptypeer.so hongmeng-ptypeer.
 grep -q libhongmeng-ptypeer /etc/ld.so.preload || echo /usr/local/lib/libhongmeng-ptypeer.so >> /etc/ld.so.preload
 echo "helpers built"'
     ;;
+build-pasta)
+    alive || { echo "not running"; exit 1; }
+    sh "$0" run /usr/bin/bash -c 'set -e; d=/root/passt-src; rm -rf $d; mkdir -p $d; tar -C $d -xf -
+cd $d; make -s static > build.log 2>&1 || { tail -20 build.log >&2; exit 1; }; cat passt' > "$S/bin/passt.new" &&
+        chmod 755 "$S/bin/passt.new" && mv "$S/bin/passt.new" "$S/bin/passt" && ln -sf passt "$S/bin/pasta" &&
+        echo "pasta built" || { rm -f "$S/bin/passt.new"; echo "pasta build failed"; exit 1; }
+    ;;
 desktop)
     c=${2:-start}
     if [ "$c" = restart ]; then sh "$0" desktop stop > /dev/null 2>&1; exec sh "$0" desktop start; fi
@@ -220,6 +263,7 @@ stop)
         [ "$(readlink "$d/exe" 2>/dev/null)" = "$S/bin/vtest-broker" ] && kill "${d#/proc/}" 2>/dev/null
     done
     rm -f "$S/broker.pid"
+    stop_pidf "$S/pasta.pid" "$S/bin/passt"
     nsenter -t "$P" -m sync
     kill -9 "$P"   # pid-namespace init: SIGKILL tears the namespace down
     i=0; while [ $i -lt 20 ] && [ -d "/proc/$P" ]; do sleep 1; i=$((i+1)); done

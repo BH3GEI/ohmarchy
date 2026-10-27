@@ -40,7 +40,8 @@ demo desktop running; its health check before and after was identical (same
 processes and pids, same md5 of its scripts and boot configs). What the check
 printed (`/data/local/ohm-sandbox/evidence/config-check-20261028.txt`):
 
-- namespaces: mount, pid, ipc, uts its own; net and time shared with the host;
+- namespaces: mount, pid, ipc, uts its own; net and time shared with the host (net
+  its own since, see Network);
 - capability bounding set `b18cecff` (the list in `ohm-sandbox` dropped);
 - `/` the image (nodev), `/proc` its own, `/proc/sys` and `/sys` read-only, `/dev` a
   tmpfs with null, zero, full, random, urandom, tty, ptmx and the dma-heap node;
@@ -83,10 +84,14 @@ sandbox's own `/dev/null`; afterwards no process inside held a host file except 
 
 ## Known boundaries (v1)
 
-- The network namespace is the host's: the sandbox uses HarmonyOS's network stack,
-  so it reaches services listening on the host's loopback and its abstract unix
-  sockets. To be closed with a network namespace of its own (a4 is working out
-  how Docker's networking fits).
+- Abstract Unix sockets are shared with the host. HongMeng does not keep abstract
+  names per network namespace (checked 2026-10-28: a host process connected to a
+  name bound inside the sandbox's own network namespace), so the sandbox can still
+  connect to every abstract socket the host's processes listen on, HarmonyOS's own
+  services among them (the list and who owns each: `abstract-sockets-ohdev.md`).
+  The app's sockets with the desktop work because of this. Abstract names per
+  network namespace, as Linux keeps them, is a request to HarmonyOS
+  (docs/handover.zh-CN.md 3(a)).
 - The SELinux domain is still `su` (HarmonyOS's policy cannot be extended at run
   time on ohdev, 2026-10-28); a domain of its own is a request to HarmonyOS.
 
@@ -168,5 +173,29 @@ the same. Init reads cfgs only at boot (`begetctl start_service ohm-sandboxd` be
 reboot: "Cannot find service"), so the helper at boot is checked at the next reboot;
 until then it runs from `ohm-sandbox serve`.
 
-To do: check the helper at the next reboot, a network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
-start with its own capability set (a4).
+To do: check the helper at the next reboot; Docker's start with its own capability
+set (a4).
+
+## Network (2026-10-28)
+
+The sandbox has a network namespace of its own (`start`: `unshare -n`). pasta
+(passt.top, commit 6aa4f88, with `passt-hongmeng.patch`; built inside by
+`ohm-sandbox build-pasta`, as `bin/pasta`) runs on the host and joins it: the
+sandbox gets the host's address and routes, and its TCP, UDP and ICMP go out
+through host sockets, like an app's own connections. Nothing is forwarded inward
+(`-t none -u none -T none -U none`), the gateway is not mapped to the host
+(`--no-map-gw`), and the host's routes and firewall are not touched. HarmonyOS keeps
+the default route in a table of its own (2009, policy routing); `start` reads it
+there. After the PC changes networks, `ohm-sandbox net` connects it again.
+
+Checked on ohdev, on screen in the app's terminal: https://archlinux.org 200 and
+`pacman -Sy`; the host's `127.0.0.1:22` refused (curl 7). The app's display, sound
+and GPU sockets connected as before; stop ends pasta.
+
+HongMeng differences pasta met (the patch): no user namespaces (`/proc/self/uid_map`
+absent); `CLONE_FILES` not honoured, so what a `clone()`d child opens is not in the
+parent's table (its namespace calls run in a thread instead: threads share the
+table, and `setns()` in one moves only that thread); `close_range` refuses
+`CLOSE_RANGE_UNSHARE`; tmpfs takes no size options; and with its capabilities
+dropped it cannot open `/proc/<pid>/ns/net` (ENOENT), so `start` lends it a bind
+mount of it, lazily unmounted once pasta holds it.

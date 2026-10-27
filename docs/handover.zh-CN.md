@@ -238,6 +238,8 @@
    | `msgrcv` | 阻塞后不被 `msgsnd` 唤醒，fakeroot 卡住 | preload 垫片，改为轮询 |
    | `/proc/PID/cmdline` | 进程恰在退出时读，可能无限自旋 | 一律加超时 |
    | toybox `mount -o loop` | 报 EFAULT；loop 设备只有 loop0 有节点；devpts 没有 ptmx | 手工 losetup、mknod |
+   | `clone(CLONE_FILES)` 不共享文件表 | 子进程打开的 fd 父进程看不到，pasta 进不了沙箱的 netns（netlink EBADF） | pasta 补丁：改用线程做 setns（线程共享文件表，setns 只影响本线程） |
+   | `close_range(CLOSE_RANGE_UNSHARE)`、tmpfs 的 `nr_inodes`/`nr_blocks` | 返回 EOPNOTSUPP、EINVAL | pasta 补丁：去掉这两个参数重试 |
 
    - 影响：D 和原生沙箱。
 5. **vm_manager 启动 virtiofsd 时带 `--passthrough-fs`，或公开 share 注册协议。**
@@ -286,6 +288,11 @@
    - 为什么：runc 给每个容器建一个独立的 session keyring，HongMeng 上这一步失败（runc 只把 ENOSYS 当"不支持"放过去，EINVAL 不放过）。
    - 影响：原生沙箱。容器之间 keyring 不隔离（只影响容器与容器之间，不影响沙箱外层边界）。
    - 退路：测试版 runc 把 EINVAL 和 ENOSYS 一样对待（测试用）。
+15. **抽象 Unix socket 按 net namespace 隔离**（Linux 本来就是这样：抽象名字属于创建它的 socket 所在的网络命名空间）。
+   - 为什么：HongMeng 上抽象名字全局共享。沙箱有了自己的 net namespace 之后，TCP/UDP 已经碰不到主机的 127.0.0.1，可主机上所有在监听的抽象 socket 仍然连得上，其中有鸿蒙自己的服务：wpa_supplicant 的控制接口（`@/data/service/el1/public/wifi/sockets/wpa/wlan0`，wpa_host）、TEE 客户端守护进程（`@tc_ns_socket`，teecd）、hiview（`@DUBAI_BUFFERED_LOG`）、hdcd（`@ohjpid-control`）。清单、属主和风险评估见 native/sandbox/abstract-sockets-ohdev.md（2026-10-28 ohdev）。
+   - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
+   - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
+   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）；沙箱自己的 MAC 域（3(b) 第 1 条）里禁止对沙箱以外的 unix socket 做 connectto/sendto，可以挡住大部分。
 
 Docker 测试版现在一共有这几个绕过开关，都默认关闭、只用于测试：`OHM_NO_DEVICES_CGROUP`（dockerd）、`OHM_CHROOT_REEXEC`（dockerd，对应上表线程级 CLONE_FS 那一行）、`OHM_NO_CGROUPS`（runc），以及 uname、/proc 链接、keyring 三处补丁。沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev）一处都没放松。削弱的是容器这一层：cgroup 和 keyring 只影响容器之间的隔离；devices cgroup 和 seccomp（测试版 runc 是静态编译的，没带 seccomp）原本还保护着内核和宿主不被容器触碰，现在只靠 `--cap-drop MKNOD`、禁止 `--privileged`/`--device` 和沙箱外层兜底。所以这个测试版只能证明功能可行，不能当安全方案。
 

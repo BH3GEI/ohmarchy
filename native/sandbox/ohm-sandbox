@@ -5,6 +5,7 @@
 #   ohm-sandbox create      new image, filled from the demo session's root (read only)
 #   ohm-sandbox start       mount the image in private mount/pid/ipc/uts namespaces
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
+#   ohm-sandbox snapshot    take the reset snapshot again (stopped)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
 #   ohm-sandbox build-helpers   rebuild ohime, the sound relay, ohmarchy-desktop and the pty
@@ -261,6 +262,11 @@ reset)
     ;;
 _copy)
     gnu cp --sparse=always "$2" "$3"
+    ;;
+snapshot)
+    alive && { echo "running: stop it first"; exit 1; }
+    lo="nice -n 19"; command -v ionice > /dev/null && lo="$lo ionice -c 3"
+    $lo sh "$0" _copy "$IMG" "$CLEAN.new" && mv "$CLEAN.new" "$CLEAN" && echo "snapshot: $CLEAN"
     ;;
 *)
     echo "usage: ohm-sandbox create|start|stop|status|reset|run CMD..|shell" >&2; exit 2 ;;

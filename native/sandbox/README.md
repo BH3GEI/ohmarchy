@@ -146,6 +146,24 @@ Using it (full screen, no title bar):
 - Reset: "Reset Linux" in the same menu, or the desktop icon's; it asks first.
 - Not tried: the mouse at the top edge, three-finger swipes (no injected touchpad).
 
-To do: an installer and an uninstaller, a network namespace of its own, the helper
-started at boot (now `ohm-sandbox serve` by hand) (`com.ohmarchy.sandbox`, its own socket names), Docker's
+## Install and uninstall (from this computer)
+
+```
+native/sandbox/install.sh HOST [--write-system]
+native/sandbox/uninstall.sh HOST
+```
+
+`install.sh` builds the helper binaries and the app (signed for the device), copies
+them and the launcher, installs the app, makes the Linux image from the demo
+session's root if there is none (and rebuilds the helpers inside it), starts the
+helper, and checks: the sandbox and its desktop start, and the demo session, its
+processes, the init cfgs, `ld-musl` and `libc.so` are as before. Its only file
+outside /data is `/system/etc/init/ohm-sandboxd.cfg` (the helper at boot, through
+`boot-serve.sh`): without `--write-system` it is only shown; with it, written only
+if absent, and compared after writing. `uninstall.sh` removes the helper, the app,
+`/data/local/ohm-sandbox`, and that cfg only if it is the installer's, byte for byte.
+
+Dry run on ohdev (2026-10-28): passed; the cfg is not written yet.
+
+To do: the boot cfg on ohdev (approval), a network namespace of its own (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

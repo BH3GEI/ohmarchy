@@ -26,6 +26,7 @@ struct Index {
   @State note: string = '';
   @StorageLink('resetRequested') @Watch('onResetRequested') resetRequested: number = 0;
   private sandbox: boolean = false;
+  private started: boolean = false;  // Linux started by this app
   private ohdisp?: OhdispModule;
   private xc: XComponentController = new XComponentController();
   private timer: number = -1;
@@ -68,17 +69,20 @@ struct Index {
   private startLinux(): Promise<boolean> {
     return this.sandboxCtl('start', 'Starting Linux…').then((ok: boolean) => {
       if (ok) {
+        this.started = true;
         this.ohdisp?.gpuRetry();
       }
       return ok;
     });
   }
 
-  // from the icon's "Reset Linux" shortcut (EntryAbility): confirm, reset, start again
+  // from the icon's "Reset Linux" shortcut (EntryAbility): ask first; reset and start
+  // only when confirmed (opened by the shortcut, nothing starts before the answer)
   onResetRequested(): void {
-    if (!this.sandbox || this.resetRequested === 0) {
+    if (!this.sandbox || this.resetRequested === 0 || !this.ohdisp) {
       return;
     }
+    this.note = 'Reset Linux?';
     promptAction.showDialog({
       title: 'Reset Linux?',
       message: 'Everything installed or changed inside Linux is lost; it goes back to how it was installed.',
@@ -87,8 +91,16 @@ struct Index {
       if (r.index === 1) {
         this.sandboxCtl('reset', 'Resetting Linux…')
           .then((ok: boolean) => ok ? this.startLinux() : false);
+      } else if (!this.started) {
+        this.startLinux();
+      } else {
+        this.note = '';
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (!this.started) {
+        this.startLinux();
+      }
+    });
   }
 
   aboutToAppear(): void {
@@ -138,7 +150,11 @@ struct Index {
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
           if (this.sandbox) {
-            this.startLinux().then(() => this.onResetRequested());
+            if (this.resetRequested !== 0) {
+              this.onResetRequested();  // opened by "Reset Linux": ask before anything starts
+            } else {
+              this.startLinux();
+            }
           }
           // For experiments with presenting into this window from another process
           // (route I, docs/vm-own.md): its surface id.

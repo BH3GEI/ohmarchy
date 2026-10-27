@@ -215,6 +215,30 @@
 | 重置超过 2 分钟桌面还没回来 | 关掉 app，【后台】`ohm-sandbox status` 看一下；跳过，收尾 |
 | 第 1 段的 "Omarchy (native)" 受影响了吗 | 不会：两个完全分开，可以同时开（10-28 全程核对过 native 的会话和进程没变） |
 
+### （可选·展示）沙箱里的 Docker（约 1 分钟，不进主流程）
+
+Docker 测试版直接跑在鸿蒙内核上，不是虚拟机：dockerd 被关在自己的目录 `/data/local/ohm-docker-test` 和自己的网络里（细节见 native/sandbox/docker-test/README.md）。**它还没有接进粉色的沙箱 app**，所以不在沙箱终端里敲，而是由【后台】在助手电脑上运行一个脚本，把助手的终端投到屏幕上。时间不够就跳过，不影响别的段。
+
+**口径：** "这是测试版，不是正式隔离。" 鸿蒙内核缺 devices cgroup、cgroup 资源限制和 seccomp，容器和容器之间、容器和内核之间的隔离都比 Linux 上的 Docker 弱（README 里每个开关都写了削弱了什么）。台上可以说"能跑容器、关在自己的目录和网络里"，**不要说**"安全""和 Linux 一样的隔离"。
+
+**演示前检查（【后台】）：** 没有虚拟机在跑也行、在跑也行（它不是虚拟机）；`ssh ohdev du -sh /data/local/ohm-docker-test` 能返回（目录在，约 850 MB）；镜像已经在本地（alpine:3.22、nginx:alpine、hello-world），演示时不用下载。
+
+| # | 【后台】做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
+|---|---|---|---|---|
+| D.1 | 投屏助手的终端，运行 `ssh ohdev sh /data/local/ohm-docker-test/demo.sh` | 先停约 10 秒（起 dockerd），然后出现第 1 步：`Hello from Docker!` | 约 20 秒 | "Docker 直接跑在鸿蒙内核上，没有虚拟机。" |
+| D.2 | 不用操作 | 第 2 步：起一个 nginx，另一个容器取到 `<title>Welcome to nginx!</title>` | 约 15 秒 | "容器里起一个网站，另一个容器能访问它。它们用的是沙箱自己的网络。" |
+| D.3 | 不用操作 | 第 3 步：宿主上 `host-secret`；容器里 `can't connect (nc exit 1)` | 约 10 秒 | "鸿蒙本机上一个只对本机开放的服务，本机能连上，容器连不上。" |
+| D.4 | 不用操作 | 最后三行：`stopped …`、`stopped pasta …`、`host mounts mentioning sandbox: 0` | 约 5 秒 | "用完就停，主机上不留挂载。还是那句：这是测试版。" |
+
+脚本一次跑完约 1 分钟（10-28 在 ohdev 上连跑两遍，输出如下图，是真实输出渲染成的图，不是屏幕截图）：
+
+![第 1 步 hello-world](img/docker-test/docker-test-1.png)
+![第 2 步 nginx](img/docker-test/docker-test-2.png)
+![第 3 步 连不到宿主 127.0.0.1](img/docker-test/docker-test-3.png)
+![收尾](img/docker-test/docker-test-4.png)
+
+出了状况：脚本 1 分钟没出第 1 步，或者报 `start failed`，就 Ctrl+C，【后台】`ssh ohdev sh /data/local/ohm-docker-test/stop.sh`，放上面四张图讲，跳过。
+
 ---
 
 ## 备用方案
@@ -245,6 +269,7 @@
 | 打开原生桌面 app | `ssh ohdev aa start -a EntryAbility -b com.ohmarchy.display` |
 | 把鸿融拉到前面（退出全屏用） | `ssh ohdev aa start -b com.huawei.medivh -a EntryAbility` |
 | Docker 网关日志 | `ssh ohdev tail /data/local/kaidashi/ownvm/svc/gate.log` |
+| 沙箱里的 Docker（测试版）：演示 / 停止 | `ssh ohdev sh /data/local/ohm-docker-test/demo.sh`（`stop.sh`） |
 
 ---
 

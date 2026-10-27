@@ -46,6 +46,9 @@ sh stop.sh   # 只停 dockerd.pid 和 pasta.pid 里记的进程
 | build.sh | 拉源码、打补丁、交叉编译（Mac：Go、git，runc 还要 aarch64-linux-musl-gcc） |
 | setup.sh | 在 ohdev 上建 `/data/local/ohm-docker-test/root`，写 daemon.json。`DRY=1` 时只打印不执行 |
 | start.sh / stop.sh | 启动 dockerd（独立 mount ns，`NET=pasta` 时再加独立 net ns 和 pasta）/ 停止 |
+| demo.sh | 三步演示（hello-world、nginx、连不到宿主 127.0.0.1），自己起停 dockerd；脚本、start.sh、stop.sh 都要放在 ohdev 的 `/data/local/ohm-docker-test/` 下。见 docs/demo-operator.zh-CN.md 的"沙箱里的 Docker" |
+| lprobe.go | demo.sh 第 3 步用的宿主侧服务：只监听 127.0.0.1:18081，40 秒后退出（编出来放 `tools/lprobe`） |
+| render-shots.py | 把 demo.sh 的真实输出画成 docs/img/docker-test 下的图 |
 
 本目录不放二进制。
 

@@ -78,17 +78,17 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 02:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 03:29 PDT)
 
-Now: all three deliverables are ready; B's draft release has all its files (not published). **Reproducing everything on a second HarmonyOS PC has started.**
+Now: all three deliverables are ready; B's draft release has all its files (not published). **Moving the work from the first test machine to a second one**, where every route is being reproduced; the first machine will be reflashed afterwards.
 
 | Route | Now | Latest |
 |---|---|---|
-| Second machine | Each route is being set up on it, one VM at a time: 鸿融 first, then OSEasy, then the Docker VM; the native desktop in parallel | **Remote access works and survives a reboot**: ssh is up 28 s after power-on, through the same kind of tunnel as the first machine. The second machine can pull straight from the first at about 4.5 MB/s, so large images don't go through the Mac. Its own `scp` crashes on receive (`umask` with musl), so copies go through `ssh … cat` or tar pipes |
-| B. OSEasy | Next on the second machine: install from the public ISO as an ordinary user would | Draft release complete; 14 packages still need source before publishing |
-| C. 鸿融 | First on the second machine: copy the verified disk (6.2 GB) and import it with 鸿融's "本地文件" | The second machine's 鸿融 has no VM yet, so this is the same path a new user takes |
-| D. Native | On the second machine: moving the Arch root file system over and adapting to a different SoC and GPU (Kirin 9020, `higpu.v350`) | The root image holds 42 GB of blocks; checking what is actually used before copying |
-| I. Own VM | After the native desktop and OSEasy on the second machine | — |
+| Moving data | The last large item, the 鸿融 main VM disk (36 GB), is being copied | Kept: the native desktop's Arch root (packed to 4.8 GB, md5-checked), the Docker VM disk (3.7 GB compressed), the GPL source collection (3.6 GB, for the 14 missing packages), the B ISO and build inputs, the 鸿融 test disk (6.2 GB), the scripts and the relay key file (root only, mode 600). Dropped: older backup copies of the 鸿融 disk, old VMs, re-downloadable ISOs and build intermediates. The copy runs over the shared Wi-Fi (~8 MB/s in total) through a small HTTP server with Range support, so interrupted copies resume |
+| B. OSEasy | Next: install from the public ISO on the second machine | The ISO is on the second machine (2,006,917,120 bytes) |
+| C. 鸿融 | Importing the verified disk through 鸿融's "本地文件" on the second machine | Disk copied (6,212,026,368 bytes) |
+| D. Native | Unpacking the Arch root on the second machine; then re-signing the display app for that device and adapting to its GPU | `arch.sh` reads the dma-heap device number from the host instead of a fixed value (4403ecb), since it differs between the two machines |
+| I. Own VM | Waiting for the native desktop on the second machine | All files copied and checked |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

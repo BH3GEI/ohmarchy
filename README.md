@@ -78,18 +78,18 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 03:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 04:29 PDT)
 
-Now: all three deliverables are ready; B's draft release has all its files (not published). **Moving the work from the first test machine to a second one**, where every route is being reproduced; the first machine will be reflashed afterwards.
+Now: all three deliverables are ready; B's draft release has all its files (not published). The work is being reproduced on a second machine with an **older HarmonyOS (7.0.0.32)**, which exposed two compatibility problems. The first machine will become the route E (bare metal) test bed.
 
 | Route | Now | Latest |
 |---|---|---|
-| Moving data | The last large item, the 鸿融 main VM disk (36 GB), is being copied | Kept: the native desktop's Arch root (packed to 4.8 GB, md5-checked), the Docker VM disk (3.7 GB compressed), the GPL source collection (3.6 GB, for the 14 missing packages), the B ISO and build inputs, the 鸿融 test disk (6.2 GB), the scripts and the relay key file (root only, mode 600). Dropped: older backup copies of the 鸿融 disk, old VMs, re-downloadable ISOs and build intermediates. The copy runs over the shared Wi-Fi (~8 MB/s in total) through a small HTTP server with Range support, so interrupted copies resume |
-| B. OSEasy | Next: install from the public ISO on the second machine | The ISO is on the second machine (2,006,917,120 bytes) |
-| C. 鸿融 | Importing the verified disk through 鸿融's "本地文件" on the second machine | Disk copied (6,212,026,368 bytes) |
-| D. Native | Unpacking the Arch root on the second machine; then re-signing the display app for that device and adapting to its GPU | `arch.sh` reads the dma-heap device number from the host instead of a fixed value (a5a1447), since it differs between the two machines |
-| I. Own VM | Waiting for the native desktop on the second machine | All files copied and checked |
-| J. Linux in an app sandbox (no root) | Background research | Unchanged |
+| B. OSEasy | Kernel fix being built; then the ISO is rebuilt and checked on both machines | **On the older system the guest hung 0.76 s into boot**: the 7.2.12 kernel's virtio-pci code writes `device_feature_select=2` to read feature bits 64–95, the older StratoVirt rejects it ("Invalid features select 0x2") and HMV turns that into a fatal vCPU fault. OSEasy itself creates the VM fine there. Fix: a kernel parameter `virtio_pci_modern_dev.extended_features`, default 0, so only feature selects 0 and 1 are used. StratoVirt offers nothing above 64 bits, so newer systems lose nothing. Public users run many system versions, so this goes into the public image |
+| C. 鸿融 | Skipped on the second machine | **鸿融 is refused by the VM service on HarmonyOS 7.0.0.32**: that version's `libvm_manager` has no `MANAGE_VM` permission and its built-in list of 14 app identifiers includes OSEasy but not 鸿融, so every call fails with "TokenID … invalid" (e653362, 036212c). On 7.0.0.115 鸿融 works. The system cannot be upgraded |
+| D. Native | On the second machine: the display app can't get a window | The second machine's system `libvirglrenderer` calls `GetNativeWindow()` without an id, while our stand-in for `libhwf_kits` only answered id 0; relaxed, being rebuilt. Everything else (Arch session, Hyprland, broker, Docker gate) is up |
+| E. Bare metal | Building a bootable arm64 Omarchy image for a Ventoy USB stick, added beside the stick's existing files | **Phase-1 survey of the first machine** (8c58a22, read-only): UEFI firmware, verified boot unlocked (orange), a 200 MB ESP that is empty and unused, A/B-backup partitions, and eRecovery present. Booting from USB leaves the internal disk untouched, so it is the safest dual-boot test. Kirin X90 has no mainline Linux support, so the first goal is a software-rendered desktop on the UEFI framebuffer |
+| Remote access | Done | **ssh into a HarmonyOS PC from nothing** is in the repository (35387ab, 977c4b9): the ssh daemon and token helper rebuilt from source, the keep-alive script, init config, a frpc example with placeholders, and step-by-step setup over `hdc` |
+| I. Own VM | Waiting for the native desktop on the second machine | Files in place; VM memory set to 8 GiB for the smaller machine |
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

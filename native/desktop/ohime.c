@@ -20,7 +20,14 @@
 
 #include "input-method-unstable-v2-client-protocol.h"
 
-static const char *kName = "ohmarchy-ime";
+// "<OHMARCHY_SOCKET_PREFIX>-ime" (default ohmarchy), the app's name for it
+static char kName[64];
+
+static void SetName(void)
+{
+    const char *p = getenv("OHMARCHY_SOCKET_PREFIX");
+    snprintf(kName, sizeof(kName), "%s-ime", p != NULL && *p != '\0' ? p : "ohmarchy");
+}
 
 static struct wl_seat *seat;
 static struct zwp_input_method_manager_v2 *manager;
@@ -95,6 +102,7 @@ static int readAll(int fd, void *buf, size_t n)
 
 int main(void)
 {
+    SetName();
     struct wl_display *display = wl_display_connect(NULL);
     if (!display) {
         fprintf(stderr, "ohime: no wayland display\n");

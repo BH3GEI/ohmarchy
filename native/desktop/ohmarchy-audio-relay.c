@@ -18,10 +18,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static const char *kName = "ohmarchy-audio";
+// "<OHMARCHY_SOCKET_PREFIX>-audio" (default ohmarchy), the app's name for it
+static char kName[64];
+
+static void SetName(void)
+{
+    const char *p = getenv("OHMARCHY_SOCKET_PREFIX");
+    snprintf(kName, sizeof(kName), "%s-audio", p != NULL && *p != '\0' ? p : "ohmarchy");
+}
 
 int main(void)
 {
+    SetName();
     const char *u = getenv("OHMARCHY_APP_UID");
     if (u == NULL || *u == '\0') {
         fprintf(stderr, "ohmarchy-audio-relay: OHMARCHY_APP_UID not set; serving nobody\n");

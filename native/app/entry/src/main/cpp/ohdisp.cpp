@@ -2,6 +2,7 @@
 // touch and key input back. Frames come from the compositor's frame export (its
 // output buffers, shared as dmabufs over the abstract socket @ohmarchy-display);
 // without it, from RFB (wayvnc on 127.0.0.1:5900). Input always goes over RFB.
+#include "ohm_names.h"
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <arkui/ui_input_event.h>
 #include <hilog/log.h>
@@ -59,7 +60,7 @@ std::atomic<bool> g_frameMode{false};  // frames from the export socket; RFB for
 std::atomic<bool> g_shown{false};      // a frame has been shown since the source (re)connected
 std::atomic<int> g_exportSock{-1};     // export socket, also carries input to the compositor
 std::mutex g_exportSendMu;
-const char *kExportName = "ohmarchy-display";
+const char *kExportName = OHM_NAME_PREFIX "-display";
 uint8_t g_buttons = 0;
 std::atomic<uint64_t> g_blits{0};  // frames shown by the CPU path (Blit)
 std::atomic<int64_t> g_desktopUid{-1};  // the compositor's uid (export socket peer)
@@ -840,7 +841,7 @@ uint32_t KeySym(OH_NativeXComponent_KeyCode k)
 // ---- Input method: Ctrl+Space attaches the HarmonyOS IME; its text goes to ohime in the
 // chroot (@ohmarchy-ime: {uint32 type, uint32 len} + UTF-8; 1 commit, 2 preedit), which
 // commits it to the focused Linux app. Detached, keys go to the compositor as evdev codes.
-const char *kImeName = "ohmarchy-ime";
+const char *kImeName = OHM_NAME_PREFIX "-ime";
 InputMethod_TextEditorProxy *g_imeEditor = nullptr;
 InputMethod_InputMethodProxy *g_imeProxy = nullptr;
 std::mutex g_imeMu;

@@ -4,6 +4,7 @@
 // connection here. Rendering runs on the Maleoon GPU (Mesa zink, which the system
 // EGL loads for processes with NEED_OPENGL=1), and when Hyprland reads a frame back
 // the resource is presented straight into this app's window instead: no copy.
+#include "ohm_names.h"
 #include <hilog/log.h>
 #include <native_buffer/buffer_common.h>
 #include <native_buffer/native_buffer.h>
@@ -62,7 +63,7 @@ std::atomic<uint64_t> g_presents{0};
 uint32_t g_scanoutRes = 0;
 uint32_t g_pendingPresent = 0;  // frame to present when the renderer is idle
 pthread_t g_vtestThread;
-const char *kBroker = "@ohmarchy-vtest";
+const char *kBroker = "@" OHM_NAME_PREFIX "-vtest";
 // Without root (route J, the desktop runs inside this app): no vtest-broker; vtest
 // listens on a socket in the files directory itself (LocalGpu).
 std::atomic<const char *> g_vtestName{kBroker};

@@ -14,6 +14,7 @@
 // the speaker plays it (the renderer's timestamp), on CLOCK_MONOTONIC, which the
 // Linux session shares; the log line "onset played at" carries it. The renderer runs only while there is sound: after kIdleMs of silence
 // it stops, so an idle desktop holds no audio focus.
+#include "ohm_names.h"
 #include <hilog/log.h>
 #include <ohaudio/native_audiorenderer.h>
 #include <ohaudio/native_audiostreambuilder.h>
@@ -45,7 +46,7 @@
 
 namespace {
 
-const char *kName = "ohmarchy-audio";
+const char *kName = OHM_NAME_PREFIX "-audio";
 const int kRate = 48000;
 const int kFrameBytes = 4;  // S16LE stereo
 const int kStartMs = 20, kTargetMs = 30, kMaxMs = 80, kIdleMs = 2000;

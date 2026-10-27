@@ -8,7 +8,10 @@ LOG=$R/ohmarchy-desktop.log
 export PATH=/opt/ohmarchy/bin:$PATH OMARCHY_PATH=/usr/share/omarchy \
     XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_DESKTOP=Hyprland \
     DBUS_SESSION_BUS_ADDRESS=unix:path=$R/bus \
-    AQ_HEADLESS_EXPORT=ohmarchy-display
+    OHMARCHY_SOCKET_PREFIX=${OHMARCHY_SOCKET_PREFIX:-ohmarchy}
+# the app's sockets: @<prefix>-display (frames, input), -audio, -ime; the sandbox's app
+# uses the prefix ohmsbx so it never talks to the demo desktop
+export AQ_HEADLESS_EXPORT=$OHMARCHY_SOCKET_PREFIX-display
 
 running() { pgrep -u "$(id -u)" -x Hyprland > /dev/null; }
 

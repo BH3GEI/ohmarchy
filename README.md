@@ -78,19 +78,20 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 08:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 09:29 PDT)
 
-Now: top priority is the **new native design** (Omarchy installed like a HarmonyOS app, on the HarmonyOS kernel, locked into its own directory, Docker inside). The working native demo is not touched. B's new ISO passed its regression. A handover document for tomorrow's review is in [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
+Now: top priority is the **new native design** (Omarchy installed like a HarmonyOS app, on the HarmonyOS kernel, locked into its own directory, Docker inside). Its command-line core works next to the running demo without touching it; next is the desktop inside it. Handover for tomorrow's review: [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
 
 | Route | Now | Latest |
 |---|---|---|
-| D. Native (new design) | Start/stop/reset tests wait until the demo app is not in front; the policy-reload test waits for the VM slot | **Launcher committed** (a0eb308): `native/sandbox/ohm-sandbox` with create/start/stop/status/reset, its own image and clean snapshot, own mount/pid/ipc/uts namespaces with `pivot_root`, a minimal `/dev`, read-only `/proc/sys`, reduced capabilities; refuses to start while the demo session runs. **Allow-list**: the first machine is a developer build with SELinux enforcing, CIL sources and tools on the device; a module that only adds a new domain can be loaded at run time without touching `/system` (gone after a reboot). Loading is not yet tested; the first test reloads the existing policy unchanged, with an automatic restore after 5 minutes. **Docker on the HarmonyOS kernel** (a first; route I's Docker ran in a VM): dockerd starts confined to the sandbox directory; containerd crashed on HongMeng's `uname` string and runs with a patched `Uname`; HongMeng has no devices cgroup, so for functional tests only the check is skipped and every container drops `MKNOD` with no host devices or paths |
-| B. OSEasy | Shutting the test VM down to free the VM slot | **New ISO passed on the first machine**: full Omarchy desktop (wallpaper, top bar, welcome card), no boot faults in the VM log with kernel 7.2.12-1.2. It goes into the draft release next to the old one |
-| D. Native (demo) | Unchanged | Alt+Shift as Super (ad71991) not yet tried on the real keyboard |
-| Release | GPL sources | 5 upstream sources still missing |
+| D. Native (new design) | A `desktop` command that starts the compositor inside the sandbox; then install the separate app and ask for screen time | **Command-line milestone** (91a95a5, 319fe92): create, start, status, stop and reset (about 1 min at low priority) all work while the demo keeps running; health snapshots of the demo before and after are identical (same files, same processes, no restart). Inside: its own mount, pid, ipc and uts namespaces, an image root mounted `nodev`, read-only `/proc/sys` and `/sys`, a `/dev` with only null, zero, full, random, urandom, tty, ptmx and dma_heap, reduced capabilities (no mknod, no sys_admin). Known gaps, written down (a949f0a): network shared with the host; SELinux domain still `su`. HongMeng differences worked around: `setpriv` (no PR_SET_KEEPCAPS) replaced by a small capability dropper; toybox `nsenter` order; no read-only sysfs remount; **no devpts at all**, terminals work through `/dev/ptmx` with TIOCGPTPEER. **Separate app built** (5f4ef37): `com.ohmarchy.sandbox`, "Omarchy (sandbox)", its own socket names; the demo app's names are unchanged |
+| D. Native: allow-list | Paused; next test needs a quiet time on the device | Writing the existing policy back to `/sys/fs/selinux/load` fails with EINVAL and changes nothing (b265f3d): an exported policy is not loadable as is. Whether a compiled policy can be loaded at run time is still open; the next test loads the boot policy file first so a restore path exists |
+| D. Native: Docker | dockerd runs confined; first container next | dockerd 29.9.2 starts inside its own mount namespace; kernel reported as 6.6.0-hongmeng via a patched `uname`; no resource limits available; overlay on HongMeng's file system fails, so the `vfs` driver is used (slow, large). New HongMeng bug: `unshare(CLONE_FS)` + `chroot` in one thread changes the root of the other threads too; dockerd's layer unpacking hit it and is patched to chroot in a re-executed child |
+| B. OSEasy | Disk persistence, on the Mac | New ISO passed its regression. Guest-agent message definitions with field numbers are out (6d319f9); frame layout and port mapping need disassembly of the Windows agent, under way. Vendor request corrected: the channel is virtio-serial with protobuf, plus two asks for older HarmonyOS (da7f1b9) |
+| Release | Waiting for an upload token | The new ISO goes into the draft next to the old one; 5 GPL sources still missing |
 | E. Bare metal | Waiting for the owner to try boot keys | Unchanged |
 
-Asks for HarmonyOS found today (in the handover, section 3): report `uname` release in Linux form; a devices cgroup or BPF device filter for containers; ship our SELinux module and helper for the native design.
+New asks for HarmonyOS in the handover, section 3(a) (0676c97): report `uname` in Linux form; a devices cgroup or BPF device filter.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

@@ -54,8 +54,20 @@ HongMeng differences met on the way:
   that pid does not exist; `ohm-capdrop --enter` opens them all first;
 - a read-only remount of a sysfs bind is refused (ENOTSUP); a fresh sysfs mounted
   read-only works;
-- devpts with `newinstance` does not mount, so there are no ptys inside yet (the
-  demo binds the host's `/dev/pts`, which the sandbox does not do).
+- there is no devpts filesystem (mount: No such device; the host's `/dev/pts` is
+  empty). ptys still work through `/dev/ptmx`: glibc's `openpty()` gets the other
+  end with TIOCGPTPEER, but no `/dev/pts/N` node ever appears, so `ttyname()` fails
+  (checked in the demo session, 2026-10-28). The sandbox has `/dev/ptmx` like the
+  demo, so the same should hold inside; not yet checked there.
 
-To do: ptys, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
+## Known boundaries (v1)
+
+- The network namespace is the host's: the sandbox uses HarmonyOS's network stack,
+  so it reaches services listening on the host's loopback and its abstract unix
+  sockets. To be closed with a network namespace of its own (a4 is working out
+  how Docker's networking fits).
+- The SELinux domain is still `su` (HarmonyOS's policy cannot be extended at run
+  time on ohdev, 2026-10-28); a domain of its own is a request to HarmonyOS.
+
+To do: a pty check inside the sandbox, the app side (`com.ohmarchy.sandbox`, its own socket names), Docker's
 start with its own capability set (a4).

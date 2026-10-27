@@ -76,11 +76,11 @@ doesn't touch them.
 | 1.5 | **Super+Shift+B** | Firefox opens next to the terminal (a fresh window, never "Restore Session"); open omarchy.org. A first-run tip may show: click "Okay, Got It" | 15 s | "The browser is Firefox, with its sandbox." |
 | 1.6 | **Super+Space** for the Omarchy menu, glance, **Esc** | the Omarchy menu appears and closes | 5 s | "That's Omarchy's own menu, unchanged." |
 | 1.7 | **Super+Shift+F** | Files (Nautilus) on the home directory | 5 s | |
-| 1.8 | Click back into the terminal, type `docker run --rm hello-world`, Enter | a pause (the background VM is starting), then **"Hello from Docker!"** | **first run about 20–30 s** (21 and 27 s on 2026-10-27), don't panic | "The HarmonyOS kernel can't run containers, so Docker borrows a small background VM that starts when it's used and stops half a minute after. I didn't type any root command." |
-| 1.9 | **Nothing to do**: the Docker VM stops by itself | nothing visible | about 30 s, while the 1.8 line is said | "Done with it, it is off by itself; the next VM can start." |
+| 1.8 | Click back into the terminal, type `docker run --rm hello-world`, Enter | a pause (the background VM is starting), then **"Hello from Docker!"** | **first run about 27 s** (measured 2026-10-27), don't panic | "The HarmonyOS kernel can't run containers, so Docker borrows a small background VM that starts when it's used and stops about forty seconds after. I didn't type any root command." |
+| 1.9 | **Nothing to do**: the Docker VM stops by itself | nothing visible | about 40 s, while the 1.8 line is said | "Done with it, it is off by itself; the next VM can start." |
 | 1.10 | **Minimize** "Omarchy (native)" (don't close it) | back on the HarmonyOS desktop | 2 s | |
 
-**1.9 The Docker VM stops by itself** (rehearsed 2026-10-26: hello-world 21 s cold, then nothing touched: `pidof stratovirt` empty about 35 s later). With no container running and no docker client connected it powers off after 30 s. **Don't type another `docker` command meanwhile**: each one restarts the timer. If it is still on, see the last row of the table below.
+**1.9 The Docker VM stops by itself** (rehearsed 2026-10-27: hello-world 27 s cold, then nothing touched: `pidof stratovirt` empty about 40 s later). With no container running and no docker client connected it powers off after 30 s. **Don't type another `docker` command meanwhile**: each one restarts the timer. If it is still on, see the last row of the table below.
 
 Rehearsed 2026-10-26 on ohdev with keys injected through HarmonyOS's input
 service (right Alt as Super): 1.1–1.7 all as described; the desktop was up about
@@ -98,7 +98,7 @@ HarmonyOS notification when Docker is blocked; the desktop opens normally).
 | Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | Firefox opens on "Sorry. We're having trouble getting your pages back." (Restore Session) | Click **Start New Session**, then open omarchy.org. (Caused by a desktop restart killing Firefox; fixed 2026-10-27 and verified: after reopening the app Firefox opens a new tab. Shouldn't happen any more) |
 | A window is stuck | **Super+W** closes it; go on to the next step |
-| `docker` shows nothing for 20–30 s | Expected: the first run starts the background VM. Keep talking |
+| `docker` shows nothing for about 30 s | Expected: the first run starts the background VM. Keep talking |
 | `docker` says `后台 Docker 虚拟机启动不了：鸿融或者 OSEasy 的虚拟机正在运行，请先关掉它` | Another VM is running (checklist item 5 was missed). An Omarchy (native) notification also lands in HarmonyOS's notification center (no banner while the app is in front, just a red dot on the bell; clear it with checklist item 7). On stage: "this is exactly the one-VM-at-a-time limit", skip Docker. [backstage] find which VM it is; it has to be off before part 2 |
 | `docker` shows nothing for over 1 min | Ctrl+C, skip Docker, show the backup screenshot (`docs/img/autostart/03-docker-cold.jpeg`). [backstage] `ohmarchy-vm stop`, confirm `pidof stratovirt` is empty before part 2 |
 | A minute after hello-world, 鸿融 says another VM is running | The Docker VM is still on (e.g. another `docker` was typed). In the terminal: `docker-vm stop` (about 6 s, "Docker 虚拟机已关闭"); if it says a container is running, `docker ps`, `docker stop <name>` first. Or [backstage] `ohmarchy-vm stop` |
@@ -294,7 +294,7 @@ A: The HarmonyOS kernel lacks the namespaces and cgroups containers need, so
 Docker runs in a small headless VM of our own: root starts the system's own
 StratoVirt directly on `/dev/hmv` (HarmonyOS's hypervisor). **Not 鸿融**, and
 **not the built-in 融合开发引擎** (that is a container and can't run Docker).
-The first `docker` starts it (about 20 s), it stops 30 s after use, and
+The first `docker` starts it (hello-world in about 27 s), it stops about 40 s after use, and
 the home directory is shared in, so bind mounts work as usual. Idle, it costs
 the host about 1.2 GB of memory.
 

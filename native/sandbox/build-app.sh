@@ -16,7 +16,7 @@ cd "$work"
 sed -i '' 's/"com\.ohmarchy\.display"/"com.ohmarchy.sandbox"/' AppScope/app.json5
 sed -i '' 's/"Omarchy (native)"/"Omarchy (sandbox)"/' AppScope/resources/base/element/string.json \
     entry/src/main/resources/base/element/string.json
-printf '#pragma once\n#define OHM_NAME_PREFIX "ohmsbx"\n' > entry/src/main/cpp/ohm_names.h
+printf '#pragma once\n#define OHM_NAME_PREFIX "ohmsbx"\n#define OHM_SANDBOX 1\n' > entry/src/main/cpp/ohm_names.h
 python3 - AppScope/resources/base/media/background.png entry/src/main/resources/base/media/background.png <<'P'
 import sys
 from PIL import Image

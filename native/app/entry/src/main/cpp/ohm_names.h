@@ -5,3 +5,7 @@
 #ifndef OHM_NAME_PREFIX
 #define OHM_NAME_PREFIX "ohmarchy"
 #endif
+// 1 in the sandbox build: Ctrl+Alt+Escape minimizes the app (it opens full screen)
+#ifndef OHM_SANDBOX
+#define OHM_SANDBOX 0
+#endif

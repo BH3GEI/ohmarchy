@@ -10,6 +10,8 @@ interface OhdispModule {
   swipe(phase: number, dx: number, dy: number, fingers: number): void;
   releaseKeys(): void;
   sandboxCtl(cmd: string): Promise<string>;
+  gpuRetry(): void;
+  takeMinimize(): boolean;
 }
 
 // The sandbox build (native/sandbox/build-app.sh) runs Linux through the helper
@@ -62,6 +64,16 @@ struct Index {
     });
   }
 
+  // Linux and its graphics service come up only now: look for that service again
+  private startLinux(): Promise<boolean> {
+    return this.sandboxCtl('start', 'Starting Linux…').then((ok: boolean) => {
+      if (ok) {
+        this.ohdisp?.gpuRetry();
+      }
+      return ok;
+    });
+  }
+
   // from the icon's "Reset Linux" shortcut (EntryAbility): confirm, reset, start again
   onResetRequested(): void {
     if (!this.sandbox || this.resetRequested === 0) {
@@ -74,7 +86,7 @@ struct Index {
     }).then((r: promptAction.ShowDialogSuccessResponse) => {
       if (r.index === 1) {
         this.sandboxCtl('reset', 'Resetting Linux…')
-          .then((ok: boolean) => ok ? this.sandboxCtl('start', 'Starting Linux…') : false);
+          .then((ok: boolean) => ok ? this.startLinux() : false);
       }
     }).catch(() => {});
   }
@@ -94,6 +106,10 @@ struct Index {
     this.timer = setInterval(() => {
       if (this.ohdisp) {
         this.status = this.ohdisp.getStatus();
+        // the sandbox build's Ctrl+Alt+Escape: out of full screen, to the desktop
+        if (this.ohdisp.takeMinimize()) {
+          window.getLastWindow(getContext(this)).then((w: window.Window) => w.minimize());
+        }
       }
     }, 500);
   }
@@ -122,7 +138,7 @@ struct Index {
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
           if (this.sandbox) {
-            this.sandboxCtl('start', 'Starting Linux…').then(() => this.onResetRequested());
+            this.startLinux().then(() => this.onResetRequested());
           }
           // For experiments with presenting into this window from another process
           // (route I, docs/vm-own.md): its surface id.

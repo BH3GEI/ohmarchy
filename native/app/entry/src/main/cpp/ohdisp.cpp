@@ -1247,6 +1247,18 @@ uint32_t EvdevKey(OH_NativeXComponent_KeyCode k)
     }
 }
 
+// Sandbox build: Ctrl+Alt+Escape (no Omarchy binding) minimizes the app, which
+// opens full screen; the page polls this (takeMinimize) and asks its window.
+std::atomic<bool> g_minimizeRequested{false};
+bool g_altDown = false;
+
+napi_value TakeMinimize(napi_env env, napi_callback_info)
+{
+    napi_value v = nullptr;
+    napi_get_boolean(env, g_minimizeRequested.exchange(false), &v);
+    return v;
+}
+
 bool OnKey(OH_NativeXComponent *c, void *)
 {
     OH_NativeXComponent_KeyEvent *ev = nullptr;
@@ -1264,6 +1276,20 @@ bool OnKey(OH_NativeXComponent *c, void *)
     }
     if (code == KEY_CTRL_LEFT || code == KEY_CTRL_RIGHT) {
         g_ctrlDown = down;
+    }
+    if (code == KEY_ALT_LEFT || code == KEY_ALT_RIGHT) {
+        g_altDown = down;
+    }
+    static bool minimizeTaken = false;
+    if (OHM_SANDBOX && code == KEY_ESCAPE && down && g_ctrlDown && g_altDown) {
+        minimizeTaken = true;
+        g_minimizeRequested = true;
+        ReleaseHeldKeys();  // the window goes away with Ctrl and Alt still down
+        return true;
+    }
+    if (code == KEY_ESCAPE && !down && minimizeTaken) {
+        minimizeTaken = false;
+        return true;
     }
     // Ctrl+Space toggles the HarmonyOS IME only when ohime runs in the desktop (an empty
     // preedit probes it); otherwise the chord goes on to fcitx5, which uses it too.
@@ -1305,10 +1331,41 @@ OH_NativeXComponent_Callback g_cb;
 OH_NativeXComponent_MouseEvent_Callback g_mouseCb;
 
 // Status line for the page while nothing is on screen; empty once frames show.
+// The sandbox build's GPU broker starts with Linux, when the app asks (sandboxCtl
+// start), so after the window exists: then the app looks for it again, every 0.5 s
+// for 30 s (gpuRetry), and says so if it never comes.
+std::atomic<bool> g_gpuWaitFailed{false};
+
+napi_value GpuRetry(napi_env, napi_callback_info)
+{
+    if (GpuActive()) {
+        return nullptr;
+    }
+    g_gpuWaitFailed = false;
+    std::thread([] {
+        for (int i = 0; i < 60; i++) {
+            {
+                std::lock_guard<std::mutex> lk(g_winMu);
+                if (g_win != nullptr && GpuStart(g_win)) {
+                    LOGI("gpu: broker found %{public}d ms after the start", i * 500);
+                    return;
+                }
+            }
+            usleep(500000);
+        }
+        g_gpuWaitFailed = true;
+        LOGE("gpu: no broker 30 s after the start");
+    }).detach();
+    return nullptr;
+}
+
 napi_value GetStatus(napi_env env, napi_callback_info)
 {
     const char *msg = "";
-    if (GpuActive()) {
+    if (g_gpuWaitFailed && !GpuActive()) {
+        msg = "Linux started, but its graphics service did not answer within 30 s.\n"
+              "Close the app and open it again; if that does not help, use Reset Linux from the icon's menu.";
+    } else if (GpuActive()) {
         // The overlay hides whatever the window last showed (an old desktop).
         if (g_exportSock.load() < 0) {
             msg = g_kicks >= 3 ? "The Omarchy desktop does not start. Log: /run/user/60000/ohmarchy-desktop.log;"
@@ -1482,6 +1539,8 @@ napi_value Init(napi_env env, napi_value exports)
         {"releaseKeys", nullptr, ReleaseKeys, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"localGpu", nullptr, LocalGpuNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sandboxCtl", nullptr, SandboxCtlNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"gpuRetry", nullptr, GpuRetry, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"takeMinimize", nullptr, TakeMinimize, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 

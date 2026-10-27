@@ -78,15 +78,16 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 20:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 00:28 PDT)
 
-Now: **all three deliverables are ready.** The demo is rehearsed in all three parts (part 1 re-run after its fixes, parts 2 and 3 re-checked with the final image). The internal report is done ([docs/report/](docs/report/index.html)). B's public try-out is final and waits only for an upload token for the draft release.
+Now: all three deliverables are ready. **B's ISO and GPL source bundle are being uploaded to the draft release** (not published). A second HarmonyOS device is being examined for route E (bare metal).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Waiting for the upload | **Final ISO: 2,006,917,120 bytes** (under GitHub's 2 GiB limit). Installed from OSEasy's "立即创建" path: about 1.5 min to the password screen, then a desktop with wallpaper, top bar and the Omarchy welcome panel at 120 Hz; password, sudo and the removal of the temporary rule all checked. The earlier ISO with the empty desktop is withdrawn. Manual part 3 covers both opening states ("再次安装" and "立即创建") (bff38a1) |
-| C. 鸿融 | Ready; the Omarchy disk is swapped in the day before the demo | The main VM's disk is in place; the test copy used for diagnosis is deleted |
+| B. OSEasy | Uploading the final ISO (2,006,917,120 bytes) and the GPL source bundle to the draft, straight from the HarmonyOS machine | Draft notes updated; the source bundle is rebuilt from the final run (386 packages with source, 18 missing, listed at the top of the notes) |
+| C. 鸿融 | Ready | — |
 | D. Native | Ready | — |
+| E. Bare metal | Read-only look at a second HarmonyOS device over USB | It enumerates as Huawei "HDC Device" (`12d1:5000`), i.e. booted normally with debugging on, not in a bootloader mode. Next: read its model and bootloader lock state with `hdc` before deciding anything; nothing is written to the device |
 | I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->

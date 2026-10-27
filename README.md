@@ -87,7 +87,7 @@ Now: all three deliverables are ready; B's draft release has all its files (not 
 | Moving data | The last large item, the 鸿融 main VM disk (36 GB), is being copied | Kept: the native desktop's Arch root (packed to 4.8 GB, md5-checked), the Docker VM disk (3.7 GB compressed), the GPL source collection (3.6 GB, for the 14 missing packages), the B ISO and build inputs, the 鸿融 test disk (6.2 GB), the scripts and the relay key file (root only, mode 600). Dropped: older backup copies of the 鸿融 disk, old VMs, re-downloadable ISOs and build intermediates. The copy runs over the shared Wi-Fi (~8 MB/s in total) through a small HTTP server with Range support, so interrupted copies resume |
 | B. OSEasy | Next: install from the public ISO on the second machine | The ISO is on the second machine (2,006,917,120 bytes) |
 | C. 鸿融 | Importing the verified disk through 鸿融's "本地文件" on the second machine | Disk copied (6,212,026,368 bytes) |
-| D. Native | Unpacking the Arch root on the second machine; then re-signing the display app for that device and adapting to its GPU | `arch.sh` reads the dma-heap device number from the host instead of a fixed value (4403ecb), since it differs between the two machines |
+| D. Native | Unpacking the Arch root on the second machine; then re-signing the display app for that device and adapting to its GPU | `arch.sh` reads the dma-heap device number from the host instead of a fixed value (a5a1447), since it differs between the two machines |
 | I. Own VM | Waiting for the native desktop on the second machine | All files copied and checked |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->

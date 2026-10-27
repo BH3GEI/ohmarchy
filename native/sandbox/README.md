@@ -19,9 +19,12 @@ The demo (`native/arch.sh`, `/data/local/archtest`, the boot service) is not tou
   `sandbox.pid`, `sandbox.loop`, `sandbox.log`); `OHM_SANDBOX` overrides it;
 - the first free loop device (loop1 on ohdev, where the demo holds loop0);
 - no autostart: started by hand;
-- `start` refuses while the demo session runs; the two never run at the same time;
+- nothing is shared with the demo session (image, directory, loop device, pid file;
+  no sockets while there is no app), so both can run at once; `start` refuses only if
+  `root.img` is attached to a loop already. `create` and `reset` borrow GNU tar/cp
+  from the demo's root (read only), and `reset` copies 14 GB, a few minutes of disk load;
 - `create` only reads the demo's root (build trees and caches are left out).
 
 Status 2026-10-27: image created on ohdev (14 GB used); start, stop and reset not yet
-run (they wait until the demo can be stopped). The app side (`com.ohmarchy.sandbox`,
+run. The app side (`com.ohmarchy.sandbox`,
 its own socket names) is still to do.

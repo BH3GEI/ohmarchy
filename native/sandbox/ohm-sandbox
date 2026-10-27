@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # ohm-sandbox: Omarchy's Arch Linux locked in its own directory (native route, v1).
 # Separate from the demo session (native/arch.sh, /data/local/archtest): its own
-# image, mount point, loop device and pid file; the two never run at once.
+# image, mount point, loop device and pid file, so both can run at once.
 #   ohm-sandbox create      new image, filled from the demo session's root (read only)
 #   ohm-sandbox start       mount the image in private mount/pid/ipc/uts namespaces
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
@@ -23,6 +23,14 @@ DROP=-mknod,-sys_admin,-sys_module,-sys_rawio,-sys_boot,-sys_time,-sys_pacct,-sy
 
 alive() {
     [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ "$({ cat "/proc/$P/comm"; } 2>/dev/null)" = catatonit ]
+}
+
+# our image on a loop device already (losetup -a lists only /dev/loopN; ask each)
+attached() {
+    for d in /dev/block/loop*; do
+        losetup "$d" 2>/dev/null | grep -qF "($IMG)" && return 0
+    done
+    return 1
 }
 
 # GNU tar/cp from the demo root, run on the host (toybox has no sparse cp, and its tar
@@ -59,8 +67,9 @@ create)
 start)
     if alive; then echo "already running: $P"; exit 0; fi
     [ -f "$IMG" ] || { echo "no image: ohm-sandbox create"; exit 1; }
-    D=$(cat "$DEMO/session.pid" 2>/dev/null)
-    [ -n "$D" ] && [ -d "/proc/$D" ] && { echo "refusing: the demo session is running (pid $D); stop it first"; exit 1; }
+    # Only real conflicts refuse: the demo has its own image, directory and loop device,
+    # and without the app nothing in here listens on a socket.
+    attached && { echo "refusing: $IMG is attached to a loop already"; exit 1; }
     rm -f "$PIDF"
     nohup unshare -m -p -i -u -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
     i=0; while [ $i -lt 30 ] && ! alive; do sleep 1; i=$((i+1)); done
@@ -137,7 +146,15 @@ stop)
 reset)
     alive && { echo "running: stop it first"; exit 1; }
     [ -f "$CLEAN" ] || { echo "no snapshot $CLEAN"; exit 1; }
-    gnu cp --sparse=always "$CLEAN" "$IMG.new" && mv "$IMG.new" "$IMG" && echo "reset to the snapshot"
+    # the copy needs the snapshot's used size (~14 GB) free; keep a wide margin
+    free=$(df -k "$S" | awk 'NR==2 {print int($4 / 1048576)}')
+    [ "$free" -ge 50 ] || { echo "refusing: only ${free} GB free on $(df "$S" | awk 'NR==2 {print $6}')"; exit 1; }
+    # low priority, so a running demo desktop is not slowed down
+    lo="nice -n 19"; command -v ionice > /dev/null && lo="$lo ionice -c 3"
+    $lo sh "$0" _copy "$CLEAN" "$IMG.new" && mv "$IMG.new" "$IMG" && echo "reset to the snapshot"
+    ;;
+_copy)
+    gnu cp --sparse=always "$2" "$3"
     ;;
 *)
     echo "usage: ohm-sandbox create|start|stop|status|reset|run CMD..|shell" >&2; exit 2 ;;

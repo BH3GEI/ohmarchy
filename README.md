@@ -78,15 +78,15 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 18:29 PDT)
+## Progress (updated hourly; last: 2026-10-26 19:28 PDT)
 
-Now: all three parts of the demo are rehearsed, and part 1 was run again after its fixes. The new image (both display fixes) is being compressed; B's public ISO is rebuilt from it before upload. The internal report is done ([docs/report/](docs/report/index.html)).
+Now: all three parts of the demo are rehearsed. B's public ISO is being rebuilt from the new image (both display fixes) and checked once more before upload. The internal report is done ([docs/report/](docs/report/index.html)).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Waiting for the new image, then rebuilding the ISO and checking wallpaper and top bar | — |
-| C. 鸿融 / public image | Compressing the new image (`zstd -T2`, about 09:30–09:40 device time) | **The new image passed in 鸿融**: password, guest agent, desktop with wallpaper and bar, 2160x1440 at 119.98 Hz; the 120 Hz talking point is back in the manual (0e5e2bb). The main VM's disk is back in 鸿融 (sizes match the backup). **The first compression crashed the test machine**: `zstd -T0 --long=31` on 20 cores ran it out of memory (`HM_PANIC_OOM` at 08:38) and it rebooted; the raw image was already complete. The script now defaults to 2 threads (295d141) |
-| D. Native | — | **Part 1 re-run passed** after the fixes. Firefox opens a new tab: the desktop now removes all of Firefox's saved sessions at start when Firefox isn't running, because Firefox 158 still offered "Restore Session" from `previous.jsonlz4` and `sessionCheckpoints.json` (dc0e918). Docker with the fixed gate: 27 s to "Hello from Docker!" from a stopped VM, off by itself about 40 s after use; the manual now says so (5d505a3). Autostart worked again after the unplanned reboot |
+| B. OSEasy | Building the ISO from the new image; then an install to check the wallpaper and top bar | — |
+| C. 鸿融 / public image | Done for this round | **New image compressed**: 1,775,029,638 bytes (1.65 GiB, under GitHub's 2 GiB limit; above the 1.6 GB target, which is not a hard limit), `zstd -t` passed. With 2 threads it took 34 min and memory stayed steady |
+| D. Native | — | — |
 | I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->

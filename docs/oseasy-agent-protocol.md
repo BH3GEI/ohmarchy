@@ -111,12 +111,37 @@ From `modules.abc`:
 
 Ship it as a systemd service baked into the image.
 
-## Open items (stage-3, all doable offline)
+## Stage-3 progress
 
-- **A.** Exact `.proto` (field numbers) from the FileDescriptorProtos embedded in
-  `agent_service.exe` — the serialized descriptors are not cleanly carvable from
-  the `.proto` name tags alone; extract via the generated `descriptor_table_*`
-  or by running the agent against a stub.
-- **B.** `MsgSock` frame header layout (magic / length / type / checksum) and the
-  exact handshake message sequence.
-- **C.** Which host serial port name is VM_SYSTEM_SERVICE_COMMU vs WIN_EVENT.
+- **A — DONE.** The embedded `FileDescriptorProto`s were carved out of
+  `agent_service.exe` and decoded with `protoc`; the full schema is at
+  `~/oseasy-work/oetool-re/proto/schema-decoded.txt` (+ the `.fd` blobs). Key
+  messages, with field numbers:
+  - `guest2host.proto` (`Guest.protobuf.link`): `Call{callID:1 u32, methodID:2
+    u32, parameters:3 bytes, async:4 bool}`, `Result{callID:1 u32, response:2
+    bytes, errorCode:3 i32}`, `Handshake{connectionMode:1 string, clientName:2
+    string, authString:3 bytes}`, `AuthResult{result:1 bytes}`, `CapInfo`,
+    `CapSet`, `ErrorCode{code:1 i32}`, `Void`, `PerfMsg`, `StabilityEvent`,
+    `VmNetProxyInfo`, `VmNetMacInfo`.
+  - `host2guest.proto` (`Guest.protobuf.GuestAgent`): `Bool/Bytes/Integer/String`,
+    `UpdateInfo`, `NicIpAddrInfo`, `NicInfo`, `NetInfo`, `DtMessage`, `TimeInfo`.
+
+- **B — partial.** The link layer is `COMMON::MsgSock` (`Create`, `Recv`, `Send`,
+  `ReadTimed`, `DropLeftData`, `GetPortFromDevicePath`, `WindowsSerialInit`) with
+  `COMMON::LinkBase::SerializeAndResponse`. A frame is a header (`_packetSize` +
+  `_msgType`, "parse header: size=") + a protobuf body (a `link.Call`/`Result`) +
+  a checksum ("receive data error: checksum mismatch"). The exact header byte
+  layout and the checksum algorithm still need disassembly of `MsgSock::Recv`/
+  `Send` (the "bad magic number" strings are allocator debug noise, not a frame
+  magic).
+
+- **C — partial.** The host channel is the vioserial device, opened via
+  `MsgSock::GetPortFromDevicePath` / `Service::HandleConnectSerial`. Windows names
+  the pipes `\\.\PIPE\VM_SYSTEM_SERVICE_COMMU` (command) and `\\.\PIPE\WIN_EVENT`
+  (event). On the host the virtserialports are named (StratoVirt cmdline)
+  `winbox_serial0/1`, `clipboard_vioser0`, `gfscl`, `additions_vioser0/1`; the
+  exact pipe-name ↔ port-name mapping needs disassembly of
+  `GetPortFromDevicePath`. Linux side: match by `/sys/class/virtio-ports/*/name`.
+
+B and C need a PE disassembler (string analysis is exhausted). Deferred while the
+native-desktop route is the top priority.

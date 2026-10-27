@@ -42,6 +42,23 @@ this file). Open a terminal (Omarchy: Super+Return).
 Confirm boot health from the host while it installs:
 `ssh ohdev 'sh -s' <<'EOF'` → `grep -c 'Invalid features select' /data/log/hwf_service/vmlog` (want 0).
 
+**ISO-selection gotcha (seen 2026-10-28, machine under load ~20).** The picker
+showed `已选 (1/1)` but OSEasy's page stayed empty (`点击选择 ISO`, 下一步 greyed) —
+the selection did not propagate, across single-click+打开, double-click, and an 8 s
+wait. It had worked on the same Download path in earlier runs, so it reads as a
+file-access-grant / latency hiccup under heavy load, not a logic bug. Remedies, in
+order:
+1. **Don't rapid-click.** After `打开`, wait and watch 下一步 go orange before the
+   next tap; the grant can lag when load is high.
+2. **Confirm the right file** — the new ISO is `2032457728` bytes; don't pick an old one.
+3. **Pre-stage where OSEasy reads directly.** The Download dir is on hmdfs/media,
+   which **ignores `chmod`** (the ISO stays `640`, owner `20001006`, so OSEasy's uid
+   can only read it via the picker grant). If the grant keeps failing, copy the ISO
+   somewhere OSEasy can read as its own uid and pick it there.
+4. Restart OSEasy (close → confirm 退出 → reopen the desktop card) and retry once.
+5. If two retries still stall, **stop** and retry when the machine is idle — this
+   step is latency-sensitive, not urgent.
+
 ## Step 2 — get the agent into the guest (zero image change)
 
 In the guest terminal, in order of preference:

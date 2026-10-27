@@ -633,6 +633,9 @@ void OnSurfaceDestroyed(OH_NativeXComponent *, void *)
     g_win = nullptr;
 }
 
+void FlushModsForPointer();  // Alt+Shift as Super, below
+void ResetMods();
+
 void OnTouch(OH_NativeXComponent *c, void *window)
 {
     OH_NativeXComponent_TouchEvent ev;
@@ -654,6 +657,7 @@ void OnTouch(OH_NativeXComponent *c, void *window)
     if (g_frameMode) {
         SendExportInput(1, x, y);
         if (ev.type == OH_NATIVEXCOMPONENT_DOWN || ev.type == OH_NATIVEXCOMPONENT_UP) {
+            FlushModsForPointer();
             SendExportInput(2, 0x110, ev.type == OH_NATIVEXCOMPONENT_DOWN);  // BTN_LEFT
         }
         return;
@@ -686,6 +690,7 @@ void OnMouse(OH_NativeXComponent *c, void *window)
         SendExportInput(1, x, y);
         if (bit != 0 && (ev.action == OH_NATIVEXCOMPONENT_MOUSE_PRESS || ev.action == OH_NATIVEXCOMPONENT_MOUSE_RELEASE)) {
             const int32_t btn = bit == 1 ? 0x110 : (bit == 2 ? 0x112 : 0x111);  // BTN_LEFT/MIDDLE/RIGHT
+            FlushModsForPointer();
             SendExportInput(2, btn, ev.action == OH_NATIVEXCOMPONENT_MOUSE_PRESS);
         }
         return;
@@ -734,6 +739,7 @@ void OnAxis(OH_NativeXComponent *, ArkUI_UIInputEvent *event, ArkUI_UIInputEvent
     }
     if (g_frameMode && tool == UI_INPUT_EVENT_TOOL_TYPE_TOUCHPAD) {
         SendExportInput(1, x, y);
+        FlushModsForPointer();
         if (v != 0) {
             SendExportInput(5, 0, static_cast<int32_t>(v * kScrollScale * 100), 1);
         }
@@ -753,6 +759,7 @@ void OnAxis(OH_NativeXComponent *, ArkUI_UIInputEvent *event, ArkUI_UIInputEvent
         // a wheel notch is 15 units; small values still move one step
         auto steps = [](double d) { int n = static_cast<int>(d / 15.0); return n != 0 ? n : (d < 0 ? -1 : 1); };
         SendExportInput(1, x, y);
+        FlushModsForPointer();
         if (v != 0) {
             SendExportInput(3, 0, steps(v));
         }
@@ -1035,26 +1042,29 @@ void ReleaseHeldKeys()
         }
     }
     g_ctrlDown = false;
+    ResetMods();
 }
 
-// A stand-in key for Super: HarmonyOS opens its start menu on the Super key's
-// release and keeps many Super chords for itself, so Omarchy's Super shortcuts are
-// typed with another key here. The file files/super-key in the app's data directory
-// says which: "ralt" (right Alt, the default), "capslock", or "off" (only the real
-// Super key). Left Alt stays Alt.
-enum class SuperKey { RightAlt, CapsLock, Off };
+// A stand-in for Super: HarmonyOS opens its start menu on the Super key's release
+// and keeps many Super chords for itself, so Omarchy's Super shortcuts are typed
+// another way here. The file files/super-key in the app's data directory says how:
+// "altshift" (Alt+Shift held together, the default), "ralt" (right Alt), "capslock",
+// or "off" (only the real Super key).
+enum class SuperKey { AltShift, RightAlt, CapsLock, Off };
 SuperKey SuperStandIn()
 {
     static int64_t checked = -1;
-    static SuperKey key = SuperKey::RightAlt;
+    static SuperKey key = SuperKey::AltShift;
     int64_t now = NowS();
     if (now != checked) {
         checked = now;
-        key = SuperKey::RightAlt;
+        key = SuperKey::AltShift;
         if (FILE *f = fopen("/data/storage/el2/base/files/super-key", "r")) {
             char b[16] = {0};
             if (fgets(b, sizeof(b), f) != nullptr) {
-                if (strncmp(b, "capslock", 8) == 0) {
+                if (strncmp(b, "ralt", 4) == 0) {
+                    key = SuperKey::RightAlt;
+                } else if (strncmp(b, "capslock", 8) == 0) {
                     key = SuperKey::CapsLock;
                 } else if (strncmp(b, "off", 3) == 0) {
                     key = SuperKey::Off;
@@ -1064,6 +1074,107 @@ SuperKey SuperStandIn()
         }
     }
     return key;
+}
+
+// Alt+Shift as Super. Alt and Shift held together (either side of each) are Super;
+// holding the other Shift as well adds Shift, the other Alt adds Alt:
+//   Alt+Shift+X = Super+X        Alt+Shift+Shift+X = Super+Shift+X
+//   Alt+Alt+Shift+X = Super+Alt+X, and all four for Super+Shift+Alt+X.
+// Tab is left alone, so Alt+Shift+Tab stays "previous window". Alt and Shift reach
+// the compositor only when a key, button, scroll or swipe follows (or as a tap when
+// pressed and released alone), so a Super chord never shows Hyprland Alt or Shift.
+enum ModBit { kLAlt = 1, kRAlt = 2, kLShift = 4, kRShift = 8 };
+const uint32_t kModKeys[] = {125, 56, 100, 42, 54};  // Super, Alt, AltGr, Shift, right Shift
+unsigned g_mods;         // Alt/Shift keys held
+unsigned g_modsTap;      // the one modifier pressed alone, until anything else happens
+std::bitset<5> g_modsSent;  // kModKeys the compositor has as pressed
+
+int ModBitOf(OH_NativeXComponent_KeyCode k)
+{
+    switch (k) {
+        case KEY_ALT_LEFT: return kLAlt;
+        case KEY_ALT_RIGHT: return kRAlt;
+        case KEY_SHIFT_LEFT: return kLShift;
+        case KEY_SHIFT_RIGHT: return kRShift;
+        default: return 0;
+    }
+}
+
+std::bitset<5> WantedMods(bool superChord)
+{
+    std::bitset<5> w;
+    const bool alt = g_mods & (kLAlt | kRAlt), shift = g_mods & (kLShift | kRShift);
+    if (superChord && alt && shift) {
+        w[0] = true;
+        w[3] = (g_mods & kLShift) && (g_mods & kRShift);
+        w[1] = (g_mods & kLAlt) && (g_mods & kRAlt);
+    } else {
+        w[1] = g_mods & kLAlt;
+        w[2] = g_mods & kRAlt;
+        w[3] = g_mods & kLShift;
+        w[4] = g_mods & kRShift;
+    }
+    return w;
+}
+
+// Bring the compositor's modifiers to what is held; pressOnly false only releases.
+void FlushMods(bool superChord, bool press = true)
+{
+    std::bitset<5> want = WantedMods(superChord);
+    if (!press) {
+        want &= g_modsSent;
+    }
+    for (size_t i = 0; i < want.size(); i++) {
+        if (g_modsSent[i] && !want[i]) {
+            SendKeyExport(kModKeys[i], false);
+        }
+    }
+    for (size_t i = 0; i < want.size(); i++) {
+        if (!g_modsSent[i] && want[i]) {
+            SendKeyExport(kModKeys[i], true);
+        }
+    }
+    g_modsSent = want;
+    g_modsTap = 0;
+}
+
+// Before a button, scroll or swipe: pending Alt/Shift (or their Super) go out.
+void FlushModsForPointer()
+{
+    if (g_frameMode && SuperStandIn() == SuperKey::AltShift && g_mods != 0) {
+        FlushMods(true);
+    }
+}
+
+// An Alt or Shift key in Alt+Shift mode; returns true when it was handled.
+bool OnModKey(OH_NativeXComponent_KeyCode code, bool down)
+{
+    const int bit = ModBitOf(code);
+    if (bit == 0 || SuperStandIn() != SuperKey::AltShift) {
+        return false;
+    }
+    if (down) {
+        g_modsTap = g_mods == 0 ? bit : 0;
+        g_mods |= bit;
+        return true;
+    }
+    const bool tap = g_modsTap == static_cast<unsigned>(bit);
+    g_mods &= ~static_cast<unsigned>(bit);
+    if (tap) {  // pressed and released alone: the plain key, for apps that use a tap
+        uint32_t key = bit == kLAlt ? 56 : bit == kRAlt ? 100 : bit == kLShift ? 42 : 54;
+        SendKeyExport(key, true);
+        SendKeyExport(key, false);
+    }
+    FlushMods(true, false);
+    return true;
+}
+
+// Focus lost: ReleaseHeldKeys has released what the compositor had.
+void ResetMods()
+{
+    g_mods = 0;
+    g_modsTap = 0;
+    g_modsSent.reset();
 }
 
 // OpenHarmony key code -> Linux evdev KEY_* code (the compositor applies the keymap).
@@ -1166,10 +1277,16 @@ bool OnKey(OH_NativeXComponent *c, void *)
             chordTaken = false;
             return true;  // release of the toggle chord
         }
+        if (OnModKey(code, down)) {
+            return true;
+        }
         uint32_t key = EvdevKey(code);
         if (key == 0) {
             LOGI("unmapped key %{public}d", static_cast<int>(code));
             return false;
+        }
+        if (down && SuperStandIn() == SuperKey::AltShift) {
+            FlushMods(code != KEY_TAB);
         }
         SendKeyExport(key, action == OH_NATIVEXCOMPONENT_KEY_ACTION_DOWN);
         return true;
@@ -1237,7 +1354,7 @@ napi_value Swipe(napi_env env, napi_callback_info info)
         return nullptr;
     }
     switch (phase) {
-        case 0: SendExportInput(7, fingers, 0); break;
+        case 0: FlushModsForPointer(); SendExportInput(7, fingers, 0); break;
         case 1: SendExportInput(8, static_cast<int32_t>(dx * 100), static_cast<int32_t>(dy * 100), fingers); break;
         default: SendExportInput(9, phase == 3 ? 1 : 0, 0); break;
     }

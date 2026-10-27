@@ -26,9 +26,11 @@ hands do, what your eyes check, and what to say.
    windows that were open in it are gone.
 
 "Super" is the Windows logo key on the keyboard. **On the native desktop (part 1)
-press right Alt instead of Super**: HarmonyOS keeps the Windows key (its start menu
-opens) and many of its chords; the app turns right Alt into Super. In the VMs
-(parts 2 and 3) Super is the Windows key as usual.
+press Alt+Shift together instead of Super**: HarmonyOS keeps the Windows key (its
+start menu opens) and many of its chords; the app turns Alt+Shift into Super. So
+Super+Return is Alt+Shift+Return. When the shortcut has Shift in it as well,
+hold **both** Shift keys: Super+Shift+B is Alt+left Shift+right Shift+B. Right Alt
+is a plain Alt again. In the VMs (parts 2 and 3) Super is the Windows key as usual.
 
 ## Order (about 10 min)
 
@@ -71,11 +73,11 @@ doesn't touch them.
 |---|---|---|---|---|
 | 1.1 | Double-click **"Omarchy (native)"** on the HarmonyOS desktop (it is in the dock only while it runs) | first a window saying what it waits for, then the Omarchy wallpaper and top bar | about 10 s | "This isn't a VM. Arch Linux programs run directly on the HarmonyOS kernel, and the desktop is drawn into an ordinary HarmonyOS app window." |
 | 1.2 | Click **maximize** on the window's title bar | the desktop fills the screen | 1 s | |
-| 1.3 | **Super+Return**, type `fastfetch`, Enter | a terminal; fastfetch shows Arch Linux ARM, the HongMeng kernel, Hyprland | 10 s | "Look at the kernel line: HongMeng, HarmonyOS's own kernel. The programs are Arch's own binaries, unchanged." (Its GPU line says llvmpipe: that is the terminal drawing itself on the CPU; the desktop is composited on the GPU) |
-| 1.4 | **Super+2**, then **Super+1**, a few times | workspaces slide back and forth smoothly | 10 s | "This is 120 Hz, drawn by the Maleoon GPU; measured at 110–119 fps." |
-| 1.5 | **Super+Shift+B** | Firefox opens next to the terminal (a fresh window, never "Restore Session"); open omarchy.org. A first-run tip may show: click "Okay, Got It" | 15 s | "The browser is Firefox, with its sandbox." |
-| 1.6 | **Super+Space** for the Omarchy menu, glance, **Esc** | the Omarchy menu appears and closes | 5 s | "That's Omarchy's own menu, unchanged." |
-| 1.7 | **Super+Shift+F** | Files (Nautilus) on the home directory | 5 s | |
+| 1.3 | **Super+Return** (Alt+Shift+Return), type `fastfetch`, Enter | a terminal; fastfetch shows Arch Linux ARM, the HongMeng kernel, Hyprland | 10 s | "Look at the kernel line: HongMeng, HarmonyOS's own kernel. The programs are Arch's own binaries, unchanged." (Its GPU line says llvmpipe: that is the terminal drawing itself on the CPU; the desktop is composited on the GPU) |
+| 1.4 | **Super+2**, then **Super+1** (Alt+Shift+2, Alt+Shift+1), a few times | workspaces slide back and forth smoothly | 10 s | "This is 120 Hz, drawn by the Maleoon GPU; measured at 110–119 fps." |
+| 1.5 | **Super+Shift+B** (Alt+both Shift keys+B) | Firefox opens next to the terminal (a fresh window, never "Restore Session"); open omarchy.org. A first-run tip may show: click "Okay, Got It" | 15 s | "The browser is Firefox, with its sandbox." |
+| 1.6 | **Super+Space** (Alt+Shift+Space) for the Omarchy menu, glance, **Esc** | the Omarchy menu appears and closes | 5 s | "That's Omarchy's own menu, unchanged." |
+| 1.7 | **Super+Shift+F** (Alt+both Shift keys+F) | Files (Nautilus) on the home directory | 5 s | |
 | 1.8 | Click back into the terminal, type `docker run --rm hello-world`, Enter | a pause (the background VM is starting), then **"Hello from Docker!"** | **first run about 27 s** (measured 2026-10-27), don't panic | "The HarmonyOS kernel can't run containers, so Docker borrows a small background VM that starts when it's used and stops about forty seconds after. I didn't type any root command." |
 | 1.9 | **Nothing to do**: the Docker VM stops by itself | nothing visible | about 40 s, while the 1.8 line is said | "Done with it, it is off by itself; the next VM can start." |
 | 1.10 | **Minimize** "Omarchy (native)" (don't close it) | back on the HarmonyOS desktop | 2 s | |
@@ -84,8 +86,10 @@ doesn't touch them.
 
 Rehearsed 2026-10-26 on ohdev with keys injected through HarmonyOS's input
 service (right Alt as Super): 1.1–1.7 all as described; the desktop was up about
-10 s after the double-click. In part 1 every "Super" is **right Alt**: the Windows
-key opens HarmonyOS's start menu (click back into the desktop to close it).
+10 s after the double-click. In part 1 every "Super" is **Alt+Shift** (Super+Shift:
+Alt and both Shift keys); the Windows key opens HarmonyOS's start menu (click back
+into the desktop to close it). (That rehearsal used right Alt for Super, the rule
+until 2026-10-27; Alt+Shift is not rehearsed yet.)
 The display app on ohdev is main 48eee76 (installed 2026-10-27, adds the
 HarmonyOS notification when Docker is blocked; the desktop opens normally).
 
@@ -94,8 +98,8 @@ HarmonyOS notification when Docker is blocked; the desktop opens normally).
 | Symptom | Do |
 |---|---|
 | The app window keeps saying it is waiting; no desktop | The native desktop isn't running in the background (autostart didn't work; shouldn't happen, except within the first minute after boot). [backstage] `omarchy desktop start`, wait 10 s. Still nothing: close the app window, [backstage] `omarchy desktop stop; omarchy desktop start`, tap the icon again. On stage: "let's change the order", go straight to part 2 (鸿融) |
-| "Omarchy (native)" was closed by accident | Double-click the icon again: the desktop starts afresh by itself, about 6 s (rehearsed 2026-10-26, no backstage command). Windows that were open are gone; open them again (Super = right Alt) |
-| Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **right Alt** instead of the Windows key. Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
+| "Omarchy (native)" was closed by accident | Double-click the icon again: the desktop starts afresh by itself, about 6 s (rehearsed 2026-10-26, no backstage command). Windows that were open are gone; open them again (Super = Alt+Shift) |
+| Super+Return and other shortcuts do nothing, or HarmonyOS's start menu opens | Use **Alt+Shift** instead of the Windows key (Super+Shift: Alt and both Shift keys). Click inside the Omarchy window first so it has focus. Still nothing: skip the shortcuts and show what is already open |
 | Firefox opens on "Sorry. We're having trouble getting your pages back." (Restore Session) | Click **Start New Session**, then open omarchy.org. (Caused by a desktop restart killing Firefox; fixed 2026-10-27 and verified: after reopening the app Firefox opens a new tab. Shouldn't happen any more) |
 | A window is stuck | **Super+W** closes it; go on to the next step |
 | `docker` shows nothing for about 30 s | Expected: the first run starts the background VM. Keep talking |
@@ -323,8 +327,9 @@ images on GitHub Releases plus instructions for ordinary users.
 2. ~~Reopening the app after closing it restarts the desktop~~ Confirmed (same
    reboot: closed, double-clicked again, desktop back).
 3. Super-key shortcuts in the native desktop: HarmonyOS intercepts the Windows
-   key (start menu), so right Alt stands in for Super; verified with injected
-   keys, still to be pressed by hand on the physical keyboard.
+   key (start menu), so Alt+Shift stands in for Super (right Alt until
+   2026-10-27, verified with injected keys); to be pressed by hand on the
+   physical keyboard.
 4. Where Do Not Disturb and auto screen-off live on the HarmonyOS PC.
 5. What 鸿融 shows when 开机 is tapped while another VM (Docker) still runs.
 6. ~~Whether 鸿融 leaves fullscreen by itself after a shutdown~~ Confirmed

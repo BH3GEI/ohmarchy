@@ -225,21 +225,39 @@ for the focused text-input-v3 client. Built and running; not yet verified on scr
 
 ## Keyboard shortcuts and touchpad
 
-- **Use right Alt for Super.** HarmonyOS keeps the Windows (Super) key: it opens its
+- **Use Alt+Shift for Super.** HarmonyOS keeps the Windows (Super) key: it opens its
   start menu on the key's release, which takes the focus, and it keeps many Super
   chords for itself (Settings → 键盘 → 键盘快捷键 lists them; there is no switch to
   turn them off, and no API lets an app keep them; immersive full screen doesn't
-  help either, checked 2026-10-26). So the app sends right Alt to the desktop as
-  Super (evdev 125); left Alt stays Alt. The file `files/super-key` in the app's
-  data directory chooses the stand-in: `ralt` (default), `capslock`, or `off`
-  (only the Windows key). Checked on ohdev: right Alt+5 switches to workspace 5 and
-  right Alt+Return opens a terminal, with no start menu.
+  help either, checked 2026-10-26). So the app (`ohdisp.cpp`) sends Alt and Shift
+  held together as Super (evdev 125); both Alt keys and both Shift keys are plain
+  Alt and Shift otherwise. The rule:
+
+  | Omarchy | press |
+  |---|---|
+  | Super+X | Alt+Shift+X |
+  | Super+Shift+X | Alt+Shift+**other Shift**+X (both Shift keys) |
+  | Super+Alt+X | **both Alt keys**+Shift+X |
+  | Super+Shift+Alt+X | both Alt keys+both Shift keys+X |
+  | Alt+Shift+Tab (previous window), Ctrl+Alt+Shift+Tab | as written: Tab is never part of the Super rule |
+
+  Other Alt+Shift chords of Linux apps (an editor's Alt+Shift+F, say) become Super
+  chords; use the Windows key's Super or switch the rule off for them. Alt and
+  Shift reach the desktop only when a key, button, scroll or swipe follows, so a
+  Super chord never shows Alt or Shift first; a lone tap of either still arrives as
+  a tap. Omarchy binds no Alt+Shift chord except the Tab ones above (and
+  Alt+Shift+Play, a media key the app doesn't forward). The file `files/super-key`
+  in the app's data directory chooses the stand-in: `altshift` (default), `ralt`
+  (right Alt, the default until 2026-10-27), `capslock`, or `off` (only the Windows
+  key; Alt+Shift stays Alt+Shift). Built 2026-10-27, not yet pressed on the device;
+  right Alt as Super was checked on ohdev (right Alt+5 to workspace 5, right
+  Alt+Return a terminal, no start menu).
 - The Windows key itself still works as Super, with the start menu opening as
   well. Without its release Hyprland kept Super pressed and read every later key as
   a Super chord; the app releases every key still pressed when its window loses
   the focus (1744727).
 - Omarchy shortcuts that HarmonyOS takes when pressed with the Windows key (so only
-  right Alt gives them on HarmonyOS):
+  Alt+Shift gives them on HarmonyOS):
 
   | Omarchy | does | HarmonyOS uses ○ (Windows key) + it for |
   |---|---|---|

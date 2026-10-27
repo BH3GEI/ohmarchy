@@ -106,16 +106,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 13:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 14:29 PDT)
 
-Now: **B is public**: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027) with the kernel 1.2 ISO and the sources of all 360 GPL/LGPL packages. The **new native design** now has a network of its own. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md).
+Now: closing the new native design's three gaps ourselves, so there is a working demo behind every request to HarmonyOS. The app itself (open, full screen, terminal, install software, host paths not visible, reset) already works on screen; the demo is untouched. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
 
-| Route | Now | Latest |
+| Gap / task | Now | Latest |
 |---|---|---|
-| D. Native (new design) | Full installer run with the new network step; risk list for shared abstract sockets | **Own network namespace** (314d5c8): pasta (passt.top, patched for HongMeng and built inside the sandbox) carries the sandbox's TCP, UDP and ICMP through host sockets like any app's connections; nothing is forwarded inward, the gateway is not mapped, the host's routes and firewall are untouched. https://archlinux.org answers, DNS works, and the host's 127.0.0.1 is no longer reachable. Checked on screen. HongMeng differences patched: no user namespaces, CLONE_FILES not honoured, CLOSE_RANGE_UNSHARE refused, tmpfs without size options, default route in a policy table. **Known boundary**: abstract Unix socket names are not per network namespace on HongMeng, so the sandbox can still reach the host's abstract sockets; they are being listed, and per-namespace abstract sockets go into the asks for HarmonyOS. **Installer** (750953b): the one boot file in `/system` is written and reads back identical; starting the helper at boot is checked at the next reboot (init reads its files only at boot) |
-| C. 鸿融 demo disk | Done | The first-boot password is known; sudo and unlocking verified 2026-10-28 (cd068c0) |
-| B. OSEasy | Public; disk persistence on-device after tomorrow's rehearsal | Release replaced the ISO only after the new one was verified, sums checked from a fresh download |
-| E. Bare metal | Waiting for someone to try boot keys | Unchanged |
+| 1. Abstract sockets shared with host | A libc-level fence in, kernel-level fence being designed | The sandbox can reach the host's abstract sockets (wpa_supplicant, TEE). HongMeng has no Landlock and no seccomp user-notify, so: **(B)** a libc preload fence restricting the sandbox's own outbound AF_UNIX connects is committed (dc1626f) — stops ordinary programs, not static ones or the sandbox root, written up as such; **(A)** a MAC-domain deny is the real boundary, pending H's policy test; **(C)** a seccomp+ptrace supervisor is being designed as the self-sufficient fallback if A is blocked |
+| 2. Docker can't start a container | Patching runc/containerd our way to get a container up | dockerd runs confined and pulls images; the first container's init exits. a4 is now patching the runtime for HongMeng's differences (thread `CLONE_FS`, `/proc/self`, keyring), keeping the outer boundary (own mount ns, dropped caps, no host devices or paths) |
+| 3. Custom confinement domain won't load | step-2a staged on the device | Re-injecting the exported policy fails with EINVAL (re-serialized, not loadable as is). The on-disk boot policy is `developer_policy` (3299594 bytes); step-2a loads that unchanged to see whether runtime reload works at all and to establish a restore path, then step-2b would add our domain. Strict safety: dead-man restore, health checks, no reboot |
+| B. OSEasy persistence | Bring-up paused | The minimal Linux agent and a one-pass runbook are ready; the on-device install hit an ISO-selection snag under load (0ab725a), paused so H can use the device |
+| Autostart, boot-serve | Verified except the reboot step | The one `/system` boot file matches a working cfg field-for-field; boot-serve now retries for the app's uid (9bd2f06); init parsing it at boot can only be seen at the next reboot |
+
+Other: C 鸿融 demo-disk password and sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

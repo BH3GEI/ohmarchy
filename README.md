@@ -78,16 +78,16 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-26 17:28 PDT)
+## Progress (updated hourly; last: 2026-10-26 18:29 PDT)
 
-Now: all three parts of the demo were rehearsed. A new image with two display fixes is being packed; B's public ISO is rebuilt from it before upload. The internal report is done ([docs/report/](docs/report/index.html)).
+Now: all three parts of the demo are rehearsed, and part 1 was run again after its fixes. The new image (both display fixes) is being compressed; B's public ISO is rebuilt from it before upload. The internal report is done ([docs/report/](docs/report/index.html)).
 
 | Route | Now | Latest |
 |---|---|---|
-| B. OSEasy | Rebuilding the ISO from the new image and checking that the desktop shows wallpaper and the top bar | **Empty desktop fixed** (b129b02): quickshell, which draws the wallpaper and the top bar, came out black on OSEasy's SVGA3D driver. On vmwgfx only, `/etc/profile.d/ohmarchy-svga.sh` now sets `QT_QUICK_BACKEND=software`; after a reboot in OSEasy the wallpaper, the bar (workspaces 1–5, clock) and notifications all show. 鸿融 keeps GPU rendering. Part 3 timings are in the manual: about 1.5 min from "再次安装" to the password screen, es2gears 112–120 fps, Chromium cold start ~10 s (ddeb6d0) |
-| C. 鸿融 | Checking the new image in 鸿融, then putting the main disk back | **120 Hz back** (0368f84): measured 2160x1440 at 119.98 Hz. virtio-gpu reads the EDID only once, when the driver loads from the initramfs, so the boot service that wrote it afterwards was too late (and the `trigger_hotplug` it wrote to doesn't exist in this kernel). A modprobe `install` hook now sets `drm.edid_firmware` before `virtio_gpu` loads, and the hook and EDID go into the initramfs. OSEasy never loads `virtio_gpu`, so it is not affected |
-| D. Native | Re-run of part 1 | — |
-| I. Own VM | Done | **Docker stop fix installed and tested** (063390d, 2d68b77): four `docker run`s right as the VM was shutting itself down each waited, the VM came back as the stop finished and each printed Hello in 20–21 s. A second bug fixed: frequent `docker-vm status` calls kept the idle check from ever running |
+| B. OSEasy | Waiting for the new image, then rebuilding the ISO and checking wallpaper and top bar | — |
+| C. 鸿融 / public image | Compressing the new image (`zstd -T2`, about 09:30–09:40 device time) | **The new image passed in 鸿融**: password, guest agent, desktop with wallpaper and bar, 2160x1440 at 119.98 Hz; the 120 Hz talking point is back in the manual (0e5e2bb). The main VM's disk is back in 鸿融 (sizes match the backup). **The first compression crashed the test machine**: `zstd -T0 --long=31` on 20 cores ran it out of memory (`HM_PANIC_OOM` at 08:38) and it rebooted; the raw image was already complete. The script now defaults to 2 threads (295d141) |
+| D. Native | — | **Part 1 re-run passed** after the fixes. Firefox opens a new tab: the desktop now removes all of Firefox's saved sessions at start when Firefox isn't running, because Firefox 158 still offered "Restore Session" from `previous.jsonlz4` and `sessionCheckpoints.json` (dc0e918). Docker with the fixed gate: 27 s to "Hello from Docker!" from a stopped VM, off by itself about 40 s after use; the manual now says so (5d505a3). Autostart worked again after the unplanned reboot |
+| I. Own VM | Done | — |
 | J. Linux in an app sandbox (no root) | Background research | Unchanged |
 <!-- progress:end -->
 

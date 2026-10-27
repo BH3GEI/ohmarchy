@@ -9,7 +9,7 @@ _srcname=linux-7.2
 _kernelname=${pkgbase#linux}
 _desc="AArch64 multi-platform"
 pkgver=7.2.12
-pkgrel=1.1
+pkgrel=1.2
 arch=('aarch64')
 url="http://www.kernel.org/"
 license=('GPL-2.0-only')
@@ -28,7 +28,8 @@ source=("https://mirrors.tuna.tsinghua.edu.cn/kernel/v7.x/${_srcname}.tar.xz"
         'kernel_data_key.vbprivk'
         'linux.preset'
         'hmv-0001-irqchip-gic-v3-its-Don-t-clamp-nvecs-to-zero-when-id_bits-is-32.patch'
-        'hmv-0002-arm64-arm64.hmv_idreg_quirk-to-read-new-ID-registers-as-zero.patch')
+        'hmv-0002-arm64-arm64.hmv_idreg_quirk-to-read-new-ID-registers-as-zero.patch'
+        'hmv-0003-virtio_pci-modern-use-only-the-first-64-feature-bits-by-default.patch')
 md5sums=('381ae4b20294dcf4b8f63f1fd1bb7017'
          'eceba523139eef644a6353e85d3e7a01'
          '328ab847d1a56a5cabbb4779d931a175'
@@ -41,6 +42,7 @@ md5sums=('381ae4b20294dcf4b8f63f1fd1bb7017'
          '61c5ff73c136ed07a7aadbf58db3d96a'
          '584777ae88bce2c5659960151b64c7d8'
          'f82b1a5732c416762bbc88e00b1a4b15'
+         'SKIP'
          'SKIP'
          'SKIP')
 

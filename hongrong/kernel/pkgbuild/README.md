@@ -1,7 +1,7 @@
 # linux-aarch64 with the 鸿融 patches
 
 `PKGBUILD` is Arch Linux ARM's `core/linux-aarch64` (archlinuxarm/PKGBUILDs,
-7.2.12-1) with four changes: `pkgrel=1.1`, sources from the TUNA kernel mirror,
+7.2.12-1) with four changes: `pkgrel=1.2`, sources from the TUNA kernel mirror,
 `../patches/*.patch` added as `hmv-*.patch` and applied after ALARM's patches,
 and no `-chromebook` package (it needs vboot-utils).
 
@@ -16,7 +16,8 @@ makepkg -s
 ```
 
 For a newer ALARM release, take its PKGBUILD and redo the four changes; the
-patches are against 7.2.11 and apply to 7.2.12 unchanged.
+first two patches are against 7.2.11 and apply to 7.2.12 unchanged; the
+third (virtio-pci feature select) is against 7.2.12.
 
 Boot the kernel with `arm64.hmv_idreg_quirk` (see
 [../../../docs/hmv-idreg-report.md](../../../docs/hmv-idreg-report.md)).

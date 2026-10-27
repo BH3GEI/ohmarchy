@@ -9,7 +9,9 @@
 # Usage: repack-disk.sh WORKDIR [DISK_GIB, default 12]
 # Environment: ZSTD_THREADS (default 2); EXTRA_CMDLINE, appended to the kernel command line in
 # boot/grub/grub.cfg (once), e.g. vmwgfx.hvm_flip_watchdog_us=0 until
-# vmwgfx-oseasy stops walking the CRTCs before vmw_kms_init().
+# vmwgfx-oseasy stops walking the CRTCs before vmw_kms_init(). KERNEL_PKGS:
+# linux-aarch64 packages that replace the tree's kernel (pacman -U);
+# VMWGFX_KO: route B's vmwgfx.ko for that kernel (oseasy/vmwgfx-7.2/build.sh).
 #   WORKDIR as given to build-disk.sh (has root/ and esp/); writes
 #   omarchy-small.img and omarchy-small.img.zst there
 set -euo pipefail
@@ -40,15 +42,31 @@ install -D -m 644 "$here/firstboot/ohmarchy-edid.conf" "$R/etc/modprobe.d/ohmarc
 install -D -m 644 "$here/firstboot/zz-ohmarchy-edid.conf" "$R/etc/mkinitcpio.conf.d/zz-ohmarchy-edid.conf"
 # rebuild the initramfs in the tree (with the build environment's HongMeng
 # shims for the chroot, as build-disk.sh does; removed again)
-mounts() { for m in dev sys proc; do umount -l "$R/$m" 2>/dev/null || true; done; rm -rf "$R/usr/local/lib/hmbuild"; rm -f "$R/etc/ld.so.preload"; }
+mounts() { for m in dev sys proc; do umount -l "$R/$m" 2>/dev/null || true; done; umount -l "$R" 2>/dev/null || true; rm -rf "$R/usr/local/lib/hmbuild"; rm -f "$R/etc/ld.so.preload"; }
 trap mounts EXIT
+# / a mount point in the chroot, or pacman -U cannot check free space
+mountpoint -q "$R" || mount --bind "$R" "$R"
 mount -t proc proc "$R/proc"; mount --bind /sys "$R/sys"; mount --bind /dev "$R/dev"
 if [ -s /etc/ld.so.preload ]; then
   mkdir -p "$R/usr/local/lib/hmbuild"
   for l in $(cat /etc/ld.so.preload); do cp -f "$l" "$R/usr/local/lib/hmbuild/"; done
   for l in $(cat /etc/ld.so.preload); do echo "/usr/local/lib/hmbuild/$(basename "$l")"; done > "$R/etc/ld.so.preload"
 fi
-chroot "$R" /usr/bin/env -i HOME=/root LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin mkinitcpio -P
+in_root() { chroot "$R" /usr/bin/env -i HOME=/root LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin "$@"; }
+# a new kernel: the old version's leftovers (route B's updates/vmwgfx.ko) go
+# with it, and VMWGFX_KO is the module built for the new one
+if [ -n "${KERNEL_PKGS:-}" ]; then
+  old=$(ls "$R/usr/lib/modules")
+  cp $KERNEL_PKGS "$R/tmp/"
+  in_root bash -c 'pacman -U --noconfirm /tmp/*.pkg.tar.* && rm /tmp/*.pkg.tar.*'
+  for k in $old; do [ -d "$R/usr/lib/modules/$k/kernel" ] || rm -rf "$R/usr/lib/modules/$k"; done
+fi
+kver=$(ls "$R/usr/lib/modules" | grep -v '^\.' | head -1)
+if [ -n "${VMWGFX_KO:-}" ]; then
+  install -D -m 644 "$VMWGFX_KO" "$R/usr/lib/modules/$kver/updates/vmwgfx.ko"
+  in_root depmod "$kver"
+fi
+in_root mkinitcpio -P
 mounts; trap - EXIT
 # Omarchy's shell drew black on route B's SVGA3D: software Qt Quick there only
 install -D -m 644 "$here/firstboot/ohmarchy-svga.sh" "$R/etc/profile.d/ohmarchy-svga.sh"

@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: BH3GEI <scholar.liyao@gmail.com>
+Date: Tue, 27 Oct 2026 19:40:00 +0800
+Subject: [PATCH] virtio_pci: modern: use only the first 64 feature bits by
+ default
+
+Since the 128-bit feature support, the modern transport reads and writes
+device_feature_select and guest_feature_select 0 to 3. StratoVirt in
+HarmonyOS 7.0.0.32 accepts only 0 and 1: it answers "Invalid features
+select 0x2", and its HMV backend turns the failed MMIO write into a fatal
+fault of the vCPU, so the guest hangs 0.76 s into boot when it probes the
+first virtio-pci device. Newer StratoVirt (HarmonyOS 7.0.0.115) accepts
+the selects.
+
+Access only select 0 and 1 unless virtio_pci_modern_dev.extended_features=1
+is given (the driver is built in here, so on the kernel command line).
+No device behind StratoVirt offers feature bits above 63.
+
+---
+ drivers/virtio/virtio_pci_modern_dev.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/virtio/virtio_pci_modern_dev.c b/drivers/virtio/virtio_pci_modern_dev.c
+--- a/drivers/virtio/virtio_pci_modern_dev.c
++++ b/drivers/virtio/virtio_pci_modern_dev.c
+@@ -4,6 +4,22 @@
+ #include <linux/module.h>
+ #include <linux/pci.h>
+ #include <linux/delay.h>
++
++/*
++ * Feature bits above 63 sit behind feature select 2 and 3. Some devices
++ * reject those selects: StratoVirt in HarmonyOS 7.0.0.32 answers "Invalid
++ * features select 0x2" and its HMV backend turns the failed MMIO write into
++ * a fatal fault of the vCPU. Use the first 64 bits unless asked otherwise.
++ */
++static bool extended_features;
++module_param(extended_features, bool, 0444);
++MODULE_PARM_DESC(extended_features,
++		 "Access feature bits above 63 (feature select 2 and 3)");
++
++static int vp_modern_feature_words(void)
++{
++	return extended_features ? VIRTIO_FEATURES_BITS / 32 : 2;
++}
+ 
+ /*
+  * vp_modern_map_capability - map a part of virtio pci capability
+@@ -401,7 +417,7 @@
+ 	int i;
+ 
+ 	virtio_features_zero(features);
+-	for (i = 0; i < VIRTIO_FEATURES_BITS / 32; i++) {
++	for (i = 0; i < vp_modern_feature_words(); i++) {
+ 		u64 cur;
+ 
+ 		vp_iowrite32(i, &cfg->device_feature_select);
+@@ -427,7 +443,7 @@
+ 	int i;
+ 
+ 	virtio_features_zero(features);
+-	for (i = 0; i < VIRTIO_FEATURES_BITS / 32; i++) {
++	for (i = 0; i < vp_modern_feature_words(); i++) {
+ 		u64 cur;
+ 
+ 		vp_iowrite32(i, &cfg->guest_feature_select);
+@@ -448,7 +464,7 @@
+ 	struct virtio_pci_common_cfg __iomem *cfg = mdev->common;
+ 	int i;
+ 
+-	for (i = 0; i < VIRTIO_FEATURES_BITS / 32; i++) {
++	for (i = 0; i < vp_modern_feature_words(); i++) {
+ 		u32 cur = features[i >> 1] >> (32 * (i & 1));
+ 
+ 		vp_iowrite32(i, &cfg->guest_feature_select);
+-- 
+2.51.0

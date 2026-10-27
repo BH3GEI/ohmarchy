@@ -10,4 +10,11 @@ until [ "$(param get bootevent.boot.completed 2>/dev/null | tr -d ' \r\n')" = tr
     sleep 1; i=$((i + 1))
 done
 sleep 10
-sh "$S/bin/ohm-sandbox" serve
+# serve looks up the app's uid with bm; early in boot the bundle service may not answer
+# yet: try every 5 s for up to 3 minutes
+i=0
+until sh "$S/bin/ohm-sandbox" serve; do
+    [ $i -ge 36 ] && { echo "gave up after $((i * 5)) s"; exit 1; }
+    sleep 5; i=$((i + 1))
+done
+echo "serving at uptime $(cut -d' ' -f1 /proc/uptime)"

@@ -64,9 +64,11 @@ _session)
     # HongMeng's devpts has no pts/ptmx; use the classic node.
     mknod "$R/dev/ptmx" c 5 2 && chmod 666 "$R/dev/ptmx"
     # dma-heap for the native desktop's buffers: the host's world-accessible system heap.
+    # Its numbers differ per machine (505:9 on the X90, 503:11 on the 9020): ask stat (hex).
     if [ -c /dev/system_heap2 ]; then
         mkdir -p "$R/dev/dma_heap"
-        mknod "$R/dev/dma_heap/system" c 505 9 && chmod 666 "$R/dev/dma_heap/system"
+        set -- $(stat -c '%t %T' /dev/system_heap2)
+        mknod "$R/dev/dma_heap/system" c $((0x$1)) $((0x$2)) && chmod 666 "$R/dev/dma_heap/system"
     fi
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/dev/shm"
     ln -sf /proc/self/fd "$R/dev/fd"

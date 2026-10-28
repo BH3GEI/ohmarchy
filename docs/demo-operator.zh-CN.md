@@ -233,7 +233,7 @@ Docker 测试版直接跑在鸿蒙内核上，不是虚拟机：dockerd 被关�
 | # | 【后台】做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
 |---|---|---|---|---|
 | D.1 | 投屏助手的终端，运行 `ssh ohdev sh /data/local/ohm-docker-test/demo.sh` | 先停约 10 秒（起 dockerd），然后出现第 1 步：`Hello from Docker!` | 约 20 秒 | "Docker 直接跑在鸿蒙内核上，没有虚拟机。" |
-| D.2 | 不用操作 | 第 2 步：起一个 nginx，另一个容器取到 `<title>Welcome to nginx!</title>` | 约 15 秒 | "容器里起一个网站，另一个容器能访问它。它们用的是沙箱自己的网络。" |
+| D.2 | 不用操作 | 第 2 步：起一个 nginx，另一个容器取到 `<title>Welcome to nginx!</title>` | 约 15 秒 | "容器里起一个网站，另一个容器能访问它。它们用的是容器自己的网络（Docker 的 net namespace），不是主机的网络。" |
 | D.3 | 不用操作 | 第 3 步：宿主上 `host-secret`；容器里 `can't connect (nc exit 1)` | 约 10 秒 | "鸿蒙本机上一个只对本机开放的服务，本机能连上，容器连不上。" |
 | D.4 | 不用操作 | 最后三行：`stopped …`、`stopped pasta …`、`host mounts mentioning sandbox: 0` | 约 5 秒 | "用完就停，主机上不留挂载。还是那句：这是测试版。" |
 

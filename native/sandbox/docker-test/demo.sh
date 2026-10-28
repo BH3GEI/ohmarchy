@@ -15,11 +15,11 @@ if [ "$(readlink /proc/$p/ns/net)" = "$(readlink /proc/self/ns/net)" ]; then
 fi
 docker() { timeout 120 nsenter -t $p -m -- /usr/bin/docker -H unix:///run/docker.sock "$@" 2>&1; }
 
-say "1. hello-world in the sandbox (Docker test build on the HongMeng kernel, no VM)"
+say "1. hello-world: Docker test build on the HongMeng kernel (no VM), in a directory of its own"
 run "docker run --rm --cap-drop MKNOD --network none hello-world"
 docker run --rm --cap-drop MKNOD --network none hello-world | sed -n 2,3p
 
-say "2. nginx in the sandbox's own network, reached from another container"
+say "2. nginx in Docker's own network namespace, reached from another container"
 run "docker run -d --name web --cap-drop MKNOD --network host nginx:alpine"
 docker rm -f web > /dev/null 2>&1
 docker run -d --name web --cap-drop MKNOD --network host nginx:alpine nginx -g 'daemon off; master_process off;' | cut -c1-12
@@ -36,5 +36,5 @@ run "docker run --rm --cap-drop MKNOD --network host alpine:3.22 nc -w 3 127.0.0
 docker run --rm --cap-drop MKNOD --network host alpine:3.22 sh -c 'nc -w 3 127.0.0.1 18081 < /dev/null || echo "can'"'"'t connect (nc exit $?)"'
 kill $L 2>/dev/null; wait $L 2>/dev/null
 
-say "afterwards: dockerd stopped, no sandbox mounts left on the host"
+say "afterwards: dockerd stopped, none of its mounts left on the host"
 [ "$KEEP" = 1 ] || sh $S/stop.sh | grep -E '^stopped|host mounts'

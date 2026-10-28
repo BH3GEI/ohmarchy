@@ -10,28 +10,42 @@ Secrets never go in this file or any commit/log: the VM login password and the
 device lock password are entered only via `uitest`/command line, from the
 supervisor, at run time.
 
-## Status — field-test deferred (2026-10-28)
+## Known blocker (2026-10-28) — OSEasy-side file visibility
 
-The first field-test attempt is **blocked at the ISO-selection step** and deferred
-to the next time ohdev reboots on its own (ohdev is not rebooted on demand, and we
-do not restart system services on a live machine).
+On-device persistence verification is **blocked before install even starts**, by an
+**OSEasy-app-side file-access/grant problem** — not our ISO, image, agent, or anything
+fixable from the shell. Protocol RE (sections A/B/C), the minimal agent, and this
+runbook are all ready; the remaining steps run in one pass **once OSEasy can see user
+files again** (a clean environment).
 
-- **Symptom:** OSEasy never receives the chosen ISO — the picker shows `已选 (1/1)`
-  and closes, but OSEasy's page stays empty (`点击选择 ISO`, 下一步 greyed). `自动搜索`
-  reports "未找到可用的ISO文件" (it lists Windows ISOs only, so it is not a path for our
-  image either).
-- **Root cause:** Download is on hmdfs/media, which **forces every file to owner
-  `20001006:1006`, mode `640`, and ignores both `chmod` and `chown`** (both return
-  rc=0 but change nothing). OSEasy's uid (`20020042`) is "other" and cannot read a
-  `640` file directly, so it depends entirely on the picker's "安全访问文件" access
-  grant. That grant worked in the earlier regression runs the same day but now fails
-  — it degraded after ohdev's repeated reboots / re-unlocks.
-- **Remedies tried, all ineffective:** restart OSEasy, fresh re-copy of the ISO,
-  slow select + 10 s wait, `自动搜索`, `chmod`/`chown` (blocked by the media FS).
-- **Fix:** a system reboot resets the access-grant service; the shell cannot change
-  it. Resume after the next natural reboot.
-- Everything else for persistence is ready (agent + this runbook + the bundle); once
-  OSEasy can read the ISO again, the remaining steps run in one pass.
+**Evidence (two field attempts, same day):**
+- Attempt 1: OSEasy's picker reached Download and showed the ISO, but the selection
+  never propagated — `已选 (1/1)` → OSEasy page stayed empty, 下一步 greyed; `自动搜索`
+  reported "未找到可用的ISO文件" (it lists Windows ISOs only, not a path for our image).
+- Attempt 2 (after a reboot + unlock, to try to reset the grant): OSEasy's picker got
+  **worse** — its `个人` (home) shows "此文件夹为空" and the `下载` shortcut errors
+  "找不到路径"; it now enumerates **no user files at all**.
+- Decisive comparison, same user and boot: the **system 文件管理 app navigates
+  个人→下载 fine and lists `oseasy-probe.iso` (2 GB)**, while OSEasy's picker sees
+  nothing. So the files are present and media/sharefs is mounted — only OSEasy's own
+  file-access grant is missing.
+
+**Reboot does NOT fix it; it degrades it.** Attempt 2 was the 2nd reboot of the day
+and the grant was worse than attempt 1, so "reboot to restore the grant" is disproven
+— do not reboot to retry.
+
+**Underlying constraints:** Download is on hmdfs/media, which forces every file to
+owner `20001006:1006` mode `640` and **ignores both `chmod` and `chown`** (rc=0, no
+effect). OSEasy's uid (`20020042`) is "other" and cannot read a `640` file directly,
+so it depends entirely on the picker's "安全访问文件" grant — which is the thing
+failing/degrading.
+
+**Remedies tried, all ineffective:** restart OSEasy, fresh re-copy of the ISO, slow
+select + 10 s wait, `自动搜索`, `chmod`/`chown`, open the system File Manager first to
+warm the index + wait + reopen the picker.
+
+**To resume:** retry only on a clean boot where OSEasy's file access works (verify by
+opening OSEasy's picker and confirming `个人`/`下载` list the ISO before anything else).
 
 ## Success vs. stop criteria
 

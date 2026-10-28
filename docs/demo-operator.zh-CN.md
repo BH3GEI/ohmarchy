@@ -13,7 +13,7 @@
 2. **正常关机，别强制**：鸿融里的 Omarchy 盘装了增强服务，点鸿融卡片上的 **关机**（或在 Omarchy 里 **Super+Esc → Shutdown**）；OSEasy 里用 **Super+Esc → Shutdown**。不要在虚拟机里"重启"，不要"注销"。
 3. **原生桌面的窗口别关**，最小化就行。关掉"Omarchy (native)" 后再点图标，桌面约 6 秒会自己重新起来，但里面开着的窗口都没了。
 
-"Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用 Alt+Shift 一起按来代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用；app 会把同时按住的 Alt+Shift 当成 Super 发给 Omarchy。所以 Super+Return 就是 Alt+Shift+Return。快捷键里本来还带 Shift 的，**两个 Shift 都按住**：Super+Shift+B 就是 Alt+左 Shift+右 Shift+B。右 Alt 恢复成普通 Alt。虚拟机里（第 2、3 部分）照常用 Windows 键。
+"Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用右 Alt 代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用。所以 Super+Return 就是右 Alt+Return，Super+Shift+B 就是右 Alt+Shift+B。**原生演示版 "Omarchy (native)" 用右 Alt，新原生沙箱 "Omarchy (sandbox)" 用 Alt+Shift，这是两个不同的 app**（ohdev 上装的原生演示版是旧版，汇报前不重装；2026-10-28 彩排确认，Alt+Shift+Return 在原生演示版里没反应）。虚拟机里（第 2、3 部分）照常用 Windows 键。
 
 沙箱版 "Omarchy (sandbox)"（粉色图标，可选的第 4 段）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
 
@@ -56,26 +56,26 @@
 |---|---|---|---|---|
 | 1.1 | 在鸿蒙桌面上**双击** **"Omarchy (native)"** 图标（app 没开时 Dock 里没有它） | 先是一个写着"在等什么"的窗口，然后出现 Omarchy 壁纸和顶栏 | 约 10 秒 | "这不是虚拟机。Arch Linux 的程序直接跑在鸿蒙内核上，桌面画在一个普通的鸿蒙 app 窗口里。" |
 | 1.2 | 点窗口标题栏上的**最大化** | 桌面铺满屏幕 | 1 秒 | |
-| 1.3 | **Super+Return**（Alt+Shift+Return），输入 `fastfetch` 回车 | 一个终端，fastfetch 显示 Arch Linux ARM、HongMeng 内核、Hyprland | 10 秒 | "看内核那一行：HongMeng，鸿蒙自己的内核。程序是 Arch 官方仓库里原样的二进制。"（GPU 那一行写的是 llvmpipe：那是终端自己用 CPU 画字，整个桌面的合成走的是 GPU） |
-| 1.4 | **Super+2**，再 **Super+1**（Alt+Shift+2、Alt+Shift+1），来回几次 | 工作区左右滑动，很顺 | 10 秒 | "这是 120Hz，用马良 GPU 画的，实测 110～119 帧。" |
-| 1.5 | **Super+Shift+B**（Alt+两个 Shift+B） | Firefox 在终端旁边打开（新窗口，不会再出"恢复会话"页）。可以打开 omarchy.org。第一次可能弹一个小提示，点 "Okay, Got It" | 15 秒 | "浏览器是 Firefox，带沙箱。" |
-| 1.6 | **Super+Space**（Alt+Shift+Space）弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
-| 1.7 | **Super+Shift+F**（Alt+两个 Shift+F） | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
+| 1.3 | **Super+Return**（右 Alt+Return），输入 `fastfetch` 回车 | 一个终端，fastfetch 显示 Arch Linux ARM、HongMeng 内核、Hyprland | 10 秒 | "看内核那一行：HongMeng，鸿蒙自己的内核。程序是 Arch 官方仓库里原样的二进制。"（GPU 那一行写的是 llvmpipe：那是终端自己用 CPU 画字，整个桌面的合成走的是 GPU） |
+| 1.4 | **Super+2**，再 **Super+1**（右 Alt+2、右 Alt+1），来回几次 | 工作区左右滑动，很顺 | 10 秒 | "这是 120Hz，用马良 GPU 画的，实测 110～119 帧。" |
+| 1.5 | **Super+Shift+B**（右 Alt+Shift+B） | Firefox 在终端旁边打开（新窗口，不会再出"恢复会话"页）。可以打开 omarchy.org。第一次可能弹一个小提示，点 "Okay, Got It" | 15 秒 | "浏览器是 Firefox，带沙箱。" |
+| 1.6 | **Super+Space**（右 Alt+Space）弹出 Omarchy 菜单，看一眼，按 **Esc** | Omarchy 菜单出现又关掉 | 5 秒 | "这就是 Omarchy 原汁原味的菜单。" |
+| 1.7 | **Super+Shift+F**（右 Alt+Shift+F） | 文件管理器（Nautilus）打开主目录 | 5 秒 | |
 | 1.8 | 点回终端，输入 `docker run --rm hello-world` 回车 | 先停一会儿（后台虚拟机在启动），然后出现 **"Hello from Docker!"** | **第一次约 27 秒**（2026-10-27 实测），别慌 | "鸿蒙内核跑不了容器，所以 Docker 自动借了一台很小的后台虚拟机，用的时候才开，用完四十秒左右自己关。我没敲任何 root 命令。" |
 | 1.9 | **不用管**，Docker 虚拟机会自己关 | 没有可见变化 | 约 40 秒，讲 1.8 的说辞时就过去了 | "用完它自己就关了，下一段的虚拟机马上能开。" |
 | 1.10 | 把"Omarchy (native)" **最小化**（不要关） | 回到鸿蒙桌面 | 2 秒 | |
 
 **1.9 Docker 虚拟机自己关**（2026-10-27 彩排：hello-world 冷启动 27 秒，跑完后什么都不碰，约 40 秒 `pidof stratovirt` 为空）：没有容器在跑、也没有 docker 连着，就在 30 秒后自动关机。**这期间别再敲 `docker` 命令**，每敲一次都会重新计时。万一没关，见下面故障表最后一行。
 
-说明：2026-10-26 在 ohdev 上彩排过（按键经鸿蒙的输入服务注入，右 Alt 当 Super）：1.1–1.7 全部和表里一样，双击图标后约 10 秒出桌面。第 1 部分里所有的 "Super" 都按 **Alt+Shift**（Super+Shift 就是 Alt 加两个 Shift）；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。（那次彩排用的是右 Alt 当 Super，2026-10-27 起改成 Alt+Shift，还没彩排过。）ohdev 上装的 display app 是 main 48eee76（2026-10-27 装，含 Docker 被挡时的鸿蒙通知；装后双击图标出桌面正常）。
+说明：2026-10-26 在 ohdev 上彩排过（按键经鸿蒙的输入服务注入，右 Alt 当 Super）：1.1–1.7 全部和表里一样，双击图标后约 10 秒出桌面。第 1 部分里所有的 "Super" 都按 **右 Alt**；按 Windows 键会弹出鸿蒙的开始菜单（点回桌面就关掉）。2026-10-28 完整彩排（记录见 [img/rehearsal](img/rehearsal/README.md)）：ohdev 上的原生演示版是旧版，Super 仍是右 Alt，Alt+Shift 没反应；1.3–1.9 都和表里一致，hello-world 35 秒内出结果，之后约 18 秒 Docker 虚拟机自己关机。备注：彩排用 uitest 远程注入按键，它一次最多注入 3 个键、输大写字母不可靠、点击切不动 Hyprland 窗口焦点，这些只影响远程自动化，真人用实体键盘和鼠标操作不受影响。
 
 ### 第 1 段：出了状况怎么办
 
 | 现象 | 怎么办 |
 |---|---|
 | 点了图标，窗口一直写着"在等…"，桌面不出来 | 原生桌面没在后台跑（开机自启没生效；正常不会发生，刚开机不到 1 分钟时可能还没起来）。【后台】`omarchy desktop start`，等 10 秒。还不行：关掉 app 窗口，【后台】`omarchy desktop stop; omarchy desktop start`，再点图标。台上说一句"我们换个顺序"，直接跳到第 2 段鸿融 |
-| 不小心把"Omarchy (native)" 关了 | 再双击一次图标：桌面会自己重新启动，约 6 秒（2026-10-26 彩排过，不用任何后台命令）。之前开着的窗口会没了，重新打开就行（Super = Alt+Shift） |
-| 按 Super+Return 等快捷键没反应，或者弹出鸿蒙开始菜单 | 用 **Alt+Shift** 代替 Windows 键（Super+Shift 就是 Alt 加两个 Shift）。先用鼠标点一下 Omarchy 窗口里面，让它拿到焦点再按。还不行：跳过快捷键，只展示已经打开的东西 |
+| 不小心把"Omarchy (native)" 关了 | 再双击一次图标：桌面会自己重新启动，约 6 秒（2026-10-26 彩排过，不用任何后台命令）。之前开着的窗口会没了，重新打开就行（Super = 右 Alt） |
+| 按 Super+Return 等快捷键没反应，或者弹出鸿蒙开始菜单 | 用 **右 Alt** 代替 Windows 键（Super+Shift 就是右 Alt+Shift）。先用鼠标点一下 Omarchy 窗口里面，让它拿到焦点再按。还不行：跳过快捷键，只展示已经打开的东西 |
 | Firefox 打开的是 "Sorry. We're having trouble getting your pages back."（恢复会话页） | 点 **Start New Session**，再打开 omarchy.org。（桌面重启时 Firefox 被杀会导致这一页；2026-10-27 已修，重开 app 后打开的是新标签页，正常不会再出现） |
 | 某个窗口卡住不动 | 用 **Super+W** 关掉这个窗口，继续下一步 |
 | `docker` 停了 30 秒左右没输出 | 正常，第一次要开后台虚拟机。边等边讲 |
@@ -108,7 +108,7 @@
 |---|---|---|---|---|
 | 2.1 | **双击桌面左上的鸿融图标**（橙黄色；鸿融没开时 Dock 上没有它） | 虚拟机页：Linux，当前状态"已关机"，已使用 6 GB | 5 秒 | "鸿融是华为自己的 Linux 虚拟机 app，从应用市场就能装，不需要 root。" |
 | 2.2 | 点 **开机** | 鸿融变成全屏的虚拟机窗口，直接进 Omarchy 桌面（壁纸、顶栏 1–5 工作区），**不用输密码**，也不会再弹"增强服务"引导框 | 约 1 分钟（2026-10-27 彩排网络卡顿，没测准）。**进了桌面就接着往下做**：空闲 150 秒出屏保、300 秒锁屏并关显示（彩排里停了约 8 分钟，屏幕全黑，按键后出锁屏，输密码回车才回到桌面） | "这块盘就是第 3 段 OSEasy 装的那份公开镜像，完整的 Arch + Omarchy。" |
-| 2.3 | **Super+Return**，输入 `fastfetch` 回车 | 终端；第一行是 AI 助手的配置提示（公开镜像不带密钥，正常）。fastfetch 显示 KVM Virtual Machine (StratoVirt)、Virtio GPU、2160x1440 120 Hz（2026-10-27 修好 EDID 后）、Omarchy 4.0.6、Linux 7.2.12-1.1-aarch64-ARCH、Hyprland 0.56.2、793 个包（2026-10-27 彩排） | 20 秒 | "这里是虚拟机，虚拟化层是鸿蒙自带的 HMV，鸿融用的是华为的 StratoVirt。"（在这一步讲，下一个窗口会把终端挤到一半） |
+| 2.3 | **Super+Return**，输入 `fastfetch` 回车 | 终端；第一行是 AI 助手的配置提示（公开镜像不带密钥，正常）。fastfetch 显示 KVM Virtual Machine (StratoVirt)、Virtio GPU、2160x1440 120 Hz（2026-10-27 修好 EDID 后）、Omarchy 4.0.6、Linux 7.2.12-1.2-aarch64-ARCH、Hyprland 0.56.2、793 个包（2026-10-28 彩排） | 20 秒 | "这里是虚拟机，虚拟化层是鸿蒙自带的 HMV，鸿融用的是华为的 StratoVirt。"（在这一步讲，下一个窗口会把终端挤到一半） |
 | 2.4 | **Super+Shift+B**，等 Chromium 出来后按 **Ctrl+L**（或点地址栏），输入 `omarchy.org` 回车 | Chromium 在右边打开，页面加载出来；没有 "Restore pages?"。右上角两条 Omarchy 通知（Update System、Learn Keybindings）一直挂着，压住浏览器工具栏右端，不用管 | 30 秒 | "网络走鸿融自己的虚拟网桥。" |
 | 2.5 | **Super+2**，再 **Super+1** | 空的工作区 2，再回到终端和浏览器 | 10 秒 | "虚拟机里其实按 120Hz 在画，但鸿融全屏显示只给 60Hz，这是鸿融那边的事。"（2026-10-27 新镜像在鸿融里实测 `hyprctl monitors`：2160x1440@119.98） |
 | 2.6 | 把鸿融主界面拉到前面：Dock 露出来就点 Dock 上的鸿融；不行就【后台】`ssh ohdev aa start -b com.huawei.medivh -a EntryAbility` | 卡片：当前状态 **运行中**（绿色），"关机""暂停"能点 | 5 秒 | "我们的系统里装了鸿融的增强服务，鸿融认得它在运行。" |
@@ -192,7 +192,7 @@
 
 | # | 手上做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
 |---|---|---|---|---|
-| 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy (sandbox)"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 约 20 秒（2026-10-28 实测 16–19 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
+| 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy (sandbox)"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 16–30 秒（2026-10-28 彩排实测约 25 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
 | 4.2 | 不用操作 | 全屏桌面 | | "它一打开就是全屏。要回鸿蒙：Alt+Tab 切走，Ctrl+Alt+Esc 最小化。" |
 | 4.3 | **Alt+Shift+Return** 开终端 | 一个终端 | 3 秒 | |
 | 4.4 | 输入 `sudo pacman --sync --noconfirm cowsay` 回车（全小写，和 `-S` 一样），输入测试密码（见 4e），装完输入 `cowsay hello` 回车 | 下载、安装，然后一头牛说 hello | 约 15 秒（待彩排确认） | "Arch 官方仓库，pacman 照常能用，里面是 root。" |
@@ -321,7 +321,7 @@ A：线一（B、C）不要 root，对外发布正在准备：镜像放 GitHub R
 
 1. ~~开机后原生桌面自动启动~~ 已确认（2026-10-26 真重启：开机 50 秒后桌面已在后台；正常登录后双击图标，第一张截图就是桌面；`pidof stratovirt` 为空；全程没用后台命令）。
 2. ~~关掉 app 再点图标会自己把桌面重启好~~ 已确认（同一次重启后：关掉再双击，桌面回来）。
-3. 原生桌面里的 Super 快捷键：Windows 键会被鸿蒙拦截（弹开始菜单），2026-10-27 起改成 Alt+Shift 当 Super（之前的右 Alt 方案注入按键验证过）；还差用实体键盘亲手按一遍。
+3. 原生桌面里的 Super 快捷键：Windows 键会被鸿蒙拦截（弹开始菜单）。原生演示版用右 Alt 当 Super（2026-10-28 彩排确认，注入按键）；新原生沙箱用 Alt+Shift。还差用实体键盘亲手按一遍。
 4. 鸿蒙电脑上"免打扰""自动熄屏"的设置位置。
 5. 鸿融在别的虚拟机（Docker）还在跑时点"开机"，屏幕上显示什么。
 6. ~~鸿融关机后是否自动退出全屏回到虚拟机页~~ 已确认（2026-10-27）：点鸿融"关机"后自动回到虚拟机页，卡片显示"已关机"。

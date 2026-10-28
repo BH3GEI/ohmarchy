@@ -107,7 +107,7 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-28 04:28 PDT)
+## Progress (updated hourly; last: 2026-10-28 05:28 PDT)
 
 Now: the demo is one clean showcase page — [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) — with a consistent, honestly-captioned video set (the earlier old/new mix is archived, not deleted). Before that, policy acceptance tests on the device turned up two of our own earlier claims that were wrong, and both are now corrected in the docs. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
 

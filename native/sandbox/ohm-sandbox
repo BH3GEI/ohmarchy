@@ -295,7 +295,10 @@ serve)
         [ "$(readlink "$d/exe" 2>/dev/null)" = "$S/bin/ohm-sandboxd" ] && { echo "serving: ${d#/proc/}"; exit 0; }
     done
     app_uid=$(bm dump -n "$APP" 2>/dev/null | grep -m1 '"uid"' | tr -dc 0-9)
-    [ -n "$app_uid" ] || { echo "$APP is not installed"; exit 1; }
+    # started by init at boot, bm gets no answer (no access token for the bundle
+    # manager): the owner of the app's el1 directory, there from boot, is its uid
+    [ -n "$app_uid" ] || app_uid=$(stat -c %u "/data/app/el1/100/base/$APP" 2>/dev/null)
+    [ "${app_uid:-0}" -ge 10000 ] 2>/dev/null || { echo "$APP is not installed"; exit 1; }
     cd /
     setsid "$S/bin/ohm-sandboxd" --app-uid "$app_uid" --launcher "$S/bin/ohm-sandbox" --name "$PREFIX-ctl" \
         < /dev/null >> "$S/sandboxd.log" 2>&1 &

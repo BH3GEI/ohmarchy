@@ -106,7 +106,7 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 16:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 17:32 PDT)
 
 Now: the new native design's three gaps are each addressed on our side — a working mitigation or a container that runs, each backed by a demo, with the kernel-level root fixes filed as evidence-backed requests to HarmonyOS. The native sandbox v1 is feature-complete on screen, the demo was never touched. Everything is staged for a rehearsal recording of the four demos; the OSEasy live segment is deferred to the next reboot (see below). Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
 

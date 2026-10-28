@@ -2,6 +2,7 @@
 // handles input. Until the first frame arrives, a status line says what is going on.
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { promptAction, window } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 import { startJl } from '../jl/jl';
 
 interface OhdispModule {
@@ -76,6 +77,22 @@ struct Index {
     });
   }
 
+  // After a reset with the app open: the GPU renderer cannot take a new compositor's
+  // window surface in this process (every present then failed to blit, 0x502), while
+  // a new process can. So the app restarts itself; the new one starts Linux (already
+  // running: a no-op) and shows the new desktop, as when the app is opened.
+  private afterReset(): void {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      ctx.getApplicationContext().restartApp({ bundleName: SANDBOX_BUNDLE, abilityName: 'EntryAbility' });
+    } catch (e) {
+      hilog.error(0x0D0D, 'ohdisp', 'restart after reset: %{public}s', JSON.stringify(e));
+      this.startLinux().then(() => {
+        this.note = 'Linux was reset. Close and open the app to see it.';
+      });
+    }
+  }
+
   // from the icon's "Reset Linux" shortcut (EntryAbility): ask first; reset and start
   // only when confirmed (opened by the shortcut, nothing starts before the answer)
   onResetRequested(): void {
@@ -89,8 +106,11 @@ struct Index {
       buttons: [{ text: 'Cancel', color: '#c0caf5' }, { text: 'Reset', color: '#f7768e' }]
     }).then((r: promptAction.ShowDialogSuccessResponse) => {
       if (r.index === 1) {
-        this.sandboxCtl('reset', 'Resetting Linux…')
-          .then((ok: boolean) => ok ? this.startLinux() : false);
+        this.sandboxCtl('reset', 'Resetting Linux…').then((ok: boolean) => {
+          if (ok) {
+            this.afterReset();
+          }
+        });
       } else if (!this.started) {
         this.startLinux();
       } else {

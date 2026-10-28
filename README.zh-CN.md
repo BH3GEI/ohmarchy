@@ -4,7 +4,8 @@
 
 ## 文档导航（汇报时从这里找）
 
-**先看这三个**
+**先看这几个**
+- **[演示录屏（动态展示页）↗](https://ohmarchy-demo.vercel.app)** —— 对外唯一入口：三段演示加全程合集，在一个干净的页面上播放
 - [交接文档](docs/handover.zh-CN.md)：现状、我们还要做什么、需要鸿蒙做什么（合入、放开、提供）、以后要维护的地方、事故和规矩
 - [现场操作手册](docs/demo-operator.zh-CN.md)：演示每一步怎么点、出了问题怎么办（第 4 段是新原生沙箱）
 - [公开发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)：OSEasy 安装盘和全部 GPL 源码
@@ -96,7 +97,7 @@
 | Docker 网络隔离 | **实测为真**（17f7fa0、3cefa2c）：用 `NET=pasta` 时 dockerd 和容器在 Docker 自己的网络命名空间；容器连不到主机 127.0.0.1 上真实存在的监听、也连不到主机局域网地址（先确认有监听再测连接）。`demo.sh` 发现 dockerd 跟主机同网就拒绝运行 |
 | 开机自起 | 这次开机 init 确实拉起了 `ohm-sandboxd`（`/system` 配置有效）；撞到一个真 bug（boot-serve 的 `bm dump` 在 init 上下文拿不到 uid），现场改读 app 的 el1 目录属主修好（c3b077a）。"完全不用人管"还差下次重启确认一次 |
 | OSEasy 持久化 | **被设备挡住、不是我们代码的问题**（7194b6b）：重启后 OSEasy 的文件选择器枚举不到用户文件（系统文件管理能），是 OSEasy 侧重启不恢复、而且一次比一次差的授权问题。协议逆向+agent+runbook 都就绪，等一次干净环境 |
-| 彩排 | **已录+已上传**（a6b57e7）：三样演示，视频在 GitHub（发布 rehearsal-20261028），21 张截图，报告 |
+| 演示录屏 | **一个干净的动态展示页**：[ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) —— 三段（原生+Docker、沙箱、鸿融）加重拼的全程合集，命名统一 `demo-1/2/3` + `demo-full`，口径诚实。同一套也在 [发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)；旧的、混在一起的老剪辑已归档、未删除。21 张截图 + 报告在 `docs/img/rehearsal/` |
 
 另：鸿融演示盘密码 + sudo/解锁已验证；E 等人试开机按键。
 <!-- progress:end -->

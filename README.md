@@ -5,6 +5,7 @@ English | [中文](README.zh-CN.md)
 ## Where to find things (for the review)
 
 **Start here**
+- **[Demo videos (showcase page) ↗](https://ohmarchy-demo.vercel.app)** — the single canonical presentation: three segments and a full cut, played on one clean page
 - [Handover (Chinese)](docs/handover.zh-CN.md): status, what we still do, what HarmonyOS needs to merge, allow or provide, what must be maintained, incidents and rules
 - [Demo operator manual](docs/demo-operator.md) ([中文](docs/demo-operator.zh-CN.md), whose part 4 covers the new native sandbox)
 - [Public release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027): the OSEasy install ISO and all GPL sources
@@ -118,7 +119,7 @@ Now: making the demo materials honest. Policy acceptance tests on the device tur
 | Docker network isolation | **Verified real** (17f7fa0, 3cefa2c): with `NET=pasta`, dockerd and containers get Docker's own net namespace; containers can't reach a real listener on the host's 127.0.0.1 or LAN address (measured first-listener-then-connect). `demo.sh` refuses to run if dockerd shares the host netns |
 | Autostart | init started `ohm-sandboxd` this boot (the `/system` cfg works); a real bug (boot-serve's `bm dump` gets no uid in init's context) was fixed live by reading the app's el1 dir owner (c3b077a). Full hands-off needs one more reboot to confirm |
 | OSEasy persistence | **Blocked by the device, not our code** (7194b6b): after reboot OSEasy's picker can't enumerate user files (system Files app can) — an OSEasy-side grant that doesn't restore across reboot, and gets worse each reboot. Protocol work + agent + runbook ready; needs one clean environment |
-| Rehearsal | **Recorded + uploaded** (a6b57e7): three demos, videos on GitHub (release rehearsal-20261028), 21 screenshots, report |
+| Demo videos | **One clean showcase page**: [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) — three segments (native+Docker, sandbox, 鸿融) and a rebuilt full cut, consistent names `demo-1/2/3` + `demo-full`, honest captions. Same set on [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028); earlier mixed/old cuts archived, not deleted. 21 screenshots + report in `docs/img/rehearsal/` |
 
 Also: 鸿融 demo-disk password + sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->

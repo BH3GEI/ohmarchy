@@ -247,6 +247,7 @@
    | toybox `mount -o loop` | 报 EFAULT；loop 设备只有 loop0 有节点；devpts 没有 ptmx | 手工 losetup、mknod |
    | `clone(CLONE_FILES)` 不共享文件表 | 子进程打开的 fd 父进程看不到，pasta 进不了沙箱的 netns（netlink EBADF） | pasta 补丁：改用线程做 setns（线程共享文件表，setns 只影响本线程） |
    | `close_range(CLOSE_RANGE_UNSHARE)`、tmpfs 的 `nr_inodes`/`nr_blocks` | 返回 EOPNOTSUPP、EINVAL | pasta 补丁：去掉这两个参数重试 |
+   | init 直接拉起的服务调 `bm dump` 查不到 app（推测是没有访问 bundle manager 的 token；从 shell 调就正常） | 2026-10-28 真重启：沙箱小助手开机一直报"not installed"，起不来 | 需要 app 的 uid 时别依赖 bm，用 app 的 el1 目录 `/data/app/el1/100/base/<包名>` 的属主兜底（c3b077a） |
 
    - 影响：D 和原生沙箱。
 5. **vm_manager 启动 virtiofsd 时带 `--passthrough-fs`，或公开 share 注册协议。**

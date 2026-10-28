@@ -18,7 +18,9 @@
 #   off    only loopback inside: no internet (pacman cannot download).
 #   host   HIGH RISK: the host's network itself; Linux reaches every service on the
 #          host's 127.0.0.1. Only if you mean to.
-#   A hard boundary (the kernel's network namespace).
+#   A hard boundary (the kernel's network namespace), BUT in this build only for the
+#   sandbox's init: the programs inside use the host's network whatever this says,
+#   until the processes join the namespace (README: Network).
 network = pasta
 
 # abstract_allow = name prefixes, space separated (letters, digits, . _ / -)

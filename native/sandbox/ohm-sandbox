@@ -24,14 +24,12 @@
 # /dev holds only a few nodes, and every process runs with a bounding set that has
 # no mknod, mount (sys_admin), module, raw I/O or MAC capability, so root inside
 # cannot bring host devices or filesystems back in.
-# The network is a namespace of its own, connected by pasta (bin/pasta, passt.top, with
-# passt-hongmeng.patch) on the host: the sandbox's TCP, UDP and ICMP leave through host
-# sockets like any app's connections; nothing is forwarded inward, and the host's
-# 127.0.0.1 is not reachable. Abstract Unix socket names are not per network namespace
-# on HongMeng (checked: a host process connects to a name bound in here), so the app
-# still reaches the desktop's sockets; that namespace stays shared with the host.
-# ohm-abstract-fence (preloaded) refuses connects to abstract names the sandbox did
-# not bind; it covers calls through libc only (README: Abstract sockets).
+# The network: the sandbox's init gets a namespace of its own, connected by pasta
+# (bin/pasta, passt.top, with passt-hongmeng.patch) on the host. In this build the
+# processes inside do not join it (ohm-capdrop --enter joins ipc, uts, pid, mnt): they
+# use the host's network. Joining it waits for a door on the host for the app's
+# sockets (README: Network). ohm-abstract-fence (preloaded) refuses connects to
+# abstract names the sandbox did not bind; an extra layer only (README).
 S=${OHM_SANDBOX:-/data/local/ohm-sandbox}
 IMG=$S/root.img
 CLEAN=$S/clean.img

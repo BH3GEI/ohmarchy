@@ -1,8 +1,14 @@
 # Abstract Unix sockets on ohdev that the sandbox can reach
 
-HongMeng does not keep abstract Unix socket names per network namespace (checked
-2026-10-28: a process on the host connected to a name bound inside the sandbox's own
-network namespace). So every abstract socket on the host that takes connections or
+> **Void (2026-10-28): the premise was wrong.** It assumed the sandbox's processes
+> share the host's abstract names. HongMeng keeps abstract names per network
+> namespace, like Linux; the test that said otherwise ran in the host's network
+> (`ohm-capdrop --enter` did not join the sandbox's network namespace). With that
+> fixed (pending, see README "Network"), none of the sockets below is reachable from
+> the sandbox. The list stays as a record of what listens on the host.
+
+The original text, from the void premise: HongMeng does not keep abstract Unix
+socket names per network namespace (that test ran in the host's network). So every abstract socket on the host that takes connections or
 datagrams can be reached from inside the sandbox, whatever its namespaces. What
 stands between the sandbox and these is the service's own checks (peer uid,
 SELinux); the sandbox's processes run in the `su` domain as root or its user.

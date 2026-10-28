@@ -1,3 +1,6 @@
+// An extra layer, not needed: HongMeng keeps abstract names per network namespace
+// (2026-10-28), so the sandbox's own network namespace is the boundary once its
+// processes join it (README: Network). Written when they were thought shared:
 // Preloaded in the sandbox (/etc/ld.so.preload): abstract Unix socket names are not
 // per network namespace on HongMeng, so the sandbox's processes could connect to the
 // host's (abstract-sockets-ohdev.md). This refuses, with EACCES, connect(), sendto()

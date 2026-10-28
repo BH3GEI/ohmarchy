@@ -179,8 +179,8 @@ policy_check() {
     esac
     echo
     case "$POL_NET" in
-    pasta) echo "  网络      pasta     [硬] 能上网；连不到本机 127.0.0.1 上的服务；不对外开放端口。";;
-    off)   echo "  网络      off       [硬] 不联网，只有沙箱自己的回环。";;
+    pasta) echo "  网络      pasta     注意：本版本里沙箱的程序实际用的是本机网络（能连到本机 127.0.0.1），独立网络还没启用。";;
+    off)   echo "  网络      off       注意：本版本里沙箱的程序实际用的是本机网络，off 还不起作用，独立网络还没启用。";;
     host)  echo "! 网络      host      [硬] HIGH RISK：和本机共用网络，沙箱能连到本机 127.0.0.1 上的所有服务。";;
     esac
     if [ -z "$POL_SHARES" ]; then
@@ -201,7 +201,7 @@ policy_check() {
     [ -n "$POL_DROPX" ] && echo "  能力      额外去掉 $POL_DROPX  [硬] 比默认更严。"
     echo "  /dev      null zero full random urandom tty ptmx dma_heap${POL_DEV:+ $POL_DEV}  [硬]"
     for d in $POL_DEV; do echo "! /dev      $d  [硬] 比默认多一个设备。"; done
-    echo "  抽象 socket  只放行 ohmsbx- 和沙箱里自己绑定的${POL_ALLOW:+，另加 $POL_ALLOW}  [软] 尽力而为，不是安全边界：静态程序和沙箱里的 root 能绕过。"
+    echo "  抽象 socket  只放行 ohmsbx- 和沙箱里自己绑定的${POL_ALLOW:+，另加 $POL_ALLOW}  [软] 多余的一层，不是安全边界：静态程序和沙箱里的 root 能绕过。"
     [ -n "$POL_ALLOW" ] && echo "! 抽象 socket  放行 $POL_ALLOW  [软]"
     echo
     echo "改动在下次启动 Linux（下次打开 app）时生效；Reset Linux 不会改这个文件。"

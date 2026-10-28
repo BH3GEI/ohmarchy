@@ -40,8 +40,8 @@ demo desktop running; its health check before and after was identical (same
 processes and pids, same md5 of its scripts and boot configs). What the check
 printed (`/data/local/ohm-sandbox/evidence/config-check-20261028.txt`):
 
-- namespaces: mount, pid, ipc, uts its own; net and time shared with the host (net
-  its own since, see Network);
+- namespaces: mount, pid, ipc, uts its own; net and time shared with the host (see
+  Network: the init's own net namespace is not yet joined by the processes inside);
 - capability bounding set `b18cecff` (the list in `ohm-sandbox` dropped);
 - `/` the image (nodev), `/proc` its own, `/proc/sys` and `/sys` read-only, `/dev` a
   tmpfs with null, zero, full, random, urandom, tty, ptmx and the dma-heap node;
@@ -84,19 +84,16 @@ sandbox's own `/dev/null`; afterwards no process inside held a host file except 
 
 ## Known boundaries (v1)
 
-Until abstract Unix sockets are kept per network namespace (docs/handover.zh-CN.md
-3(a) 15), this is test-machine isolation, not a security promise to anyone outside:
-the HarmonyOS services listed in `abstract-sockets-ohdev.md` are treated as open to
-the sandbox (nothing was sent to them to find out).
+This is test-machine isolation, not a security promise to anyone outside.
 
-- Abstract Unix sockets are shared with the host. HongMeng does not keep abstract
-  names per network namespace (checked 2026-10-28: a host process connected to a
-  name bound inside the sandbox's own network namespace), so the sandbox can still
-  connect to every abstract socket the host's processes listen on, HarmonyOS's own
-  services among them (the list and who owns each: `abstract-sockets-ohdev.md`).
-  The app's sockets with the desktop work because of this. Abstract names per
-  network namespace, as Linux keeps them, is a request to HarmonyOS
-  (docs/handover.zh-CN.md 3(a)).
+- **The network is the host's** in this build (correction, 2026-10-28; see Network):
+  the processes inside reach everything the host does, its 127.0.0.1 among them. A
+  network of the sandbox's own is done and checked from the command line, and held
+  back until a small door on the host binds the desktop's three app sockets.
+  HongMeng keeps abstract Unix socket names per network namespace (like Linux;
+  checked 2026-10-28), so with that network the host's abstract sockets are out of
+  reach too. An earlier note here said the opposite: that test ran in the host's
+  network.
 - The SELinux domain is still `su` (HarmonyOS's policy cannot be extended at run
   time on ohdev, 2026-10-28); a domain of its own is a request to HarmonyOS.
 
@@ -188,7 +185,7 @@ parsed by `policy.sh`) sets, for the next start:
 
 | Key | Default | Boundary | Looser values |
 |---|---|---|---|
-| `network` | `pasta`: own network, internet, no host 127.0.0.1 | hard (network namespace) | `host`: the host's network, its 127.0.0.1 reachable (HIGH RISK); `off` is stricter |
+| `network` | `pasta` | hard (network namespace), **in this build only for the sandbox's init: the processes inside use the host's network whatever this says** (Network) | `host`; `off` is stricter |
 | `share` | none | hard (mount namespace; nosuid, nodev) | host folders, `ro` or `rw`; a read-only one that cannot be made read-only is left out |
 | `cap_keep` / `cap_drop_extra` | the bounding set above (`b18cecff`) | hard (bounding set) | keep one of net_admin, syslog, sys_tty_config, linux_immutable, perfmon, checkpoint_restore, wake_alarm, block_suspend, audit_read; never sys_admin, sys_module, sys_rawio, mknod, MAC, bpf, sys_boot, sys_time, sys_pacct, audit_control, setpcap |
 | `dev` | null zero full random urandom tty ptmx dma_heap | hard | `fuse`, `net/tun` (not with `network = host`) |
@@ -234,6 +231,11 @@ sandbox's user, asks for the password and runs.
 
 ## Abstract sockets: the fence (2026-10-28)
 
+> **Not needed (2026-10-28):** HongMeng keeps abstract names per network namespace;
+> the network namespace is the boundary, once the processes inside join it (Network).
+> The fence below stays as a harmless extra layer. What follows was written when the
+> names were thought shared with the host; that test ran in the host's network.
+
 The aim: the sandbox's own processes do not connect to the host's abstract Unix
 sockets (abstract-sockets-ohdev.md). The other direction stays open: the app connects
 to the desktop's `@ohmsbx-*`, and the sandbox reaches the GPU broker through the
@@ -275,7 +277,23 @@ connected (the residual). On screen with the app: display, terminal, fcitx5 piny
 
 ## Network (2026-10-28)
 
-The sandbox has a network namespace of its own (`start`: `unshare -n`). pasta
+**Correction (2026-10-28): in this build the processes inside use the host's network.**
+`start` gives the sandbox's init a network namespace of its own and connects pasta to
+it, but `ohm-capdrop --enter` (how `run`, and so the desktop and everything on it,
+enters) joined only ipc, uts, pid and mount. The checks below ran in the host's
+network: archlinux.org went out through the host, and the host's `127.0.0.1:22` was
+refused only because nothing listens there. Found with a listener of our own on the
+host's 127.0.0.1, reachable from inside.
+
+A fix joining `net` too is done and checked from the command line (with pasta and
+with `off`, the host's listener is refused; with `host`, reached), but not in use:
+the desktop binds the app's sockets (`@ohmsbx-display`, `-audio`, `-ime`) inside,
+and abstract names are per network namespace, so the app (in the host's) would no
+longer reach them. Next, after the demo: a small root door on the host that binds
+those three names in the host's namespace for the desktop and passes the sockets
+back; then the fix goes in.
+
+What `start` does now: the sandbox's init gets a network namespace of its own (`unshare -n`). pasta
 (passt.top, commit 6aa4f88, with `passt-hongmeng.patch`; built inside by
 `ohm-sandbox build-pasta`, as `bin/pasta`) runs on the host and joins it: the
 sandbox gets the host's address and routes, and its TCP, UDP and ICMP go out
@@ -285,9 +303,9 @@ through host sockets, like an app's own connections. Nothing is forwarded inward
 the default route in a table of its own (2009, policy routing); `start` reads it
 there. After the PC changes networks, `ohm-sandbox net` connects it again.
 
-Checked on ohdev, on screen in the app's terminal: https://archlinux.org 200 and
-`pacman -Sy`; the host's `127.0.0.1:22` refused (curl 7). The app's display, sound
-and GPU sockets connected as before; stop ends pasta.
+Checked earlier on ohdev (from the host's network, see the correction): pasta starts
+and stops with the sandbox; its own tests against a throwaway namespace (nsenter)
+did go through pasta: https 200, the host's 127.0.0.1 not reached.
 
 HongMeng differences pasta met (the patch): no user namespaces (`/proc/self/uid_map`
 absent); `CLONE_FILES` not honoured, so what a `clone()`d child opens is not in the

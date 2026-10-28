@@ -35,7 +35,7 @@
 | B OSEasy | 整个 Omarchy 系统跑在 OSEasy 虚拟机 app（com.oseasy1.ohvm 3.1.1.7）里，内核 7.2.12 加打补丁的 vmwgfx，用安装 ISO 写盘 | 能用。公开版是 GitHub release 草稿（未公开）；内核 1.2 的新 ISO 正在回归 | 不要 | 能 |
 | C 鸿融 | 整个 Omarchy 系统作为华为鸿融（com.huawei.medivh 1.1.1.103）的虚拟机运行，virgl GPU | 能用。内核 1.2 的盘 10-27 在 ohdev 上验证通过 | 导入不要；换盘要 | 能 |
 | D 原生 | Arch 加 Omarchy 直接跑在 HongMeng 内核上，桌面显示在鸿蒙 app 里，120 Hz，马良 GPU | 能用，已验收 | 要 | 能 |
-| 原生沙箱（新方案） | 原生内核；Linux 锁在自己的目录和网络里，像 app 一样开、关、重置；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | v1 能用（10-28 ohdev）：app "Omarchy (sandbox)"、独立 mount/pid/ipc/uts/net 命名空间、一键安装和卸载。只算测试机级别的隔离：抽象 socket 与主机共享、SELinux 域还是 `su`、Docker 未接入 | 小助手要 root | 能（可选第 4 段，未完整彩排） |
+| 原生沙箱（新方案） | 原生内核；Linux 锁在自己的目录里，像 app 一样开、关、重置；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | v1 能用（10-28 ohdev）：app "Omarchy (sandbox)"、独立 mount/pid/ipc/uts 命名空间、精简的能力边界集、一键安装和卸载。本 build 中沙箱进程与主机共享网络（出网可用）；逐沙箱的网络隔离补丁已完成、暂缓启用（见 1.5）。只算测试机级别的隔离：网络共享、SELinux 域还是 `su`、Docker 未接入 | 小助手要 root | 能（可选第 4 段） |
 | I 自建后台虚拟机 | root 直接在 /dev/hmv 上起 StratoVirt，无界面，给 D 提供 Docker | 能用 | 要 | 能，与 D 一起 |
 | J app 沙箱内原生 | Linux 程序编成 .so 签进 HAP，fork 加 dlopen 运行 | busybox 已在真机跑通；Hyprland 已编好，真机试了 4 轮，尚未出第一帧 | 不要 | 不能 |
 | E 裸机／U 盘 | 不要鸿蒙，Linux 直接在硬件上启动 | 全内存 U 盘已做好，尚未在机器上启动成功 | — | 不能 |
@@ -120,18 +120,18 @@
 - **v1 已做到（2026-10-28，ohdev，和 D 的演示版并排跑，D 全程未受影响）。**
   - 和 D 完全分开：app com.ohmarchy.sandbox（"Omarchy (sandbox)"，粉色图标）、目录 /data/local/ohm-sandbox、自己的 64 GB 镜像和 loop 设备、socket 前缀 `ohmsbx`。
   - 关进去的方式：`unshare -m -p -i -u -n` 加 pivot_root，镜像就是整个文件系统，主机的 /storage、/system 在里面不存在；/dev 是只放几个节点的 tmpfs；/proc/sys、/sys 只读；能力边界集去掉 mknod、sys_admin、模块、raw I/O、MAC、net_admin 等（CapBnd b18cecff；HongMeng 拒绝 PR_SET_KEEPCAPS，用自写的 ohm-capdrop）。
-  - 网络：独立 net namespace，主机上的 pasta（passt.top，打了 HongMeng 补丁）把沙箱的 TCP/UDP/ICMP 经主机 socket 发出去。不往里转发端口，不动主机的路由和防火墙。主机的 127.0.0.1 已经连不上（10-28 上屏实测）；pacman、https 正常。
+  - 网络（10-28 更正）：本 build 中沙箱里的进程与主机共享网络，出网可用。沙箱的 init 有自己的 net namespace（pasta 也接在上面），但桌面、终端等所有经 `ohm-sandbox run` 进去的进程原先没有加入它（`ohm-capdrop --enter` 只加入了 ipc/uts/pid/mnt），之前"主机 127.0.0.1 连不上"的验证就是在主机网络里做的，用的端口 :22 主机上本来就没有监听，结论不成立，已撤回。加入 net 的补丁已完成并在命令行验过：pasta 和 off 模式下连不到主机 127.0.0.1 上的监听，host 模式能连。但暂缓启用：显示、声音、输入法这三个桥（@ohmsbx-display/audio/ime）由沙箱里的桌面 bind，app 在主机 netns，启用后 app 就连不上了。要先补一个主机侧的小门（root，只负责在主机 netns 里替桌面 bind 这三个名字并把 fd 递回），这是演示之后的下一步。
   - 像 app 一样：双击启动 Linux 和桌面（约 16–19 秒），关掉 app 就停；"Reset Linux"（图标菜单）先确认，再恢复到安装时的快照（约 33 秒）；全屏，Ctrl+Alt+Esc 最小化。键盘、鼠标、声音、马良 GPU 跟 D 一样；终端靠 pty 垫片（HongMeng 没有 devpts）。
   - root 小助手 ohm-sandboxd：只接受这个 app 的 uid（SO_PEERCRED），只认 start、stop、reset、status 四个固定命令，客户端发来的任何内容都进不了命令行。
   - 安装和卸载：native/sandbox/install.sh、uninstall.sh，从电脑上一条命令完成，前后核对 D 和系统没变。/data 以外只写一个文件 /system/etc/init/ohm-sandboxd.cfg（开机起小助手），10-28 经批准写入并回读一致。
 - **已知缺口（在这些解决之前，只算测试机级别的隔离，不能当作对外的安全承诺）。**
-  - 抽象 Unix socket 与主机共享：HongMeng 不按 net namespace 隔离抽象名字，沙箱仍能连到主机上所有在监听的抽象 socket，其中有 wpa_supplicant 的控制接口和 TEE 守护进程 teecd（清单见 abstract-sockets-ohdev.md，未做任何实测）。诉求见第 3(a) 节第 15 条。
+  - 网络与主机共享（见上）：逐沙箱的网络隔离要等主机侧小门做完才能启用。HongMeng 的抽象 Unix socket 本来就按 net namespace 隔离（10-28 实测），启用后沙箱就连不到主机的抽象 socket。
   - SELinux 域还是宽松的 `su`：ohdev 不接受运行时加载策略，自己的域要靠鸿蒙（第 3(b) 节第 1 条）。
   - Docker 测试版已能在自己的目录里跑容器（10-28：hello-world、alpine sh、nginx，native/sandbox/docker-test），还没并进 app 的沙箱；HongMeng 缺的东西见第 3(a) 节第 8–14、16–23 条。
   - 开机自起小助手：cfg 已写入，但 init 只在开机时读，要等下次真重启才能验证；在那之前机器重启后要手动 `ohm-sandbox serve`。
   - 换网络后要 `ohm-sandbox net` 重连；只有 IPv4。
 - 允许清单（10-27 只读调查，H 线）：ohdev 是 developer 版（const.debuggable=1），SELinux 全局 enforcing，策略为 CIL，源码和 secilc、checkpolicy、chcon 等工具在机器上，/sys/fs/selinux/load 对 root 可写。可行做法是运行时加载一个只新增类型和规则的模块（新域只能读写自己的目录），不改 /system，重启即恢复。hmmac 是第二层 MAC，没有可操作的接口，但不妨碍更严的 SELinux 新域。运行时加载是否被接受已做初步实测（2026-10-27，H 线）：把导出的现有策略（/sys/fs/selinux/policy，3299594 字节）原样写回 /sys/fs/selinux/load 两次均被拒——第一次 rc=1，第二次 errno=EINVAL，写入 0 字节、内核策略未变、系统无损（Enforcing、策略大小不变，bm/hidumper/ssh/hdc 全部正常，死人开关每次都在 300 秒内手动撤销、从未触发）。当时 su 为 permissive 且具备 CAP_MAC_ADMIN，失败时无任何 SELinux/hmmac 拒绝记录。故**原样回灌不通**。随后的 step-2 实测（2026-10-27）已定论：开机实际加载的是 /vendor/etc/selinux/prebuild_sepolicy/developer_policy（3299594 字节，与 live 一致；policy.31 是 3269901 字节的非 developer 版，用它会丢 developer 规则，不用）。把**这份开机原版**原样写回 /sys/fs/selinux/load 仍是 EINVAL、0 字节——连内核开机时自己接受的同一份二进制都回灌不了，排除了格式问题，**证明鸿蒙内核在开机后硬禁止再加载任何策略**。因此运行时加载我们自己的 SELinux 域在本机不可行（step-2b 不做），且运行时没有任何回灌恢复、只能重启（两次 step-2 测试均零改动、系统无损、无需恢复）。后续结论（10-28）：ohdev 的内核不接受运行时加载策略，v1 改用命名空间、pivot_root 和去能力，小助手留在 `su` 域（见上面"已知缺口"）。
-- **Docker（10-27，I 线）。**此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（10-27 时沙箱能连宿主 127.0.0.1；10-28 沙箱有了自己的 net namespace，这个口子已补上，Docker 接入时网络要重新设计）。
+- **Docker（10-27，I 线）。**此前 I 线的 Docker 跑在 StratoVirt 虚拟机里，dockerd 直接跑在 HongMeng 内核上是第一次尝试。已查实有 overlayfs 和 mnt、pid、net、ipc、uts 命名空间，没有 user 和 cgroup 命名空间，只能 rootful；cgroup 只有一套层级，文件名为 v2 风格，mountinfo 不写子系统名，runc 可能识别不了。v1 先不接 cgroup、不改 iptables、容器用 host 网络（10-27 时沙箱能连宿主 127.0.0.1；10-28 发现沙箱进程仍在主机网络里，逐沙箱的网络隔离补丁待启用，Docker 接入时网络要一并设计）。
 - 本文第 3(b) 节里与小助手、MAC 规则、允许清单相关的请求，以该文档定稿为准。
 
 **I 自建后台虚拟机**（docs/vm-own.md）
@@ -299,12 +299,10 @@
    - 为什么：runc 给每个容器建一个独立的 session keyring，HongMeng 上这一步失败（runc 只把 ENOSYS 当"不支持"放过去，EINVAL 不放过）。
    - 影响：原生沙箱。容器之间 keyring 不隔离（只影响容器与容器之间，不影响沙箱外层边界）。
    - 退路：测试版 runc 把 EINVAL 和 ENOSYS 一样对待（测试用）。
-15. **抽象 Unix socket 按 net namespace 隔离**（Linux 本来就是这样：抽象名字属于创建它的 socket 所在的网络命名空间）。
-   - 为什么：HongMeng 上抽象名字全局共享。沙箱有了自己的 net namespace 之后，TCP/UDP 已经碰不到主机的 127.0.0.1，可主机上所有在监听的抽象 socket 仍然连得上，其中有鸿蒙自己的服务：wpa_supplicant 的控制接口（`@/data/service/el1/public/wifi/sockets/wpa/wlan0`，wpa_host）、TEE 客户端守护进程（`@tc_ns_socket`，teecd）、hiview（`@DUBAI_BUFFERED_LOG`）、hdcd（`@ohjpid-control`）。清单、属主和风险评估见 native/sandbox/abstract-sockets-ohdev.md（2026-10-28 ohdev）。
-   - 复现：`unshare -n` 起一个进程，在里面绑定抽象名字；主机上的进程照样能连上（10-28 在 ohdev 上用沙箱实测）。
-   - 影响：原生沙箱，以及所有靠 net namespace 隔离的容器（Docker）。
-   - 退路：没有对等的退路。只能靠服务自己检查对端（SO_PEERCRED、SELinux）。
-   - 缓解（2026-10-28）：当前实际缓解是 D 的 **B 方案——libc 层出站过滤**（ohm-abstract-fence）：沙箱里的进程只能连自己绑定的和 `ohmsbx-` 开头的抽象名，其余返回 EACCES；它拦不住静态程序和直接发系统调用的程序，沙箱里的 root 也能把它摘掉，**只防误连、不是安全边界**。2026-10-28 带 app 上屏验证：桌面、终端、拼音输入、声音、上网都照常，沙箱里的 `ohm-fence-demo` 连主机的 Wi-Fi 控制名得到 EACCES。原计划的两条内核级边界都不成立：(1) 我们自己的 SELinux MAC 域——运行时加载已于 2026-10-27 证伪（连开机原版 developer_policy 都 EINVAL，见 3(b) 第 1 条），只有鸿蒙把它签进系统策略才成立；(2) **C 方案（seccomp + ptrace supervisor 的内核级自主出站拦截）——评估后暂不实现**（会明显拖累桌面性能，且目前的 residual 并非已证实的漏洞），仅作文档记录的可选加固、设计从略、未实现。根治仍需鸿蒙按 netns 隔离抽象 socket，或把我们的策略模块签进系统。
+15. ~~抽象 Unix socket 按 net namespace 隔离~~ **撤回（2026-10-28）：不需要请鸿蒙做。** 经实测，HongMeng 的抽象 Unix socket 本来就按 network namespace 隔离，跟 Linux 一致：沙箱的进程一旦进入自己的 netns，就连不到主机上的 wpa_supplicant、teecd 等抽象 socket。
+   - 证据：给 `ohm-capdrop --enter` 补上加入 net 之后，用围栏放行的 `ohmsbx-` 名字双向测试（主机监听、沙箱里连；沙箱里监听、主机连），都是 Connection refused。
+   - 之前"抽象名全局共享"的结论是测错了：做测试的进程经 `ohm-sandbox run` 进去，当时并没有加入沙箱的 netns，实际是在主机网络里测的。
+   - 对沙箱的意义：真正的边界是 net namespace（补丁已完成、暂缓启用，见 1.5）；libc 垫片 ohm-abstract-fence 是多余的冗余层（无害，保留但非必需）；abstract-sockets-ohdev.md 的风险清单前提有误，已标作废。
 16. **SOCK_SEQPACKET 上 `recvfrom(MSG_PEEK|MSG_TRUNC)` 按 Linux 的方式返回整包长度。**
    - 为什么：Linux 上带 MSG_TRUNC 时返回值是整个包的长度，缓冲区为空也一样；HongMeng 只返回实际拷贝的字节数，空缓冲区时返回 0 或 EFAULT。runc 父子进程的同步 socket 就靠这个先探包长，结果把第一个包当成"对端已关闭"：init 发回来的任何报错都被吞掉，只剩 `procReady not received`。
    - 复现：socketpair(AF_UNIX, SOCK_SEQPACKET) 写 26 字节，`recvfrom(fd, NULL, 0, MSG_PEEK|MSG_TRUNC)` 得 EFAULT，1 字节缓冲区得 1（10-28 ohdev，tools/seqprobe）。

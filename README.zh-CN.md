@@ -85,7 +85,7 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-28 12:28 PDT）
+## 进展（每小时更新；最近一次：2026-10-28 13:28 PDT）
 
 现在：演示收敛成一个干净的动态展示页 —— [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app)，视频命名统一、说明口径诚实（之前新旧混在一起的已归档、未删）。在此之前，权限验收查出我们自己之前两个结论是错的，都已在文档里更正。沙箱的权限控制（`policy.conf`）已验证并提交。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
 

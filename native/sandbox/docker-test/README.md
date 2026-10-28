@@ -12,6 +12,15 @@
 
 每一步前后宿主的 mountinfo 里都没有沙箱的挂载。
 
+网络隔离是实测出来的，不是推出来的（10-28，netcheck.sh）：
+
+- netns 编号：宿主 pid 1 和宿主 shell 都是 `net:[4026540029]`；dockerd 和 `--network host` 的容器是 `net:[4026532151]`（从宿主看容器进程也是这个）；`--network none` 的容器是 `net:[4026532162]`；pasta 自己在宿主的 netns 里。
+- 宿主 127.0.0.1:18557 上起了一个真监听（lprobe）。宿主 curl 能拿到 `host-secret`。
+- 容器用 `--network host` 和 `--network none`，分别连 127.0.0.1、网关 192.168.10.1、宿主的 wlan0 地址 192.168.10.104 的 18557，全部失败（refused 或 unreachable）。监听端只记到宿主自己那一次连接。
+- 容器出站正常。
+
+不设 NET 时 dockerd 和宿主共用网络，这时 `--network host` 的容器就能连宿主 127.0.0.1。demo.sh 发现 dockerd 和宿主同一个 netns 会拒绝运行。
+
 dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root），根目录只看得到 `/data/local/ohm-docker-test/root`。不改 iptables（`--iptables=false --bridge=none`）。容器用 `--network none`，或者用 `--network host`；后者共享的是 dockerd 所在的网络：
 
 - `NET=pasta`（推荐）：dockerd 在自己的 net namespace 里，经 pasta（passt.top，原生沙箱的那份编译，`tools/passt`，必须用 `tools/pasta` 这个名字运行）接出去。出站走宿主 socket，不往里转发任何端口，宿主的 127.0.0.1 不可达。
@@ -48,6 +57,7 @@ sh stop.sh   # 只停 dockerd.pid 和 pasta.pid 里记的进程
 | start.sh / stop.sh | 启动 dockerd（独立 mount ns，`NET=pasta` 时再加独立 net ns 和 pasta）/ 停止 |
 | demo.sh | 三步演示（hello-world、nginx、连不到宿主 127.0.0.1），自己起停 dockerd；脚本、start.sh、stop.sh 都要放在 ohdev 的 `/data/local/ohm-docker-test/` 下。见 docs/demo-operator.zh-CN.md 的"沙箱里的 Docker" |
 | lprobe.go | demo.sh 第 3 步用的宿主侧服务：只监听 127.0.0.1:18081，40 秒后退出（编出来放 `tools/lprobe`） |
+| netcheck.sh | 网络隔离实测：列出各 netns 编号，在宿主 127.0.0.1:18557 起真监听（`tools/lprobe18557`，lprobe.go 改端口和 90 秒），从容器连 127.0.0.1、网关、宿主局域网地址 |
 | render-shots.py | 把 demo.sh 的真实输出画成 docs/img/docker-test 下的图 |
 
 本目录不放二进制。

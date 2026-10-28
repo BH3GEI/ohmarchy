@@ -8,6 +8,11 @@ if ! { [ -s $S/dockerd.pid ] && kill -0 $(cat $S/dockerd.pid) 2>/dev/null; }; th
   NET=pasta sh $S/start.sh > $S/log/demo-start.txt 2>&1 || { echo "start failed: $S/log/demo-start.txt"; exit 1; }
 fi
 p=$(cat $S/dockerd.pid)
+# step 2 and 3 only mean something if dockerd has a network namespace of its own
+# (NET=pasta); a dockerd started without it shares the host's network
+if [ "$(readlink /proc/$p/ns/net)" = "$(readlink /proc/self/ns/net)" ]; then
+  echo "dockerd $p shares the host's network (not started with NET=pasta): sh $S/stop.sh, then run this again"; exit 1
+fi
 docker() { timeout 120 nsenter -t $p -m -- /usr/bin/docker -H unix:///run/docker.sock "$@" 2>&1; }
 
 say "1. hello-world in the sandbox (Docker test build on the HongMeng kernel, no VM)"

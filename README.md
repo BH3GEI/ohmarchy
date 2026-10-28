@@ -106,19 +106,21 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 19:28 PDT)
+## Progress (updated hourly; last: 2026-10-27 20:29 PDT)
 
-Now: the new native design's three gaps are each addressed on our side — a working mitigation or a container that runs, each backed by a demo, with the kernel-level root fixes filed as evidence-backed requests to HarmonyOS. The native sandbox v1 is feature-complete on screen, the demo was never touched. Everything is staged for a rehearsal recording of the four demos; the OSEasy live segment is deferred to the next reboot (see below). Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
+Now: the rehearsal is recorded — three live demos (native + Docker, native sandbox, 鸿融), each a short video plus selected screenshots in [docs/img/rehearsal/](docs/img/rehearsal/) and a report. Two demo-blocking sandbox bugs the rehearsal exposed are fixed and the two steps re-shot. The sandbox's permission controls are being made configurable. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
 
-| Gap / task | Result |
+| Item | State |
 |---|---|
-| 1. Abstract sockets shared with host | **Fenced + demoable.** A libc egress fence (dc1626f, 661c51f) stops ordinary programs connecting to the host's abstract sockets; on screen `ohm-fence-demo` shows the host Wi-Fi control name returning EACCES and a sandbox-internal name connecting. Honest limits documented (static programs and the sandbox root bypass it; not a security boundary). Root fix is a HarmonyOS ask: namespace abstract sockets, or sign our policy in |
-| 2. Docker can't start a container | **Containers run** (a8d79da): hello-world, `alpine sh`, and nginx reached from another container, all confined to `/data/local/ohm-docker-test` with 0 host mounts after. The container network goes out through pasta but cannot reach the host's 127.0.0.1. runc patched only for HongMeng differences; the switches that genuinely weaken isolation (no devices cgroup, no cgroup limits, no seccomp, no container-to-container keyring split) are listed and labelled test-build. An optional on-screen Docker segment is in the operator manual (50fbde1, 7ffad38), clearly not yet wired into the sandbox app |
-| 3. Custom confinement domain won't load | **Confirmed impossible at runtime**, so it is a HarmonyOS ask with hard evidence: even re-loading the exact boot policy returns EINVAL; only a signed-in policy works |
-| B. OSEasy persistence | Protocol, minimal Linux agent (13 tests) and runbook ready; the on-device run is **blocked** (83ee983) because OSEasy can't read the ISO — the media filesystem forces 640/owner and the picker's file-access grant degraded after today's reboots/unlocks; a reboot resets it, so this is deferred to the next natural reboot |
-| Rehearsal | Plan ready; waiting to record the native, native-sandbox and 鸿融 demos; OSEasy shown from this morning's regression screenshots until the live segment can run |
+| Rehearsal | **Recorded** (a6b57e7, 512c4d4): native+Docker, native sandbox, 鸿融, each a per-second-screenshot video on the Mac plus a full cut; 21 selected screenshots in the repo, checked for secrets; report with measured timings. OSEasy shown from this morning's regression (can't read the ISO live — see below) |
+| Sandbox bugs found + fixed | sudo failed for lack of a pty → `Defaults !use_pty` in the sandbox image (d9b54cb); reset while open froze the picture (GL blit fails reusing the window in-process) → the sandbox app restarts its own process after a reset (250d17e). Both re-shot; demo app untouched |
+| Gap 1 abstract sockets | libc fence (demoable) + HarmonyOS ask |
+| Gap 2 Docker | containers run (hello-world, alpine, nginx with network), test-grade, documented |
+| Gap 3 confinement domain | runtime load impossible → HarmonyOS ask with evidence |
+| Permission controls configurable | **In progress**: a `policy.conf` the user edits (network, abstract-socket allowlist, shared host paths, capabilities, extra /dev), safe default, fail-closed on a bad file, each relaxation logged, an `ohm-sandbox policy check` to show what is in effect |
+| Deferred to next reboot | OSEasy persistence live run (OSEasy can't read the ISO after today's reboots/unlocks degraded the file-access grant) and autostart's boot step |
 
-Also: C 鸿融 demo-disk password and sudo/unlock verified; E waiting for boot-key tries; autostart verified except the reboot step.
+Also: 鸿融 demo-disk password + sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->
 
 What was tried and why other paths fail: [docs/findings.md](docs/findings.md).

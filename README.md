@@ -106,9 +106,9 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 23:30 PDT)
+## Progress (updated hourly; last: 2026-10-28 00:28 PDT)
 
-Now: making tomorrow's demo materials honest. Policy acceptance tests on the device turned up two of our own earlier claims that were wrong, and both are now corrected in the docs. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
+Now: making the demo materials honest. Policy acceptance tests on the device turned up two of our own earlier claims that were wrong, and both are now corrected in the docs. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
 
 | Item | State |
 |---|---|

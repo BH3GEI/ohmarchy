@@ -6,6 +6,7 @@
 #   ohm-sandbox start       mount the image in private mount/pid/ipc/uts/net namespaces
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
 #   ohm-sandbox net         connect the network again (after the PC changed networks)
+#   ohm-sandbox policy check   what policy.conf makes the next start do (policy.sh)
 #   ohm-sandbox snapshot    take the reset snapshot again (stopped)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
@@ -49,10 +50,18 @@ USER_=builder
 # perfmon 38, checkpoint_restore 40, setpcap 8
 DROP=27,21,16,17,22,25,20,26,32,33,34,12,30,37,35,36,9,39,38,40,8
 CAPDROP=/usr/local/sbin/ohm-capdrop  # copied into the image at start
+# policy.conf (policy.sh): network, shares, capabilities, devices, abstract names;
+# read at start, kept for the running sandbox in $S/run (DROP above is the default)
+. "$(dirname "$0")/policy.sh"
+# the bounding set the running sandbox got at its start
+run_drop() { cat "$S/run/drop" 2>/dev/null || echo "$DROP"; }
 
 alive() {
     [ -f "$PIDF" ] && P=$(cat "$PIDF") && [ "$({ cat "/proc/$P/comm"; } 2>/dev/null)" = catatonit ]
 }
+
+# a line in the helper's log, with the time
+plog() { echo "$(date '+%F %T') $*" | tee -a "$S/sandboxd.log"; }
 
 # end the process in pid file $1 if it still runs binary $2
 stop_pidf() {
@@ -121,13 +130,29 @@ start)
     # and without the app nothing in here listens on a socket.
     attached && { echo "refusing: $IMG is attached to a loop already"; exit 1; }
     rm -f "$PIDF"
-    nohup unshare -m -p -i -u -n -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
+    policy_load
+    policy_log
+    mkdir -p "$S/run"
+    policy_drop > "$S/run/drop"
+    policy_summary > "$S/run/policy.effective"
+    netns=-n; [ "$POL_NET" = host ] && netns=
+    POL_DROP=$(policy_drop) POL_SHARES="$POL_SHARES" POL_DEV="$POL_DEV" POL_ALLOW="$POL_ALLOW" \
+        nohup unshare -m -p -i -u $netns -f sh "$0" _session < /dev/null > "$S/sandbox.log" 2>&1 &
     i=0; while [ $i -lt 30 ] && ! alive; do sleep 1; i=$((i+1)); done
     alive && echo "started: $P" || { echo "failed to start"; cat "$S/sandbox.log"; exit 1; }
-    net_up
+    case "$POL_NET" in
+    pasta) net_up;;
+    off) echo "network: off (policy)";;
+    host) echo "network: the host's (policy: network = host)";;
+    esac
+    ;;
+policy)
+    [ "$2" = check ] || { echo "usage: ohm-sandbox policy check"; exit 2; }
+    policy_check
     ;;
 net)
     alive || { echo "not running"; exit 1; }
+    grep -q '^net=pasta ' "$S/run/policy.effective" 2>/dev/null || { echo "network is not pasta (policy)"; exit 1; }
     stop_pidf "$S/pasta.pid" "$S/bin/passt"
     net_up
     ;;
@@ -143,6 +168,19 @@ _session)
     trap 'cd /; umount -l "$R" 2>/dev/null; losetup -d "/dev/block/loop$n" 2>/dev/null; rm -f "$S/sandbox.loop"' EXIT
     mount -t ext4 -o nodev "/dev/block/loop$n" "$R"
     ip link set lo up || echo "loopback not up"
+    # host folders the policy shares (checked by policy.sh): nosuid, nodev; a read-only
+    # one that cannot be made read-only is left out, never shared writable
+    printf '%s' "$POL_SHARES" | while read -r h i m; do
+        [ -n "$h" ] || continue
+        mkdir -p "$R$i" && mount -o bind "$h" "$R$i" || { plog "share skipped: $h -> $i (bind failed)"; continue; }
+        o=remount,bind,nosuid,nodev; [ "$m" = ro ] && o=$o,ro
+        if mount -o "$o" "$R$i" 2>/dev/null && { [ "$m" = rw ] || ! touch "$R$i/.ohm-ro-test" 2>/dev/null; }; then
+            plog "share: $h -> $i $m"
+        else
+            rm -f "$R$i/.ohm-ro-test" 2>/dev/null
+            umount "$R$i"; plog "share skipped: $h -> $i $m (could not be made $m)"
+        fi
+    done
     mount -t proc -o nosuid,nodev,noexec proc "$R/proc"
     # the kernel's knobs stay read-only (no sys_admin inside to remount them)
     mount -o bind "$R/proc/sys" "$R/proc/sys"; mount -o remount,bind,ro "$R/proc/sys"
@@ -162,12 +200,20 @@ _session)
         set -- $(stat -c '%t %T' /dev/system_heap2)
         mknod "$R/dev/dma_heap/system" c $((0x$1)) $((0x$2)); chmod 666 "$R/dev/dma_heap/system"
     fi
+    for d in $POL_DEV; do  # extra nodes the policy allows, numbers from the host's
+        [ -c "/dev/$d" ] || { plog "dev skipped: $d (not on the host)"; continue; }
+        mkdir -p "$(dirname "$R/dev/$d")"
+        set -- $(stat -c '%t %T' "/dev/$d")
+        mknod "$R/dev/$d" c $((0x$1)) $((0x$2)); chmod 666 "$R/dev/$d"
+    done
     ln -sf /proc/self/fd "$R/dev/fd"
     ln -sf /proc/self/fd/0 "$R/dev/stdin"; ln -sf /proc/self/fd/1 "$R/dev/stdout"; ln -sf /proc/self/fd/2 "$R/dev/stderr"
     mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs "$R/tmp"
     mount -t tmpfs -o mode=755,nosuid,nodev tmpfs "$R/run"
     # abstract names bound inside, for ohm-abstract-fence: anyone may add, none list
     mkdir -m 1733 "$R/run/ohm-abstract"
+    # host names the policy lets programs connect to besides those (abstract_allow)
+    printf '%s\n' $POL_ALLOW > "$R/run/ohm-abstract-allow"; chmod 644 "$R/run/ohm-abstract-allow"
     mkdir -p "$R/usr/local/sbin" && cp "$S/bin/ohm-capdrop" "$R$CAPDROP" && chmod 755 "$R$CAPDROP"
     trap - EXIT
     cut -d' ' -f4 /proc/self/stat > "$PIDF"   # host pid of this shell (host procfs still)
@@ -181,7 +227,7 @@ _session)
     set +e
     echo "sandbox up on /dev/block/loop$n"
     # no host file stays open in here: init's stdio goes to the sandbox's own /dev/null
-    exec "$CAPDROP" "$DROP" -- /usr/bin/env -i /usr/bin/catatonit -P < /dev/null > /dev/null 2>&1
+    exec "$CAPDROP" "${POL_DROP:-$DROP}" -- /usr/bin/env -i /usr/bin/catatonit -P < /dev/null > /dev/null 2>&1
     ;;
 run|shell)
     alive || { echo "not running"; exit 1; }
@@ -189,7 +235,7 @@ run|shell)
     [ "$c" = shell ] && set -- /usr/bin/bash -l
     # ohm-capdrop joins the namespaces (the mount one last: it moves the process to the
     # image's root), drops the capabilities and runs the command in a child
-    exec "$S/bin/ohm-capdrop" --enter "$P" "$DROP" -- /usr/bin/env -i HOME=/root TERM=xterm-256color \
+    exec "$S/bin/ohm-capdrop" --enter "$P" "$(run_drop)" -- /usr/bin/env -i HOME=/root TERM=xterm-256color \
         LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/bin "$@"
     ;;
 status)
@@ -257,7 +303,7 @@ desktop)
         fi
     fi
     # the desktop runs as the user, with the sandbox's socket names
-    exec "$S/bin/ohm-capdrop" --enter "$P" "$DROP" -- /usr/bin/env -i HOME="$home" USER="$USER_" \
+    exec "$S/bin/ohm-capdrop" --enter "$P" "$(run_drop)" -- /usr/bin/env -i HOME="$home" USER="$USER_" \
         LOGNAME="$USER_" SHELL=/bin/bash LANG=en_US.UTF-8 XDG_RUNTIME_DIR="/run/user/$uid" \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/bin OHMARCHY_SOCKET_PREFIX="$PREFIX" \
         ${app_uid:+OHMARCHY_APP_UID="$app_uid"} HYPRLAND_SURFACELESS_GALLIUM_DRIVER=virpipe \

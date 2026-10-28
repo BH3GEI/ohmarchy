@@ -3,6 +3,9 @@
 // host's (abstract-sockets-ohdev.md). This refuses, with EACCES, connect(), sendto()
 // and sendmsg() to an abstract name unless
 //   - it starts with "ohmsbx-" (the sandbox's own names, shared with its app), or
+//   - it starts with a prefix the sandbox's policy allows (abstract_allow in
+//     policy.conf; the launcher writes them, one per line, to /run/ohm-abstract-allow),
+//     or
 //   - a process in the sandbox bound it (bind() here records each abstract name it
 //     binds in /run/ohm-abstract, the sandbox's own tmpfs), as X11 and others do.
 // File-path Unix sockets and network sockets are not touched.
@@ -24,6 +27,7 @@
 #include <unistd.h>
 
 #define REGISTRY "/run/ohm-abstract"
+#define ALLOW "/run/ohm-abstract-allow"
 #define OWN "ohmsbx-"
 #define REAL(name) static __typeof__(name) *real; if (!real) real = dlsym(RTLD_NEXT, #name)
 
@@ -50,9 +54,30 @@ static int registry_path(const char *name, size_t n, char *buf, size_t size)
     return 0;
 }
 
+static int has_prefix(const char *name, size_t n, const char *p, size_t pn)
+{
+    return pn > 0 && n >= pn && memcmp(name, p, pn) == 0;
+}
+
+// a prefix from the policy's list
+static int policy_allows(const char *name, size_t n)
+{
+    FILE *f = fopen(ALLOW, "re");
+    if (f == NULL)
+        return 0;
+    char line[128];
+    int ok = 0;
+    while (!ok && fgets(line, sizeof line, f) != NULL) {
+        line[strcspn(line, "\n")] = '\0';
+        ok = has_prefix(name, n, line, strlen(line));
+    }
+    fclose(f);
+    return ok;
+}
+
 static int allowed(const char *name, size_t n)
 {
-    if (n >= sizeof OWN - 1 && memcmp(name, OWN, sizeof OWN - 1) == 0)
+    if (has_prefix(name, n, OWN, sizeof OWN - 1) || policy_allows(name, n))
         return 1;
     char path[sizeof REGISTRY + 2 + 2 * 108];
     return registry_path(name, n, path, sizeof path) == 0 && access(path, F_OK) == 0;

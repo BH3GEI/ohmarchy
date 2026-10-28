@@ -1,0 +1,56 @@
+# The sandbox's policy: what Linux inside may reach. Read by `ohm-sandbox start`;
+# a change takes effect at the next start (the app's next opening). See it with
+#   ohm-sandbox policy check
+# Lives in /data/local/ohm-sandbox/policy.conf, outside the Linux image: Reset Linux
+# does not touch it; the installer puts this default there only when there is none.
+#
+# Format: one "key = value" per line; "#" starts a comment. `share` may be given on
+# several lines, every other key at most once. Anything not understood (an unknown
+# key, a bad value, a key twice) rejects the whole file: the sandbox then starts with
+# the strictest policy (no network at all) and says why in the helper's log.
+# Without this file the sandbox starts with the values below, which are the defaults.
+# Every value looser than the default is written to the log at each start
+# ("... relaxed ...").
+
+# network = pasta | off | host
+#   pasta  (default) a network of its own: the internet through pasta on the host; no
+#          port forwarded inward; the host's own services (127.0.0.1) out of reach.
+#   off    only loopback inside: no internet (pacman cannot download).
+#   host   HIGH RISK: the host's network itself; Linux reaches every service on the
+#          host's 127.0.0.1. Only if you mean to.
+#   A hard boundary (the kernel's network namespace).
+network = pasta
+
+# abstract_allow = name prefixes, space separated (letters, digits, . _ / -)
+#   Abstract Unix socket names on the host that programs inside may connect to, on
+#   top of the sandbox's own (ohmsbx-...) and those bound inside, which are always
+#   allowed. NOT a security boundary: best effort for programs that go through libc;
+#   statically linked programs and root inside can still connect to any name (see
+#   abstract-sockets-ohdev.md for what listens on the host).
+abstract_allow =
+
+# share = HOST_PATH  PATH_INSIDE  ro|rw        (one line per folder; none by default)
+#   A host folder shown inside Linux. Root inside can read (ro) or also change (rw)
+#   everything in it: share /storage/... and Linux sees those photos and files.
+#   Not allowed: /, /dev, /proc, /sys, /system, /vendor, /data itself, anything in
+#   /data/local/ohm-sandbox; inside, not /, /proc, /sys, /dev, /run, /tmp, /usr, /etc.
+#   Mounted nosuid, nodev. If a read-only share cannot be made read-only, it is left
+#   out (never shared writable instead). A hard boundary (mount namespace).
+#   Example:
+#   share = /storage/media/100/local/files/Docs/Shared  /mnt/shared  ro
+
+# cap_keep = capability names, space separated (none by default)
+#   Capabilities the sandbox normally loses that Linux inside may keep. Only these
+#   may be kept: net_admin syslog sys_tty_config linux_immutable perfmon
+#   checkpoint_restore wake_alarm block_suspend audit_read. Never: sys_admin,
+#   sys_module, sys_rawio, mknod, mac_override, mac_admin, bpf, sys_boot, sys_time,
+#   sys_pacct, audit_control, setpcap. A hard boundary (the bounding set).
+cap_keep =
+
+# cap_drop_extra = capability names (none by default): drop these too (stricter).
+cap_drop_extra =
+
+# dev = extra device nodes inside, from: fuse net/tun (none by default)
+#   fuse lets programs inside mount FUSE filesystems; net/tun makes network devices
+#   (inside the sandbox's own network; not with network = host). A hard boundary.
+dev =

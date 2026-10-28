@@ -67,7 +67,7 @@ done
 UDID=$UDID "$here/build-app.sh" > "$tmp/build.log" 2>&1 || { tail -20 "$tmp/build.log"; exit 1; }
 
 step "copy to $HOST"
-tar -cf "$tmp/files.tar" -C "$here" ohm-sandbox config-check.sh boot-serve.sh ohm-sandboxd.cfg ohm-abstract-fence.c ohm-fence-demo \
+tar -cf "$tmp/files.tar" -C "$here" ohm-sandbox config-check.sh boot-serve.sh ohm-sandboxd.cfg ohm-abstract-fence.c ohm-fence-demo policy.sh policy.conf.default \
     -C "$here/../desktop" ohime.c ohmarchy-audio-relay.c ohmarchy-desktop hongmeng-ptypeer.c \
     -C "$here/../desktop/src/Hyprland/protocols" input-method-unstable-v2.xml \
     -C "$tmp" ohm-capdrop ohm-sandboxd
@@ -99,11 +99,15 @@ rm -rf "${T:?}"; mkdir -p $T; tar -xf /data/local/tmp/ohm-sandbox-files.tar -C $
 sh -n $T/ohm-sandbox
 # the helper may be running (an update): stop it; files go in under a new name, then renamed
 [ -x $S/bin/ohm-sandbox ] && sh $S/bin/ohm-sandbox unserve > /dev/null
-for f in ohm-sandbox config-check.sh boot-serve.sh ohm-capdrop ohm-sandboxd; do
+for f in ohm-sandbox policy.sh config-check.sh boot-serve.sh ohm-capdrop ohm-sandboxd; do
     cp $T/$f $S/bin/$f.new && mv $S/bin/$f.new $S/bin/$f
 done
 cp $T/ohm-abstract-fence.c $T/ohm-fence-demo $T/ohime.c $T/ohmarchy-audio-relay.c $T/ohmarchy-desktop $T/hongmeng-ptypeer.c $T/input-method-unstable-v2.xml $S/src/
 cp $T/ohm-sandboxd.cfg $S/ohm-sandboxd.cfg
+# the policy: the commented default always; policy.conf only when there is none (the
+# user's own is kept, across updates and Reset Linux)
+cp $T/policy.conf.default $S/policy.conf.default
+[ -f $S/policy.conf ] || cp $T/policy.conf.default $S/policy.conf
 [ -x $S/bin/vtest-broker ] || cp /data/local/archtest/bin/vtest-broker $S/bin/vtest-broker
 chmod 755 $S/bin/*
 H=/data/local/tmp/ohm-sandbox-hap

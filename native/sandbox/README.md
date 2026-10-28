@@ -181,6 +181,46 @@ until then it runs from `ohm-sandbox serve`.
 To do: check the helper at the next reboot; Docker's start with its own capability
 set (a4).
 
+## Policy: what the user can loosen or tighten (policy.conf)
+
+`/data/local/ohm-sandbox/policy.conf` (commented default: `policy.conf.default`,
+parsed by `policy.sh`) sets, for the next start:
+
+| Key | Default | Boundary | Looser values |
+|---|---|---|---|
+| `network` | `pasta`: own network, internet, no host 127.0.0.1 | hard (network namespace) | `host`: the host's network, its 127.0.0.1 reachable (HIGH RISK); `off` is stricter |
+| `share` | none | hard (mount namespace; nosuid, nodev) | host folders, `ro` or `rw`; a read-only one that cannot be made read-only is left out |
+| `cap_keep` / `cap_drop_extra` | the bounding set above (`b18cecff`) | hard (bounding set) | keep one of net_admin, syslog, sys_tty_config, linux_immutable, perfmon, checkpoint_restore, wake_alarm, block_suspend, audit_read; never sys_admin, sys_module, sys_rawio, mknod, MAC, bpf, sys_boot, sys_time, sys_pacct, audit_control, setpcap |
+| `dev` | null zero full random urandom tty ptmx dma_heap | hard | `fuse`, `net/tun` (not with `network = host`) |
+| `abstract_allow` | `ohmsbx-` and names bound inside | **soft**: the fence above, libc only | more host name prefixes |
+
+The hard ones are enforced by the kernel for every program inside. `abstract_allow`
+only steers `ohm-abstract-fence`, which statically linked programs and root inside
+get around: it is not a boundary, and `policy check` says so.
+
+- **Fail-closed.** No file: the defaults (the same as `policy.conf.default`). Any
+  line not understood (unknown key, bad value, a key twice, a forbidden share or
+  capability): the whole file is rejected and the strictest policy applies (network
+  off, nothing else loosened); the helper's log says why. Never part of a file.
+- **Logged.** At each start, every value looser than the default is a line in
+  `sandboxd.log` (`network relaxed to host`, `share relaxed: ...`, `cap relaxed: keep
+  ...`, `dev relaxed: ...`, `abstract_allow relaxed: ...`), as is a rejected file.
+- **When.** Read at `start` (the app's opening); a change applies at the next start.
+  Reset Linux replaces the image, not this file; the installer writes it only when
+  there is none.
+- **`ohm-sandbox policy check`** prints, in plain words, what the next start will
+  apply: a summary line (defaults / from the file, N loosened / rejected, why), then
+  each item, hard or soft, loosened ones marked `!`, and whether the running sandbox
+  still has the previous policy. Exit status 1 for a rejected file.
+
+The default start is unchanged by this (checked on ohdev 2026-10-28: CapBnd
+`b18cecff`, pasta, the fence). The parser was checked on 11 cases (missing file,
+default file, five loosenings, and rejections for a key twice, sys_admin kept,
+/system shared, `..`, an unknown key, tun with host, a bad prefix). **Not yet checked
+on ohdev: each non-default value in a real start** (network off and host, shares and
+the read-only test, fuse, a kept capability, abstract_allow in the fence, a rejected
+file falling back to network off).
+
 ## sudo without its own pty (2026-10-28)
 
 Arch's sudo runs the command on a pty of its own (`use_pty`), and the sandbox has no

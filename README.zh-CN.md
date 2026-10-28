@@ -84,19 +84,19 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-27 20:29 PDT）
+## 进展（每小时更新；最近一次：2026-10-27 21:31 PDT）
 
-现在：彩排录完了——三样现场演示（原生 + Docker、新原生沙箱、鸿融），每样一段短视频，加精选截图（在 [docs/img/rehearsal/](docs/img/rehearsal/)）和一份报告。彩排逼出的两个演示拦路 bug 都修好、那两步重录了。沙箱的权限控制正在做成可配置。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。
+现在：把 ohdev 重启了一次，专门验两样只有真实开机当下才看得到的东西。D 先抓这次开机 init 有没有自动拉起沙箱助手（只读、第一个做）；抓完 B 再跑 OSEasy 持久化实机。彩排视频已经传上 GitHub。沙箱的权限控制正在做成可配置。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
 
 | 事项 | 状态 |
 |---|---|
-| 彩排 | **已录**（a6b57e7、512c4d4）：原生+Docker、新原生沙箱、鸿融，每样一段逐秒截图视频（在 Mac 上）外加一段全程；21 张精选截图进仓库、查过无密钥；报告带实测耗时。OSEasy 段用今早回归的截图（现场读不到安装盘，见下） |
+| 重启验证（正在机器上做） | ohdev 已重启、已解锁。**(1)** D 查这次开机 init 有没有自动拉起 `ohm-sandboxd`（`@ohmsbx-ctl` 应答 / 进程在跑 / boot-serve.log 有这次开机）——只读，先抓。**(2)** 然后 B 跑 OSEasy 持久化实机（装 Omarchy → 建标记文件 → 注入 agent → 握手 → 看 OSEasy 显示"开机"、标记文件还在） |
+| 彩排 | **已录+已上传**（a6b57e7、512c4d4）：原生+Docker、新原生沙箱、鸿融，每样一段逐秒截图视频外加一段全程，已传 GitHub（发布 rehearsal-20261028）；21 张精选截图进仓库、查过无密钥；报告带实测耗时 |
 | 发现并修好的沙箱 bug | sudo 因没有 pty 报错 → 沙箱镜像里加 `Defaults !use_pty`（d9b54cb）；开着时重置画面不回（同进程里没法重新接管窗口，GL 报错）→ 沙箱 app 重置后自己重启进程（250d17e）。两步都重录；演示版不碰 |
 | 缺口 1 喊话通道 | libc 围栏（能演示）+ 鸿蒙诉求 |
 | 缺口 2 Docker | 容器跑起来（hello-world、alpine、带网络的 nginx），测试版，已如实标注 |
 | 缺口 3 隔离规则 | 运行时加载不可能 → 有证据的鸿蒙诉求 |
 | 权限控制可配置 | **进行中**：一个用户能改的 `policy.conf`（网络、抽象 socket 白名单、共享宿主路径、能力、额外 /dev），默认安全，坏配置回落最严，每项放宽都记日志，`ohm-sandbox policy check` 一眼看到当前实际权限 |
-| 推迟到下次重启 | OSEasy 持久化现场（授权服务今天被重启/重解锁搞降级，OSEasy 读不到安装盘）、开机自起那一步 |
 
 另：鸿融演示盘密码 + sudo/解锁已验证；E 等人试开机按键。
 <!-- progress:end -->

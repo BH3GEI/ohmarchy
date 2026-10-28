@@ -106,19 +106,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 20:29 PDT)
+## Progress (updated hourly; last: 2026-10-27 21:31 PDT)
 
-Now: the rehearsal is recorded — three live demos (native + Docker, native sandbox, 鸿融), each a short video plus selected screenshots in [docs/img/rehearsal/](docs/img/rehearsal/) and a report. Two demo-blocking sandbox bugs the rehearsal exposed are fixed and the two steps re-shot. The sandbox's permission controls are being made configurable. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027).
+Now: ohdev has been rebooted so the two things that can only be seen at a real boot get verified. D is capturing whether init auto-started the sandbox helper this boot (read-only, first); then B runs the OSEasy-persistence live pass. The rehearsal videos are now on GitHub. The sandbox's permission controls are being made configurable. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
 
 | Item | State |
 |---|---|
-| Rehearsal | **Recorded** (a6b57e7, 512c4d4): native+Docker, native sandbox, 鸿融, each a per-second-screenshot video on the Mac plus a full cut; 21 selected screenshots in the repo, checked for secrets; report with measured timings. OSEasy shown from this morning's regression (can't read the ISO live — see below) |
+| Reboot verification (on the device now) | ohdev rebooted and unlocked. **(1)** D is checking whether init auto-started `ohm-sandboxd` this boot (`@ohmsbx-ctl` answering / process up / boot-serve.log has this boot) — read-only, captured first. **(2)** then B runs the OSEasy-persistence live pass (install Omarchy → marker file → inject agent → handshake → verify OSEasy shows "开机" and the marker survives) |
+| Rehearsal | **Recorded + uploaded** (a6b57e7, 512c4d4): native+Docker, native sandbox, 鸿融, each a per-second-screenshot video plus a full cut, now on GitHub (release rehearsal-20261028); 21 selected screenshots in the repo, checked for secrets; report with measured timings |
 | Sandbox bugs found + fixed | sudo failed for lack of a pty → `Defaults !use_pty` in the sandbox image (d9b54cb); reset while open froze the picture (GL blit fails reusing the window in-process) → the sandbox app restarts its own process after a reset (250d17e). Both re-shot; demo app untouched |
 | Gap 1 abstract sockets | libc fence (demoable) + HarmonyOS ask |
 | Gap 2 Docker | containers run (hello-world, alpine, nginx with network), test-grade, documented |
 | Gap 3 confinement domain | runtime load impossible → HarmonyOS ask with evidence |
 | Permission controls configurable | **In progress**: a `policy.conf` the user edits (network, abstract-socket allowlist, shared host paths, capabilities, extra /dev), safe default, fail-closed on a bad file, each relaxation logged, an `ohm-sandbox policy check` to show what is in effect |
-| Deferred to next reboot | OSEasy persistence live run (OSEasy can't read the ISO after today's reboots/unlocks degraded the file-access grant) and autostart's boot step |
 
 Also: 鸿融 demo-disk password + sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->

@@ -84,19 +84,19 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-27 21:31 PDT）
+## 进展（每小时更新；最近一次：2026-10-27 22:11 PDT）
 
-现在：把 ohdev 重启了一次，专门验两样只有真实开机当下才看得到的东西。D 先抓这次开机 init 有没有自动拉起沙箱助手（只读、第一个做）；抓完 B 再跑 OSEasy 持久化实机。彩排视频已经传上 GitHub。沙箱的权限控制正在做成可配置。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
+现在：把明天的演示材料改诚实。权限验收时查出我们自己之前两个结论是错的，都已在文档里更正。沙箱的权限控制（`policy.conf`）已验证并提交。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
 
 | 事项 | 状态 |
 |---|---|
-| 重启验证（正在机器上做） | ohdev 已重启、已解锁。**(1)** D 查这次开机 init 有没有自动拉起 `ohm-sandboxd`（`@ohmsbx-ctl` 应答 / 进程在跑 / boot-serve.log 有这次开机）——只读，先抓。**(2)** 然后 B 跑 OSEasy 持久化实机（装 Omarchy → 建标记文件 → 注入 agent → 握手 → 看 OSEasy 显示"开机"、标记文件还在） |
-| 彩排 | **已录+已上传**（a6b57e7、512c4d4）：原生+Docker、新原生沙箱、鸿融，每样一段逐秒截图视频外加一段全程，已传 GitHub（发布 rehearsal-20261028）；21 张精选截图进仓库、查过无密钥；报告带实测耗时 |
-| 发现并修好的沙箱 bug | sudo 因没有 pty 报错 → 沙箱镜像里加 `Defaults !use_pty`（d9b54cb）；开着时重置画面不回（同进程里没法重新接管窗口，GL 报错）→ 沙箱 app 重置后自己重启进程（250d17e）。两步都重录；演示版不碰 |
-| 缺口 1 喊话通道 | libc 围栏（能演示）+ 鸿蒙诉求 |
-| 缺口 2 Docker | 容器跑起来（hello-world、alpine、带网络的 nginx），测试版，已如实标注 |
-| 缺口 3 隔离规则 | 运行时加载不可能 → 有证据的鸿蒙诉求 |
-| 权限控制可配置 | **进行中**：一个用户能改的 `policy.conf`（网络、抽象 socket 白名单、共享宿主路径、能力、额外 /dev），默认安全，坏配置回落最严，每项放宽都记日志，`ohm-sandbox policy check` 一眼看到当前实际权限 |
+| 更正：沙箱网络隔离 | **之前写错了，现已改诚实**（1e54663）。`ohm-capdrop --enter` 漏加网络命名空间，所以经 `ohm-sandbox run` 起的进程（桌面、终端、app）其实跟主机共享网络；以前"连不到 127.0.0.1"是在主机网络里测的、碰巧没人监听才过。逐沙箱的独立网络是一个已完成、命令行验过的补丁，但暂缓启用（显示/声音/输入法桥要先补一个主机侧小门——演示后做）。演示改成演真实边界：看不到主机文件（mount 命名空间）、看不到主机进程（pid 命名空间） |
+| 更正：撤回一条鸿蒙诉求 | **好消息**（1e54663）：HongMeng 本来就按网络命名空间隔离抽象 socket，跟 Linux 一样（实测）。原来请他们做这个的诉求（handover 第 15 条）撤回；那道 libc 围栏现在只是多余的一层、不是边界 |
+| 权限控制可配置 | **已完成+已验证**（fdaa81b）：用户能改的 `policy.conf`（网络、抽象 socket 白名单、共享宿主路径、能力、额外 /dev），默认安全，坏配置回落最严，每项放宽记日志，`ohm-sandbox policy check`。上机实测：dev=fuse、保留/增删能力、抽象 socket 白名单、坏文件 fail-closed、读写共享都可用；只读共享用不了（HongMeng 不让把 bind 重挂成只读） |
+| Docker 网络隔离 | **实测为真**（17f7fa0、3cefa2c）：用 `NET=pasta` 时 dockerd 和容器在 Docker 自己的网络命名空间；容器连不到主机 127.0.0.1 上真实存在的监听、也连不到主机局域网地址（先确认有监听再测连接）。`demo.sh` 发现 dockerd 跟主机同网就拒绝运行 |
+| 开机自起 | 这次开机 init 确实拉起了 `ohm-sandboxd`（`/system` 配置有效）；撞到一个真 bug（boot-serve 的 `bm dump` 在 init 上下文拿不到 uid），现场改读 app 的 el1 目录属主修好（c3b077a）。"完全不用人管"还差下次重启确认一次 |
+| OSEasy 持久化 | **被设备挡住、不是我们代码的问题**（7194b6b）：重启后 OSEasy 的文件选择器枚举不到用户文件（系统文件管理能），是 OSEasy 侧重启不恢复、而且一次比一次差的授权问题。协议逆向+agent+runbook 都就绪，等一次干净环境 |
+| 彩排 | **已录+已上传**（a6b57e7）：三样演示，视频在 GitHub（发布 rehearsal-20261028），21 张截图，报告 |
 
 另：鸿融演示盘密码 + sudo/解锁已验证；E 等人试开机按键。
 <!-- progress:end -->

@@ -106,19 +106,19 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-27 21:31 PDT)
+## Progress (updated hourly; last: 2026-10-27 22:11 PDT)
 
-Now: ohdev has been rebooted so the two things that can only be seen at a real boot get verified. D is capturing whether init auto-started the sandbox helper this boot (read-only, first); then B runs the OSEasy-persistence live pass. The rehearsal videos are now on GitHub. The sandbox's permission controls are being made configurable. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
+Now: making tomorrow's demo materials honest. Policy acceptance tests on the device turned up two of our own earlier claims that were wrong, and both are now corrected in the docs. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
 
 | Item | State |
 |---|---|
-| Reboot verification (on the device now) | ohdev rebooted and unlocked. **(1)** D is checking whether init auto-started `ohm-sandboxd` this boot (`@ohmsbx-ctl` answering / process up / boot-serve.log has this boot) — read-only, captured first. **(2)** then B runs the OSEasy-persistence live pass (install Omarchy → marker file → inject agent → handshake → verify OSEasy shows "开机" and the marker survives) |
-| Rehearsal | **Recorded + uploaded** (a6b57e7, 512c4d4): native+Docker, native sandbox, 鸿融, each a per-second-screenshot video plus a full cut, now on GitHub (release rehearsal-20261028); 21 selected screenshots in the repo, checked for secrets; report with measured timings |
-| Sandbox bugs found + fixed | sudo failed for lack of a pty → `Defaults !use_pty` in the sandbox image (d9b54cb); reset while open froze the picture (GL blit fails reusing the window in-process) → the sandbox app restarts its own process after a reset (250d17e). Both re-shot; demo app untouched |
-| Gap 1 abstract sockets | libc fence (demoable) + HarmonyOS ask |
-| Gap 2 Docker | containers run (hello-world, alpine, nginx with network), test-grade, documented |
-| Gap 3 confinement domain | runtime load impossible → HarmonyOS ask with evidence |
-| Permission controls configurable | **In progress**: a `policy.conf` the user edits (network, abstract-socket allowlist, shared host paths, capabilities, extra /dev), safe default, fail-closed on a bad file, each relaxation logged, an `ohm-sandbox policy check` to show what is in effect |
+| Correction: sandbox network isolation | **Was wrong, now honest** (1e54663). `ohm-capdrop --enter` did not join the net namespace, so processes started by `ohm-sandbox run` (desktop, terminal, apps) share the host network; earlier "can't reach 127.0.0.1" checks ran in the host netns and passed by coincidence. Per-sandbox netns is a finished, CLI-verified patch held back (the display/audio/ime bridge needs a host-side door first — post-demo). Demo now shows the real boundaries: can't see host files (mount ns) or host processes (pid ns) |
+| Correction: a HarmonyOS ask withdrawn | **Good news** (1e54663): HongMeng already isolates abstract sockets per network namespace, like Linux (measured). The ask to add that (handover item 15) is withdrawn; the libc fence is now a redundant layer, not the boundary |
+| Permission controls configurable | **Done + verified** (fdaa81b): a `policy.conf` the user edits (network, abstract-socket allowlist, shared host paths, capabilities, extra /dev), safe default, fail-closed on a bad file, each relaxation logged, `ohm-sandbox policy check`. On-device: dev=fuse, cap_keep, abstract_allow, broken-file fail-closed, read-write share all work; read-only share unusable (HongMeng won't remount a bind read-only) |
+| Docker network isolation | **Verified real** (17f7fa0, 3cefa2c): with `NET=pasta`, dockerd and containers get Docker's own net namespace; containers can't reach a real listener on the host's 127.0.0.1 or LAN address (measured first-listener-then-connect). `demo.sh` refuses to run if dockerd shares the host netns |
+| Autostart | init started `ohm-sandboxd` this boot (the `/system` cfg works); a real bug (boot-serve's `bm dump` gets no uid in init's context) was fixed live by reading the app's el1 dir owner (c3b077a). Full hands-off needs one more reboot to confirm |
+| OSEasy persistence | **Blocked by the device, not our code** (7194b6b): after reboot OSEasy's picker can't enumerate user files (system Files app can) — an OSEasy-side grant that doesn't restore across reboot, and gets worse each reboot. Protocol work + agent + runbook ready; needs one clean environment |
+| Rehearsal | **Recorded + uploaded** (a6b57e7): three demos, videos on GitHub (release rehearsal-20261028), 21 screenshots, report |
 
 Also: 鸿融 demo-disk password + sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->

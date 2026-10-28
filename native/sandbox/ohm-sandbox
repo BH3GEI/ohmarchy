@@ -214,6 +214,11 @@ grep -q libhongmeng-ptypeer /etc/ld.so.preload || echo /usr/local/lib/libhongmen
 gcc -O2 -shared -fPIC -o /usr/local/lib/libohm-abstract-fence.so ohm-abstract-fence.c -ldl
 grep -q libohm-abstract-fence /etc/ld.so.preload || echo /usr/local/lib/libohm-abstract-fence.so >> /etc/ld.so.preload
 install -m 755 ohm-fence-demo /usr/local/bin/ohm-fence-demo
+# sudo opens a pty of its own for the command (use_pty) and finds no /dev/pts node in
+# here: it runs the command on the terminal it was started from instead
+printf "Defaults !use_pty\n" > /etc/sudoers.d/ohm-no-pty
+chmod 440 /etc/sudoers.d/ohm-no-pty
+visudo -c -q
 echo "helpers built"'
     ;;
 build-pasta)

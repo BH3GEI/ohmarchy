@@ -181,6 +181,17 @@ until then it runs from `ohm-sandbox serve`.
 To do: check the helper at the next reboot; Docker's start with its own capability
 set (a4).
 
+## sudo without its own pty (2026-10-28)
+
+Arch's sudo runs the command on a pty of its own (`use_pty`), and the sandbox has no
+`/dev/pts` nodes: sudo in the terminal stopped with "unable to allocate pty"
+(rehearsal, on screen). `build-helpers` writes `/etc/sudoers.d/ohm-no-pty`
+(`Defaults !use_pty`), in the reset snapshot: the command runs on the terminal sudo was
+started from. What that gives up: the separate pty keeps a command run as root from
+pushing keystrokes into the user's terminal after it ends (TTY injection); here that
+terminal is the sandbox's own, so the loss is small. Checked: sudo in a pty, as the
+sandbox's user, asks for the password and runs.
+
 ## Abstract sockets: the fence (2026-10-28)
 
 The aim: the sandbox's own processes do not connect to the host's abstract Unix

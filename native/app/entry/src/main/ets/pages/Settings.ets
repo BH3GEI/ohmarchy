@@ -263,7 +263,7 @@ struct Settings {
             this.rows = r;
           })
 
-          this.section('Docker', '在 Linux 里用 docker（路线 I 的内核 docker）。高风险：docker 的服务端还没有强制限制，沙箱里的程序借它能拿到本机的 root。')
+          this.section('Docker', '在 Linux 里用 docker（路线 I 的内核 docker）。沙箱里的程序借它拿到的是 dockerd 里的 root，出不了 docker 自己的目录和网络；容器之间的隔离是测试级。')
           Row() {
             Toggle({ type: ToggleType.Switch, isOn: this.docker })
               .onChange((on: boolean) => {
@@ -273,7 +273,7 @@ struct Settings {
                 }
                 promptAction.showDialog({
                   title: '打开 Docker？',
-                  message: '高风险：沙箱里的程序借 docker 能拿到本机的 root，直到 docker 的服务端加上强制限制。',
+                  message: '沙箱里的程序能用 docker：权限比现在多一层（dockerd 里的 root），但出不了 docker 自己的目录和网络。下次打开沙箱生效。',
                   buttons: [{ text: '取消', color: TEXT }, { text: '打开', color: RED }]
                 }).then((r: promptAction.ShowDialogSuccessResponse) => {
                   this.docker = r.index === 1;

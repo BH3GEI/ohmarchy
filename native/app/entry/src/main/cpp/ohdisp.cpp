@@ -53,6 +53,21 @@ const int kPort = 5900;
 
 std::mutex g_winMu;
 OHNativeWindow *g_win = nullptr;
+
+// The refresh-rate vote (Init): 120 Hz while frames come, 10 Hz after a second without.
+// Input raises it at once: from the frame callback alone (10 a second when idle) the
+// first key after a pause waited up to a tenth of a second for the display.
+OH_NativeXComponent *g_rateNc = nullptr;
+bool g_rateFast = true;
+
+void RateUp()
+{
+    if (!g_rateFast && g_rateNc != nullptr) {
+        OH_NativeXComponent_ExpectedRateRange r{60, 120, 120};
+        OH_NativeXComponent_SetExpectedFrameRateRange(g_rateNc, &r);
+        g_rateFast = true;
+    }
+}
 uint64_t g_surfW = 0, g_surfH = 0;
 
 std::mutex g_sendMu;
@@ -658,6 +673,7 @@ void ResetMods();
 
 void OnTouch(OH_NativeXComponent *c, void *window)
 {
+    RateUp();
     OH_NativeXComponent_TouchEvent ev;
     if (OH_NativeXComponent_GetTouchEvent(c, window, &ev) != 0) {
         return;
@@ -688,6 +704,7 @@ void OnTouch(OH_NativeXComponent *c, void *window)
 
 void OnMouse(OH_NativeXComponent *c, void *window)
 {
+    RateUp();
     OH_NativeXComponent_MouseEvent ev;
     if (OH_NativeXComponent_GetMouseEvent(c, window, &ev) != 0) {
         return;
@@ -776,6 +793,7 @@ bool InputLog()
 const double kScrollScale = 1.0;
 void OnAxis(OH_NativeXComponent *, ArkUI_UIInputEvent *event, ArkUI_UIInputEvent_Type)
 {
+    RateUp();
     double v = OH_ArkUI_AxisEvent_GetVerticalAxisValue(event);
     double hz = OH_ArkUI_AxisEvent_GetHorizontalAxisValue(event);
     int32_t act = OH_ArkUI_AxisEvent_GetAxisAction(event);
@@ -1311,6 +1329,7 @@ napi_value TakeMinimize(napi_env env, napi_callback_info)
 
 bool OnKey(OH_NativeXComponent *c, void *)
 {
+    RateUp();
     OH_NativeXComponent_KeyEvent *ev = nullptr;
     if (OH_NativeXComponent_GetKeyEvent(c, &ev) != 0 || ev == nullptr) {
         return false;
@@ -1642,24 +1661,24 @@ napi_value Init(napi_env env, napi_value exports)
     // presented as fast as the display takes them. The vote needs a frame callback,
     // which then runs on every vsync: after a second without new frames the vote
     // drops to 10 Hz (an idle desktop costs the app almost nothing), and the first
-    // new frame raises it again.
+    // new frame, or any input (RateUp), raises it again.
     OH_NativeXComponent_ExpectedRateRange rate{60, 120, 120};
+    g_rateNc = nc;
     OH_NativeXComponent_RegisterOnFrameCallback(nc, [](OH_NativeXComponent *c, uint64_t ts, uint64_t) {
         static uint64_t seen = 0, changed = 0;
-        static bool fast = true;
         uint64_t frames = g_blits + GpuPresents();
         if (frames != seen) {
             seen = frames;
             changed = ts;
-            if (!fast) {
+            if (!g_rateFast) {
                 OH_NativeXComponent_ExpectedRateRange r{60, 120, 120};
                 OH_NativeXComponent_SetExpectedFrameRateRange(c, &r);
-                fast = true;
+                g_rateFast = true;
             }
-        } else if (fast && ts - changed > 1000000000ULL) {
+        } else if (g_rateFast && ts - changed > 1000000000ULL) {
             OH_NativeXComponent_ExpectedRateRange r{1, 10, 10};
             OH_NativeXComponent_SetExpectedFrameRateRange(c, &r);
-            fast = false;
+            g_rateFast = false;
         }
     });
     OH_NativeXComponent_SetExpectedFrameRateRange(nc, &rate);

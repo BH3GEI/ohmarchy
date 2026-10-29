@@ -160,7 +160,7 @@ policy_relaxations() {
     done
     for c in $POL_KEEP; do echo "cap relaxed: keep $c"; done
     for d in $POL_DEV; do echo "dev relaxed: $d"; done
-    [ "$POL_DOCKER" = on ] && echo "docker relaxed to on (HIGH RISK: docker's root reaches past the sandbox)"
+    [ "$POL_DOCKER" = on ] && echo "docker relaxed to on (dockerd's root, bounded to ohm-docker-test and its own network)"
 }
 
 # into the helper's log (and the start output)
@@ -208,7 +208,7 @@ policy_check() {
     echo "  /dev      null zero full random urandom tty ptmx dma_heap${POL_DEV:+ $POL_DEV}  [硬]"
     for d in $POL_DEV; do echo "! /dev      $d  [硬] 比默认多一个设备。"; done
     if [ "$POL_DOCKER" = on ]; then
-        echo "! Docker    on        [硬] HIGH RISK：沙箱里的程序能用 docker，而 docker 的服务端还没有强制限制，借它可以拿到本机的 root。"
+        echo "! Docker    on        [硬] 沙箱里的程序能用 docker：拿到的是 dockerd 里的 root，出不了 ohm-docker-test 目录和它自己的网络（服务端拒绝 --privileged、加能力、主机 pid/ipc、任意 bind 挂载）。容器之间的隔离是测试级（没有 seccomp、没有 cgroup 限制）。"
     else
         echo "  Docker    off       沙箱里用不了 docker。"
     fi

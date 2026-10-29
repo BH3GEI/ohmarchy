@@ -265,7 +265,8 @@ struct Settings {
 
           this.section('Docker', '在 Linux 里用 docker（直接跑在鸿蒙内核上的 docker，不是虚拟机）。沙箱里的程序借它拿到的是 dockerd 里的 root，出不了 docker 自己的目录和网络；容器之间的隔离是测试级。')
           Row() {
-            Toggle({ type: ToggleType.Switch, isOn: this.docker })
+            // two-way, so that 取消 below turns the switch itself back off, not only the value
+            Toggle({ type: ToggleType.Switch, isOn: $$this.docker })
               .onChange((on: boolean) => {
                 if (!on) {
                   this.docker = false;

@@ -35,7 +35,11 @@ is a plain Alt again. In the VMs (parts 2 and 3) Super is the Windows key as usu
 The native-app version, "Omarchy（原生应用）" (pink icon; not part of this demo),
 opens full screen: Alt+Tab switches away, Ctrl+Alt+Escape minimizes it, and
 "关闭窗口" in its dock icon's menu closes it (Linux stops with it). "Reset Linux"
-in the same menu puts Linux back as installed, after asking.
+in the same menu puts Linux back as installed, after asking. Its 权限设置
+(settings) page has a docker switch, off by default; switched on, `docker` in the
+app's terminal is kernel-level Docker: on the HarmonyOS kernel, no VM, the escape
+hatches (privileged, added capabilities, host pid/ipc, host directories...) locked
+for both run and build, and test-grade isolation.
 
 ## Order (about 10 min)
 

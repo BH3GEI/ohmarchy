@@ -19,6 +19,13 @@ hl.monitor({
 -- the swapchain on the app's present path; until that is found, full frames.
 hl.config({ debug = { damage_tracking = 1 } })
 
+-- One pointer: the display app's window already shows HarmonyOS's own, which follows
+-- the hand at once. Hyprland's here is a software cursor drawn into each frame (the
+-- headless backend takes no hardware cursor), so it trailed behind as a second one.
+-- Native route only (this file); until the cursor's image is forwarded to the host's
+-- pointer, keeping its shapes.
+hl.config({ cursor = { invisible = true } })
+
 -- Three-finger touchpad swipes switch workspaces (the display app forwards them;
 -- Omarchy ships this gesture commented out in input.lua).
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })

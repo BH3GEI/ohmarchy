@@ -21,7 +21,7 @@
 
 不设 NET 时 dockerd 和宿主共用网络，这时 `--network host` 的容器就能连宿主 127.0.0.1。demo.sh 发现 dockerd 和宿主同一个 netns 会拒绝运行。
 
-dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root），根目录只看得到 `/data/local/ohm-docker-test/root`。不改 iptables（`--iptables=false --bridge=none`）。容器用 `--network none`，或者用 `--network host`；后者共享的是 dockerd 所在的网络：
+dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root），根目录只看得到 `/data/local/ohm-docker-test/root`。从 10-29 起它们也有自己的 pid ns：dockerd 的 /proc 里只有它自己和 containerd，看不到宿主进程，所以也摸不到宿主进程的 /proc/<pid>/root。不改 iptables（`--iptables=false --bridge=none`）。容器用 `--network none`，或者用 `--network host`；后者共享的是 dockerd 所在的网络：
 
 - `NET=pasta`（推荐）：dockerd 在自己的 net namespace 里，经 pasta（passt.top，原生沙箱的那份编译，`tools/passt`，必须用 `tools/pasta` 这个名字运行）接出去。出站走宿主 socket，不往里转发任何端口，宿主的 127.0.0.1 不可达。
 - 不设 NET：dockerd 和 `--network host` 的容器共享宿主网络，能连宿主的 127.0.0.1。只适合最早的功能测试。
@@ -32,6 +32,35 @@ dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root）�
 - 没有资源限制，`docker pause`/`docker stats` 用不了。
 - 存储只能用 vfs，每层都是整份拷贝。
 - nginx 要加 `master_process off`（handover 3(a) 第 23 条）。
+
+## 在原生沙箱 app 里用（2026-10-29）
+
+沙箱 app 的 policy 里设 `docker = on`（默认 off）后，`ohm-sandbox start` 会跑 `sandbox-hook.sh start <沙箱 init>`，`stop` 时跑 `sandbox-hook.sh stop`。这两处钩子和 policy、设置页都由 native/sandbox 维护。hook 做三件事：
+
+- 起 dockerd（`NET=pasta SOCK=1 sh start.sh`）。dockerd 多开一个 socket `root/sbx/docker.sock`，它所在的目录只有 root 能进。
+- 在宿主上起 `tools/sockrelay`（sockrelay.go）。它在沙箱里放一个 `/run/docker.sock`（root:沙箱用户的组，0660），每个连接原样转给 dockerd，不做别的事。沙箱停了，它也跟着退出。
+- 沙箱里的 `DOCKER_HOST=unix:///run/docker.sock` 由沙箱的 profile.d 设。
+
+拿到这个 socket，就等于在 dockerd 里有了 root。所以容器能拿到什么，由 runc 强制检查（`ohm_lockdown.go`，没有开关）。所有容器都要经过 runc，包括 run、exec、build 和 plugin：
+
+| 请求 | 结果 |
+|---|---|
+| caps | 只给 Docker 默认那套，并且去掉 MKNOD（实测 CapBnd `a00425fb`，mknod 被拒）。多要的一律拒，比如 `--privileged`、`--cap-add`，`exec --privileged` 也一样 |
+| `--pid host`、`--ipc host` | 拒：容器必须有自己的 pid、ipc、mount ns |
+| bind 挂载 | 来源只能是 dockerd 自己的 `/var/lib/docker`、`/var/lib/containerd`，外加 `/usr/bin/docker-init`。`-v /:/h`、`-v /proc:/p`、`--mount type=bind` 都拒；具名卷可以用 |
+| `--security-opt systempaths=unconfined` | 拒：/proc 的 masked 和只读路径必须在 |
+| `--sysctl` | 只允许 `net.*` |
+| 块设备 | 拒。字符设备只有 dockerd 自己 /dev 里那几个（null、zero、full、random、urandom、tty） |
+| `--network host` | 放行：这里的 host 是 dockerd 的 netns，即 pasta 那个，不是宿主的。实测见下 |
+
+10-29 在 ohdev 上实测，用一个替身沙箱（自己的 mount ns 加 tmpfs 根，经 relay 的 socket 访问）：
+
+- 上表每一行都试过。被拒的那些，docker 打出 `ohm sandbox: ...` 的原因。hello-world、具名卷、`--init`、`--sysctl net.*`、`--device /dev/null`、普通 exec 都正常。
+- netns 编号：宿主 pid 1 和宿主 shell 都是 `net:[4026540029]`；dockerd 和 `--network host` 的容器都是 `net:[4026532881]`。
+- 宿主 127.0.0.1:18557 上起了真监听（lprobe18557）。宿主自己连得上，监听端记到了这一次。`--network host` 的容器连 127.0.0.1:18557 被拒（Connection refused），监听端没有第二条记录；同一个容器能上外网（TUNA）。
+- dockerd 的 pid ns 是 `pid:[4026532882]`，宿主是 `pid:[4026540030]`。它的 /proc 里只有 2 个进程。
+
+还没测：`docker build`（BuildKit 的容器也经过 runc，按理受同样的检查）；在真的沙箱 app 里以 builder 身份跑（等 native/sandbox 的钩子上机后再测）。
 
 ## 用法
 
@@ -55,6 +84,8 @@ sh stop.sh   # 只停 dockerd.pid 和 pasta.pid 里记的进程
 | build.sh | 拉源码、打补丁、交叉编译（Mac：Go、git，runc 还要 aarch64-linux-musl-gcc） |
 | setup.sh | 在 ohdev 上建 `/data/local/ohm-docker-test/root`，写 daemon.json。`DRY=1` 时只打印不执行 |
 | start.sh / stop.sh | 启动 dockerd（独立 mount ns，`NET=pasta` 时再加独立 net ns 和 pasta）/ 停止 |
+| sandbox-hook.sh | 接进原生沙箱 app：`start <沙箱 init 的 pid>`、`stop`，见上面"在原生沙箱 app 里用" |
+| sockrelay.go | hook 用的转发：在沙箱里放 `/run/docker.sock`，转给 dockerd（编出来放 `tools/sockrelay`） |
 | demo.sh | 三步演示（hello-world、nginx、连不到宿主 127.0.0.1），自己起停 dockerd；脚本、start.sh、stop.sh 都要放在 ohdev 的 `/data/local/ohm-docker-test/` 下。见 docs/demo-operator.zh-CN.md 的"沙箱里的 Docker" |
 | lprobe.go | demo.sh 第 3 步用的宿主侧服务：只监听 127.0.0.1:18081，40 秒后退出（编出来放 `tools/lprobe`） |
 | netcheck.sh | 网络隔离实测：列出各 netns 编号，在宿主 127.0.0.1:18557 起真监听（`tools/lprobe18557`，lprobe.go 改端口和 90 秒），从容器连 127.0.0.1、网关、宿主局域网地址 |
@@ -64,7 +95,7 @@ sh stop.sh   # 只停 dockerd.pid 和 pasta.pid 里记的进程
 
 ## 开关：关掉或绕过了什么
 
-沙箱的外层边界（独立 mount ns、pivot_root、精简的 /dev，`NET=pasta` 时还有独立 net ns）一处都没放松。下面这些削弱的都是容器这一层，所以这个测试版只能证明功能可行。
+沙箱的外层边界（独立 mount ns 和 pid ns、pivot_root、精简的 /dev，`NET=pasta` 时还有独立 net ns，再加上 runc 对 caps、命名空间和 bind 挂载的强制检查）一处都没放松。下面这些削弱的都是容器这一层，所以这个测试版只能证明功能可行。
 
 | 开关（默认关） | 在哪 | 为什么要 | 关掉或绕过了什么，隔离弱在哪 |
 |---|---|---|---|

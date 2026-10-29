@@ -219,6 +219,167 @@ index 2c6e438..ca15662 100644
  func (s *syncSocket) Shutdown(how int) error {
  	if err := unix.Shutdown(int(s.f.Fd()), how); err != nil {
  		return &os.PathError{Op: "shutdown", Path: s.f.Name() + " (sync pipe)", Err: err}
+diff --git a/ohm_lockdown.go b/ohm_lockdown.go
+new file mode 100644
+index 0000000..ec29ceb
+--- /dev/null
++++ b/ohm_lockdown.go
+@@ -0,0 +1,126 @@
++package main
++
++// ohm_lockdown.go: what a container may get from the native sandbox's dockerd
++// (ohmarchy native/sandbox/docker-test). The sandbox's user holds that dockerd's
++// socket, so the limits are checked here, where every container goes through
++// (docker run, exec, build, plugins), not in the client. No switch turns this off.
++
++import (
++	"fmt"
++	"path/filepath"
++	"strings"
++
++	"github.com/opencontainers/runtime-spec/specs-go"
++)
++
++// Docker's default capabilities, without CAP_MKNOD: HongMeng has no devices
++// cgroup, so a node made inside would reach the host's disk.
++var ohmCaps = map[string]bool{
++	"CAP_CHOWN": true, "CAP_DAC_OVERRIDE": true, "CAP_FSETID": true, "CAP_FOWNER": true,
++	"CAP_NET_RAW": true, "CAP_SETGID": true, "CAP_SETUID": true, "CAP_SETFCAP": true,
++	"CAP_SETPCAP": true, "CAP_NET_BIND_SERVICE": true, "CAP_SYS_CHROOT": true,
++	"CAP_KILL": true, "CAP_AUDIT_WRITE": true,
++}
++
++// bind mount sources: dockerd's own state (container files, volumes, build cache)
++// and its init binary
++var ohmBindRoots = []string{"/var/lib/docker/", "/var/lib/containerd/"}
++var ohmBindFiles = map[string]bool{"/usr/bin/docker-init": true}
++
++var ohmFsTypes = map[string]bool{
++	"proc": true, "sysfs": true, "tmpfs": true, "devpts": true, "mqueue": true,
++	"cgroup": true, "cgroup2": true, "bind": true, "none": true, "": true,
++}
++
++// ohmLockCaps drops CAP_MKNOD (Docker's default set has it) and refuses any other
++// capability outside Docker's defaults (--privileged, --cap-add).
++func ohmLockCaps(p *specs.Process) error {
++	if p.Capabilities == nil {
++		return nil
++	}
++	c := p.Capabilities
++	for _, set := range []*[]string{&c.Bounding, &c.Effective, &c.Permitted, &c.Inheritable, &c.Ambient} {
++		kept := (*set)[:0]
++		for _, name := range *set {
++			if name == "CAP_MKNOD" {
++				continue
++			}
++			if !ohmCaps[name] {
++				return fmt.Errorf("ohm sandbox: capability %s is not allowed", name)
++			}
++			kept = append(kept, name)
++		}
++		*set = kept
++	}
++	return nil
++}
++
++func ohmIsBind(m specs.Mount) bool {
++	if m.Type == "bind" {
++		return true
++	}
++	for _, o := range m.Options {
++		if o == "bind" || o == "rbind" {
++			return true
++		}
++	}
++	return false
++}
++
++// ohmBindOK: the source, symlinks resolved, is dockerd's own state
++func ohmBindOK(src string) bool {
++	if r, err := filepath.EvalSymlinks(src); err == nil {
++		src = r
++	} else {
++		return false
++	}
++	src = filepath.Clean(src)
++	if ohmBindFiles[src] {
++		return true
++	}
++	for _, root := range ohmBindRoots {
++		if strings.HasPrefix(src+"/", root) && src+"/" != root {
++			return true
++		}
++	}
++	return false
++}
++
++// ohmLockdown checks a container's whole spec (the process: validateProcessSpec).
++func ohmLockdown(s *specs.Spec) error {
++	if s.Linux == nil {
++		return fmt.Errorf("ohm sandbox: no linux section")
++	}
++	// own pid, ipc and mount namespaces (--pid=host, --ipc=host); the network may
++	// be dockerd's (--network host): pasta's namespace, not the host's (start.sh)
++	need := map[specs.LinuxNamespaceType]bool{specs.PIDNamespace: true, specs.IPCNamespace: true, specs.MountNamespace: true}
++	for _, ns := range s.Linux.Namespaces {
++		delete(need, ns.Type)
++	}
++	for t := range need {
++		return fmt.Errorf("ohm sandbox: the container needs its own %s namespace", t)
++	}
++	for _, m := range s.Mounts {
++		if !ohmFsTypes[m.Type] {
++			return fmt.Errorf("ohm sandbox: mount type %q is not allowed (%s)", m.Type, m.Destination)
++		}
++		if ohmIsBind(m) && !ohmBindOK(m.Source) {
++			return fmt.Errorf("ohm sandbox: bind mount of %s is not allowed (use a named volume)", m.Source)
++		}
++	}
++	// --security-opt systempaths=unconfined empties both lists
++	if len(s.Linux.MaskedPaths) == 0 || len(s.Linux.ReadonlyPaths) == 0 {
++		return fmt.Errorf("ohm sandbox: masked and read-only /proc paths are required")
++	}
++	for _, d := range s.Linux.Devices {
++		if d.Type == "b" {
++			return fmt.Errorf("ohm sandbox: block device %s is not allowed", d.Path)
++		}
++	}
++	for k := range s.Linux.Sysctl {
++		if !strings.HasPrefix(k, "net.") {
++			return fmt.Errorf("ohm sandbox: sysctl %s is not allowed", k)
++		}
++	}
++	return nil
++}
+diff --git a/spec.go b/spec.go
+index 15e933e..6bdaf7e 100644
+--- a/spec.go
++++ b/spec.go
+@@ -130,7 +130,10 @@ func loadSpec(cPath string) (spec *specs.Spec, err error) {
+ 	if spec == nil {
+ 		return nil, errors.New("config cannot be null")
+ 	}
+-	return spec, validateProcessSpec(spec.Process)
++	if err := validateProcessSpec(spec.Process); err != nil {
++		return nil, err
++	}
++	return spec, ohmLockdown(spec)
+ }
+ 
+ func createLibContainerRlimit(rlimit specs.POSIXRlimit) (configs.Rlimit, error) {
+diff --git a/utils_linux.go b/utils_linux.go
+index d7f51e2..f10dfe2 100644
+--- a/utils_linux.go
++++ b/utils_linux.go
+@@ -353,7 +353,7 @@ func validateProcessSpec(spec *specs.Process) error {
+ 	if spec.SelinuxLabel != "" && !selinux.GetEnabled() {
+ 		return errors.New("selinux label is specified in config, but selinux is disabled or not supported")
+ 	}
+-	return nil
++	return ohmLockCaps(spec)
+ }
+ 
+ type CtAct uint8
 diff --git a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go b/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go
 index dc5f65c..6f99803 100644
 --- a/vendor/github.com/cyphar/filepath-securejoin/pathrs-lite/internal/linux/openat2_linux.go

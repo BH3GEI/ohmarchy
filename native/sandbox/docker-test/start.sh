@@ -4,6 +4,8 @@ if [ -s $S/dockerd.pid ] && kill -0 $(cat $S/dockerd.pid) 2>/dev/null; then echo
 cat > $S/ns.sh <<'NS'
 # runs in the new mount namespace (host toybox sh), then pivots into R
 R=/data/local/ohm-docker-test/root
+# our host pid, from the host's procfs while it is still mounted (cut's parent: this shell)
+cut -d' ' -f4 /proc/self/stat > /data/local/ohm-docker-test/dockerd.pid
 mount -o rprivate / 2>&1 || echo "rprivate failed"
 mount --bind $R $R || exit 1
 mount -t proc proc $R/proc || exit 1
@@ -27,17 +29,28 @@ export PATH=/usr/bin OHM_NO_DEVICES_CGROUP=1 OHM_CHROOT_REEXEC=1 OHM_NO_CGROUPS=
   TMPDIR=/tmp  # the host session's TMPDIR (/data/local/tmp) does not exist in here
 umount -l /oldroot || echo "umount oldroot failed"
 echo "root now: $(ls /)"
-exec dockerd --config-file /etc/docker/daemon.json -H unix:///run/docker.sock --pidfile /run/docker.pid
+exec dockerd --config-file /etc/docker/daemon.json -H unix:///run/docker.sock --pidfile /run/docker.pid $(cat /extra-args)
 IN
+# SOCK=1 (sandbox-hook.sh): a second socket, root/sbx/docker.sock (a root-only directory),
+# that the hook's relay hands to the native sandbox; only with NET=pasta
+if [ -n "$SOCK" ]; then
+  [ "$NET" = pasta ] || { echo "SOCK needs NET=pasta"; echo __END__; exit 1; }
+  mkdir -p $R/sbx; chmod 700 $R/sbx; rm -f $R/sbx/docker.sock
+  echo "-H unix:///sbx/docker.sock" > $R/extra-args
+else : > $R/extra-args; fi
 # NET=pasta: dockerd (and --network host containers) in a network namespace of its
 # own, connected by pasta (passt.top, the native sandbox's build, tools/passt; it must run as tools/pasta): out
 # through host sockets, nothing forwarded inward, the host's 127.0.0.1 not reachable.
 # Without it, dockerd shares the host's network.
-case "$NET" in pasta) UNS="unshare -m -n" ;; *) UNS="unshare -m" ;; esac
+# Its own pid namespace too: its /proc (and a container's --pid host, which runc refuses
+# anyway) shows no host process, so no /proc/<pid>/root of the host. ns.sh writes its
+# host pid (it becomes dockerd) to dockerd.pid.
+case "$NET" in pasta) UNS="unshare -m -n -p -f" ;; *) UNS="unshare -m -p -f" ;; esac
+rm -f $S/dockerd.pid
 setsid $UNS sh $S/ns.sh > $S/log/dockerd.log 2>&1 < /dev/null &
-echo $! > $S/dockerd.pid
+i=0; while [ ! -s $S/dockerd.pid ] && [ $i -lt 50 ]; do sleep 0.2; i=$((i+1)); done
 if [ "$NET" = pasta ]; then
-  P=$(cat $S/dockerd.pid); sleep 1
+  P=$(cat $S/dockerd.pid)
   set -- $(ip route show table all 2>/dev/null | grep -m1 '^default via ')
   if [ "$1" = default ] && [ "$4" = dev ]; then
     # pasta needs the namespace's loopback up, and drops its capabilities before it

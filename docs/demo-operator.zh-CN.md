@@ -13,9 +13,9 @@
 2. **正常关机，别强制**：鸿融里的 Omarchy 盘装了增强服务，点鸿融卡片上的 **关机**（或在 Omarchy 里 **Super+Esc → Shutdown**）；OSEasy 里用 **Super+Esc → Shutdown**。不要在虚拟机里"重启"，不要"注销"。
 3. **原生桌面的窗口别关**，最小化就行。关掉"Omarchy (native)" 后再点图标，桌面约 6 秒会自己重新起来，但里面开着的窗口都没了。
 
-"Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用右 Alt 代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用。所以 Super+Return 就是右 Alt+Return，Super+Shift+B 就是右 Alt+Shift+B。**原生演示版 "Omarchy (native)" 用右 Alt，新原生沙箱 "Omarchy (sandbox)" 用 Alt+Shift，这是两个不同的 app**（ohdev 上装的原生演示版是旧版，汇报前不重装；2026-10-28 彩排确认，Alt+Shift+Return 在原生演示版里没反应）。虚拟机里（第 2、3 部分）照常用 Windows 键。
+"Super" 键就是键盘上的 Windows 徽标键。**在原生桌面（第 1 部分）里，按 Super 快捷键请用右 Alt 代替**：Windows 键会被鸿蒙拿去弹开始菜单，很多组合也被鸿蒙占用。所以 Super+Return 就是右 Alt+Return，Super+Shift+B 就是右 Alt+Shift+B。**原生演示版 "Omarchy (native)" 用右 Alt，原生应用 "Omarchy（原生应用）" 用 Alt+Shift，这是两个不同的 app**（ohdev 上装的原生演示版是旧版，汇报前不重装；2026-10-28 彩排确认，Alt+Shift+Return 在原生演示版里没反应）。虚拟机里（第 2、3 部分）照常用 Windows 键。
 
-沙箱版 "Omarchy (sandbox)"（粉色图标，可选的第 4 段）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
+原生应用 "Omarchy（原生应用）"（粉色图标，可选的第 4 段）打开就是全屏：Alt+Tab 切到别的窗口，Ctrl+Alt+Escape 最小化；在它的程序坞图标菜单里点"关闭窗口"关掉 app，Linux 随之停止；同一菜单里的 "Reset Linux" 会先确认，再把 Linux 恢复到刚安装时的样子。
 
 ## 演示顺序（约 10 分钟）
 
@@ -174,7 +174,7 @@
 
 ## 第 4 段（可选）：原生沙箱（约 3 分钟）
 
-"Omarchy (sandbox)"（粉色图标）是原生路线的新方案：同样是 Arch 直接跑在鸿蒙内核上，不是虚拟机，但 Linux 被关在自己的目录和网络里，像一个普通 app 一样打开、关闭、重置。它和第 1 段的 "Omarchy (native)" 完全分开：各自的目录、镜像和 socket，两个可以同时开着。
+"Omarchy（原生应用）"（粉色图标）是原生路线的新方案：同样是 Arch 直接跑在鸿蒙内核上，不是虚拟机，但 Linux 被关在自己的目录和网络里，像一个普通 app 一样打开、关闭、重置。它和第 1 段的 "Omarchy (native)" 完全分开：各自的目录、镜像和 socket，两个可以同时开着。
 
 **口径：** 这是测试机级别的隔离，不能当作对外的安全承诺。原因有三：本 build 中沙箱与主机共享网络（逐沙箱的网络隔离补丁已完成、暂缓启用，演示后启用），SELinux 域还是宽松的 `su`，Docker 也还没有接进来。台上不要说"安全""隔离得很彻底""有自己的网络"，说"关在自己的目录里，看不到本机的文件和进程"。
 
@@ -192,7 +192,7 @@
 
 | # | 手上做什么 | 屏幕上应该出现什么 | 等多久 | 嘴上说什么 |
 |---|---|---|---|---|
-| 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy (sandbox)"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 16–30 秒（2026-10-28 彩排实测约 25 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
+| 4.1 | 在鸿蒙桌面上**双击**粉色的 **"Omarchy（原生应用）"** | 直接全屏，先黑一下，然后出现粉色壁纸和顶栏 | 16–30 秒（2026-10-28 彩排实测约 25 秒） | "这个是新方案。双击就开，跟普通 app 一样；Linux 是这个时候才启动的。" |
 | 4.2 | 不用操作 | 全屏桌面 | | "它一打开就是全屏。要回鸿蒙：Alt+Tab 切走，Ctrl+Alt+Esc 最小化。" |
 | 4.3 | **Alt+Shift+Return** 开终端 | 一个终端 | 3 秒 | |
 | 4.4 | 输入 `sudo pacman --sync --noconfirm cowsay` 回车（全小写，和 `-S` 一样），输入测试密码（见 4e），装完输入 `cowsay hello` 回车 | 下载、安装，然后一头牛说 hello | 约 15 秒（待彩排确认） | "Arch 官方仓库，pacman 照常能用，里面是 root。" |
@@ -222,7 +222,7 @@
 
 ### （可选·展示）沙箱里的 Docker（约 1 分钟，不进主流程）
 
-> **此 Docker 演示在 ohdev 的沙箱目录里直接运行，尚未接进粉色的 Omarchy (sandbox) 应用；不要讲成应用自带 Docker。**
+> **此 Docker 演示在 ohdev 的沙箱目录里直接运行，尚未接进粉色的 Omarchy（原生应用） 应用；不要讲成应用自带 Docker。**
 
 Docker 测试版直接跑在鸿蒙内核上，不是虚拟机：dockerd 被关在自己的目录 `/data/local/ohm-docker-test` 和自己的网络里（细节见 native/sandbox/docker-test/README.md）。**它还没有接进粉色的沙箱 app**，所以不在沙箱终端里敲，而是由【后台】在助手电脑上运行一个脚本，把助手的终端投到屏幕上。时间不够就跳过，不影响别的段。
 

@@ -178,4 +178,4 @@ if diff "$tmp/before" "$tmp/after" > "$tmp/diff"; then
 else
     echo "CHANGED:"; cat "$tmp/diff"; exit 1
 fi
-echo "installed. Open \"Omarchy (sandbox)\"; Reset Linux is in its icon's menu."
+echo "installed. Open \"Omarchy（原生应用）\"; Reset Linux is in its icon's menu."

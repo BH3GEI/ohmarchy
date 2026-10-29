@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build the sandbox's display app from native/app, next to the demo's and never over it:
-# bundle com.ohmarchy.sandbox, "Omarchy (sandbox)", a recoloured icon, a "Reset Linux"
+# bundle com.ohmarchy.sandbox (internal id; the user sees "Omarchy（原生应用）"), a recoloured icon, a "Reset Linux"
 # shortcut, and its own abstract socket names (prefix ohmsbx: @ohmsbx-display, -vtest,
 # -audio, -ime, and -ctl for the helper ohm-sandboxd).
 #   UDID=<bm get --udid> native/sandbox/build-app.sh   ->  native/sandbox/ohm-sandbox.hap
@@ -14,7 +14,7 @@ rm -rf "$work" && mkdir -p "$work"
 rsync -a --exclude entry/build --exclude .hvigor --exclude ohdisp.hap "$src/" "$work/"
 cd "$work"
 sed -i '' 's/"com\.ohmarchy\.display"/"com.ohmarchy.sandbox"/' AppScope/app.json5
-sed -i '' 's/"Omarchy (native)"/"Omarchy (sandbox)"/' AppScope/resources/base/element/string.json \
+sed -i '' 's/"Omarchy (native)"/"Omarchy（原生应用）"/' AppScope/resources/base/element/string.json \
     entry/src/main/resources/base/element/string.json
 printf '#pragma once\n#define OHM_NAME_PREFIX "ohmsbx"\n#define OHM_SANDBOX 1\n' > entry/src/main/cpp/ohm_names.h
 python3 - AppScope/resources/base/media/background.png entry/src/main/resources/base/media/background.png <<'P'
@@ -75,7 +75,7 @@ assert s.count(o) == 1
 s = s.replace(o, o + '\n    { "name": "reset_label", "value": "Reset Linux" },\n    { "name": "settings_label", "value": "权限设置" },')
 open(st, 'w').write(s)
 P2
-grep -q com.ohmarchy.sandbox AppScope/app.json5 && grep -q 'Omarchy (sandbox)' entry/src/main/resources/base/element/string.json
+grep -q com.ohmarchy.sandbox AppScope/app.json5 && grep -q 'Omarchy（原生应用）' entry/src/main/resources/base/element/string.json
 BUNDLE=com.ohmarchy.sandbox UDID=$UDID ./build.sh --no-install
 cp ohdisp.hap "$here/ohm-sandbox.hap"
 echo "built $here/ohm-sandbox.hap"

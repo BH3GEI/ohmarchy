@@ -35,7 +35,7 @@
 | B OSEasy | 整个 Omarchy 系统跑在 OSEasy 虚拟机 app（com.oseasy1.ohvm 3.1.1.7）里，内核 7.2.12 加打补丁的 vmwgfx，用安装 ISO 写盘 | 能用。公开版是 GitHub release 草稿（未公开）；内核 1.2 的新 ISO 正在回归 | 不要 | 能 |
 | C 鸿融 | 整个 Omarchy 系统作为华为鸿融（com.huawei.medivh 1.1.1.103）的虚拟机运行，virgl GPU | 能用。内核 1.2 的盘 10-27 在 ohdev 上验证通过 | 导入不要；换盘要 | 能 |
 | D 原生 | Arch 加 Omarchy 直接跑在 HongMeng 内核上，桌面显示在鸿蒙 app 里，120 Hz，马良 GPU | 能用，已验收 | 要 | 能 |
-| 原生沙箱（新方案） | 原生内核；Linux 锁在自己的目录里，像 app 一样开、关、重置；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | v1 能用（10-28 ohdev）：app "Omarchy (sandbox)"、独立 mount/pid/ipc/uts 命名空间、精简的能力边界集、一键安装和卸载。本 build 中沙箱进程与主机共享网络（出网可用）；逐沙箱的网络隔离补丁已完成、暂缓启用（见 1.5）。只算测试机级别的隔离：网络共享、SELinux 域还是 `su`、Docker 未接入 | 小助手要 root | 能（可选第 4 段） |
+| 原生沙箱（新方案） | 原生内核；Linux 锁在自己的目录里，像 app 一样开、关、重置；有数的 root 小助手；Docker 在里面跑；隐私数据由 app 申请 | v1 能用（10-28 ohdev）：app "Omarchy（原生应用）"、独立 mount/pid/ipc/uts 命名空间、精简的能力边界集、一键安装和卸载。本 build 中沙箱进程与主机共享网络（出网可用）；逐沙箱的网络隔离补丁已完成、暂缓启用（见 1.5）。只算测试机级别的隔离：网络共享、SELinux 域还是 `su`、Docker 未接入 | 小助手要 root | 能（可选第 4 段） |
 | I 自建后台虚拟机 | root 直接在 /dev/hmv 上起 StratoVirt，无界面，给 D 提供 Docker | 能用 | 要 | 能，与 D 一起 |
 | J app 沙箱内原生 | Linux 程序编成 .so 签进 HAP，fork 加 dlopen 运行 | busybox 已在真机跑通；Hyprland 已编好，真机试了 4 轮，尚未出第一帧 | 不要 | 不能 |
 | E 裸机／U 盘 | 不要鸿蒙，Linux 直接在硬件上启动 | 全内存 U 盘已做好，尚未在机器上启动成功 | — | 不能 |
@@ -120,7 +120,7 @@
 
 - **方向（已定）。** 原生内核；Linux 锁在自己的目录里；默认全禁，只放行允许清单；一个调用有数、受控的 root 小助手；Docker 在里面跑；访问隐私数据要通过 app 申请。设计文档 docs/native-sandbox.md 尚未提交。
 - **v1 已做到（2026-10-28，ohdev，和 D 的演示版并排跑，D 全程未受影响）。**
-  - 和 D 完全分开：app com.ohmarchy.sandbox（"Omarchy (sandbox)"，粉色图标）、目录 /data/local/ohm-sandbox、自己的 64 GB 镜像和 loop 设备、socket 前缀 `ohmsbx`。
+  - 和 D 完全分开：app com.ohmarchy.sandbox（"Omarchy（原生应用）"，粉色图标）、目录 /data/local/ohm-sandbox、自己的 64 GB 镜像和 loop 设备、socket 前缀 `ohmsbx`。
   - 关进去的方式：`unshare -m -p -i -u -n` 加 pivot_root，镜像就是整个文件系统，主机的 /storage、/system 在里面不存在；/dev 是只放几个节点的 tmpfs；/proc/sys、/sys 只读；能力边界集去掉 mknod、sys_admin、模块、raw I/O、MAC、net_admin 等（CapBnd b18cecff；HongMeng 拒绝 PR_SET_KEEPCAPS，用自写的 ohm-capdrop）。
   - 网络（10-28 更正）：本 build 中沙箱里的进程与主机共享网络，出网可用。沙箱的 init 有自己的 net namespace（pasta 也接在上面），但桌面、终端等所有经 `ohm-sandbox run` 进去的进程原先没有加入它（`ohm-capdrop --enter` 只加入了 ipc/uts/pid/mnt），之前"主机 127.0.0.1 连不上"的验证就是在主机网络里做的，用的端口 :22 主机上本来就没有监听，结论不成立，已撤回。加入 net 的补丁已完成并在命令行验过：pasta 和 off 模式下连不到主机 127.0.0.1 上的监听，host 模式能连。但暂缓启用：显示、声音、输入法这三个桥（@ohmsbx-display/audio/ime）由沙箱里的桌面 bind，app 在主机 netns，启用后 app 就连不上了。要先补一个主机侧的小门（root，只负责在主机 netns 里替桌面 bind 这三个名字并把 fd 递回），这是演示之后的下一步。
   - 像 app 一样：双击启动 Linux 和桌面（约 16–19 秒），关掉 app 就停；"Reset Linux"（图标菜单）先确认，再恢复到安装时的快照（约 33 秒）；全屏，Ctrl+Alt+Esc 最小化。键盘、鼠标、声音、马良 GPU 跟 D 一样；终端靠 pty 垫片（HongMeng 没有 devpts）。

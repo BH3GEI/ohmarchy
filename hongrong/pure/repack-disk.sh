@@ -28,6 +28,8 @@ root_mib=$(( gib * 1024 - esp_mib - 2 ))
 
 install -D -m 644 "$here/firstboot/ohmarchy-growroot.service" "$R/etc/systemd/system/ohmarchy-growroot.service"
 install -D -m 755 "$here/firstboot/ohmarchy-growroot.sh" "$R/usr/local/lib/ohmarchy/ohmarchy-growroot.sh"
+# software WebRender for Firefox (see build-disk.sh)
+install -D -m 644 "$here/firstboot/firefox-policies.json" "$R/etc/firefox/policies/policies.json"
 mkdir -p "$R/etc/systemd/system/multi-user.target.wants"
 ln -sf ../ohmarchy-growroot.service "$R/etc/systemd/system/multi-user.target.wants/ohmarchy-growroot.service"
 rm -f "$R/var/lib/ohmarchy/growroot.done"

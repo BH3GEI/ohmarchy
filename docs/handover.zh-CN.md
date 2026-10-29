@@ -87,10 +87,12 @@
   - 一次只能放一台虚拟机。
   - 应用市场会自动更新鸿融，需关闭自动更新。
   - **HarmonyOS 7.0.0.32 上鸿融不能用**（第 3(b) 节）。
+  - **Firefox 让虚拟机掉电**（2026-10-29）：宿主的 vhost-device-gpu 在 zink 里调用驱动没有的 vkCmdBindShadersEXT，空指针崩溃，随后鸿融直接停掉虚拟机（docs/hongrong-vendor-request.md）。规避：镜像带 /etc/firefox/policies/policies.json，默认软件 WebRender；临时办法 `LIBGL_ALWAYS_SOFTWARE=1 firefox`。
 - **ohdev 上的现状。**
   - 鸿融里是 v3 演示盘，已关机；密码 2026-10-28 已验证，测试方知道密码。
   - Yao 的主盘保留为同目录下的 vm.qcow2.imported（36412063744 字节），未改动。
   - 另备一张未开过机的 v3b 盘：/data/local/vmtest/omarchy-b-v3b-os1.qcow2。
+  - v3c 盘：v3 加 Firefox 软件 WebRender 的 policies.json，未开过机：/data/local/vmtest/omarchy-b-v3c-os1.qcow2（2026-10-29，k4/v3c.sh）。
 
 **D 原生**（docs/native-chroot.md、docs/native-desktop.md、docs/acceptance.md）
 
@@ -399,6 +401,12 @@ Docker 测试版（10-28 ohdev：hello-world、alpine sh、沙箱自己 netns �
     - 为什么：`OH_NativeWindow_CreateNativeWindowFromSurfaceId` 只在本进程有效，别的进程无法往 app 的窗口里画。
     - 影响：I 无法借 D 的窗口上屏。
     - 退路：I 保持无界面。
+11. **鸿融的 GPU 进程崩溃后虚拟机被直接停掉**（docs/hongrong-vendor-request.md）。
+    - 为什么：客户机里的 Firefox 让宿主 zink 调用 Vulkan 驱动没有的 vkCmdBindShadersEXT（VK_EXT_shader_object），vhost-device-gpu 空指针崩溃，约 40 秒后虚拟机被 host-qmp-quit 停掉。
+    - 请求：驱动不支持 VK_EXT_shader_object 时 zink 不走 shader object；GPU 后端崩溃后重启并重连，不直接停虚拟机。
+    - 影响：C。
+    - 退路：Firefox 用软件 WebRender（镜像默认）。
+    - 进展：尚未与厂商联系。
 
 ### 3(c) 需要提供的信息和资源
 

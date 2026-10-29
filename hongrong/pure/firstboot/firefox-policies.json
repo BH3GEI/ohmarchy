@@ -1,0 +1,7 @@
+{
+  "policies": {
+    "Preferences": {
+      "gfx.webrender.software": { "Value": true, "Status": "default" }
+    }
+  }
+}

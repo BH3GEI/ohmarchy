@@ -17,6 +17,8 @@ marked (中文) are written in Chinese.
   and Oseasy UI only, no root (draft).
 - [oseasy-vendor-request.md](oseasy-vendor-request.md) (中文): what we ask the Oseasy vendor
   for to support Linux guests properly.
+- [hongrong-vendor-request.md](hongrong-vendor-request.md) (中文): bug report for 鸿融: Firefox in
+  the guest crashes the host's GPU process (zink calls vkCmdBindShadersEXT) and the VM is stopped.
 - [vm-oseasy.md](vm-oseasy.md): short pointer page to oseasy-whole-os.md.
 
 ### C: 鸿融

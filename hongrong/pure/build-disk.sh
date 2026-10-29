@@ -259,6 +259,10 @@ if [ -n "$vmwgfx_ko" ]; then
 fi
 # Omarchy's shell draws black on SVGA3D: software Qt Quick there only
 install -D -m 644 "$here/pure/firstboot/ohmarchy-svga.sh" "$R/etc/profile.d/ohmarchy-svga.sh"
+# Firefox's hardware WebRender crashes 鸿融's GPU process (the host's zink calls
+# vkCmdBindShadersEXT, which its Vulkan driver lacks) and the VM is stopped:
+# software WebRender. Outside the package, so it is there when Firefox is installed.
+install -D -m 644 "$here/pure/firstboot/firefox-policies.json" "$R/etc/firefox/policies/policies.json"
 # virtio-gpu loads from the initramfs (kms hook), so the EDID goes in there too
 if [ -n "$edid" ]; then
   install -D -m 644 "$edid" "$R/usr/lib/firmware/edid/omarchy-120.bin"

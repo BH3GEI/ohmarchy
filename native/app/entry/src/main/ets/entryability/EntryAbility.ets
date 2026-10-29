@@ -12,6 +12,9 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('jl', jlp === true || jlp === 'true');
     const imp: Object | undefined = want?.parameters?.['immersive'];
     AppStorage.setOrCreate('immersive', imp === true || imp === 'true');
+    // --pb windowed true: open as a normal window (tests that need it beside another)
+    const winp: Object | undefined = want?.parameters?.['windowed'];
+    AppStorage.setOrCreate('windowed', winp === true || winp === 'true');
     this.notify(want);
     this.settingsFirst = want?.parameters?.['action'] === 'settings';
     this.shortcut(want);
@@ -93,7 +96,7 @@ export default class EntryAbility extends UIAbility {
         });
       }
       // The sandbox build opens maximized, like an app that is a whole desktop.
-      if (this.context.applicationInfo.name === 'com.ohmarchy.sandbox') {
+      if (this.context.applicationInfo.name === 'com.ohmarchy.sandbox' && AppStorage.get<boolean>('windowed') !== true) {
         windowStage.getMainWindow().then((w: window.Window) => w.maximize(window.MaximizePresentation.ENTER_IMMERSIVE)).catch((e: object) =>
           hilog.error(DOMAIN, 'ohdisp', 'maximize: %{public}s', JSON.stringify(e)));
       }

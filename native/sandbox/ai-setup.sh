@@ -3,10 +3,10 @@
 # configuration every route uses (hongrong/pure/guest/setup-ai.sh); the sandbox's
 # counterpart of native/desktop/ai/setup.sh. Root on the HarmonyOS host, the sandbox
 # running:  sh native/sandbox/ai-setup.sh [user]   (default builder)
-# The relay's address and key are read from /data/local/secrets/ai.env (root, 600)
-# and only ever written to the user's ~/.config/environment.d/ai.conf (600) and the
-# agents' configs in their home; nothing here prints them. Run again after ai.env
-# changes. Then each agent answers one prompt.
+# Installs the agents, then leaves no secret in the image (README, Secrets): the three
+# files that carry the relay's address or key become links to /run/ohm-secrets, which
+# ohm-sandbox fills from /data/local/secrets at each start (here: ohm-sandbox secrets).
+# Nothing here prints them. Then each agent answers one prompt.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 S=${OHM_SANDBOX:-/data/local/ohm-sandbox}
@@ -20,10 +20,16 @@ uid=$(grep "^$user:" $R/etc/passwd | cut -d: -f3)
 # the env file and the script, readable only by that user, for the run
 t=/tmp/ohm-ai.$$
 mkdir -m 700 $R$t && chown $uid:$uid $R$t
-cp $E $R$t/ai.env && cp $here/../../hongrong/pure/guest/setup-ai.sh $R$t/setup-ai.sh
+cp $E $R$t/ai.env && cp $S/lib/setup-ai.sh $R$t/setup-ai.sh
 chown $uid:$uid $R$t/ai.env $R$t/setup-ai.sh && chmod 600 $R$t/ai.env
 $O run /usr/bin/su $user -c "bash $t/setup-ai.sh $t/ai.env --install | tail -1" || true
 rm -rf $R$t
+# the secrets out of the home: links to the tmpfs instead
+$O run /usr/bin/su $user -c 'cd ~ && mkdir -p .config/environment.d .codex .config/opencode &&
+ln -sfn /run/ohm-secrets/ai.conf .config/environment.d/ai.conf &&
+ln -sfn /run/ohm-secrets/codex-config.toml .codex/config.toml &&
+ln -sfn /run/ohm-secrets/opencode.json .config/opencode/opencode.json'
+$O secrets > /dev/null
 $O run /usr/bin/su $user -c 'export PATH=$HOME/.local/bin:$PATH; cd /tmp
 q="Reply with exactly the word PONG and nothing else"
 echo "opencode: $(timeout 240 opencode run "$q" 2>&1 | tail -1)"

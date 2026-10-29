@@ -233,10 +233,27 @@ means the isolation between containers, and between a container and dockerd, is
 weaker than real Docker's: no seccomp, no cgroup resource limits, a shared keyring.
 The sandbox's outer boundary is unchanged.
 
+## Secrets: never in the image (2026-10-29)
+
+The relay's address and key and the proxy's credentials stay on the host, in
+/data/local/secrets (root 600), and never go into root.img or clean.img: the image
+is what Reset Linux restores and what a demo machine would be given. At each start
+`ohm-sandbox start` fills `/run/ohm-secrets` in here, a tmpfs gone on stop:
+
+- the agents' three configs, written by hongrong/pure/guest/setup-ai.sh
+  `--out /run/ohm-secrets` (run as the user, from a copy of ai.env removed right
+  after): `ai.conf`, `codex-config.toml`, `opencode.json`;
+- sing-box's config, copied from /data/local/secrets/ohm-sandbox-sing-box.json (root 600).
+
+The home has links to them: `~/.config/environment.d/ai.conf`,
+`~/.codex/config.toml`, `~/.config/opencode/opencode.json`; they dangle while
+Linux is stopped, as in an offline mount of the image. Before a snapshot the image
+is checked for the relay's host names, `sk-`, `vless` and `uuid`: none may match.
+
 ## Proxy (2026-10-29)
 
 sing-box (Arch's, `pacman -S sing-box`) runs inside, as root there, with
-`/etc/sing-box/native.json` (root 600, in the image; made by 2a with
+`/run/ohm-secrets/sing-box.json` (Secrets, above; made by 2a with
 hongrong/pure/guest/vless2singbox.py, `SINGBOX_TUN=0`, from the device's
 /data/local/secrets/proxy.env, never in git): one mixed inbound on 127.0.0.1:7890,
 no tun, no route changes; mainland mirrors and the AI relay go direct by its rules.

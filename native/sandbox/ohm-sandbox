@@ -68,6 +68,29 @@ plog() { echo "$(date '+%F %T') $*" | tee -a "$S/sandboxd.log"; }
 # through its hook; the hook stops only what it started.
 DOCKER_HOOK=/data/local/ohm-docker-test/sandbox-hook.sh
 
+# Secrets never go into the image (README, Secrets): at start they come from the host's
+# /data/local/secrets into /run/ohm-secrets in here, a tmpfs gone on stop. The agents'
+# configs (setup-ai.sh --out: ai.conf, codex-config.toml, opencode.json, the user's)
+# and sing-box's (root's); the home has links to them, dangling while it is stopped.
+SECRETS=/data/local/secrets
+secrets_up() {
+    r=/proc/$P/root; d=$r/run/ohm-secrets
+    pw=$(grep "^$USER_:" "$r/etc/passwd") || return 0
+    u=$(echo "$pw" | cut -d: -f3):$(echo "$pw" | cut -d: -f4)
+    mkdir -p "$d" && chown "$u" "$d" && chmod 700 "$d"
+    if [ -f "$SECRETS/ai.env" ] && [ -f "$S/lib/setup-ai.sh" ]; then
+        cp "$SECRETS/ai.env" "$d/ai.env" && cp "$S/lib/setup-ai.sh" "$d/setup-ai.sh"
+        chown "$u" "$d/ai.env" "$d/setup-ai.sh" && chmod 600 "$d/ai.env"
+        sh "$0" run /usr/bin/su "$USER_" -c \
+            "bash /run/ohm-secrets/setup-ai.sh /run/ohm-secrets/ai.env --out /run/ohm-secrets" > /dev/null 2>&1 \
+            || plog "secrets: setup-ai.sh --out failed"
+        rm -f "$d/ai.env" "$d/setup-ai.sh"
+    fi
+    if [ -f "$SECRETS/ohm-sandbox-sing-box.json" ]; then
+        cp "$SECRETS/ohm-sandbox-sing-box.json" "$d/sing-box.json" && chmod 600 "$d/sing-box.json"
+    fi
+}
+
 # end the process in pid file $1 if it still runs binary $2
 stop_pidf() {
     p=$(cat "$1" 2>/dev/null) && [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$2" ] && kill "$p"
@@ -158,11 +181,12 @@ start)
             plog "docker skipped: no $DOCKER_HOOK"
         fi
     fi
-    # The proxy (README, Proxy): sing-box in here on 127.0.0.1:7890 when its config is in
-    # the image and nothing listens there yet (the processes in here share the host's
-    # network, so that port is the host's). It ends with the pid namespace on stop.
-    if [ -f "/proc/$P/root/etc/sing-box/native.json" ] && ! netstat -tln 2>/dev/null | grep -q ' 127\.0\.0\.1:7890 '; then
-        setsid sh "$0" run /bin/sh -c 'sing-box run -c /etc/sing-box/native.json > /var/log/ohmarchy-sing-box.log 2>&1 &
+    secrets_up
+    # The proxy (README, Proxy): sing-box in here on 127.0.0.1:7890 when there is a config
+    # in the secrets and nothing listens there yet (the processes in here share the
+    # host's network, so that port is the host's). It ends with the pid namespace on stop.
+    if [ -f "/proc/$P/root/run/ohm-secrets/sing-box.json" ] && ! netstat -tln 2>/dev/null | grep -q ' 127\.0\.0\.1:7890 '; then
+        setsid sh "$0" run /bin/sh -c 'sing-box run -c /run/ohm-secrets/sing-box.json > /var/log/ohmarchy-sing-box.log 2>&1 &
             echo $! > /run/ohmarchy-sing-box.pid' < /dev/null > /dev/null 2>&1
         echo "proxy: sing-box on 127.0.0.1:7890"
     fi
@@ -177,6 +201,11 @@ policy)
     show) cat "$S/policy.conf" 2>/dev/null || cat "$S/policy.conf.default" 2>/dev/null || echo "network = pasta";;
     *) echo "usage: ohm-sandbox policy check | validate FILE | show"; exit 2;;
     esac
+    ;;
+secrets)  # refill /run/ohm-secrets (after /data/local/secrets changed); prints no secret
+    alive || { echo "not running"; exit 1; }
+    secrets_up
+    ls "/proc/$P/root/run/ohm-secrets"
     ;;
 net)
     alive || { echo "not running"; exit 1; }

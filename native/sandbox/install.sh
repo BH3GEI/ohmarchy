@@ -70,6 +70,7 @@ step "copy to $HOST"
 tar -cf "$tmp/files.tar" -C "$here" ohm-sandbox config-check.sh boot-serve.sh ohm-sandboxd.cfg ohm-abstract-fence.c ohm-fence-demo policy.sh policy.conf.default \
     -C "$here/../desktop" ohime.c ohmarchy-audio-relay.c ohmarchy-desktop hongmeng-ptypeer.c \
     -C "$here/../desktop/src/Hyprland/protocols" input-method-unstable-v2.xml \
+    -C "$here/../../hongrong/pure/guest" setup-ai.sh \
     -C "$tmp" ohm-capdrop ohm-sandboxd
 R 'cat > /data/local/tmp/ohm-sandbox-files.tar' < "$tmp/files.tar"
 # the app: only the 1 MB pieces that differ from the copy already there
@@ -94,7 +95,7 @@ step "install on $HOST"
 R "WANT=$want sh -s" <<'EOF'
 set -e
 S=/data/local/ohm-sandbox; T=/data/local/tmp/ohm-sandbox-unpack
-mkdir -p $S/bin $S/src $S/evidence
+mkdir -p $S/bin $S/src $S/evidence $S/lib
 rm -rf "${T:?}"; mkdir -p $T; tar -xf /data/local/tmp/ohm-sandbox-files.tar -C $T
 sh -n $T/ohm-sandbox
 # the helper may be running (an update): stop it; files go in under a new name, then renamed
@@ -104,6 +105,8 @@ for f in ohm-sandbox policy.sh config-check.sh boot-serve.sh ohm-capdrop ohm-san
 done
 cp $T/ohm-abstract-fence.c $T/ohm-fence-demo $T/ohime.c $T/ohmarchy-audio-relay.c $T/ohmarchy-desktop $T/hongmeng-ptypeer.c $T/input-method-unstable-v2.xml $S/src/
 cp $T/ohm-sandboxd.cfg $S/ohm-sandboxd.cfg
+# the agents' config writer, run at each start into /run/ohm-secrets (ohm-sandbox, Secrets)
+cp $T/setup-ai.sh $S/lib/setup-ai.sh
 # the policy: the commented default always; policy.conf only when there is none (the
 # user's own is kept, across updates and Reset Linux)
 cp $T/policy.conf.default $S/policy.conf.default

@@ -233,6 +233,27 @@ means the isolation between containers, and between a container and dockerd, is
 weaker than real Docker's: no seccomp, no cgroup resource limits, a shared keyring.
 The sandbox's outer boundary is unchanged.
 
+## Proxy (2026-10-29)
+
+sing-box (Arch's, `pacman -S sing-box`) runs inside, as root there, with
+`/etc/sing-box/native.json` (root 600, in the image; made by 2a with
+hongrong/pure/guest/vless2singbox.py, `SINGBOX_TUN=0`, from the device's
+/data/local/secrets/proxy.env, never in git): one mixed inbound on 127.0.0.1:7890,
+no tun, no route changes; mainland mirrors and the AI relay go direct by its rules.
+`ohm-sandbox start` starts it when that file is there and nothing listens on the
+port yet (pid in /run/ohmarchy-sing-box.pid in here); it ends with the pid namespace.
+Not the package's sing-box.service: `-C /etc/sing-box` would read the package's
+default config.json as well. The port is the host's, as the processes in here share
+the host's network (Network, below): HarmonyOS apps reach it too, and per-sandbox
+networking will need pasta to forward it in.
+
+The desktop's programs get it from `~/.config/environment.d/60-proxy.conf`
+(`http_proxy`, `https_proxy`, `all_proxy` and the upper-case ones; `no_proxy` for
+localhost and the private ranges), which ohdisplay.lua reads at desktop start.
+Checked from inside: Chromium with no flags opens x.com and youtube; git to github,
+pacman -Sy. sing-box logs "missing default interface" at start (no
+auto_detect_interface on this kernel) and works.
+
 ## sudo without its own pty (2026-10-28)
 
 Arch's sudo runs the command on a pty of its own (`use_pty`), and the sandbox has no

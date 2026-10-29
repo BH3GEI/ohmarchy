@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "audio.h"
+#include "cursor.h"
 #include "gpu.h"
 
 #undef LOG_DOMAIN
@@ -515,7 +516,9 @@ void FrameLoop()
             msg.msg_iovlen = 1;
             msg.msg_control = cmsgbuf;
             msg.msg_controllen = sizeof(cmsgbuf);
-            if (recvmsg(fd, &msg, MSG_WAITALL | MSG_CMSG_CLOEXEC) != sizeof(hdr) || hdr.magic != 0x4644484f) {
+            // frames ("OHDF") and the cursor ("OHDC", cursor.cpp): the same header
+            if (recvmsg(fd, &msg, MSG_WAITALL | MSG_CMSG_CLOEXEC) != sizeof(hdr) ||
+                (hdr.magic != 0x4644484f && hdr.magic != 0x4344484f)) {
                 break;
             }
             int newFd = -1;
@@ -527,6 +530,10 @@ void FrameLoop()
             std::vector<int32_t> rects(hdr.nrects * 4u);
             if (!rects.empty() && !ReadAll(fd, rects.data(), rects.size() * sizeof(int32_t))) {
                 break;
+            }
+            if (hdr.magic == 0x4344484f && hdr.w == 0) {  // no cursor (hidden)
+                CursorUpdate(nullptr, 0, 0, 0, false, 0, 0);
+                continue;
             }
             ExportBuffer &b = bufs[hdr.id];
             if (newFd >= 0) {
@@ -549,6 +556,14 @@ void FrameLoop()
             }
             // DRM XRGB/ARGB8888 are B,G,R,X in memory; XBGR/ABGR8888 are R,G,B,X.
             const bool rgb = hdr.format == 0x34324258 || hdr.format == 0x34324241;
+            if (hdr.magic == 0x4344484f) {
+                // the cursor's buffer: Hyprland has just drawn it through the GPU, which
+                // copies it back on its own time; a moment's wait, then its pixels
+                usleep(20000);
+                CursorUpdate(b.map, static_cast<int>(hdr.w), static_cast<int>(hdr.h), static_cast<int>(hdr.stride), rgb,
+                             rects.size() >= 2 ? rects[0] : 0, rects.size() >= 2 ? rects[1] : 0);
+                continue;
+            }
             g_fbW = static_cast<int>(hdr.w);
             g_fbH = static_cast<int>(hdr.h);
             Blit(b.map, static_cast<int>(hdr.w), static_cast<int>(hdr.h), static_cast<int>(hdr.stride),
@@ -578,6 +593,7 @@ void FrameLoop()
             std::lock_guard<std::mutex> lk(g_exportSendMu);
             close(fd);
         }
+        CursorReset();  // no desktop: the system's pointer, never a hidden one
         g_frameMode = false;
         g_shown = false;
         g_desktopLostAt = NowS();
@@ -699,7 +715,12 @@ void OnMouse(OH_NativeXComponent *c, void *window)
     SendPointer(x, y, g_buttons);
 }
 
-void OnHover(OH_NativeXComponent *, bool) {}
+void OnHover(OH_NativeXComponent *, bool in)
+{
+    if (in) {
+        CursorReapply();  // HarmonyOS may have dropped the custom cursor meanwhile
+    }
+}
 
 int g_lastX = 0, g_lastY = 0;
 
@@ -1336,6 +1357,19 @@ OH_NativeXComponent_MouseEvent_Callback g_mouseCb;
 // for 30 s (gpuRetry), and says so if it never comes.
 std::atomic<bool> g_gpuWaitFailed{false};
 
+// setWindowId(id): the window the desktop's cursor is set on (cursor.cpp)
+napi_value SetWindowIdNapi(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value argv[1];
+    int32_t id = -1;
+    if (napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr) == napi_ok && argc >= 1 &&
+        napi_get_value_int32(env, argv[0], &id) == napi_ok) {
+        CursorSetWindow(id);
+    }
+    return nullptr;
+}
+
 napi_value GpuRetry(napi_env, napi_callback_info)
 {
     if (GpuActive()) {
@@ -1551,6 +1585,7 @@ napi_value Init(napi_env env, napi_value exports)
         {"localGpu", nullptr, LocalGpuNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sandboxCtl", nullptr, SandboxCtlNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"gpuRetry", nullptr, GpuRetry, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setWindowId", nullptr, SetWindowIdNapi, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"takeMinimize", nullptr, TakeMinimize, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

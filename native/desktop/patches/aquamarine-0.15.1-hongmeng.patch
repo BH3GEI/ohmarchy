@@ -10,7 +10,7 @@ index 2dc1ee5..48e9b81 100644
      };
  
      class IAllocator {
-diff --git a/include/aquamarine/allocator/DMAHeap.hpp b/include/aquamarine/allocator/DMAHeap.hpp
+diff --git aq/include/aquamarine/allocator/DMAHeap.hpp aq/include/aquamarine/allocator/DMAHeap.hpp
 new file mode 100644
 index 0000000..51ff6cf
 --- /dev/null
@@ -79,7 +79,7 @@ index 0000000..51ff6cf
 +    };
 +};
 diff --git a/include/aquamarine/backend/Headless.hpp b/include/aquamarine/backend/Headless.hpp
-index 5945b00..fd71592 100644
+index 5945b00..5c04e67 100644
 --- a/include/aquamarine/backend/Headless.hpp
 +++ b/include/aquamarine/backend/Headless.hpp
 @@ -5,6 +5,10 @@
@@ -93,7 +93,20 @@ index 5945b00..fd71592 100644
  
  namespace Aquamarine {
      class CBackend;
-@@ -82,6 +86,34 @@ namespace Aquamarine {
+@@ -22,6 +26,12 @@ namespace Aquamarine {
+         virtual std::vector<SDRMFormat>                                   getRenderFormats();
+         virtual bool                                                      pendingPageFlip();
+         virtual bool                                                      pendingIdleFrame();
++        // The cursor goes to the export clients as its own buffer (the display app sets it
++        // as the host's pointer, which follows the hand at once): not drawn into frames.
++        virtual bool                                                      setCursor(Hyprutils::Memory::CSharedPointer<IBuffer> buffer, const Hyprutils::Math::Vector2D& hotspot);
++        virtual void                                                      moveCursor(const Hyprutils::Math::Vector2D& coord, bool skipSchedule = false);
++        virtual void                                                      setCursorVisible(bool visible);
++        virtual Hyprutils::Math::Vector2D                                 cursorPlaneSize();
+ 
+         Hyprutils::Memory::CWeakPointer<CHeadlessOutput>                  self;
+ 
+@@ -82,6 +92,40 @@ namespace Aquamarine {
          void updateTimerFD();
          void addTimer(std::chrono::steady_clock::time_point when, std::function<void(void)> what);
  
@@ -104,11 +117,16 @@ index 5945b00..fd71592 100644
 +        struct SExportClient {
 +            Hyprutils::OS::CFileDescriptor fd;
 +            std::vector<uint64_t>          sentBuffers;
++            bool                           needCursor = false; // the cursor did not fit in the socket: send it again
 +            bool                           needFull = true;
 +        };
 +        Hyprutils::OS::CFileDescriptor exportListenFD;
 +        std::vector<SExportClient>     exportClients;
 +        Hyprutils::Memory::CSharedPointer<IBuffer> exportLastBuffer;
++        // the cursor as last set (null: hidden), for clients that connect later
++        Hyprutils::Memory::CSharedPointer<IBuffer> exportCursorBuffer;
++        Hyprutils::Math::Vector2D                  exportCursorHotspot;
++        bool                                       exportCursorVisible = true;
 +        // Input from export clients: pointer/keyboard devices fed by a reader thread per
 +        // client; events queue up and an eventfd wakes the main loop to emit them.
 +        struct SExportInput {
@@ -124,13 +142,14 @@ index 5945b00..fd71592 100644
 +        void                                         exportDispatchInput();
 +        void                           exportAccept();
 +        void                           exportFrame(Hyprutils::Memory::CSharedPointer<IBuffer> buffer, const Hyprutils::Math::CRegion& damage);
++        void                           exportCursor();
 +
          friend class CBackend;
          friend class CHeadlessOutput;
      };
-diff --git a/src/allocator/DMAHeap.cpp b/src/allocator/DMAHeap.cpp
+diff --git aq/src/allocator/DMAHeap.cpp aq/src/allocator/DMAHeap.cpp
 new file mode 100644
-index 0000000..07ccdf4
+index 0000000..b346f3e
 --- /dev/null
 +++ b/src/allocator/DMAHeap.cpp
 @@ -0,0 +1,163 @@
@@ -321,7 +340,7 @@ index dbd7147..dff913d 100644
          log(AQ_LOG_CRITICAL, "Cannot open backend: no allocator available");
          return false;
 diff --git a/src/backend/Headless.cpp b/src/backend/Headless.cpp
-index 179b850..46cf05e 100644
+index 179b850..2632204 100644
 --- a/src/backend/Headless.cpp
 +++ b/src/backend/Headless.cpp
 @@ -5,6 +5,12 @@
@@ -368,7 +387,7 @@ index 179b850..46cf05e 100644
  Aquamarine::CHeadlessOutput::CHeadlessOutput(const std::string& name_, Hyprutils::Memory::CWeakPointer<CHeadlessBackend> backend_) : backend(backend_) {
      name = name_;
  
-@@ -27,7 +57,23 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
+@@ -27,9 +57,25 @@ Aquamarine::CHeadlessOutput::~CHeadlessOutput() {
  bool Aquamarine::CHeadlessOutput::commit() {
      const auto snapshot = state->snapshot();
      events.commit.emit();
@@ -393,7 +412,9 @@ index 179b850..46cf05e 100644
 +    events.present.emit(IOutput::SPresentEvent{.presented = true, .when = &now, .seq = ++presentSeq,
 +                                               .refresh = refreshmHz > 0 ? (int)(1000000000000LL / refreshmHz) : 0});
      return true;
-@@ -123,11 +158,125 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
+ }
+ 
+@@ -123,11 +169,204 @@ eBackendType Aquamarine::CHeadlessBackend::type() {
  }
  
  bool Aquamarine::CHeadlessBackend::start() {
@@ -457,9 +478,86 @@ index 179b850..46cf05e 100644
 +            close(rfd);
 +        }).detach();
 +    }
-+    // the new client needs a full frame now, not at the next damage
++    // the new client needs a full frame now, not at the next damage, and the cursor
 +    if (exportLastBuffer)
 +        exportFrame(exportLastBuffer, CRegion{0, 0, exportLastBuffer->size.x, exportLastBuffer->size.y});
++    exportCursor();
++}
++
++// The cursor to every export client: a header like a frame's, magic "OHDC", the
++// buffer's geometry (0x0: no cursor) and one "rect" {hotspot x, hotspot y, 0, 0};
++// the buffer's dmabuf comes along the first time, as with frames.
++void Aquamarine::CHeadlessBackend::exportCursor() {
++    struct __attribute__((packed)) {
++        uint32_t magic   = 0x4344484f; // "OHDC"
++        uint32_t version = 1;
++        uint64_t bufferId = 0;
++        uint32_t width = 0, height = 0, stride = 0, format = 0, nrects = 1;
++    } hdr;
++    int32_t rect[4] = {(int32_t)exportCursorHotspot.x, (int32_t)exportCursorHotspot.y, 0, 0};
++    int     fd      = -1;
++    if (exportCursorBuffer && exportCursorVisible) {
++        const auto attrs = exportCursorBuffer->dmabuf();
++        if (attrs.success && attrs.fds.at(0) >= 0) {
++            hdr.bufferId = (uint64_t)(uintptr_t)exportCursorBuffer.get();
++            hdr.width    = attrs.size.x;
++            hdr.height   = attrs.size.y;
++            hdr.stride   = attrs.strides.at(0);
++            hdr.format   = attrs.format;
++            fd           = attrs.fds.at(0);
++        }
++    }
++    std::erase_if(exportClients, [&](SExportClient& c) {
++        const bool known = hdr.bufferId == 0 || std::ranges::find(c.sentBuffers, hdr.bufferId) != c.sentBuffers.end();
++        iovec      iov[2] = {{&hdr, sizeof(hdr)}, {rect, sizeof(rect)}};
++        char       cmsgbuf[CMSG_SPACE(sizeof(int))] = {};
++        msghdr     msg{.msg_iov = iov, .msg_iovlen = 2};
++        if (!known && fd >= 0) {
++            msg.msg_control    = cmsgbuf;
++            msg.msg_controllen = sizeof(cmsgbuf);
++            auto* cmsg         = CMSG_FIRSTHDR(&msg);
++            cmsg->cmsg_level   = SOL_SOCKET;
++            cmsg->cmsg_type    = SCM_RIGHTS;
++            cmsg->cmsg_len     = CMSG_LEN(sizeof(int));
++            memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
++        }
++        const ssize_t sent = sendmsg(c.fd.get(), &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
++        if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++            c.needCursor = true; // client is behind: again after its next frame
++            return false;
++        }
++        if (sent < (ssize_t)(sizeof(hdr) + sizeof(rect)))
++            return true;
++        c.needCursor = false;
++        if (!known)
++            c.sentBuffers.emplace_back(hdr.bufferId);
++        return false;
++    });
++}
++
++bool Aquamarine::CHeadlessOutput::setCursor(SP<IBuffer> buffer, const Hyprutils::Math::Vector2D& hotspot) {
++    if (!backend || !backend->exportListenFD.isValid())
++        return false;
++    backend->exportCursorBuffer  = buffer;
++    backend->exportCursorHotspot = hotspot;
++    backend->exportCursorVisible = true;
++    backend->exportCursor();
++    return true;
++}
++
++void Aquamarine::CHeadlessOutput::moveCursor(const Hyprutils::Math::Vector2D& coord, bool skipSchedule) {
++    ; // the host's pointer is where the input came from already
++}
++
++void Aquamarine::CHeadlessOutput::setCursorVisible(bool visible) {
++    if (!backend || backend->exportCursorVisible == visible)
++        return;
++    backend->exportCursorVisible = visible;
++    backend->exportCursor();
++}
++
++Hyprutils::Math::Vector2D Aquamarine::CHeadlessOutput::cursorPlaneSize() {
++    return {-1, -1}; // any size
 +}
 +
 +void Aquamarine::CHeadlessBackend::exportFrame(SP<IBuffer> buffer, const CRegion& damage) {
@@ -517,10 +615,22 @@ index 179b850..46cf05e 100644
 +        c.needFull = false;
 +        return false;
 +    });
++    if (std::ranges::any_of(exportClients, [](const SExportClient& c) { return c.needCursor; }))
++        exportCursor();
  }
  
  int Aquamarine::CHeadlessBackend::drmFD() {
-@@ -151,7 +300,82 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
+@@ -143,7 +382,8 @@ bool Aquamarine::CHeadlessBackend::dispatchEvents() {
+ }
+ 
+ uint32_t Aquamarine::CHeadlessBackend::capabilities() {
+-    return 0;
++    // with an export client to show it, the cursor is a "hardware" one: its own buffer
++    return exportListenFD.isValid() ? AQ_BACKEND_CAPABILITY_POINTER : 0;
+ }
+ 
+ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils::Math::Vector2D& hotspot) {
+@@ -151,7 +391,82 @@ bool Aquamarine::CHeadlessBackend::setCursor(SP<IBuffer> buffer, const Hyprutils
  }
  
  void Aquamarine::CHeadlessBackend::onReady() {

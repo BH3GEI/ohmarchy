@@ -13,6 +13,7 @@ interface OhdispModule {
   sandboxCtl(cmd: string): Promise<string>;
   gpuRetry(): void;
   takeMinimize(): boolean;
+  setWindowId(id: number): void;
 }
 
 // The sandbox build (native/sandbox/build-app.sh) runs Linux through the helper
@@ -193,6 +194,10 @@ struct Index {
       XComponent({ id: 'ohdisp', type: XComponentType.SURFACE, libraryname: 'ohdisp', controller: this.xc })
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
+          // the desktop's cursor becomes this window's pointer (cursor.cpp)
+          window.getLastWindow(getContext(this)).then((w: window.Window) => {
+            this.ohdisp?.setWindowId(w.getWindowProperties().id);
+          });
           if (this.sandbox) {
             if (this.resetRequested !== 0) {
               this.onResetRequested();  // opened by "Reset Linux": ask before anything starts

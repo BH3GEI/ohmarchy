@@ -28,10 +28,23 @@ for p in sys.argv[1:]:  # rotate the hue a third of the way round: same icon, ot
     out.putalpha(im.getchannel("A"))
     out.save(p)
 P
-# "Reset Linux" in the icon's menu: a shortcut whose want carries action=reset
+# "权限设置" and "Reset Linux" in the icon's menu: shortcuts whose want carries action
 cat > entry/src/main/resources/base/profile/shortcuts_config.json <<'J'
 {
   "shortcuts": [
+    {
+      "shortcutId": "settings",
+      "label": "$string:settings_label",
+      "icon": "$media:startIcon",
+      "wants": [
+        {
+          "bundleName": "com.ohmarchy.sandbox",
+          "moduleName": "entry",
+          "abilityName": "EntryAbility",
+          "parameters": { "action": "settings" }
+        }
+      ]
+    },
     {
       "shortcutId": "reset",
       "label": "$string:reset_label",
@@ -59,7 +72,7 @@ open(m, 'w').write(s)
 s = open(st).read()
 o = '"string": ['
 assert s.count(o) == 1
-s = s.replace(o, o + '\n    { "name": "reset_label", "value": "Reset Linux" },')
+s = s.replace(o, o + '\n    { "name": "reset_label", "value": "Reset Linux" },\n    { "name": "settings_label", "value": "权限设置" },')
 open(st, 'w').write(s)
 P2
 grep -q com.ohmarchy.sandbox AppScope/app.json5 && grep -q 'Omarchy (sandbox)' entry/src/main/resources/base/element/string.json

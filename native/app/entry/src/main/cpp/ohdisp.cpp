@@ -1431,7 +1431,7 @@ napi_value LocalGpuNapi(napi_env env, napi_callback_info)
 // The sandbox's helper (native/sandbox/ohm-sandboxd.c) on @<prefix>-ctl: one of start,
 // stop, reset, status; its reply ("ok"/"failed", then output). Only the sandbox build
 // has one; the helper serves only this app's uid.
-std::string SandboxCtl(const std::string &cmd, bool wait)
+std::string SandboxCtl(const std::string &cmd, bool wait, const std::string &body = "")
 {
     int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (fd < 0) {
@@ -1448,6 +1448,10 @@ std::string SandboxCtl(const std::string &cmd, bool wait)
     }
     std::string line = cmd + "\n";
     WriteAll(fd, line.data(), line.size());
+    if (!body.empty() || cmd == "writepolicy") {  // the new policy, then end of input
+        WriteAll(fd, body.data(), body.size());
+        shutdown(fd, SHUT_WR);
+    }
     std::string reply;
     char buf[512];
     ssize_t r;
@@ -1460,17 +1464,17 @@ std::string SandboxCtl(const std::string &cmd, bool wait)
 }
 
 struct SandboxWork {
-    std::string cmd, reply;
+    std::string cmd, body, reply;
     napi_deferred deferred = nullptr;
     napi_async_work work = nullptr;
 };
 
-// sandboxCtl(cmd): a Promise of the helper's reply; "stop" only sends (the app may be
-// closing, and the helper finishes it anyway)
+// sandboxCtl(cmd[, body]): a Promise of the helper's reply; "stop" only sends (the app
+// may be closing, and the helper finishes it anyway). body: writepolicy's text.
 napi_value SandboxCtlNapi(napi_env env, napi_callback_info info)
 {
-    size_t argc = 1;
-    napi_value argv[1];
+    size_t argc = 2;
+    napi_value argv[2];
     char cmd[16] = {0};
     size_t n = 0;
     napi_value promise = nullptr;
@@ -1479,6 +1483,13 @@ napi_value SandboxCtlNapi(napi_env env, napi_callback_info info)
         return nullptr;
     }
     auto *w = new SandboxWork{cmd};
+    if (argc >= 2) {
+        static char body[4097];
+        size_t bn = 0;
+        if (napi_get_value_string_utf8(env, argv[1], body, sizeof(body), &bn) == napi_ok) {
+            w->body.assign(body, bn);
+        }
+    }
     napi_create_promise(env, &w->deferred, &promise);
     if (w->cmd == "stop") {
         w->reply = SandboxCtl(w->cmd, false);
@@ -1493,7 +1504,7 @@ napi_value SandboxCtlNapi(napi_env env, napi_callback_info info)
     napi_create_async_work(
         env, nullptr, res, [](napi_env, void *d) {
             auto *w = static_cast<SandboxWork *>(d);
-            w->reply = SandboxCtl(w->cmd, true);
+            w->reply = SandboxCtl(w->cmd, true, w->body);
         },
         [](napi_env env, napi_status, void *d) {
             auto *w = static_cast<SandboxWork *>(d);

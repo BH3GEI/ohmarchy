@@ -1,0 +1,6 @@
+{
+  "name": "libohdisp.so",
+  "types": "./index.d.ts",
+  "version": "1.0.0",
+  "description": "the display app's native module, for the settings page"
+}

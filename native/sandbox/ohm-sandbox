@@ -6,7 +6,9 @@
 #   ohm-sandbox start       mount the image in private mount/pid/ipc/uts/net namespaces
 #   ohm-sandbox stop | status | reset (back to the snapshot taken by create)
 #   ohm-sandbox net         connect the network again (after the PC changed networks)
-#   ohm-sandbox policy check   what policy.conf makes the next start do (policy.sh)
+#   ohm-sandbox policy check | validate FILE | show
+#                           what policy.conf makes the next start do (policy.sh); is
+#                           FILE a valid policy; the policy text (for the settings page)
 #   ohm-sandbox snapshot    take the reset snapshot again (stopped)
 #   ohm-sandbox run CMD..   run a command inside as root (with the dropped capabilities)
 #   ohm-sandbox shell
@@ -145,8 +147,15 @@ start)
     esac
     ;;
 policy)
-    [ "$2" = check ] || { echo "usage: ohm-sandbox policy check"; exit 2; }
-    policy_check
+    case "$2" in
+    check) policy_check;;
+    # the helper's writepolicy: is FILE a policy this parser takes? (read only)
+    validate) [ -f "$3" ] || { echo "no file"; exit 2; }
+        r=$(pol_parse "$3") && echo ok || { echo "$r"; exit 1; };;
+    # the policy as the settings page reads it: the file, or the defaults
+    show) cat "$S/policy.conf" 2>/dev/null || cat "$S/policy.conf.default" 2>/dev/null || echo "network = pasta";;
+    *) echo "usage: ohm-sandbox policy check | validate FILE | show"; exit 2;;
+    esac
     ;;
 net)
     alive || { echo "not running"; exit 1; }

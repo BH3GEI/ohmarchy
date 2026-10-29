@@ -1,7 +1,7 @@
 // The Linux desktop fills the window: libohdisp.so draws it into the XComponent and
 // handles input. Until the first frame arrives, a status line says what is going on.
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { promptAction, window } from '@kit.ArkUI';
+import { promptAction, router, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { startJl } from '../jl/jl';
 
@@ -26,6 +26,7 @@ struct Index {
   // the sandbox helper's word while Linux starts or resets; shown over the status
   @State note: string = '';
   @StorageLink('resetRequested') @Watch('onResetRequested') resetRequested: number = 0;
+  @StorageLink('settingsRequested') @Watch('onSettingsRequested') settingsRequested: number = 0;
   private sandbox: boolean = false;
   private started: boolean = false;  // Linux started by this app
   private ohdisp?: OhdispModule;
@@ -90,6 +91,13 @@ struct Index {
       this.startLinux().then(() => {
         this.note = 'Linux was reset. Close and open the app to see it.';
       });
+    }
+  }
+
+  // from the icon's "权限设置" shortcut while the desktop is open: the settings page on top
+  onSettingsRequested(): void {
+    if (this.sandbox && this.settingsRequested !== 0) {
+      router.pushUrl({ url: 'pages/Settings' });
     }
   }
 

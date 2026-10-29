@@ -13,14 +13,21 @@ export default class EntryAbility extends UIAbility {
     const imp: Object | undefined = want?.parameters?.['immersive'];
     AppStorage.setOrCreate('immersive', imp === true || imp === 'true');
     this.notify(want);
+    this.settingsFirst = want?.parameters?.['action'] === 'settings';
     this.shortcut(want);
   }
 
-  // The sandbox build's "Reset Linux" shortcut on the icon (want parameter action=reset):
-  // the page asks for confirmation.
+  // The sandbox build's shortcuts on the icon (want parameter action): "Reset Linux"
+  // (reset: the page asks for confirmation) and "权限设置" (settings: the settings page,
+  // over the desktop when the app is open, alone otherwise; it starts nothing).
+  private settingsFirst: boolean = false;
+
   private shortcut(want: Want): void {
     if (want?.parameters?.['action'] === 'reset') {
       AppStorage.setOrCreate('resetRequested', Date.now());
+    }
+    if (want?.parameters?.['action'] === 'settings') {
+      AppStorage.setOrCreate('settingsRequested', Date.now());
     }
   }
 
@@ -58,6 +65,14 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    if (this.settingsFirst) {  // opened by "权限设置": the settings page alone, in a window
+      windowStage.loadContent('pages/Settings', (err) => {
+        if (err.code) {
+          hilog.error(DOMAIN, 'ohdisp', 'loadContent settings failed: %{public}s', JSON.stringify(err));
+        }
+      });
+      return;
+    }
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'ohdisp', 'loadContent failed: %{public}s', JSON.stringify(err));

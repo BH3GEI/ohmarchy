@@ -5,5 +5,5 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": { "libbbload.so": "file:./src/main/cpp/jl/types/libbbload" }
+  "dependencies": { "libbbload.so": "file:./src/main/cpp/jl/types/libbbload", "libohdisp.so": "file:./src/main/cpp/types/libohdisp" }
 }

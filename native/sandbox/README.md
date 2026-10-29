@@ -219,6 +219,20 @@ on ohdev: each non-default value in a real start** (network off and host, shares
 the read-only test, fuse, a kept capability, abstract_allow in the fence, a rejected
 file falling back to network off).
 
+## Docker inside (policy: docker = on)
+
+Docker can be used inside the sandbox (`docker = on` in the policy; off by default).
+dockerd runs outside it, in `/data/local/ohm-docker-test`, with mount, pid and network
+namespaces of its own, reaching the internet through pasta and not the host's
+127.0.0.1. The sandbox gets `/run/docker.sock`, which amounts to root inside dockerd.
+So runc refuses everything that would reach past that directory: `--privileged`,
+`--cap-add`, the host's pid or ipc namespace, binding host paths, unmasking /proc,
+sysctls other than net; MKNOD is always dropped (the checked list:
+docker-test/README.md; a4's 1954c76, c4a42a8, `docker build` included). "Test-grade"
+means the isolation between containers, and between a container and dockerd, is
+weaker than real Docker's: no seccomp, no cgroup resource limits, a shared keyring.
+The sandbox's outer boundary is unchanged.
+
 ## sudo without its own pty (2026-10-28)
 
 Arch's sudo runs the command on a pty of its own (`use_pty`), and the sandbox has no

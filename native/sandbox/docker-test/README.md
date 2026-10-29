@@ -60,7 +60,9 @@ dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root）�
 - 宿主 127.0.0.1:18557 上起了真监听（lprobe18557）。宿主自己连得上，监听端记到了这一次。`--network host` 的容器连 127.0.0.1:18557 被拒（Connection refused），监听端没有第二条记录；同一个容器能上外网（TUNA）。
 - dockerd 的 pid ns 是 `pid:[4026532882]`，宿主是 `pid:[4026540030]`。它的 /proc 里只有 2 个进程。
 
-还没测：`docker build`（BuildKit 的容器也经过 runc，按理受同样的检查）；在真的沙箱 app 里以 builder 身份跑（等 native/sandbox 的钩子上机后再测）。
+- `docker build`：这个 docker CLI 没有 buildx 插件，所以走经典构建器。5 步的 Dockerfile 用了 5 秒，构建出的镜像能跑。构建时的每个 RUN 也受同样的检查：CapBnd 同样是 `a00425fb`，`RUN mknod` 报 Operation not permitted。
+
+还没测：在真的沙箱 app 里以 builder 身份跑（等 native/sandbox 的钩子上机后再测）。
 
 ## 用法
 

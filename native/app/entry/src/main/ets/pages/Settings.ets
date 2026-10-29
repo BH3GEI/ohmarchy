@@ -161,10 +161,10 @@ struct Settings {
       }
       this.check = this.body(r);
       if (!restart) {
-        this.message = '已保存。下次打开沙箱时生效。';
+        this.message = '已保存。下次打开时生效。';
         return;
       }
-      this.message = '已保存，正在重启沙箱…';
+      this.message = '已保存，正在重启 Linux…';
       hilog.info(0x0D0D, 'ohdisp', 'settings: saved, restarting the sandbox');
       // the helper takes requests in order: stop, then the new app process's start
       ohdisp.sandboxCtl('stop').then(() => {
@@ -172,7 +172,7 @@ struct Settings {
           const ctx = getContext(this) as common.UIAbilityContext;
           ctx.getApplicationContext().restartApp({ bundleName: SANDBOX_BUNDLE, abilityName: 'EntryAbility' });
         } catch (e) {
-          this.message = '已保存，Linux 已停止。请重新打开沙箱。';
+          this.message = '已保存，Linux 已停止。请重新打开 app。';
         }
       });
     });
@@ -224,7 +224,7 @@ struct Settings {
   build() {
     Column() {
       Row() {
-        Text('沙箱权限设置').fontSize(22).fontColor(TEXT).fontWeight(FontWeight.Bold).layoutWeight(1)
+        Text('权限设置').fontSize(22).fontColor(TEXT).fontWeight(FontWeight.Bold).layoutWeight(1)
         Button('关闭').onClick(() => this.close())
       }
       .width('100%')
@@ -232,21 +232,21 @@ struct Settings {
 
       Scroll() {
         Column() {
-          this.section('网络', '本版本里沙箱与本机共用网络（能上网，也能连到本机的服务）；独立网络下一版启用，这一项现在还不起作用。')
+          this.section('网络', '本版本里 Linux 与本机共用网络（能上网，也能连到本机的服务）；独立网络下一版启用，这一项现在还不起作用。')
           Row() {
             this.netChoice('pasta', '联网', false)
             this.netChoice('off', '断网', false)
             this.netChoice('host', '和本机共享', true)
           }
 
-          this.section('共享本机目录', '沙箱里的 root 能读写这些目录里的所有文件。主机路径要用绝对路径。只读：本机（HongMeng）暂不支持，目前只能读写。')
+          this.section('共享本机目录', 'Linux 里的 root 能读写这些目录里的所有文件。主机路径要用绝对路径。只读：本机（HongMeng）暂不支持，目前只能读写。')
           ForEach(this.rows, (id: number) => {
             Row() {
               TextInput({ text: this.hosts.get(id) ?? '', placeholder: '本机路径，如 /data/local/tmp/share' })
                 .layoutWeight(1)
                 .onChange((v: string) => { this.hosts.set(id, v); })
               Text(' → ').fontColor(DIM)
-              TextInput({ text: this.insides.get(id) ?? '', placeholder: '沙箱里的路径，如 /mnt/share' })
+              TextInput({ text: this.insides.get(id) ?? '', placeholder: 'Linux 里的路径，如 /mnt/share' })
                 .layoutWeight(1)
                 .onChange((v: string) => { this.insides.set(id, v); })
               Text(' 读写 ').fontColor(TEXT).fontSize(13)
@@ -263,7 +263,7 @@ struct Settings {
             this.rows = r;
           })
 
-          this.section('Docker', '在 Linux 里用 docker（直接跑在鸿蒙内核上的 docker，不是虚拟机）。沙箱里的程序借它拿到的是 dockerd 里的 root，出不了 docker 自己的目录和网络；容器之间的隔离是测试级。')
+          this.section('Docker', '在 Linux 里用 docker（直接跑在鸿蒙内核上的 docker，不是虚拟机）。Linux 里的程序借它拿到的是 dockerd 里的 root，出不了 docker 自己的目录和网络；容器之间的隔离是测试级。')
           Row() {
             // two-way, so that 取消 below turns the switch itself back off, not only the value
             Toggle({ type: ToggleType.Switch, isOn: $$this.docker })
@@ -274,7 +274,7 @@ struct Settings {
                 }
                 promptAction.showDialog({
                   title: '打开 Docker？',
-                  message: '沙箱里的程序能用 docker：权限比现在多一层（dockerd 里的 root），但出不了 docker 自己的目录和网络。下次打开沙箱生效。',
+                  message: 'Linux 里的程序能用 docker：权限比现在多一层（dockerd 里的 root），但出不了 docker 自己的目录和网络。下次启动 Linux 时生效。',
                   buttons: [{ text: '取消', color: TEXT }, { text: '打开', color: RED }]
                 }).then((r: promptAction.ShowDialogSuccessResponse) => {
                   this.docker = r.index === 1;
@@ -291,7 +291,7 @@ struct Settings {
           .onClick(() => { this.advanced = !this.advanced; })
 
           if (this.advanced) {
-            this.section('额外的能力', '默认全部去掉；勾上就让沙箱里的 root 多一项权限。')
+            this.section('额外的能力', '默认全部去掉；勾上就让Linux 里的 root 多一项权限。')
             ForEach(CAPS, (c: string[]) => {
               Row() {
                 Checkbox({ name: c[0] })
@@ -313,7 +313,7 @@ struct Settings {
               .width('100%')
             }, (d: string[]) => d[0])
 
-            this.section('抽象 socket 放行前缀', '多余的一层、不是安全边界：静态程序和沙箱里的 root 能绕过。只填字母、数字和 . _ / -')
+            this.section('抽象 socket 放行前缀', '多余的一层、不是安全边界：静态程序和Linux 里的 root 能绕过。只填字母、数字和 . _ / -')
             ForEach(this.prefixes, (id: number) => {
               Row() {
                 TextInput({ text: this.prefixText.get(id) ?? '', placeholder: '前缀，如 foo-' })
@@ -355,9 +355,9 @@ struct Settings {
       }
       Row() {
         Button('保存').enabled(!this.busy).onClick(() => this.save(false)).margin({ right: 12 })
-        Button('保存并重启沙箱').enabled(!this.busy).onClick(() => {
+        Button('保存并重启 Linux').enabled(!this.busy).onClick(() => {
           promptAction.showDialog({
-            title: '保存并重启沙箱？',
+            title: '保存并重启 Linux？',
             message: 'Linux 会停下再起来，里面开着的程序都会关掉。',
             buttons: [{ text: '取消', color: TEXT }, { text: '重启', color: RED }]
           }).then((r: promptAction.ShowDialogSuccessResponse) => {

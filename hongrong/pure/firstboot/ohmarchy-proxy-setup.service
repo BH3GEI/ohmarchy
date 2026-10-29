@@ -1,0 +1,13 @@
+[Unit]
+Description=Omarchy: sing-box proxy from an env file put into an internal image
+ConditionPathExists=/etc/ohmarchy/proxy.env
+ConditionPathExists=/usr/bin/sing-box
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c 'set -e; umask 077; mkdir -p /etc/sing-box; c=/etc/sing-box/config.json; (set -a; . /etc/ohmarchy/proxy.env; python3 /usr/local/lib/ohmarchy/vless2singbox.py /etc/ohmarchy/proxy-direct.txt) > $c.new; sing-box check -c $c.new; mv $c.new $c; rm -f /etc/ohmarchy/proxy.env; systemctl enable sing-box.service; systemctl start --no-block sing-box.service'
+
+[Install]
+WantedBy=multi-user.target

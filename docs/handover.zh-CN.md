@@ -93,6 +93,7 @@
   - Yao 的主盘保留为同目录下的 vm.qcow2.imported（36412063744 字节），未改动。
   - 另备一张未开过机的 v3b 盘：/data/local/vmtest/omarchy-b-v3b-os1.qcow2。
   - v3c 盘：v3 加 Firefox 软件 WebRender 的 policies.json，未开过机：/data/local/vmtest/omarchy-b-v3c-os1.qcow2（2026-10-29，k4/v3c.sh）。
+  - **internal 演示盘（含凭据，仅限 ohdev 本机，不得拷走或分发）**：/data/local/vmtest/omarchy-b-v3c-internal-os1.qcow2，v3c 加 AI key、代理凭据（hongrong/pure/inject-*.sh）和 demo-setup.sh；2026-10-29 在鸿融里装好演示软件、录了 AI 演示。可分发的演示盘另做，零凭据，凭据在各机装机时注入。
 
 **D 原生**（docs/native-chroot.md、docs/native-desktop.md、docs/acceptance.md）
 

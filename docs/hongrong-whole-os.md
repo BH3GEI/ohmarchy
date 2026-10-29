@@ -426,6 +426,76 @@ Home key and edge swipes did not leave the fullscreen VM, and from the host
   build with 1.1.1.103; turn off automatic updates for 鸿融 to keep a version.
 - The kernel needs `arm64.hmv_idreg_quirk` until Huawei's hypervisor reads
   unknown ID registers as zero ([report](hmv-idreg-report.md)).
+- Firefox's hardware WebRender crashes the host's GPU process and 鸿融 then
+  stops the VM ([vendor report](hongrong-vendor-request.md)); the image sets
+  software WebRender in `/etc/firefox/policies/policies.json`.
+
+### AI agents
+
+Claude Code, Codex and opencode are configured by `hongrong/pure/guest/setup-ai.sh`
+for one OpenAI/Anthropic-compatible relay. In a public image the key is empty
+and the first terminal says so: put your own key and base URL into
+`~/.config/environment.d/ai.conf` (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`
+without a path; `OPENAI_API_KEY`, `OPENAI_BASE_URL` ending in `/v1`), the base
+URL also into `~/.codex/config.toml` and `~/.config/opencode/opencode.json`,
+then log in again; or run `setup-ai.sh ENV_FILE` with `OHM_AI_KEY`,
+`OHM_AI_BASE` and `OHM_AI_BASE_V1` in ENV_FILE.
+
+Internal disks (never a public one) get the relay ready to use:
+`hongrong/pure/inject-ai-env.sh RAW.img ENV_FILE` writes ENV_FILE into a copy
+of the disk as `~/.config/ohmarchy/ai.env` and enables the user unit
+`ohmarchy-ai-import.service`, which runs `setup-ai.sh` with it at the next
+login and deletes it. On ohdev the env file is `/data/local/secrets/ai.env`
+(root, 600); the relay URL that the guest reaches is the public one.
+
+A disk with the env files injected carries the key and the proxy's
+credentials in plain text: it stays on the machine it was made for and is
+never copied to another one. A disk to hand out has the mechanism only (the
+units, `setup-ai.sh`, `vless2singbox.py`); each machine injects its own env
+files when it is set up.
+
+Recording a demo: Claude Code shows a server notice once per account, at the
+first tool call, and the notice names the relay's host. Before recording, run
+one prompt that calls a tool (for example `run ls`) in a session that is not
+recorded, dismiss the notice, and start a new session; check every frame of
+the recording for the host name (OCR) and record again if one frame shows it.
+
+Pitfall: Omarchy's launchers in `~/.local/bin` (claude, codex, opencode) run
+`mise use` at every start, which looks for a newer version online (npm,
+GitHub). Behind a slow network that hung for minutes and the agents seemed not
+to answer, although the relay answered in 4 s; mise's own downloads through
+the proxy were cut off and left empty install directories. The demo disk
+(`hongrong/pure/guest/demo-setup.sh agents`) installs the three agents with npm
+from npmmirror instead (system Node.js, `--allow-scripts` for the native
+binaries of claude and opencode), replacing the launchers; checked on
+2026-10-29 in the 鸿融 guest: `claude --version` 0.02 s, `claude -p` 9 s, codex
+10 s, opencode 8 s, and interactive `claude` opens at its prompt (first-run
+screens pre-answered by setup-ai.sh). On the native desktop the launchers run
+the installed version with `MISE_OFFLINE=1`. The same script sets mainland
+mirrors for npm, rustup, Go, pip and mise's Node.js
+(`~/.config/environment.d/50-mirrors.conf`, as route D).
+
+### Proxy (internal disks)
+
+Internal disks (never a public one) also get a proxy for sites that the
+mainland network does not reach. `hongrong/pure/inject-proxy-env.sh RAW.img
+ENV_FILE [DIRECT_FILE]` writes the proxy's VLESS URL (`PROXY_VLESS_URL`;
+on ohdev `/data/local/secrets/proxy.env`) into a copy of the disk and enables
+`ohmarchy-proxy-setup.service`: once sing-box is installed, it writes
+`/etc/sing-box/config.json` with `hongrong/pure/guest/vless2singbox.py`,
+deletes the env file and enables sing-box. The guest gets a tun device
+(transparent for every program) and a mixed proxy on 127.0.0.1:7890; private
+addresses, the mainland mirrors and the hosts in DIRECT_FILE (the AI relay's)
+go direct, everything else through the server. `sudo systemctl stop
+sing-box` goes back to direct. Checked on 2026-10-29: google, youtube and
+github 200, the exit in the US, TUNA direct in 0.7 s; GitHub downloads through
+the proxy ran at 40 KB/s, so VSCodium comes from TUNA's GitHub release mirror.
+
+The native desktop shares the HarmonyOS host's network, whose routes must not
+change: there `SINGBOX_TUN=0` leaves out the tun device and the auto-detected
+interface (the HongMeng kernel gave "missing default interface"), and
+`~/.config/environment.d/60-proxy.conf` points `http_proxy`, `https_proxy` and
+`all_proxy` at 127.0.0.1:7890.
 
 ## Toward Omarchy's own kernel
 

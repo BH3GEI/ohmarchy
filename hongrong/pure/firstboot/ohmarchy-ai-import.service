@@ -1,0 +1,10 @@
+[Unit]
+Description=Omarchy: configure the AI agents from an env file put into an internal image
+ConditionPathExists=%h/.config/ohmarchy/ai.env
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c 'bash /usr/local/lib/ohmarchy/setup-ai.sh %h/.config/ohmarchy/ai.env && rm -f %h/.config/ohmarchy/ai.env'
+
+[Install]
+WantedBy=default.target

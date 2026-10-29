@@ -94,6 +94,7 @@
   - 另备一张未开过机的 v3b 盘：/data/local/vmtest/omarchy-b-v3b-os1.qcow2。
   - v3c 盘：v3 加 Firefox 软件 WebRender 的 policies.json，未开过机：/data/local/vmtest/omarchy-b-v3c-os1.qcow2（2026-10-29，k4/v3c.sh）。
   - **internal 演示盘（含凭据，仅限 ohdev 本机，不得拷走或分发）**：/data/local/vmtest/omarchy-b-v3c-internal-os1.qcow2，v3c 加 AI key、代理凭据（hongrong/pure/inject-*.sh）和 demo-setup.sh；2026-10-29 在鸿融里装好演示软件、录了 AI 演示。可分发的演示盘另做，零凭据，凭据在各机装机时注入。
+  - **可分发演示盘（零凭据）**：/data/local/vmtest/omarchy-b-v3c-demo-dist2-os1.qcow2（2026-10-29）。v3c 加 demo-setup.sh 装好的演示软件，只带注入机制（两个首启单元、vless2singbox.py、setup-ai.sh），回到首次开机状态（无密码，开机弹设密码终端，演示盘保持不锁屏）。逐字节扫过：key、中转主机名、UUID、代理主机名均 0。各机装机时用 hongrong/pure/inject-*.sh 从本机 /data/local/secrets 离线注入。
 
 **D 原生**（docs/native-chroot.md、docs/native-desktop.md、docs/acceptance.md）
 

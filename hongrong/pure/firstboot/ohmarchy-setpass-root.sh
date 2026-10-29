@@ -63,8 +63,9 @@ fi
 rm -f "$pending"
 rm -f "/home/$user/.config/systemd/user/graphical-session.target.wants/ohmarchy-setpass.service"
 touch /var/lib/ohmarchy/firstboot.done
-# back to Omarchy's idle defaults (screensaver, lock with this password)
-rm -f "/home/$user/.local/state/omarchy/indicators/stay-awake"
+# back to Omarchy's idle defaults (screensaver, lock with this password),
+# except on a demo disk (guest/demo-setup.sh), which stays awake
+[ -e /usr/local/lib/ohmarchy/demo-setup.sh ] || rm -f "/home/$user/.local/state/omarchy/indicators/stay-awake"
 
 cd=/dev/disk/by-label/鸿融
 if [ -b "$cd" ]; then

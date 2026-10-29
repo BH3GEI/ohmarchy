@@ -175,6 +175,9 @@ extern "C" __attribute__((noreturn)) void vtest_exit(int code)
     pthread_exit(nullptr);
 }
 
+bool LatencyLog();  // ohdisp.cpp
+int64_t MonoMs();
+
 void PresentNow(uint32_t res_id)
 {
     // Bit 31 on the scanout id is the library's "resize debounce over" flag (the VM
@@ -194,6 +197,9 @@ void PresentNow(uint32_t res_id)
             presentMs = 0;
             presentN = 0;
         }
+    }
+    if (LatencyLog()) {
+        fprintf(stderr, "latency present at %lld\n", static_cast<long long>(MonoMs()));
     }
     if (r != 0 || g_presents < 8 || g_presents % 120 == 0) {
         fprintf(stderr, "present #%llu res %u -> %d\n", static_cast<unsigned long long>(g_presents.load()), res_id, r);

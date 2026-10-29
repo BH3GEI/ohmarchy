@@ -43,6 +43,9 @@
 #define LOGI(...) OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_DOMAIN, LOG_TAG, __VA_ARGS__)
 
+bool LatencyLog();
+int64_t MonoMs();
+
 namespace {
 
 const char *kHost = "127.0.0.1";
@@ -727,6 +730,32 @@ int g_lastX = 0, g_lastY = 0;
 // What HarmonyOS delivers (keys, scroll, gestures), to hilog tag ohdisp: the first
 // 300 events after start, all of them while the file "inputlog" exists in the
 // app's files directory.
+}  // namespace
+
+// Latency measurements (files/latencylog present): key-downs here and every GPU
+// present (gpu.cpp) logged with CLOCK_MONOTONIC milliseconds, so key-to-screen time
+// can be read from hilog. Checked once a second. (Outside the namespace: gpu.cpp too.)
+bool LatencyLog()
+{
+    static int64_t checked = -1;
+    static bool file = false;
+    int64_t now = NowS();
+    if (now != checked) {
+        checked = now;
+        file = access("/data/storage/el2/base/files/latencylog", F_OK) == 0;
+    }
+    return file;
+}
+
+int64_t MonoMs()
+{
+    timespec t{};
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1000LL + t.tv_nsec / 1000000;
+}
+
+namespace {
+
 bool InputLog()
 {
     static int n = 0;
@@ -1294,6 +1323,9 @@ bool OnKey(OH_NativeXComponent *c, void *)
     if (InputLog()) {
         LOGI("input key code %{public}d %{public}s -> evdev %{public}u", static_cast<int>(code), down ? "down" : "up",
              EvdevKey(code));
+    }
+    if (down && LatencyLog()) {
+        LOGI("latency key %{public}d at %{public}lld", static_cast<int>(code), static_cast<long long>(MonoMs()));
     }
     if (code == KEY_CTRL_LEFT || code == KEY_CTRL_RIGHT) {
         g_ctrlDown = down;

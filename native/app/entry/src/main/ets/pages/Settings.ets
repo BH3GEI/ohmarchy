@@ -321,6 +321,7 @@ struct Settings {
         .alignItems(HorizontalAlign.Start)
       }
       .layoutWeight(1)
+      .align(Alignment.Top)  // short content starts at the top, not in the middle
       .scrollBar(BarState.Auto)
 
       if (this.message !== '') {

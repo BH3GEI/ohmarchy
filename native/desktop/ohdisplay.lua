@@ -1,15 +1,17 @@
 -- Entry for the native HarmonyOS display (ohmarchy-desktop): Omarchy's config plus
--- the headless output the display app shows. Defaults to 1920x1280 at scale 1, which
--- the app scales up to the window: every frame is read back from the GPU, so pixels
--- cost time. OHMARCHY_DISPLAY_MODE=2880x1920@60 OHMARCHY_DISPLAY_SCALE=1.5 is the
--- panel's own resolution: sharper, about half the frame rate.
+-- the headless output the display app shows. Defaults to 2160x1440 at scale 1.5:
+-- 1440x960 logical, the same size as in Hongrong's VM (the UI at 1920x1280 scale 1,
+-- the old default, came out a quarter smaller than there; Yao, 2026-10-29). The app
+-- scales the frame to the window; every frame goes through the GPU, so pixels cost
+-- time. OHMARCHY_DISPLAY_MODE=2880x1920@60 OHMARCHY_DISPLAY_SCALE=2 is the panel's
+-- own resolution: sharper, about half the frame rate.
 dofile(os.getenv("HOME") .. "/.config/hypr/hyprland.lua")
 
 hl.monitor({
   output = "HEADLESS-2",
-  mode = os.getenv("OHMARCHY_DISPLAY_MODE") or "1920x1280@120",
+  mode = os.getenv("OHMARCHY_DISPLAY_MODE") or "2160x1440@120",
   position = "0x0",
-  scale = tonumber(os.getenv("OHMARCHY_DISPLAY_SCALE") or "1"),
+  scale = tonumber(os.getenv("OHMARCHY_DISPLAY_SCALE") or "1.5"),
 })
 
 -- Repaint the whole output on any change. With per-region damage (the default, 2),

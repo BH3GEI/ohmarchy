@@ -85,12 +85,15 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-29 00:28 PDT）
+## 进展（每小时更新；最近一次：2026-10-29 01:28 PDT）
 
-现在：有了一本干净的、对外的 **oHmarchy Book**（mdBook，跟 Rust Book 同款）：树形结构、无个人名字、口径诚实地把每条路线讲清楚，首页嵌了演示录屏。书和视频展示页都有访问密码。此前：演示收敛成一个干净的动态展示页、视频命名统一口径诚实；设备上的权限验收还查出并更正了我们自己之前两个错结论。沙箱的权限控制（`policy.conf`）已验证并提交。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
+现在：一轮上手实测后的体验加固。修好了：沙箱 app 退出全屏回不去（f167094/2c80089）；app 进程被换/崩了再开黑屏（11c578c）；两个鼠标 + 延迟（Linux 光标被画进每一帧）——原生现在只剩一个跟手光标（50a3da5），保留光标形状的完整版排队中。沙箱 app 里**内置了用户可改的权限设置页**（01c8ac6）——待上屏验收。Firefox 崩鸿融是宿主显卡驱动的 bug，我们的镜像已默认让 Firefox 走软件渲染（3f41fce），驱动 bug 写成报告给鸿蒙。另有：干净的对外 **oHmarchy Book**（mdBook）和带密码的视频展示页。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。
 
 | 事项 | 状态 |
 |---|---|
+| 权限设置页（沙箱） | **已做好，待上屏验收**（01c8ac6）：沙箱 app 的 Dock 菜单加「权限设置」，点开可设共享主机目录、能力、设备（fuse / net-tun）、抽象 socket 前缀，底部实时显示 `policy check`，有保存 / 保存并重启。网络行显示但灰掉（"本版本与本机共用网络，下一版启用"）。写入只走 root 小助手新增的 `writepolicy`（两层校验，命令行测了 13 种乱填全拒，仍拒绝 root） |
+| 上手实测的体验修复 | 沙箱 app 退出全屏能回去了（f167094/2c80089）；app 进程被换/崩不再留黑屏（11c578c）；两个鼠标+延迟——原生现在一个跟手光标（50a3da5），保留形状的完整版（硬件光标转发给宿主）排队中；虚拟机那半是 guest 一行配置，待验 |
+| Firefox 崩鸿融 | **根因已定位 + 已绕过**（3f41fce）：宿主显卡进程（Mesa/zink）调了驱动里没有的 Vulkan 函数（`vkCmdBindShadersEXT`）→ 空指针 → 虚拟机被硬停。Firefox 的硬件 GL 踩上、Chromium 不会。我们的镜像已默认让 Firefox 走软件渲染；驱动 bug 写成报告给鸿蒙（zink 不该走那条路、显卡进程崩了不该直接杀虚拟机） |
 | 更正：沙箱网络隔离 | **之前写错了，现已改诚实**（1e54663）。`ohm-capdrop --enter` 漏加网络命名空间，所以经 `ohm-sandbox run` 起的进程（桌面、终端、app）其实跟主机共享网络；以前"连不到 127.0.0.1"是在主机网络里测的、碰巧没人监听才过。逐沙箱的独立网络是一个已完成、命令行验过的补丁，但暂缓启用（显示/声音/输入法桥要先补一个主机侧小门——演示后做）。演示改成演真实边界：看不到主机文件（mount 命名空间）、看不到主机进程（pid 命名空间） |
 | 更正：撤回一条鸿蒙诉求 | **好消息**（1e54663）：HongMeng 本来就按网络命名空间隔离抽象 socket，跟 Linux 一样（实测）。原来请他们做这个的诉求（handover 第 15 条）撤回；那道 libc 围栏现在只是多余的一层、不是边界 |
 | 权限控制可配置 | **已完成+已验证**（fdaa81b）：用户能改的 `policy.conf`（网络、抽象 socket 白名单、共享宿主路径、能力、额外 /dev），默认安全，坏配置回落最严，每项放宽记日志，`ohm-sandbox policy check`。上机实测：dev=fuse、保留/增删能力、抽象 socket 白名单、坏文件 fail-closed、读写共享都可用；只读共享用不了（HongMeng 不让把 bind 重挂成只读） |

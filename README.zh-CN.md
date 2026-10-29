@@ -85,9 +85,9 @@
 | **E** 裸机 | 不要鸿蒙，Linux 直接装在硬件上 | 没开始 | | | 不演示 |
 
 <!-- progress:start -->
-## 进展（每小时更新；最近一次：2026-10-28 22:28 PDT）
+## 进展（每小时更新；最近一次：2026-10-28 23:28 PDT）
 
-现在：演示收敛成一个干净的动态展示页 —— [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app)，视频命名统一、说明口径诚实（之前新旧混在一起的已归档、未删）。在此之前，权限验收查出我们自己之前两个结论是错的，都已在文档里更正。沙箱的权限控制（`policy.conf`）已验证并提交。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
+现在：有了一本干净的、对外的 **oHmarchy Book**（mdBook，跟 Rust Book 同款）：树形结构、无个人名字、口径诚实地把每条路线讲清楚，首页嵌了演示录屏。书和视频展示页都有访问密码。此前：演示收敛成一个干净的动态展示页、视频命名统一口径诚实；设备上的权限验收还查出并更正了我们自己之前两个错结论。沙箱的权限控制（`policy.conf`）已验证并提交。交接文档：[docs/handover.zh-CN.md](docs/handover.zh-CN.md)。B 已公开：[发布 b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027)。彩排录屏：[发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)。
 
 | 事项 | 状态 |
 |---|---|
@@ -97,7 +97,8 @@
 | Docker 网络隔离 | **实测为真**（17f7fa0、3cefa2c）：用 `NET=pasta` 时 dockerd 和容器在 Docker 自己的网络命名空间；容器连不到主机 127.0.0.1 上真实存在的监听、也连不到主机局域网地址（先确认有监听再测连接）。`demo.sh` 发现 dockerd 跟主机同网就拒绝运行 |
 | 开机自起 | 这次开机 init 确实拉起了 `ohm-sandboxd`（`/system` 配置有效）；撞到一个真 bug（boot-serve 的 `bm dump` 在 init 上下文拿不到 uid），现场改读 app 的 el1 目录属主修好（c3b077a）。"完全不用人管"还差下次重启确认一次 |
 | OSEasy 持久化 | **被设备挡住、不是我们代码的问题**（7194b6b）：重启后 OSEasy 的文件选择器枚举不到用户文件（系统文件管理能），是 OSEasy 侧重启不恢复、而且一次比一次差的授权问题。协议逆向+agent+runbook 都就绪，等一次干净环境 |
-| 演示录屏 | **一个干净的动态展示页**：[ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) —— 三段（原生+Docker、沙箱、鸿融）加重拼的全程合集，命名统一 `demo-1/2/3` + `demo-full`，口径诚实。同一套也在 [发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)；旧的、混在一起的老剪辑已归档、未删除。21 张截图 + 报告在 `docs/img/rehearsal/` |
+| oHmarchy Book | **新、对外**（mdBook）：树形侧边栏（路线树当骨架），重新写给团队以外的人——无个人名字、无内部流程，每条路线讲清"是什么/怎么做/现状/限制"，另有"需要鸿蒙配合什么"和一页诚实的能力边界；首页嵌演示录屏。有访问密码 |
+| 演示录屏 | **一个干净的动态展示页**（有访问密码）：三段（原生+Docker、沙箱、鸿融）加重拼的全程合集，命名统一 `demo-1/2/3` + `demo-full`，口径诚实。同一套也在 [发布 rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028)；旧的混剪已归档、未删除。21 张截图 + 报告在 `docs/img/rehearsal/` |
 
 另：鸿融演示盘密码 + sudo/解锁已验证；E 等人试开机按键。
 <!-- progress:end -->

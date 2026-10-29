@@ -107,9 +107,9 @@ Every document is listed by the same tree in [docs/README.md](docs/README.md).
 | **E** Bare metal | Linux directly on the hardware | not started | | | no |
 
 <!-- progress:start -->
-## Progress (updated hourly; last: 2026-10-28 22:28 PDT)
+## Progress (updated hourly; last: 2026-10-28 23:28 PDT)
 
-Now: the demo is one clean showcase page — [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) — with a consistent, honestly-captioned video set (the earlier old/new mix is archived, not deleted). Before that, policy acceptance tests on the device turned up two of our own earlier claims that were wrong, and both are now corrected in the docs. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
+Now: there is a clean, outward-facing **oHmarchy Book** (mdBook, like the Rust Book): a tree-structured, name-free, honest write-up of every route, with the demo video on its front page. Both it and the video showcase page are access-controlled. Earlier: the demo collapsed to one clean showcase page with a consistent, honestly-captioned video set, and policy acceptance tests on the device corrected two of our own earlier claims. The sandbox's permission controls (`policy.conf`) are verified and committed. Handover: [docs/handover.zh-CN.md](docs/handover.zh-CN.md). B is public: [release b-20261027](https://github.com/BH3GEI/ohmarchy/releases/tag/b-20261027). Rehearsal recordings: [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028).
 
 | Item | State |
 |---|---|
@@ -119,7 +119,8 @@ Now: the demo is one clean showcase page — [ohmarchy-demo.vercel.app](https://
 | Docker network isolation | **Verified real** (17f7fa0, 3cefa2c): with `NET=pasta`, dockerd and containers get Docker's own net namespace; containers can't reach a real listener on the host's 127.0.0.1 or LAN address (measured first-listener-then-connect). `demo.sh` refuses to run if dockerd shares the host netns |
 | Autostart | init started `ohm-sandboxd` this boot (the `/system` cfg works); a real bug (boot-serve's `bm dump` gets no uid in init's context) was fixed live by reading the app's el1 dir owner (c3b077a). Full hands-off needs one more reboot to confirm |
 | OSEasy persistence | **Blocked by the device, not our code** (7194b6b): after reboot OSEasy's picker can't enumerate user files (system Files app can) — an OSEasy-side grant that doesn't restore across reboot, and gets worse each reboot. Protocol work + agent + runbook ready; needs one clean environment |
-| Demo videos | **One clean showcase page**: [ohmarchy-demo.vercel.app](https://ohmarchy-demo.vercel.app) — three segments (native+Docker, sandbox, 鸿融) and a rebuilt full cut, consistent names `demo-1/2/3` + `demo-full`, honest captions. Same set on [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028); earlier mixed/old cuts archived, not deleted. 21 screenshots + report in `docs/img/rehearsal/` |
+| oHmarchy Book | **New, outward-facing** (mdBook): tree-structured sidebar (the route tree is the spine), freshly written for readers outside the team — no personal names, no internal process — each route as what / how / status / limits, plus "what HarmonyOS needs" and an honest limits page; the demo video embeds on the front page. Access-controlled |
+| Demo videos | **One clean showcase page** (access-controlled): three segments (native+Docker, sandbox, 鸿融) and a rebuilt full cut, consistent names `demo-1/2/3` + `demo-full`, honest captions. Same set on [release rehearsal-20261028](https://github.com/BH3GEI/ohmarchy/releases/tag/rehearsal-20261028); earlier mixed/old cuts archived, not deleted. 21 screenshots + report in `docs/img/rehearsal/` |
 
 Also: 鸿融 demo-disk password + sudo/unlock verified; E waiting for boot-key tries.
 <!-- progress:end -->

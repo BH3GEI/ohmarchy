@@ -41,6 +41,7 @@ struct Settings {
   @State message: string = '';
   @State busy: boolean = false;
   @State advanced: boolean = false;
+  @State docker: boolean = false;
   private hosts: Map<number, string> = new Map<number, string>();
   private insides: Map<number, string> = new Map<number, string>();
   private prefixText: Map<number, string> = new Map<number, string>();
@@ -100,6 +101,8 @@ struct Settings {
         this.dropExtra = words.join(' ');
       } else if (key === 'dev') {
         this.devs = words;
+      } else if (key === 'docker' && words.length === 1) {
+        this.docker = words[0] === 'on';
       } else if (key === 'abstract_allow') {
         for (const w of words) {
           const id = this.nextId++;
@@ -130,6 +133,9 @@ struct Settings {
     }
     if (this.devs.length > 0) {
       lines.push(`dev = ${this.devs.join(' ')}`);
+    }
+    if (this.docker) {
+      lines.push('docker = on');
     }
     const p: string[] = [];
     for (const id of this.prefixes) {
@@ -256,6 +262,25 @@ struct Settings {
             r.push(this.nextId++);
             this.rows = r;
           })
+
+          this.section('Docker', '在 Linux 里用 docker（路线 I 的内核 docker）。高风险：docker 的服务端还没有强制限制，沙箱里的程序借它能拿到本机的 root。')
+          Row() {
+            Toggle({ type: ToggleType.Switch, isOn: this.docker })
+              .onChange((on: boolean) => {
+                if (!on) {
+                  this.docker = false;
+                  return;
+                }
+                promptAction.showDialog({
+                  title: '打开 Docker？',
+                  message: '高风险：沙箱里的程序借 docker 能拿到本机的 root，直到 docker 的服务端加上强制限制。',
+                  buttons: [{ text: '取消', color: TEXT }, { text: '打开', color: RED }]
+                }).then((r: promptAction.ShowDialogSuccessResponse) => {
+                  this.docker = r.index === 1;
+                });
+              })
+            Text(this.docker ? '打开' : '关闭').fontSize(14).fontColor(this.docker ? RED : DIM)
+          }
 
           Row() {
             Text(this.advanced ? '▾ 高级' : '▸ 高级').fontSize(16).fontColor(TEXT)

@@ -7,6 +7,8 @@
 #   POL_NET      pasta | off | host            POL_ALLOW   extra abstract prefixes
 #   POL_SHARES   lines "host inside ro|rw"     POL_KEEP / POL_DROPX  capability names
 #   POL_DEV      device names (fuse net/tun)
+#   POL_DOCKER   on | off: route I's kernel docker (ohm-docker-test) inside, through
+#                its hook (/run/docker.sock)
 
 # the capability bounding set dropped by default, by name (ohm-sandbox's DROP)
 POL_BASE_DROP="mknod sys_admin sys_module sys_rawio sys_boot sys_time sys_pacct sys_tty_config mac_override mac_admin syslog net_admin audit_control audit_read wake_alarm block_suspend linux_immutable bpf perfmon checkpoint_restore setpcap"
@@ -37,7 +39,7 @@ in_list() {  # word list...
 }
 
 policy_defaults() {
-    POL_NET=pasta; POL_ALLOW=; POL_SHARES=; POL_KEEP=; POL_DROPX=; POL_DEV=
+    POL_NET=pasta; POL_ALLOW=; POL_SHARES=; POL_KEEP=; POL_DROPX=; POL_DEV=; POL_DOCKER=off
 }
 
 # a host path or path inside: absolute, plain characters, no "..", no "//"
@@ -82,7 +84,7 @@ pol_parse() {
         k=$1; shift 2
         case "$k" in
         share) ;;
-        network|abstract_allow|cap_keep|cap_drop_extra|dev)
+        network|abstract_allow|cap_keep|cap_drop_extra|dev|docker)
             case "$seen" in *" $k "*) echo "line $n: $k given twice"; return 1;; esac
             seen="$seen$k ";;
         *) echo "line $n: unknown key $k"; return 1;;
@@ -111,6 +113,9 @@ pol_parse() {
                 cap_num "$c" > /dev/null || { echo "line $n: cap_drop_extra: no capability $c"; return 1; }
             done
             POL_DROPX="$*";;
+        docker)
+            [ $# -eq 1 ] && in_list "$1" on off || { echo "line $n: docker is on or off"; return 1; }
+            POL_DOCKER=$1;;
         dev)
             for d in "$@"; do
                 in_list "$d" $POL_DEVS || { echo "line $n: dev: $d is not one of $POL_DEVS"; return 1; }
@@ -155,6 +160,7 @@ policy_relaxations() {
     done
     for c in $POL_KEEP; do echo "cap relaxed: keep $c"; done
     for d in $POL_DEV; do echo "dev relaxed: $d"; done
+    [ "$POL_DOCKER" = on ] && echo "docker relaxed to on (HIGH RISK: docker's root reaches past the sandbox)"
 }
 
 # into the helper's log (and the start output)
@@ -201,6 +207,11 @@ policy_check() {
     [ -n "$POL_DROPX" ] && echo "  能力      额外去掉 $POL_DROPX  [硬] 比默认更严。"
     echo "  /dev      null zero full random urandom tty ptmx dma_heap${POL_DEV:+ $POL_DEV}  [硬]"
     for d in $POL_DEV; do echo "! /dev      $d  [硬] 比默认多一个设备。"; done
+    if [ "$POL_DOCKER" = on ]; then
+        echo "! Docker    on        [硬] HIGH RISK：沙箱里的程序能用 docker，而 docker 的服务端还没有强制限制，借它可以拿到本机的 root。"
+    else
+        echo "  Docker    off       沙箱里用不了 docker。"
+    fi
     echo "  抽象 socket  只放行 ohmsbx- 和沙箱里自己绑定的${POL_ALLOW:+，另加 $POL_ALLOW}  [软] 多余的一层，不是安全边界：静态程序和沙箱里的 root 能绕过。"
     [ -n "$POL_ALLOW" ] && echo "! 抽象 socket  放行 $POL_ALLOW  [软]"
     echo
@@ -215,5 +226,5 @@ policy_check() {
 
 # a one-line digest of the policy, kept with the running sandbox
 policy_summary() {
-    echo "net=$POL_NET allow=$POL_ALLOW drop=$(policy_drop) dev=$POL_DEV shares=$(printf '%s' "$POL_SHARES" | tr '\n' ';')"
+    echo "net=$POL_NET allow=$POL_ALLOW drop=$(policy_drop) dev=$POL_DEV docker=$POL_DOCKER shares=$(printf '%s' "$POL_SHARES" | tr '\n' ';')"
 }

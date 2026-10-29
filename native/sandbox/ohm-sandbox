@@ -63,6 +63,11 @@ alive() {
 # a line in the helper's log, with the time
 plog() { echo "$(date '+%F %T') $*" | tee -a "$S/sandboxd.log"; }
 
+# Docker inside (policy: docker = on): route I's kernel docker (/data/local/ohm-docker-test,
+# its own mount, pid and net namespaces) puts its socket at /run/docker.sock in here
+# through its hook; the hook stops only what it started.
+DOCKER_HOOK=/data/local/ohm-docker-test/sandbox-hook.sh
+
 # end the process in pid file $1 if it still runs binary $2
 stop_pidf() {
     p=$(cat "$1" 2>/dev/null) && [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$2" ] && kill "$p"
@@ -145,6 +150,14 @@ start)
     off) echo "network: off (policy)";;
     host) echo "network: the host's (policy: network = host)";;
     esac
+    if [ "$POL_DOCKER" = on ]; then
+        if [ -f "$DOCKER_HOOK" ]; then
+            setsid sh "$DOCKER_HOOK" start "$P" < /dev/null > "$S/docker-hook.log" 2>&1 &
+            echo "docker: starting (policy: docker = on)"
+        else
+            plog "docker skipped: no $DOCKER_HOOK"
+        fi
+    fi
     ;;
 policy)
     case "$2" in
@@ -219,6 +232,8 @@ _session)
     mount -t tmpfs -o mode=755,nosuid,nodev tmpfs "$R/run"
     # abstract names bound inside, for ohm-abstract-fence: anyone may add, none list
     mkdir -m 1733 "$R/run/ohm-abstract"
+    # docker's socket, when the policy has docker on (the hook puts it there)
+    printf '%s\n' '[ -S /run/docker.sock ] && export DOCKER_HOST=unix:///run/docker.sock' > "$R/etc/profile.d/ohm-docker.sh"
     # host names the policy lets programs connect to besides those (abstract_allow)
     printf '%s\n' $POL_ALLOW > "$R/run/ohm-abstract-allow"; chmod 644 "$R/run/ohm-abstract-allow"
     mkdir -p "$R/usr/local/sbin" && cp "$S/bin/ohm-capdrop" "$R$CAPDROP" && chmod 755 "$R$CAPDROP"
@@ -330,6 +345,13 @@ stop)
     done
     rm -f "$S/broker.pid"
     stop_pidf "$S/pasta.pid" "$S/bin/passt"
+    if [ -f "$DOCKER_HOOK" ] && grep -q ' docker=on ' "$S/run/policy.effective" 2>/dev/null; then
+        # the hook stops what it started; at most 10 s
+        sh "$DOCKER_HOOK" stop >> "$S/docker-hook.log" 2>&1 &
+        h=$!; i=0
+        while [ $i -lt 10 ] && kill -0 $h 2>/dev/null; do sleep 1; i=$((i+1)); done
+        kill $h 2>/dev/null
+    fi
     nsenter -t "$P" -m sync
     kill -9 "$P"   # pid-namespace init: SIGKILL tears the namespace down
     i=0; while [ $i -lt 20 ] && [ -d "/proc/$P" ]; do sleep 1; i=$((i+1)); done

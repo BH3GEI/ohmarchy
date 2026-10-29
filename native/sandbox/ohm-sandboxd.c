@@ -12,7 +12,7 @@
 //   policycheck   what the next start applies    (ohm-sandbox policy check)
 //   readpolicy    the policy's text              (ohm-sandbox policy show)
 //   writepolicy   the line, then the new policy.conf's text until the client shuts
-//                 its side: checked here line by line against a fixed grammar (6 keys,
+//                 its side: checked here line by line against a fixed grammar (7 keys,
 //                 plain values, at most 4 KiB / 64 lines), written to the fixed file
 //                 run/policy.new, checked again by policy.sh's parser (ohm-sandbox
 //                 policy validate run/policy.new), and only then renamed over
@@ -131,7 +131,7 @@ static int ask(const char *name, const char *cmd, const char *file)
 // characters, or "key = value" with one of the policy's keys and a plain value
 static const char *policy_line_bad(const char *l, size_t n)
 {
-    static const char *const keys[] = {"network", "share", "abstract_allow", "cap_keep", "cap_drop_extra", "dev"};
+    static const char *const keys[] = {"network", "share", "abstract_allow", "cap_keep", "cap_drop_extra", "dev", "docker"};
     static const char plain[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ./_@+-";
     if (n > 200)
         return "line too long";

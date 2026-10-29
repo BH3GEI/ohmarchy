@@ -79,7 +79,7 @@ export default class EntryAbility extends UIAbility {
       }
       // The sandbox build opens maximized, like an app that is a whole desktop.
       if (this.context.applicationInfo.name === 'com.ohmarchy.sandbox') {
-        windowStage.getMainWindow().then((w: window.Window) => w.maximize()).catch((e: object) =>
+        windowStage.getMainWindow().then((w: window.Window) => w.maximize(window.MaximizePresentation.ENTER_IMMERSIVE)).catch((e: object) =>
           hilog.error(DOMAIN, 'ohdisp', 'maximize: %{public}s', JSON.stringify(e)));
       }
       // Otherwise it opens as a normal window; maximize it from the title bar.

@@ -134,6 +134,22 @@ struct Index {
           this.ohdisp?.releaseKeys();
         }
       });
+      // The sandbox build is a whole desktop: it opens in full screen (EntryAbility),
+      // and the title bar's maximize (or a double click on it) only maximizes, with
+      // the title bar and the Dock still there. Maximized from a window means "back
+      // to full screen"; maximized on the way down from full screen (the title bar's
+      // restore) stays as the user asked, so a window can still be had.
+      if (this.sandbox) {
+        let last: window.WindowStatusType = window.WindowStatusType.FULL_SCREEN;
+        w.on('windowStatusChange', (st: window.WindowStatusType) => {
+          hilog.info(0x0D0D, 'ohdisp', 'window status %{public}d (was %{public}d)', st, last);
+          if (st === window.WindowStatusType.MAXIMIZE && last === window.WindowStatusType.FLOATING) {
+            w.maximize(window.MaximizePresentation.ENTER_IMMERSIVE).catch((e: object) =>
+              hilog.error(0x0D0D, 'ohdisp', 'full screen: %{public}s', JSON.stringify(e)));
+          }
+          last = st;
+        });
+      }
     });
     this.timer = setInterval(() => {
       if (this.ohdisp) {

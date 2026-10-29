@@ -3,7 +3,7 @@
 // The sandbox's root helper, as the app sees it: on the abstract socket @NAME
 // (default ohmsbx-ctl) it takes one line from the app com.ohmarchy.sandbox -- only
 // from that uid (SO_PEERCRED) -- and only one of four fixed commands:
-//   start   the sandbox and its desktop       (ohm-sandbox desktop start)
+//   start   the sandbox and a new desktop     (ohm-sandbox desktop restart)
 //   stop    the desktop and the sandbox       (ohm-sandbox desktop stop; ohm-sandbox stop)
 //   reset   stop, then back to the snapshot   (... ohm-sandbox reset)
 //   status  running or stopped                (ohm-sandbox status; ohm-sandbox desktop status)
@@ -140,7 +140,11 @@ int main(int argc, char **argv)
     say("listening on @%s", name);
 
     // fixed argument lists; the launcher's path goes in at [1]
-    static char *a_dstart[] = {"sh", NULL, "desktop", "start", NULL};
+    // The app asks for start when its process starts. A desktop still running from an
+    // earlier app process (the app crashed or was reinstalled while Linux ran) drew
+    // through that process's GPU renderer, which is gone: its picture would stay
+    // black. So start always brings up a new desktop for the new app process.
+    static char *a_dstart[] = {"sh", NULL, "desktop", "restart", NULL};
     static char *a_dstop[] = {"sh", NULL, "desktop", "stop", NULL};
     static char *a_stop[] = {"sh", NULL, "stop", NULL};
     static char *a_reset[] = {"sh", NULL, "reset", NULL};

@@ -7,7 +7,7 @@
 #   POL_NET      pasta | off | host            POL_ALLOW   extra abstract prefixes
 #   POL_SHARES   lines "host inside ro|rw"     POL_KEEP / POL_DROPX  capability names
 #   POL_DEV      device names (fuse net/tun)
-#   POL_DOCKER   on | off: route I's kernel docker (ohm-docker-test) inside, through
+#   POL_DOCKER   on | off: the kernel docker of native/sandbox/docker-test (ohm-docker-test) inside, through
 #                its hook (/run/docker.sock)
 
 # the capability bounding set dropped by default, by name (ohm-sandbox's DROP)

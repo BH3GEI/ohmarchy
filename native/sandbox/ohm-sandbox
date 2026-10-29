@@ -63,7 +63,7 @@ alive() {
 # a line in the helper's log, with the time
 plog() { echo "$(date '+%F %T') $*" | tee -a "$S/sandboxd.log"; }
 
-# Docker inside (policy: docker = on): route I's kernel docker (/data/local/ohm-docker-test,
+# Docker inside (policy: docker = on): the kernel docker of native/sandbox/docker-test (/data/local/ohm-docker-test,
 # its own mount, pid and net namespaces) puts its socket at /run/docker.sock in here
 # through its hook; the hook stops only what it started.
 DOCKER_HOOK=/data/local/ohm-docker-test/sandbox-hook.sh

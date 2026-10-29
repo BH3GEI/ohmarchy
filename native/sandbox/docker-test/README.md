@@ -60,9 +60,16 @@ dockerd 和 containerd 在独立的 mount ns 里（unshare -m 加 pivot_root）�
 - 宿主 127.0.0.1:18557 上起了真监听（lprobe18557）。宿主自己连得上，监听端记到了这一次。`--network host` 的容器连 127.0.0.1:18557 被拒（Connection refused），监听端没有第二条记录；同一个容器能上外网（TUNA）。
 - dockerd 的 pid ns 是 `pid:[4026532882]`，宿主是 `pid:[4026540030]`。它的 /proc 里只有 2 个进程。
 
-- `docker build`：这个 docker CLI 没有 buildx 插件，所以走经典构建器。5 步的 Dockerfile 用了 5 秒，构建出的镜像能跑。构建时的每个 RUN 也受同样的检查：CapBnd 同样是 `a00425fb`，`RUN mknod` 报 Operation not permitted。
+- `docker build`（经典构建器）：5 步的 Dockerfile 用了 5 秒，构建出的镜像能跑。构建时的每个 RUN 也受同样的检查：CapBnd 同样是 `a00425fb`，`RUN mknod` 报 Operation not permitted。
 
-还没测：在真的沙箱 app 里以 builder 身份跑（等 native/sandbox 的钩子上机后再测）。
+真沙箱实测（10-29 18:22–18:30，policy `docker = on`，`ohm-sandbox start`，以 builder 身份 `su - builder`，没有开 app）：
+
+- hook 约 12 秒就绪。`/run/docker.sock` 是 root:60000、0660；登录 shell 里 `DOCKER_HOST=unix:///run/docker.sock`。
+- hello-world、`alpine echo ok` 正常；`--network host` 跑 nginx，另一个容器能拿到页面。
+- mknod、`--privileged`、`--cap-add SYS_ADMIN`、`--pid host`、`--ipc host`、`-v /:/h`、`-v /proc:/p`、`exec --privileged`、`systempaths=unconfined` 全部被拒，报的原因和替身沙箱一样。
+- `docker build`：沙箱里的 CLI 有 buildx，走 BuildKit。RUN 用了 dockerd 的网络（`OHM_BUILD_NET_HOST`），caps 同样是 `a00425fb`；构建出的镜像能跑。经典构建器（`DOCKER_BUILDKIT=0`）也能用。
+- 容器里的服务只在 dockerd 的 netns 里，沙箱自己的 curl 连不到（沙箱有它自己的 netns）。`-p` 没有用：dockerd 用了 `--bridge=none`，没有端口映射。
+- `ohm-sandbox stop` 会先停 hook（dockerd、pasta、relay）；停完宿主上没有残留进程，ohm-docker-test 和 ohm-sandbox 的挂载都是 0。
 
 ## 用法
 
@@ -109,6 +116,8 @@ sh stop.sh   # 只停 dockerd.pid 和 pasta.pid 里记的进程
 | `OHM_NO_MOUNT_SOURCE_THREAD=1` | runc | 线程 setns 会把整个 runc 带进容器的 mount ns | 不支持 idmapped 挂载（本来就没有 user ns），不放松隔离 |
 | `OHM_KEEPCAPS_BEST_EFFORT=1` | runc | `PR_SET_KEEPCAPS` 一律 EPERM | 指定非 root 用户的容器会比要求的少一些 caps，这个方向更紧，不放松隔离 |
 | `"seccomp-profile": "unconfined"` | daemon.json；runc 不带 seccomp 编译 | 内核没有 seccomp | 没有系统调用过滤：容器里的 root 能直接调 keyctl、bpf、perf_event_open 等，内核的攻击面整个暴露给容器，只剩 caps 和沙箱外层约束 |
+| `OHM_NO_SECCOMP=1` | runc | BuildKit 不管 daemon.json，自己给 RUN 带一份 seccomp 配置，而内核没有 seccomp，于是 RUN 起不来 | 丢掉容器配置里的 seccomp。和上一行一样是没有系统调用过滤，没有比 `unconfined` 更弱 |
+| `OHM_BUILD_NET_HOST=1` | dockerd（BuildKit） | `--bridge=none` 时，RUN 默认要的 bridge 网络不存在 | 不指定网络的 RUN 用 dockerd 自己的网络，等于 `--network host`：能连到同一个 netns 里 `--network host` 的容器，但连不到宿主（pasta 的 netns） |
 | `OHM_NO_OPENAT2=1` | runc（pathrs-lite） | 早期绕 openat2 的 EXDEV | 现在用不上，start.sh 不开。打开时改走 O_PATH 解析 |
 
 另外几处补丁只修差异，不削弱，也没有开关：

@@ -11,6 +11,23 @@ index a62c5ac..e0810a1 100644
  		return nil, errors.New("Devices cgroup isn't mounted")
  	}
  
+diff --git a/daemon/internal/builder-next/executor_linux.go b/daemon/internal/builder-next/executor_linux.go
+index 895408c..7afba89 100644
+--- a/daemon/internal/builder-next/executor_linux.go
++++ b/daemon/internal/builder-next/executor_linux.go
+@@ -29,6 +29,12 @@ func newExecutor(opts executorOpts) (executor.Executor, network.ProxyProvider, e
+ 		pb.NetMode_HOST:  network.NewHostProvider(),
+ 		pb.NetMode_NONE:  network.NewNoneProvider(),
+ 	}
++	// ohmarchy native sandbox, test switch OHM_BUILD_NET_HOST=1 (start.sh): dockerd runs
++	// with --bridge=none, so RUN steps default to dockerd's own network (pasta's
++	// namespace there), as --network host would
++	if os.Getenv("OHM_BUILD_NET_HOST") == "1" {
++		networkProviders[pb.NetMode_UNSET] = networkProviders[pb.NetMode_HOST]
++	}
+ 
+ 	// make sure net state directory is cleared from previous state
+ 	fis, err := os.ReadDir(netRoot)
 diff --git a/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go b/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go
 index de7b16a..69ea478 100644
 --- a/vendor/github.com/moby/go-archive/chrootarchive/archive_linux.go

@@ -25,7 +25,7 @@ exec /usr/bin/bash /inner.sh
 NS
 cat > $R/inner.sh <<'IN'
 export PATH=/usr/bin OHM_NO_DEVICES_CGROUP=1 OHM_CHROOT_REEXEC=1 OHM_NO_CGROUPS=1 OHM_KEYRING_BEST_EFFORT=1 \
-  OHM_SKIP_FS=devpts,mqueue OHM_NO_MOUNT_SOURCE_THREAD=1 OHM_KEEPCAPS_BEST_EFFORT=1 \
+  OHM_SKIP_FS=devpts,mqueue OHM_NO_MOUNT_SOURCE_THREAD=1 OHM_KEEPCAPS_BEST_EFFORT=1 OHM_NO_SECCOMP=1 OHM_BUILD_NET_HOST=1 \
   TMPDIR=/tmp  # the host session's TMPDIR (/data/local/tmp) does not exist in here
 umount -l /oldroot || echo "umount oldroot failed"
 echo "root now: $(ls /)"

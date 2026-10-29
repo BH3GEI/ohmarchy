@@ -221,10 +221,10 @@ index 2c6e438..ca15662 100644
  		return &os.PathError{Op: "shutdown", Path: s.f.Name() + " (sync pipe)", Err: err}
 diff --git a/ohm_lockdown.go b/ohm_lockdown.go
 new file mode 100644
-index 0000000..ec29ceb
+index 0000000..6db82a4
 --- /dev/null
 +++ b/ohm_lockdown.go
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,132 @@
 +package main
 +
 +// ohm_lockdown.go: what a container may get from the native sandbox's dockerd
@@ -234,6 +234,7 @@ index 0000000..ec29ceb
 +
 +import (
 +	"fmt"
++	"os"
 +	"path/filepath"
 +	"strings"
 +
@@ -343,6 +344,11 @@ index 0000000..ec29ceb
 +		if d.Type == "b" {
 +			return fmt.Errorf("ohm sandbox: block device %s is not allowed", d.Path)
 +		}
++	}
++	// test switch OHM_NO_SECCOMP=1 (start.sh): HongMeng has no seccomp, and BuildKit
++	// asks for its own profile whatever dockerd's seccomp-profile says
++	if os.Getenv("OHM_NO_SECCOMP") == "1" {
++		s.Linux.Seccomp = nil
 +	}
 +	for k := range s.Linux.Sysctl {
 +		if !strings.HasPrefix(k, "net.") {

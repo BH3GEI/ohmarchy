@@ -1,3 +1,0 @@
-out/
-# the top-level *.mod is for kernel builds
-!go.mod

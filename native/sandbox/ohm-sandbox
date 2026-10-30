@@ -70,7 +70,8 @@ DOCKER_HOOK=/data/local/ohm-docker-test/sandbox-hook.sh
 
 # Secrets never go into the image (README, Secrets): at start they come from the host's
 # /data/local/secrets into /run/ohm-secrets in here, a tmpfs gone on stop. The agents'
-# configs (setup-ai.sh --out: ai.conf, codex-config.toml, opencode.json, the user's)
+# configs (setup-ai.sh --out: ai.conf, codex-config.toml, opencode.json; kimi-config.toml
+# from ai.conf; the user's)
 # and sing-box's (root's); the home has links to them, dangling while it is stopped.
 SECRETS=/data/local/secrets
 secrets_up() {
@@ -85,6 +86,13 @@ secrets_up() {
             "bash /run/ohm-secrets/setup-ai.sh /run/ohm-secrets/ai.env --out /run/ohm-secrets" > /dev/null 2>&1 \
             || plog "secrets: setup-ai.sh --out failed"
         rm -f "$d/ai.env" "$d/setup-ai.sh"
+        # Kimi Code's config takes no variables for the address: written here from ai.conf
+        # (the key stays a variable, api_key_env); ~/.kimi-code/config.toml links to it
+        sh "$0" run /usr/bin/su "$USER_" -c '. /run/ohm-secrets/ai.conf && umask 077 &&
+            printf "%s\n" "default_model = \"relay\"" "" "[providers.relay]" "type = \"anthropic\"" \
+                "base_url = \"$ANTHROPIC_BASE_URL\"" "api_key_env = \"ANTHROPIC_AUTH_TOKEN\"" "" \
+                "[models.relay]" "provider = \"relay\"" "model = \"$ANTHROPIC_MODEL\"" "max_context_size = 200000" \
+                > /run/ohm-secrets/kimi-config.toml' > /dev/null 2>&1 || plog "secrets: kimi config failed"
     fi
     if [ -f "$SECRETS/ohm-sandbox-sing-box.json" ]; then
         cp "$SECRETS/ohm-sandbox-sing-box.json" "$d/sing-box.json" && chmod 600 "$d/sing-box.json"

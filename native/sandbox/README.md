@@ -244,6 +244,13 @@ is what Reset Linux restores and what a demo machine would be given. At each sta
   `--out /run/ohm-secrets` (run as the user, from a copy of ai.env removed right
   after): `ai.conf`, `codex-config.toml`, `opencode.json`;
 - sing-box's config, copied from /data/local/secrets/ohm-sandbox-sing-box.json (root 600).
+- Kimi Code's (`kimi`) config.toml, written from ai.conf (it takes no variables for the
+  address; the key stays a variable, `api_key_env`); `~/.kimi-code/config.toml` links to it.
+
+octoscode's server (octos) needs no file in /run: ~/.config/octos/config.json in the image
+names the relay only as `${ANTHROPIC_BASE_URL}` and `api_key_env: ANTHROPIC_AUTH_TOKEN`.
+Its npm installer fetches the server from GitHub without the proxy: ai-setup.sh's install
+needs the bundle fetched first (curl through the proxy) and `OCTOS_BUNDLE_URL=file://...`.
 
 The home has links to them: `~/.config/environment.d/ai.conf`,
 `~/.codex/config.toml`, `~/.config/opencode/opencode.json`; they dangle while

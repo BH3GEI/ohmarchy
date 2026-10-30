@@ -41,7 +41,7 @@ The root causes behind most ❌ rows:
 | Obsidian (SUPER+SHIFT+O) | ⚠️ | 1.2 s with `--no-sandbox`. Without it Electron's setuid sandbox aborts. Fix: `/usr/local/bin/obsidian` wrapper (below). |
 | Omawrite (SUPER+SHIFT+W) | ✅ | 1.0-1.4 s. |
 | About (menu > About) | ✅ | Already open on the desktop (foot). |
-| Screensaver (menu > System > Screensaver) | ✅ | ttfx in foot, 0.7 s. The desktop setup starts it after 15 s idle (2026-10-30). |
+| Screensaver (menu > System > Screensaver) | ✅ | ttfx in foot, 0.7 s. The desktop setup keeps Omarchy's idle defaults (150 s). |
 
 ## Omarchy menu and shell overlays
 
@@ -73,7 +73,7 @@ The root causes behind most ❌ rows:
 | Screenshot (PRINT, `omarchy-capture-screenshot`) | ⚠️ | grim saves to `~/Pictures`. Omarchy's editor (tensaku) isn't installed. |
 | Screen recording | ❌ | gpu-screen-recorder refuses llvmpipe ("opengl environment is not properly setup"). wf-recorder isn't installed (untested). |
 | Share > Receive / Clipboard (LocalSend) | ✅ | 1.0 s. Listens on the host's network. |
-| Idle (screensaver, lock) | ✅ | The idle monitor works (input from the app counts). The desktop setup sets screensaver 15 s, lock 30 s (Yao, 2026-10-30); the lock asks for the user's password. |
+| Idle (screensaver, lock) | ✅ | The idle monitor works (input from the app counts). Omarchy's defaults: screensaver 150 s, lock 300 s; the lock asks for the user's password. |
 
 ## Other preinstalled GUI apps (`/usr/share/applications`)
 

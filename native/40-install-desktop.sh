@@ -181,13 +181,13 @@ T
     chown -R "$user:" "$home/.config/fcitx5"
 fi
 
-# Idle (Yao, 2026-10-30): Omarchy's screensaver after 15 s and its lock after 30 s. The
-# lock asks for the user's password (set it: the sudo test password, told verbally).
+# Idle: Omarchy's defaults, screensaver after 150 s and lock after 300 s (Yao,
+# 2026-10-30). The lock asks for the user's password (the sudo test password, told verbally).
 su "$user" -c "python3 - ~/.config/omarchy/shell.json" <<'P'
 import json, os, sys
 p = os.path.expanduser(sys.argv[1]) if len(sys.argv) > 1 else os.path.expanduser("~/.config/omarchy/shell.json")
 d = json.load(open(p)) if os.path.exists(p) else {}
-d.setdefault("idle", {}).update({"screensaver": 15, "lock": 30})
+d.setdefault("idle", {}).update({"screensaver": 150, "lock": 300})
 os.makedirs(os.path.dirname(p), exist_ok=True)
 json.dump(d, open(p, "w"), indent=2)
 P

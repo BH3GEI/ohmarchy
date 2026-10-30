@@ -1,11 +1,14 @@
 #!/bin/bash
-# Route D: Omarchy's omarchy-screensaver (4.0.6) with two changes. It waits for its ttfx by
-# controlling terminal (pgrep -t), which matches nothing on the HongMeng kernel: the wait
-# ended at once and the loop started ttfx after ttfx (130 in 4 s, 2026-10-30). Here it
-# waits for its own child. And 30 frames a second, not 120: each frame is a whole-output
-# frame here (damage_tracking = 1), and at 120 the screensaver alone kept foot, Hyprland,
-# the display app and render_service at 2.5 cores; with idle at 15 s that was most of the
-# time. Lives in /opt/ohmarchy/overrides (ahead in the apps' PATH).
+# Route D: Omarchy's omarchy-screensaver (4.0.6) with three changes.
+# - It waits for its ttfx by controlling terminal (pgrep -t), which matches nothing on the
+#   HongMeng kernel: the loop started ttfx after ttfx (130 in 4 s, 2026-10-30). Here it
+#   waits for its own child.
+# - 10 frames a second, not 120: each frame is a whole-output frame here
+#   (damage_tracking = 1); at 120 the screensaver kept foot, Hyprland, the display app
+#   and render_service at 2.5 cores, and with idle at 15 s that was most of the time.
+# - It leaves the cursor alone: Linux draws none here (ohdisplay.lua), and Omarchy's
+#   exit turned it back on.
+# Lives in /opt/ohmarchy/overrides (ahead in the apps' PATH).
 
 # omarchy:summary=Run the Omarchy screensaver using random effects from TTE.
 
@@ -14,7 +17,6 @@ screensaver_in_focus() {
 }
 
 exit_screensaver() {
-  hyprctl eval 'hl.config({ cursor = { invisible = false } })' &>/dev/null || hyprctl keyword cursor:invisible false &>/dev/null || true
   pkill -x ttfx 2>/dev/null
   pkill -f '[o]rg.omarchy.screensaver' 2>/dev/null
   exit 0
@@ -25,7 +27,6 @@ trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
 
 printf '\033]11;rgb:00/00/00\007'  # Set background color to black
 
-hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null || hyprctl keyword cursor:invisible true &>/dev/null
 
 tty=$(tty 2>/dev/null)
 
@@ -44,7 +45,7 @@ wait_for_terminal_resize
 
 while true; do
   ttfx -i ~/.config/omarchy/branding/screensaver.txt \
-    --frame-rate 30 --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c\
+    --frame-rate 10 --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c\
     --random-effect --no-eol --no-restore-cursor &
 
   while pgrep -P $$ -x ttfx >/dev/null; do

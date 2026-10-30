@@ -1,11 +1,9 @@
 #!/bin/bash
-# Route D: Omarchy's omarchy-screensaver (4.0.6) with three changes.
+# Route D: Omarchy's omarchy-screensaver (4.0.6) with two changes (its 120 fps kept, Yao).
 # - It waits for its ttfx by controlling terminal (pgrep -t), which matches nothing on the
 #   HongMeng kernel: the loop started ttfx after ttfx (130 in 4 s, 2026-10-30). Here it
-#   waits for its own child.
-# - 10 frames a second, not 120: each frame is a whole-output frame here
-#   (damage_tracking = 1); at 120 the screensaver kept foot, Hyprland, the display app
-#   and render_service at 2.5 cores, and with idle at 15 s that was most of the time.
+#   waits for its own child. (At 120 fps it costs about 2.5 cores while it runs here:
+#   every frame is a whole-output frame, damage_tracking = 1.)
 # - It leaves the cursor alone: Linux draws none here (ohdisplay.lua), and Omarchy's
 #   exit turned it back on.
 # Lives in /opt/ohmarchy/overrides (ahead in the apps' PATH).
@@ -45,7 +43,7 @@ wait_for_terminal_resize
 
 while true; do
   ttfx -i ~/.config/omarchy/branding/screensaver.txt \
-    --frame-rate 10 --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c\
+    --frame-rate 120 --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c\
     --random-effect --no-eol --no-restore-cursor &
 
   while pgrep -P $$ -x ttfx >/dev/null; do

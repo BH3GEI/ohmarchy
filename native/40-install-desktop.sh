@@ -76,6 +76,9 @@ install -m 755 "$here/desktop/shims/uwsm-app" "$here/desktop/shims/systemd-run" 
 install -D -m 755 "$here/desktop/shims/omarchy-launch-webapp" "$here/desktop/shims/omarchy-launch-docker-tui" \
     "$here/desktop/shims/nm-online" "$here/desktop/shims/omarchy-screensaver" -t /opt/ohmarchy/overrides/
 home=$(getent passwd "$user" | cut -d: -f6)
+# `screensaver` starts Omarchy's screensaver now (Yao, 2026-10-30)
+grep -qx "alias screensaver='omarchy-launch-screensaver force'" "$home/.bashrc" 2>/dev/null ||
+    echo "alias screensaver='omarchy-launch-screensaver force'" >> "$home/.bashrc"
 # Chromium's sandbox needs user namespaces or a setuid helper; neither exists here.
 grep -qx -- --no-sandbox "$home/.config/chromium-flags.conf" 2>/dev/null ||
     echo --no-sandbox >> "$home/.config/chromium-flags.conf"

@@ -21,12 +21,10 @@ hl.monitor({
 -- the swapchain on the app's present path; until that is found, full frames.
 hl.config({ debug = { damage_tracking = 1 } })
 
--- Always a visible cursor (Yao, 2026-10-30): Hyprland draws it into the frames. A second,
--- HarmonyOS pointer over the window is fine. Forwarding it instead as the window's own
--- pointer (aquamarine's headless "hardware" cursor, native/app/.../cursor.cpp) left none
--- when HarmonyOS refused it: OH_Input_SetCustomCursor sets only the window under the
--- pointer, and after a refusal nothing set it again. Native route only (this file).
-hl.config({ cursor = { no_hardware_cursors = 1 } })
+-- One pointer: the cursor is not drawn into the frames. aquamarine's headless backend
+-- takes it as a "hardware" cursor and sends it to the display app, which makes it the
+-- window's own HarmonyOS pointer (native/app/.../cursor.cpp): no second, trailing
+-- cursor, and the shapes (I-beam, resize) stay. Native route only (this file).
 
 -- Three-finger touchpad swipes switch workspaces (the display app forwards them;
 -- Omarchy ships this gesture commented out in input.lua).

@@ -33,12 +33,6 @@ std::condition_variable g_cv;
 std::vector<uint8_t> g_px;
 int g_w = 0, g_h = 0, g_hx = 0, g_hy = 0;
 bool g_pending = false, g_reset = false, g_started = false;
-// the last set was refused (the pointer was over another window: only the window under
-// it may set it); set again at the next pointer event here
-std::atomic<bool> g_refused{false};
-// set again after a refusal, from a pointer event here: refused again means it will not
-// work, and the desktop draws its cursor itself (once)
-std::atomic<bool> g_retrying{false}, g_soft{false};
 
 void Apply(const std::vector<uint8_t> &px, int w, int h, int hx, int hy)
 {
@@ -69,17 +63,11 @@ void Apply(const std::vector<uint8_t> &px, int w, int h, int hx, int hy)
     Input_CustomCursor *cur = OH_Input_CustomCursor_Create(pm, hx, hy);
     Input_CursorConfig *cfg = OH_Input_CursorConfig_Create(false);
     Input_Result r = OH_Input_SetCustomCursor(win, cur, cfg);
-    g_refused = r != INPUT_SUCCESS;
-    if (g_retrying.exchange(false) && r != INPUT_SUCCESS && !g_soft.exchange(true)) {
-        OH_LOG_Print(LOG_APP, LOG_WARN, LOG_DOMAIN, LOG_TAG, "cursor: refused here too: the desktop draws it");
-        CursorSoftFallback();
-    }
     static int logged = 0;
     if (r != INPUT_SUCCESS || logged < 5) {
         logged++;
-        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG,
-                     "cursor: %{public}dx%{public}d hotspot %{public}d,%{public}d on window %{public}d -> %{public}d", w, h, hx,
-                     hy, win, r);
+        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "cursor: %{public}dx%{public}d hotspot %{public}d,%{public}d -> %{public}d",
+                     w, h, hx, hy, r);
     }
     OH_Input_CursorConfig_Destroy(&cfg);
     OH_Input_CustomCursor_Destroy(&cur);
@@ -129,9 +117,7 @@ void Kick()
 
 void CursorSetWindow(int32_t id)
 {
-    if (g_windowId.exchange(id) != id) {
-        OH_LOG_Print(LOG_APP, LOG_INFO, LOG_DOMAIN, LOG_TAG, "cursor: window %{public}d", id);
-    }
+    g_windowId = id;
 }
 
 void CursorUpdate(const uint8_t *map, int w, int h, int stride, bool rgb, int hx, int hy)
@@ -164,14 +150,6 @@ void CursorReapply()
     if (g_w > 0 || !g_px.empty()) {
         g_pending = true;
         Kick();
-    }
-}
-
-void CursorRetryIfRefused()
-{
-    if (g_refused.exchange(false)) {
-        g_retrying = true;
-        CursorReapply();
     }
 }
 

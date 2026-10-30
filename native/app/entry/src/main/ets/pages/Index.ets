@@ -152,7 +152,6 @@ struct Index {
         let last: window.WindowStatusType = window.WindowStatusType.FULL_SCREEN;
         w.on('windowStatusChange', (st: window.WindowStatusType) => {
           hilog.info(0x0D0D, 'ohdisp', 'window status %{public}d (was %{public}d)', st, last);
-          this.setCursorWindow();  // the pointer may have reverted to the system's (cursor.cpp)
           if (st === window.WindowStatusType.MAXIMIZE && last === window.WindowStatusType.FLOATING) {
             w.maximize(window.MaximizePresentation.ENTER_IMMERSIVE).catch((e: object) =>
               hilog.error(0x0D0D, 'ohdisp', 'full screen: %{public}s', JSON.stringify(e)));
@@ -190,25 +189,15 @@ struct Index {
     this.ohdisp?.setForeground(false);
   }
 
-  // the window the desktop's cursor is set on: the main window (EntryAbility)
-  setCursorWindow(): void {
-    const id: number | undefined = AppStorage.get<number>('mainWindowId');
-    if (id !== undefined && id >= 0) {
-      this.ohdisp?.setWindowId(id);
-      return;
-    }
-    window.getLastWindow(getContext(this)).then((w: window.Window) => {
-      this.ohdisp?.setWindowId(w.getWindowProperties().id);
-    });
-  }
-
   build() {
     Stack() {
       XComponent({ id: 'ohdisp', type: XComponentType.SURFACE, libraryname: 'ohdisp', controller: this.xc })
         .onLoad((ctx?: object) => {
           this.ohdisp = ctx as OhdispModule;
           // the desktop's cursor becomes this window's pointer (cursor.cpp)
-          this.setCursorWindow();
+          window.getLastWindow(getContext(this)).then((w: window.Window) => {
+            this.ohdisp?.setWindowId(w.getWindowProperties().id);
+          });
           if (this.sandbox) {
             if (this.resetRequested !== 0) {
               this.onResetRequested();  // opened by "Reset Linux": ask before anything starts

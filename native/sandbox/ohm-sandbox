@@ -93,6 +93,12 @@ secrets_up() {
                 "base_url = \"$ANTHROPIC_BASE_URL\"" "api_key_env = \"ANTHROPIC_AUTH_TOKEN\"" "" \
                 "[models.relay]" "provider = \"relay\"" "model = \"$ANTHROPIC_MODEL\"" "max_context_size = 200000" \
                 > /run/ohm-secrets/kimi-config.toml' > /dev/null 2>&1 || plog "secrets: kimi config failed"
+        # octos's profile (octoscode) holds the relay's address: the image has it with a
+        # placeholder (u.json.in), ~/.octos/profiles/u.json links to the filled copy
+        sh "$0" run /usr/bin/su "$USER_" -c 'f=$HOME/.octos/profiles/u.json.in; [ -f "$f" ] || exit 0
+            . /run/ohm-secrets/ai.conf && umask 077 &&
+            sed "s|@OPENAI_BASE_URL@|$OPENAI_BASE_URL|" "$f" > /run/ohm-secrets/octos-u.json' > /dev/null 2>&1 ||
+            plog "secrets: octos profile failed"
     fi
     if [ -f "$SECRETS/ohm-sandbox-sing-box.json" ]; then
         cp "$SECRETS/ohm-sandbox-sing-box.json" "$d/sing-box.json" && chmod 600 "$d/sing-box.json"

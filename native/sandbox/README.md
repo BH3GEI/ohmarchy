@@ -247,10 +247,13 @@ is what Reset Linux restores and what a demo machine would be given. At each sta
 - Kimi Code's (`kimi`) config.toml, written from ai.conf (it takes no variables for the
   address; the key stays a variable, `api_key_env`); `~/.kimi-code/config.toml` links to it.
 
-octoscode's server (octos) needs no file in /run: ~/.config/octos/config.json in the image
-names the relay only as `${ANTHROPIC_BASE_URL}` and `api_key_env: ANTHROPIC_AUTH_TOKEN`.
-Its npm installer fetches the server from GitHub without the proxy: ai-setup.sh's install
-needs the bundle fetched first (curl through the proxy) and `OCTOS_BUNDLE_URL=file://...`.
+- octos's profile `u` (octoscode's server; created with `profile/local/create`, the relay
+  as a custom OpenAI route with `fixed_temperature`): the image has `~/.octos/profiles/u.json.in`
+  with `@OPENAI_BASE_URL@`, filled from ai.conf; `u.json` links to the copy.
+
+Their npm installers fetch from GitHub without the proxy: ai-setup.sh takes octos's server
+bundle and octoscode's binary from $S/lib/octos/ (fetched elsewhere). OCTOSCODE_NO_AUTO_INSTALL,
+OCTOS_NO_MODEL_DOWNLOAD (else 334 MB) and KIMI_CODE_NO_AUTO_UPDATE are in 65-octos.conf.
 
 The home has links to them: `~/.config/environment.d/ai.conf`,
 `~/.codex/config.toml`, `~/.config/opencode/opencode.json`; they dangle while

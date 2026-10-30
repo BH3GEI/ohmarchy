@@ -18,12 +18,12 @@ set(VTEST_SOURCES
 set_source_files_properties(${VTEST_SOURCES} PROPERTIES
     COMPILE_OPTIONS "-include;${GPU}/config.h;-Dexit=vtest_exit;-w")
 
-add_library(ohdisp SHARED ohdisp.cpp gpu.cpp audio.cpp cursor.cpp ${VTEST_SOURCES})
+add_library(ohdisp SHARED ohdisp.cpp gpu.cpp audio.cpp ${VTEST_SOURCES})
 target_include_directories(ohdisp PRIVATE ${GPU} ${V}/src ${V}/src/gallium/include ${V}/src/gallium/include/pipe
     ${V}/src/mesa/pipe ${V}/src/gallium/auxiliary ${V}/src/mesa ${V}/src/mesa/util ${V}/src/mesa/compat ${V}/vtest)
 target_compile_options(ohdisp PRIVATE -O2)
 target_link_libraries(ohdisp PUBLIC libace_napi.z.so libace_ndk.z.so libnative_window.so libhilog_ndk.z.so
-    libohinputmethod.so libohaudio.so libohinput.so libpixelmap.so hwf_kits.z ${PREBUILT}/libvirglrenderer.so m)
+    libohinputmethod.so libohaudio.so hwf_kits.z ${PREBUILT}/libvirglrenderer.so m)
 
 # Route J (J+D) loader module, independent of the GPU libs
 add_subdirectory(jl)

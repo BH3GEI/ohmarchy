@@ -581,7 +581,7 @@ Docker 测试版（10-28 ohdev：hello-world、alpine sh、沙箱自己 netns �
    - 现象：Yao 在原生应用里有时看不到鼠标箭头。
    - 原因：Linux 不往画面里画光标，aquamarine 的 headless 后端把光标当作"硬件光标"转给 app，app 用 OH_Input_SetCustomCursor 设成窗口自己的鸿蒙指针。这个接口只对指针当前所在的窗口生效，在别处调用会被拒（26500001），被拒后没有地方重设；hide_on_key_press 隐藏光标时转过来的是 1x1 透明指针。
    - 试过的修复：让 Hyprland 自己画光标（cursor:no_hardware_cursors = 1）。箭头回来了，但桌面严重卡顿：这里开着整屏重画（debug:damage_tracking = 1），每动一下鼠标就是一整帧 2160x1440 经 GPU 合成再转发。已回退。
-   - 结论（Yao）：流畅第一，光标优化不做了。回到原来的硬件光标转发，偶尔两个光标或箭头消失属于原有的小问题，接受。
+   - 结论（Yao）：光标这块是过度工程，整块删除。现在只用鸿蒙自己的系统光标，Linux 不画光标（ohdisplay.lua 里设 cursor:invisible = true）；app 里的转发代码（cursor.cpp、透明指针、setWindowId）全部删掉，桌面发来的光标消息直接丢弃。
 
 ### 5.4 规矩
 

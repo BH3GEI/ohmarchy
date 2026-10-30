@@ -1,5 +1,6 @@
 #!/bin/bash
-# Point Omarchy's coding agents (Claude Code, Codex, opencode) at one
+# Point Omarchy's coding agents (Claude Code, Codex, opencode; on demo disks
+# also kimi and octoscode, see demo-setup.sh) at one
 # OpenAI/Anthropic-compatible relay, with the model pinned. Runs as the desktop
 # user inside the guest.
 #
@@ -60,6 +61,16 @@ ANTHROPIC_DEFAULT_HAIKU_MODEL=$model
 ANTHROPIC_DEFAULT_SONNET_MODEL=$model
 ANTHROPIC_DEFAULT_OPUS_MODEL=$model
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+KIMI_CODE_NO_AUTO_UPDATE=1
+OCTOSCODE_NO_AUTO_INSTALL=1
+OCTOS_NO_MODEL_DOWNLOAD=1
+EOF
+# kimi-code: only with a key (KIMI_MODEL_NAME without one is an error)
+[ -z "$key" ] || cat >> "$ai_conf" <<EOF
+KIMI_MODEL_NAME=$model
+KIMI_MODEL_API_KEY=$key
+KIMI_MODEL_PROVIDER_TYPE=openai
+KIMI_MODEL_BASE_URL=$base_v1
 EOF
 chmod 600 "$ai_conf"
 line='[ -r ~/.config/environment.d/ai.conf ] && { set -a; . ~/.config/environment.d/ai.conf; set +a; }'
@@ -96,6 +107,23 @@ if [ -n "$out" ]; then
   chmod 600 "$codex_conf" "$oc_conf"
   echo AI_SETUP_DONE; exit 0
 fi
+
+# kimi (Moonshot's kimi-code, the npm package; the Python kimi-cli is no
+# longer maintained) takes its model from KIMI_MODEL_* in ai.conf (below)
+# octos, the server behind octoscode: the same relay, the key from
+# OPENAI_API_KEY; no embedding model download (memory stays keyword-only).
+# octoscode's local profile is created by demo-setup.sh (needs octos installed)
+mkdir -p ~/.config/octos
+cat > ~/.config/octos/config.json <<EOF
+{
+  "provider": "openai",
+  "model": "$model",
+  "base_url": "$base_v1",
+  "api_key_env": "OPENAI_API_KEY",
+  "embedding": { "provider": "llamacpp", "auto_download": false }
+}
+EOF
+chmod 600 ~/.config/octos/config.json
 
 # Claude Code: no first-run screens (welcome, theme, login, trusting the home
 # directory and ~/demo); the relay authenticates the token

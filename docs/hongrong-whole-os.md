@@ -475,6 +475,41 @@ the installed version with `MISE_OFFLINE=1`. The same script sets mainland
 mirrors for npm, rustup, Go, pip and mise's Node.js
 (`~/.config/environment.d/50-mirrors.conf`, as route D).
 
+kimi and octoscode (`demo-setup.sh more-agents`, no sudo): kimi is Moonshot's
+kimi-code from npm (the Python kimi-cli is no longer maintained); its model
+comes from `KIMI_MODEL_NAME`, `KIMI_MODEL_API_KEY`, `KIMI_MODEL_PROVIDER_TYPE=openai`
+and `KIMI_MODEL_BASE_URL`, which setup-ai.sh puts into ai.conf when it has a
+key. octoscode is the terminal client of the octos server; both installers
+download their binaries from GitHub, slow from the guest, so with
+`OHM_BUNDLE_DIR` octos installs from a local archive (`OCTOS_BUNDLE_URL=file://`)
+and octoscode's binary is unpacked into its package's `node_modules/.bin_real`.
+Its first-run wizard is answered ahead: octos' own `profile/local/create` call
+(over `octos serve --stdio --solo`; the JSON-RPC id must be a string) creates
+the local profile, then its `config.llm.primary` gets the relay as an OpenAI
+route with the key from `OPENAI_API_KEY` and `model_hints.fixed_temperature`
+(the relay's kimi takes only temperature 1, otherwise HTTP 400). Checked with
+octos 2.0.2 on 2026-10-30. `OCTOSCODE_NO_AUTO_INSTALL=1`,
+`OCTOS_NO_MODEL_DOWNLOAD=1` (no 334 MB embedding model) and
+`KIMI_CODE_NO_AUTO_UPDATE=1` are in ai.conf.
+
+`demo-setup.sh mirrors` makes the mainland mirrors the system default:
+pacman (TUNA, USTC, then Omarchy's ARM mirror), npm (`/usr/etc/npmrc`), pip
+(`/etc/pip.conf`), uv (`/etc/uv/uv.toml`), rustup and cargo (rsproxy; cargo
+reads no system file, so `/etc/skel/.cargo/config.toml` and the user's), Go,
+mise's Node.js and Docker's registry mirrors, with the variables in
+`/etc/environment.d` and `/etc/profile.d`. It also holds back `linux-aarch64`
+(IgnorePkg): the disk's kernel carries 鸿融's patches, and an Omarchy system
+update would install the stock one, which may not boot here. Omarchy's update
+puts its stock pacman.conf and mirrorlist back, so an Omarchy
+`pre-refresh-pacman` hook runs `/usr/local/lib/ohmarchy/pin-pacman.sh` again
+before each upgrade.
+
+On a disk already set up, `firstboot/ohmarchy-guest-extras.service` does all
+of this once at the next boot (`guest/extras-firstboot.sh`, root, with the
+files it lists in `/usr/local/lib/ohmarchy/extras`, armed by
+`/var/lib/ohmarchy/extras-pending`). The agents' step waits for ai.conf, which
+the user unit ohmarchy-ai-import.service writes only at the first login.
+
 ### Proxy (internal disks)
 
 Internal disks (never a public one) also get a proxy for sites that the

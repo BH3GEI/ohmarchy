@@ -1,0 +1,15 @@
+[Unit]
+# internal demo disks only, with guest/extras-firstboot.sh and its files in
+# /usr/local/lib/ohmarchy/extras; armed by /var/lib/ohmarchy/extras-pending
+Description=ohmarchy: one-time guest extras (kernel held, mainland mirrors, kimi-code, octoscode)
+Wants=network-online.target
+After=network-online.target ohmarchy-proxy-setup.service sing-box.service
+ConditionPathExists=/var/lib/ohmarchy/extras-pending
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/ohmarchy/extras/extras-firstboot.sh
+TimeoutStartSec=2400
+
+[Install]
+WantedBy=multi-user.target

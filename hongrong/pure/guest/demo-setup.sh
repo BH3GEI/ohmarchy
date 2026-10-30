@@ -4,7 +4,10 @@
 # proxy come from inject-ai-env.sh and inject-proxy-env.sh, not from here).
 # Runs as the desktop user inside the guest, asks for sudo once. Idempotent.
 # Packages that the repositories do not have are skipped and listed at the end.
-# Usage: demo-setup.sh [packages|agents|vscodium|desktop|nvim|all] (default all)
+# Usage: demo-setup.sh [mirrors|packages|agents|more-agents|vscodium|desktop|nvim|all]
+#   (default all). more-agents (kimi, octoscode) needs no sudo; OHM_BUNDLE_DIR
+#   may hold octoscode's and octos' linux arm64 release archives fetched
+#   elsewhere (their installers download them from GitHub, slow behind the proxy).
 set -uo pipefail
 step=${1:-all}
 log() { printf '\n== %s\n' "$*"; }
@@ -135,7 +138,9 @@ EOF
 alias ai='cd ~/demo && claude'
 alias ai-codex='cd ~/demo && codex'
 alias ai-oc='cd ~/demo && opencode'
-[[ $- == *i* ]] && echo "输入 ai 开始（Claude Code），或 ai-codex / ai-oc · Type ai to start"
+alias ai-kimi='cd ~/demo && kimi'
+alias ai-octos='cd ~/demo && octoscode'
+[[ $- == *i* ]] && echo "输入 ai 开始（Claude Code），或 ai-codex / ai-oc / ai-kimi / ai-octos · Type ai to start"
 EOF
   mkdir -p ~/.local/share/applications
   cat > ~/.local/share/applications/ai-terminal.desktop <<'EOF'
@@ -149,6 +154,52 @@ Icon=utilities-terminal
 Terminal=false
 Categories=Development;
 EOF
+}
+
+more_agents() {
+  log "kimi and octoscode"
+  # octoscode, the terminal client of the octos server; octos' installer takes
+  # a local archive, octoscode's only a download, so with OHM_BUNDLE_DIR its
+  # binary is unpacked where its launcher looks
+  local d=${OHM_BUNDLE_DIR:-} oc=octoscode-aarch64-unknown-linux-gnu os=octos-bundle-aarch64-unknown-linux-gnu.tar.gz
+  local allow=@octos-org/octoscode,@octos-org/octos
+  [ -n "$d" ] && allow=@octos-org/octos
+  # kimi: Moonshot's kimi-code (command kimi; its config: setup-ai.sh)
+  OCTOS_BUNDLE_URL=${d:+file://$d/$os} npm install -g --prefix ~/.local --no-fund --no-audit \
+    --allow-scripts=$allow,@moonshot-ai/kimi-code @octos-org/octoscode @octos-org/octos @moonshot-ai/kimi-code ||
+    missing+=(octoscode/kimi-code)
+  if [ -n "$d" ]; then
+    local real=~/.local/lib/node_modules/@octos-org/octoscode/node_modules/.bin_real
+    mkdir -p "$real" && tar xJf "$d/$oc.tar.xz" -C "$real" --strip-components=1 "$oc/octoscode"
+  fi
+  # disks set up before these two agents have the alias block without them
+  grep -q '^alias ai-kimi=' ~/.bashrc || printf '%s\n' "alias ai-kimi='cd ~/demo && kimi'" "alias ai-octos='cd ~/demo && octoscode'" >> ~/.bashrc
+  octos_profile
+}
+
+# octoscode's first-run wizard (local profile, provider, key): the profile is
+# created through octos' own AppUI call, its model route is the relay of
+# ai.conf with the key read from OPENAI_API_KEY at run time
+octos_profile() {
+  command -v octos >/dev/null || return
+  set -a; . ~/.config/environment.d/ai.conf 2>/dev/null; set +a
+  local id=$USER
+  [ -f ~/.octos/profiles/$id.json ] ||
+    (cd ~ && { printf '{"jsonrpc":"2.0","id":"1","method":"profile/local/create","params":{"name":"%s","username":"%s","email":"%s@localhost"}}\n' $id $id $id; sleep 10; } |
+      timeout 60 octos serve --stdio --solo >/dev/null 2>&1)
+  [ -f ~/.octos/profiles/$id.json ] || { missing+=(octos-profile); return; }
+  [ -n "${OPENAI_BASE_URL:-}" ] || return
+  python3 - ~/.octos/profiles/$id.json <<'PYEOF'
+import json, os, sys
+p = sys.argv[1]
+d = json.load(open(p))
+# the relay's kimi only takes the default temperature
+d["config"]["llm"] = {"primary": {"family_id": "openai", "model_id": os.environ["ANTHROPIC_MODEL"],
+    "route": {"route_id": "custom", "label": "relay", "base_url": os.environ["OPENAI_BASE_URL"],
+              "api_key_env": "OPENAI_API_KEY", "api_type": "openai"},
+    "model_hints": {"fixed_temperature": True}}}
+json.dump(d, open(p, "w"), indent=2)
+PYEOF
 }
 
 vscodium() {
@@ -191,6 +242,79 @@ nvim_setup() {
   ls ~/.local/share/nvim/mason/bin 2>/dev/null | tr '\n' ' '; echo
 }
 
+# mainland mirrors as the system default, for every user and every shell:
+# pacman (TUNA, USTC, then Omarchy's own), npm (npmmirror), pip and uv (TUNA),
+# rustup and cargo (rsproxy), go (goproxy.cn), mise's Node.js (npmmirror),
+# Docker (DaoCloud and 1ms registry mirrors). Variables go to
+# /etc/environment.d (the systemd user session, so the desktop and its
+# terminals) and /etc/profile.d (login shells), files to /etc and /etc/skel.
+mirrors_system() {
+  log "mainland mirrors (system default)"
+  local L=/usr/local/lib/ohmarchy
+  # pacman: mainland mirrors and the kernel held back (鸿融's patched
+  # linux-aarch64; the stock one from a system update may not boot). Omarchy's
+  # updates put its stock pacman.conf and mirrorlist back, so a pre-refresh-pacman
+  # hook (as route D's) runs this again before each upgrade
+  sudo tee $L/pin-pacman.sh >/dev/null <<'EOF'
+#!/bin/bash
+# mainland mirrors first and the patched kernel held back (ohmarchy demo-setup.sh)
+cat > /etc/pacman.d/mirrorlist <<'ML'
+# Arch Linux ARM: mainland mirrors first, Omarchy's ARM mirror as fallback (ohmarchy)
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/$arch/$repo
+Server = https://mirrors.ustc.edu.cn/archlinuxarm/$arch/$repo
+Server = https://arm-stable-mirror.omarchy.org/$arch/$repo
+ML
+grep -q '^IgnorePkg *=.*linux-aarch64' /etc/pacman.conf ||
+  sed -i '/^\[options\]/a IgnorePkg = linux-aarch64 linux-aarch64-headers' /etc/pacman.conf
+EOF
+  sudo chmod 755 $L/pin-pacman.sh; sudo $L/pin-pacman.sh
+  local hook=~/.config/omarchy/hooks/pre-refresh-pacman.d/10-ohmarchy-pin
+  mkdir -p "${hook%/*}"
+  printf '#!/bin/bash\n# ohmarchy: mainland mirrors, patched kernel held back\nsudo %s/pin-pacman.sh\n' $L > "$hook"
+  chmod 755 "$hook"
+  local env='RUSTUP_DIST_SERVER=https://rsproxy.cn
+RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
+CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+GOPROXY=https://goproxy.cn,direct
+NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+MISE_NODE_MIRROR_URL=https://npmmirror.com/mirrors/node/'
+  sudo mkdir -p /etc/environment.d /etc/docker /etc/skel/.cargo /etc/uv
+  printf '# mainland mirrors (ohmarchy demo-setup.sh)\n%s\n' "$env" | sudo tee /etc/environment.d/50-ohmarchy-mirrors.conf >/dev/null
+  printf '# mainland mirrors (ohmarchy demo-setup.sh)\n%s\n' "$(sed 's/^/export /' <<<"$env")" | sudo tee /etc/profile.d/ohmarchy-mirrors.sh >/dev/null
+  # interactive non-login shells (the terminals) get it from bash.bashrc too
+  sudo grep -q ohmarchy-mirrors /etc/bash.bashrc ||
+    echo '[ -r /etc/profile.d/ohmarchy-mirrors.sh ] && . /etc/profile.d/ohmarchy-mirrors.sh' | sudo tee -a /etc/bash.bashrc >/dev/null
+  echo 'registry=https://registry.npmmirror.com' | sudo tee /usr/etc/npmrc >/dev/null 2>&1 ||
+    { sudo mkdir -p /usr/etc && echo 'registry=https://registry.npmmirror.com' | sudo tee /usr/etc/npmrc >/dev/null; }
+  printf '[global]\nindex-url = https://pypi.tuna.tsinghua.edu.cn/simple\n' | sudo tee /etc/pip.conf >/dev/null
+  printf '[[index]]\nurl = "https://pypi.tuna.tsinghua.edu.cn/simple"\ndefault = true\n' | sudo tee /etc/uv/uv.toml >/dev/null
+  # cargo reads no system-wide file: new users get it from /etc/skel, this one directly
+  local cargo='[source.crates-io]
+replace-with = "rsproxy-sparse"
+
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"
+
+[registries.rsproxy]
+index = "https://rsproxy.cn/crates.io-index"
+
+[net]
+git-fetch-with-cli = true'
+  echo "$cargo" | sudo tee /etc/skel/.cargo/config.toml >/dev/null
+  mkdir -p ~/.cargo; [ -f ~/.cargo/config.toml ] && grep -q rsproxy ~/.cargo/config.toml || echo "$cargo" >> ~/.cargo/config.toml
+  # Docker: merged into an existing daemon.json
+  sudo python3 - <<'PYEOF'
+import json, os
+p = "/etc/docker/daemon.json"
+d = json.load(open(p)) if os.path.exists(p) and os.path.getsize(p) else {}
+d["registry-mirrors"] = ["https://docker.m.daocloud.io", "https://docker.1ms.run"]
+json.dump(d, open(p, "w"), indent=2)
+PYEOF
+  set -a; . /etc/environment.d/50-ohmarchy-mirrors.conf; set +a
+}
+
 # mainland mirrors for the developer tools (the same as route D's
 # native/desktop/environment.d/50-mirrors.conf), plus Node.js for mise
 mirrors() {
@@ -209,12 +333,12 @@ EOF
   set -a; . ~/.config/environment.d/50-mirrors.conf; set +a
 }
 
-sudo -v || exit 1
+[ "$step" = more-agents ] || sudo -v || exit 1
 mirrors
 case $step in
-  packages) packages ;; agents) agents ;; vscodium) vscodium ;; desktop) desktop ;; nvim) nvim_setup ;;
-  all) packages; agents; vscodium; desktop; nvim_setup ;;
-  *) echo "usage: demo-setup.sh [packages|agents|vscodium|desktop|nvim|all]"; exit 1 ;;
+  mirrors) mirrors_system ;; packages) packages ;; agents) agents ;; more-agents) more_agents ;; vscodium) vscodium ;; desktop) desktop ;; nvim) nvim_setup ;;
+  all) mirrors_system; packages; agents; more_agents; vscodium; desktop; nvim_setup ;;
+  *) echo "usage: demo-setup.sh [mirrors|packages|agents|more-agents|vscodium|desktop|nvim|all]"; exit 1 ;;
 esac
 [ ${#missing[@]} -eq 0 ] || echo "not installed: ${missing[*]}"
 echo DEMO_SETUP_DONE

@@ -186,7 +186,8 @@ start)
     # in the secrets and nothing listens there yet (the processes in here share the
     # host's network, so that port is the host's). It ends with the pid namespace on stop.
     if [ -f "/proc/$P/root/run/ohm-secrets/sing-box.json" ] && ! netstat -tln 2>/dev/null | grep -q ' 127\.0\.0\.1:7890 '; then
-        setsid sh "$0" run /bin/sh -c 'sing-box run -c /run/ohm-secrets/sing-box.json > /var/log/ohmarchy-sing-box.log 2>&1 &
+        # detached in here too: started by the helper (the app's start), a plain & died with it
+        setsid sh "$0" run /bin/sh -c 'nohup setsid sing-box run -c /run/ohm-secrets/sing-box.json > /var/log/ohmarchy-sing-box.log 2>&1 < /dev/null &
             echo $! > /run/ohmarchy-sing-box.pid' < /dev/null > /dev/null 2>&1
         echo "proxy: sing-box on 127.0.0.1:7890"
     fi

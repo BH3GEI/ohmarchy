@@ -340,6 +340,16 @@ desktop)
         alive && sh "$0" run /usr/bin/pgrep -x Hyprland > /dev/null && echo running || echo stopped
         exit 0
     fi
+    # the app could not make the desktop's cursor its pointer (cursor.cpp): Hyprland draws
+    # it into the frames instead, until the desktop restarts
+    if [ "$c" = softcursor ]; then
+        alive || exit 1
+        sh "$0" run /usr/bin/su "$USER_" -c 'export XDG_RUNTIME_DIR=/run/user/$(id -u)
+            HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "$XDG_RUNTIME_DIR/hypr" | head -1) \
+            hyprctl eval "hl.config({ cursor = { no_hardware_cursors = 1 } })"'
+        plog "desktop: software cursor (the app's pointer was refused)"
+        exit 0
+    fi
     if [ "$c" = start ]; then sh "$0" start > /dev/null || exit 1; fi
     alive || { echo "not running"; exit 1; }
     pw=$(grep "^$USER_:" "/proc/$P/root/etc/passwd") || { echo "no user $USER_"; exit 1; }

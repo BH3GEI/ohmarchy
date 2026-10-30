@@ -705,6 +705,7 @@ void OnTouch(OH_NativeXComponent *c, void *window)
 void OnMouse(OH_NativeXComponent *c, void *window)
 {
     RateUp();
+    CursorRetryIfRefused();
     OH_NativeXComponent_MouseEvent ev;
     if (OH_NativeXComponent_GetMouseEvent(c, window, &ev) != 0) {
         return;
@@ -1417,6 +1418,7 @@ napi_value SetWindowIdNapi(napi_env env, napi_callback_info info)
     if (napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr) == napi_ok && argc >= 1 &&
         napi_get_value_int32(env, argv[0], &id) == napi_ok) {
         CursorSetWindow(id);
+        CursorReapply();  // set again on the (new) window
     }
     return nullptr;
 }
@@ -1696,6 +1698,15 @@ napi_module g_module = {
 };
 
 }  // namespace
+
+// cursor.cpp, when HarmonyOS refuses the desktop's cursor as this window's pointer even
+// with the pointer over it: the desktop draws it into the frames instead (ohm-sandboxd)
+void CursorSoftFallback()
+{
+    if (OHM_SANDBOX) {
+        SandboxCtl("softcursor", false);
+    }
+}
 
 int64_t DesktopUid() { return g_desktopUid; }
 

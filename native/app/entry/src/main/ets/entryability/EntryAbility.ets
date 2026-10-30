@@ -68,6 +68,13 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    // the main window's id, for the desktop's cursor (cursor.cpp): window.getLastWindow
+    // may be another of the app's windows, which OH_Input_SetCustomCursor refuses
+    try {
+      AppStorage.setOrCreate('mainWindowId', windowStage.getMainWindowSync().getWindowProperties().id);
+    } catch (e) {
+      hilog.error(DOMAIN, 'ohdisp', 'main window: %{public}s', JSON.stringify(e));
+    }
     if (this.settingsFirst) {  // opened by "权限设置": the settings page alone, in a window
       windowStage.loadContent('pages/Settings', (err) => {
         if (err.code) {

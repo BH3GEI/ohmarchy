@@ -271,6 +271,8 @@ int main(int argc, char **argv)
     static char *a_dstatus[] = {"sh", NULL, "desktop", "status", NULL};
     static char *a_pcheck[] = {"sh", NULL, "policy", "check", NULL};
     static char *a_pshow[] = {"sh", NULL, "policy", "show", NULL};
+    // the app could not set the desktop's cursor as its pointer: the desktop draws it
+    static char *a_soft[] = {"sh", NULL, "desktop", "softcursor", NULL};
     // the launcher's directory's parent is the sandbox's: its run/policy.new
     static char dir[512], newp[512];
     snprintf(dir, sizeof dir, "%s", launcher);
@@ -281,7 +283,7 @@ int main(int argc, char **argv)
     }
     snprintf(newp, sizeof newp, "%s/run/policy.new", dir);
     static char *a_pvalidate[] = {"sh", NULL, "policy", "validate", newp, NULL};
-    char **all[] = {a_dstart, a_dstop, a_stop, a_reset, a_status, a_dstatus, a_pcheck, a_pshow, a_pvalidate};
+    char **all[] = {a_dstart, a_dstop, a_stop, a_reset, a_status, a_dstatus, a_pcheck, a_pshow, a_pvalidate, a_soft};
     for (size_t i = 0; i < sizeof all / sizeof all[0]; i++)
         all[i][1] = (char *)launcher;
     static char **do_start[] = {a_dstart, NULL};
@@ -290,9 +292,11 @@ int main(int argc, char **argv)
     static char **do_status[] = {a_status, a_dstatus, NULL};
     static char **do_pcheck[] = {a_pcheck, NULL};
     static char **do_pshow[] = {a_pshow, NULL};
+    static char **do_soft[] = {a_soft, NULL};
     struct { const char *cmd; char **const *steps; } table[] = {
         {"start", do_start}, {"stop", do_stop}, {"reset", do_reset}, {"status", do_status},
         {"policycheck", do_pcheck}, {"readpolicy", do_pshow}, {"writepolicy", NULL},
+        {"softcursor", do_soft},
     };
 
     for (;;) {

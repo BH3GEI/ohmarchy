@@ -346,6 +346,9 @@ desktop)
     pw=$(grep "^$USER_:" "/proc/$P/root/etc/passwd") || { echo "no user $USER_"; exit 1; }
     uid=$(echo "$pw" | cut -d: -f3); gid=$(echo "$pw" | cut -d: -f4); home=$(echo "$pw" | cut -d: -f6)
     app_uid=$(bm dump -n "$APP" 2>/dev/null | grep -m1 '"uid"' | tr -dc 0-9)
+    # bm answers nothing in init's context (the helper started at boot): the owner of
+    # the app's data, as serve does. Without it there is no sound (no audio relay).
+    [ -n "$app_uid" ] || app_uid=$(stat -c %u "/data/app/el1/100/base/$APP" 2>/dev/null)
     if [ "$c" = start ]; then
         sh "$0" run /opt/ohmarchy/bin/ohmarchy-sysbus start > /dev/null 2>&1
         # The GPU broker belongs to the helper: it runs on the host, binds the desktop's

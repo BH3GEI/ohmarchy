@@ -577,6 +577,11 @@ Docker 测试版（10-28 ohdev：hello-world、alpine sh、沙箱自己 netns �
    - Quickshell 在 SVGA3D 上画黑（b129b02）；
    - sudoers 文件排序导致规则失效（cf91ba0）；
    - vmlog 是累积的，读到了旧的 Oops。
+10. **原生应用的鼠标箭头消失（2026-10-30，D 线）。**
+   - 现象：Yao 在原生应用里看不到鼠标箭头，窗口模式和全屏都出现过。
+   - 原因：当时的做法是 Linux 不往画面里画光标，aquamarine 的 headless 后端把光标当作"硬件光标"转给 app，app 再用 OH_Input_SetCustomCursor 设成窗口自己的鸿蒙指针。这条路有两个坑：(1) 这个接口只对指针当前所在的窗口生效，指针在别的窗口上时调用会被拒（26500001），而被拒以后没有任何地方会再设一次；(2) Omarchy 开着 hide_on_key_press，一打字光标就被隐藏，转发过来就变成了 1x1 的透明指针。两者叠加，箭头就没了。
+   - 修复：改由 Hyprland 自己把光标画进画面（native/desktop/ohdisplay.lua 里设 cursor:no_hardware_cursors = 1，8581258），不再依赖转发。窗口模式和全屏都稳；窗口上偶尔会同时出现鸿蒙自己的箭头，Yao 认可。app 里的转发代码还在，加了被拒后重试、仍被拒就让助手切到软件光标（0406ade），只在以后重新打开转发时才会用到。
+   - 教训：光标宁可两个，不能一个都没有；Yao 早先说的"两个光标"本来就不是问题，是我们过度优化了。
 
 ### 5.4 规矩
 
